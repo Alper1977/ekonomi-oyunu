@@ -3711,10 +3711,12 @@ function baskasiSatinAl(varlikId, botIsmi, fiyat) {
     
     state.varliklar.push({
         id: Date.now() + Math.random(),
-        isim: satilanVarlik.isim,
+        isim: varlikIsmi, // veya baskasiSatinAl fonksiyonunda satilanVarlik.isim
         durum: 'sahip',
+        talepAktif: true, // 🌟 İŞTE BU EKSİK! Bunu eklediğin an müşteri taleplerinde görünecek.
         bloke: false,
-        krediID: null
+        krediID: null,
+        atananKonum: gelenKonum 
     });
 
     modalGoster(`Tebrikler! ${botIsmi} kişisinden ${satilanVarlik.isim} varlığını ${fiyat.toLocaleString()} TL ödeyerek satın aldınız.`);
@@ -3790,13 +3792,14 @@ function ilaniKesinSatinAl(botIsmi, varlikIsmi, fiyat, ilanId) {
         gelenKonum = arsaKonumunuAl(varlikIsmi);
     }
 
-    state.varliklar.push({
+   state.varliklar.push({
         id: Date.now() + Math.random(),
-        isim: varlikIsmi,
+        isim: varlikIsmi, // veya baskasiSatinAl fonksiyonunda satilanVarlik.isim
         durum: 'sahip',
+        talepAktif: true, // 🌟 İŞTE BU EKSİK! Bunu eklediğin an müşteri taleplerinde görünecek.
         bloke: false,
         krediID: null,
-        atananKonum: gelenKonum // İlanda hangi bölge yazıyorsa envanterine de birebir o gidiyor
+        atananKonum: gelenKonum 
     });
 
     modalGoster(`Tebrikler! ${botIsmi} kişisinden ${varlikIsmi} varlığını ${Number(fiyat).toLocaleString()} TL ödeyerek satın aldınız.`);
