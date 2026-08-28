@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
-"scripts": {
+  "scripts": {
     "start": "node server.js",
-    "build": "npm install && npm rebuild sqlite3"
+    "build": "npm install"
   },
   "keywords": [],
   "author": "",
@@ -19,8 +19,7 @@
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "express-session": "^1.19.0",
-    "socket.io": "^4.8.3",
-    "sqlite3": "^6.0.1"
+    "socket.io": "^4.8.3"
   }
 }
 
