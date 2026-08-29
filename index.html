@@ -1230,12 +1230,12 @@ async function uyeligiOlustur() {
     let sifre = sifreInput ? sifreInput.value : "";
 
     try {
-       let response = await fetch('/api/kayit', {
+        let response = await fetch('/api/kayit', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 kadi: email, 
-                email: email, // <-- İŞTE BURASI EKSİKTİ, EKLENDİ!
+                email: email,
                 sifre: sifre,
                 adsoyad: adsoyad,
                 portfoy: { para: 1000000, hisseler: [] }
@@ -1246,7 +1246,7 @@ async function uyeligiOlustur() {
 
         if (!sonuc.basari) {
             if (hataDiv) {
-                hataDiv.innerText = "⚠️ " + sonuc.mesaj;
+                hataDiv.innerText = "⚠️ " + sonuc.mesaj; // Backend'den gelen "Bu ad soyad alınmış" mesajı burada görünür
                 hataDiv.style.display = 'block';
             }
             return;
@@ -1490,9 +1490,9 @@ async function sistemdenCikisYap() {
 }
 
 async function profilAdiGuncelle() {
-    let yeniAdInput = document.getElementById('yeni-adsoyad-input'); // Ayarlar ekranındaki inputun ID'si
+    let yeniAdInput = document.getElementById('yeni-adsoyad-input'); 
     let yeniAd = yeniAdInput ? yeniAdInput.value.trim() : "";
-    let hataDiv = document.getElementById('profil-hata'); // Varsa ayar ekranındaki hata alanı
+    let hataDiv = document.getElementById('profil-hata'); 
 
     if (hataDiv) {
         hataDiv.style.display = 'none';
@@ -1509,7 +1509,6 @@ async function profilAdiGuncelle() {
         return;
     }
 
-    // 1. Kayıt ekranındaki küfür / uygunsuz kelime filtresinin aynısı
     let yasakliKelimeler = ["amk", "aq", "orospu", "piç", "sikerim", "göt", "sik", "anan", "yarrak", "amcık"]; 
     let adSoyadKucuk = yeniAd.toLowerCase();
     let uygunsuzMu = yasakliKelimeler.some(kelime => adSoyadKucuk.includes(kelime));
@@ -1525,12 +1524,11 @@ async function profilAdiGuncelle() {
     }
 
     try {
-        // 2. Sunucuya güncelleme isteği gönder (Backend tarafında bu route'un tanımlı olması gerekir)
         let response = await fetch('/api/profil-guncelle', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
-                kadi: aktifKullaniciAdiKaydi, // Veya o anki oturum açan kullanıcının e-postası
+                kadi: aktifKullaniciAdiKaydi, 
                 yeniAdSoyad: yeniAd 
             })
         });
@@ -1539,13 +1537,12 @@ async function profilAdiGuncelle() {
 
         if (!sonuc.basari) {
             if (hataDiv) {
-                hataDiv.innerText = "⚠️ " + sonuc.mesaj;
+                hataDiv.innerText = "⚠️ " + sonuc.mesaj; // Backend'den gelen "Bu ad soyad başka bir üyeye ait" mesajı burada görünür
                 hataDiv.style.display = 'block';
             }
             return;
         }
 
-        // 3. Global değişkeni ve oyun içi şirket unvanlarını anında güncelle
         aktifKullaniciAdiKaydi = yeniAd;
         let sirketAdiTam = yeniAd.toUpperCase() + " A.Ş.";
         
