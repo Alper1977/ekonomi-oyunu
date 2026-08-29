@@ -346,7 +346,7 @@
 
 
 <!-- 🌟 GİZLİ ADMIN PANELİ SAYFASI -->
-<div id="page-admin" class="page" style="display: none; padding: 20px; padding-bottom: 120px; background: #1a1a1a; color: #fff; height: 100dvh; overflow-y: auto; box-sizing: border-box;"></div>
+<div id="page-admin" class="page" style="display: none; padding: 20px; padding-bottom: 80px; background: #1a1a1a; color: #fff; height: 100vh; overflow-y: auto; box-sizing: border-box;">
     <div style="max-width: 650px; margin: 0 auto; background: #2a2a2a; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
         <h2 style="color: #ffc107; border-bottom: 2px solid #444; padding-bottom: 10px; margin-bottom: 20px;">🛡️ Merkezi Yönetim & Admin Paneli</h2>
         <p style="color: #aaa; margin-bottom: 20px;">Tüm satış fiyatları, yatırım maliyetleri, limitler ve süreler aşağıdadır.</p>
@@ -617,9 +617,9 @@
 </div>
     
 
-   <div id="page-yatirim" class="page" style="display: flex; flex-direction: column; height: 100dvh; box-sizing: border-box; overflow: hidden;">
-    <!-- Üst Sabit Kısım (Kaydırılmayacak) -->
-    <div style="flex-shrink: 0; background: #1a1a1a; padding: 15px 15px 0 15px; z-index: 10;">
+<div id="page-yatirim" class="page">
+    <!-- Yazılar ve Başlık .content Dışına Alındı ve Sabitlendi -->
+    <div style="position: sticky; top: 0; background: #1a1a1a; z-index: 10; padding: 10px 15px 0 15px;">
         <div class="kredi-bilgi" style="margin: 0 0 10px 0; padding: 10px; background: #e8f5e9; border: 1px solid #c8e6c9; border-radius: 5px; text-align: center; font-weight: bold; color: #2e7d32;">
             Maksimum Kredi Limitiniz: <span class="val-limit">0 TL</span>
         </div>
@@ -627,13 +627,13 @@
         <h2 style="margin: 5px 0 10px 0;">Yatırım İşlemleri</h2>
     </div>
 
-    <!-- Sadece Burası Kaydırılacak -->
-    <div class="content" style="flex-grow: 1; overflow-y: auto; padding: 0 15px 80px 15px; box-sizing: border-box;">
+    <!-- Sadece İçerik Alanı .content İçerisinde Kaldı -->
+    <div class="content">
         <!-- Tüm yatırım seçenekleri burada dinamik olarak listelenecek -->
         <div id="yatirimlar-kapsayici"></div>
     </div>
 
-    <div class="nav-bar" style="flex-shrink: 0;">
+    <div class="nav-bar">
         <div class="nav-btn" onclick="changePage('page-mali')">MALİ TABLO</div>
         <div class="nav-btn" onclick="changePage('page-varlik')">VARLIKLARIM</div>
         <div class="nav-btn nav-btn-tahsilat-cls" onclick="changePage('page-tahsilat')">TAHSİLAT YAP</div>
@@ -642,9 +642,9 @@
     </div>
 </div>
     
-<div id="page-ilan" class="page" style="display: flex; flex-direction: column; height: 100dvh; box-sizing: border-box; overflow: hidden;">
-    <!-- Üst Sabit Kısım (Kaydırılmayacak) -->
-    <div style="flex-shrink: 0; background: #1a1a1a; padding: 15px 15px 0 15px; z-index: 10;">
+<div id="page-ilan" class="page">
+    <!-- Yazılar ve Başlık .content Dışına Alındı ve Sabitlendi -->
+    <div style="position: sticky; top: 0; background: #1a1a1a; z-index: 10; padding: 10px 15px 0 15px;">
         <div class="kredi-bilgi" style="margin: 0 0 10px 0; padding: 10px; background: #e8f5e9; border: 1px solid #c8e6c9; border-radius: 5px; text-align: center; font-weight: bold; color: #2e7d32;">
             Maksimum Kredi Limitiniz: <span class="val-limit">0 TL</span>
         </div>
@@ -652,20 +652,20 @@
         <h2 style="margin: 5px 0 10px 0;">Satılık İlanları</h2>
     </div>
 
-    <!-- Sadece Burası Kaydırılacak -->
-    <div class="content" style="flex-grow: 1; overflow-y: auto; padding: 0 15px 80px 15px; box-sizing: border-box;">
+    <!-- Sadece İçerik Alanı .content İçerisinde Kaldı -->
+    <div class="content">
         <!-- Tüm ilanlar burada dinamik olarak listelenecek -->
         <div id="ilanlar-kapsayici"></div>
     </div>
 
-    <div class="nav-bar" style="flex-shrink: 0;">
+    <div class="nav-bar">
         <div class="nav-btn" onclick="changePage('page-mali')">MALİ TABLO</div>
         <div class="nav-btn" onclick="changePage('page-varlik')">VARLIKLARIM</div>
         <div class="nav-btn nav-btn-tahsilat-cls" onclick="changePage('page-tahsilat')">TAHSİLAT YAP</div>
         <div class="nav-btn" onclick="changePage('page-yatirim')">YATIRIM YAP</div>
         <div class="nav-btn" onclick="changePage('page-ilan')">İLANLAR</div>
     </div>
-</div> 
+</div>
 
 
 <div id="page-kurallar" class="page" style="display: none; padding: 20px; color: #fff; max-width: 900px; margin: 0 auto;">
