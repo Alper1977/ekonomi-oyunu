@@ -36,7 +36,7 @@ db.prepare(`CREATE TABLE IF NOT EXISTS kullanicilar (
     kadi TEXT UNIQUE,
     email TEXT UNIQUE,
     sifre TEXT,
-    adsoyad TEXT,
+    adsoyad TEXT UNIQUE,
     portfoy TEXT,
     tarih DATETIME DEFAULT CURRENT_TIMESTAMP
 )`).run();
@@ -85,7 +85,7 @@ if (!mevcutAyarlar) {
             'Fabrika Arsası': 300000000,
             'Otel Arsası': 400000000,
             'Hastane Arsası': 150000000,
-            'Özel Okul Arsası': 50000050,
+            'Özel Okul Arsası': 50000000,
             'AVM Arsası': 450000000,
             'Hipermarket Arsası': 125000000
         },
@@ -152,7 +152,7 @@ app.post('/api/admin/ayar-guncelle', (req, res) => {
     }
 });
 
-// YENİ ÜYE KAYIT ROTASI (İlk orijinal, hatasız çalışan hali)
+// YENİ ÜYE KAYIT ROTASI
 app.post('/api/kayit', (req, res) => {
     const { kadi, email, sifre, adsoyad, portfoy } = req.body; 
     
@@ -160,16 +160,39 @@ app.post('/api/kayit', (req, res) => {
         return res.status(400).json({ basari: false, mesaj: 'E-posta adresi boş olamaz!' });
     }
 
-    const varsayilanPortfoy = {
-        ...(portfoy || { para: 1000000, hisseler: [] }) 
-    };
+    if (!adsoyad || !adsoyad.trim()) {
+        return res.status(400).json({ basari: false, mesaj: 'Ad Soyad (Şirket ismi) boş olamaz!' });
+    }
+
+    const temizAdSoyad = adsoyad.trim();
 
     try {
+        // Ad Soyad daha önce alınmış mı kontrolü
+        const mevcutAd = db.prepare(`SELECT id FROM kullanicilar WHERE adsoyad = ?`).get(temizAdSoyad);
+        if (mevcutAd) {
+            return res.status(400).json({ basari: false, mesaj: 'Bu ad soyad (şirket ismi) daha önce alınmış! Lütfen başka bir tane seçin.' });
+        }
+
+        const varsayilanPortfoy = {
+            ...(portfoy || { para: 1000000, hisseler: [] }) 
+        };
+
         const stmt = db.prepare(`INSERT INTO kullanicilar (kadi, email, sifre, adsoyad, portfoy) VALUES (?, ?, ?, ?, ?)`);
-        const info = stmt.run(kadi, email, sifre, adsoyad, JSON.stringify(varsayilanPortfoy));
+        const info = stmt.run(kadi, email, sifre, temizAdSoyad, JSON.stringify(varsayilanPortfoy));
         res.json({ basari: true, id: info.lastInsertRowid, mesaj: 'Kayıt başarılı!' });
     } catch (err) {
         console.error("Kayıt hatası:", err.message); 
+        if (err.message.includes('UNIQUE constraint failed')) {
+            if (err.message.includes('adsoyad')) {
+                return res.status(400).json({ basari: false, mesaj: 'Bu ad soyad (şirket ismi) zaten kullanımda!' });
+            }
+            if (err.message.includes('email')) {
+                return res.status(400).json({ basari: false, mesaj: 'Bu e-posta adresi zaten alınmış!' });
+            }
+            if (err.message.includes('kadi')) {
+                return res.status(400).json({ basari: false, mesaj: 'Bu kullanıcı adı zaten alınmış!' });
+            }
+        }
         return res.status(400).json({ basari: false, mesaj: 'Bu e-posta adresi zaten alınmış veya hata oluştu!' });
     }
 });
@@ -193,7 +216,7 @@ app.post('/api/sifre-sifirla', (req, res) => {
     }
 });
 
-// PROFİL GÜNCELLEME (Artık başkasının ismini alma ve başkasının yerine geçme ihtimali %100 engellendi)
+// Profil Güncelleme Rotalama
 app.post('/api/profil-guncelle', (req, res) => {
     if (!req.session || !req.session.kullanici) {
         return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı, lütfen tekrar giriş yapın." });
@@ -209,24 +232,21 @@ app.post('/api/profil-guncelle', (req, res) => {
     const temizAd = yeniAdSoyad.trim();
 
     try {
-        // KRİTİK KONTROL: Bu isim, kendi ID'miz DIŞINDA başka bir kullanıcıda kayıtlı mı?
-        const cakisanKullanici = db.prepare(`SELECT id FROM kullanicilar WHERE adsoyad = ? AND id != ?`).get(temizAd, userId);
+        // Kesin çözüm: Büyük/küçük harf ve boşlukları temizleyerek kontrol et
+        const baskaKullaniciVarmi = db.prepare(`SELECT id FROM kullanicilar WHERE LOWER(TRIM(adsoyad)) = LOWER(TRIM(?)) AND id != ?`).get(temizAd, userId);
         
-        if (cakisanKullanici) {
-            return res.json({ basari: false, mesaj: "Bu ad soyad başka bir kullanıcı tarafından kullanılıyor! Başkasının adını alamazsınız." });
+        if (baskaKullaniciVarmi) {
+            return res.json({ basari: false, mesaj: "Bu ad soyad başka bir kullanıcı tarafından kullanılıyor!" });
         }
 
-        // Çakışma yoksa güvenle sadece kendi kaydımızı güncelle
         db.prepare(`UPDATE kullanicilar SET adsoyad = ? WHERE id = ?`).run(temizAd, userId);
         req.session.kullanici.adsoyad = temizAd;
-        
         res.json({ basari: true, mesaj: "Profil başarıyla güncellendi." });
     } catch (err) {
         console.error("Profil güncelleme veritabanı hatası:", err.message);
         return res.status(500).json({ basari: false, mesaj: "Veritabanı güncellenemedi!" });
     }
 });
-
 
 // ÇIKIŞ ROTASI
 app.get('/api/cikis', (req, res) => {
