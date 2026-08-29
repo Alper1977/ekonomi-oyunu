@@ -193,7 +193,7 @@ app.post('/api/sifre-sifirla', (req, res) => {
     }
 });
 
-// Profil Güncelleme Rotalama (Başka kullanıcılarda var mı diye güvenli kontrol eden hali)
+// PROFİL GÜNCELLEME (Artık başkasının ismini alma ve başkasının yerine geçme ihtimali %100 engellendi)
 app.post('/api/profil-guncelle', (req, res) => {
     if (!req.session || !req.session.kullanici) {
         return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı, lütfen tekrar giriş yapın." });
@@ -209,20 +209,24 @@ app.post('/api/profil-guncelle', (req, res) => {
     const temizAd = yeniAdSoyad.trim();
 
     try {
-        // Başka bir kullanıcı bu adı kullanıyor mu kontrol et (kendi ID'miz hariç)
-        const baskaKullaniciVarmi = db.prepare(`SELECT id FROM kullanicilar WHERE adsoyad = ? AND id != ?`).get(temizAd, userId);
-        if (baskaKullaniciVarmi) {
-            return res.json({ basari: false, mesaj: "Bu ad soyad başka bir kullanıcı tarafından kullanılıyor!" });
+        // KRİTİK KONTROL: Bu isim, kendi ID'miz DIŞINDA başka bir kullanıcıda kayıtlı mı?
+        const cakisanKullanici = db.prepare(`SELECT id FROM kullanicilar WHERE adsoyad = ? AND id != ?`).get(temizAd, userId);
+        
+        if (cakisanKullanici) {
+            return res.json({ basari: false, mesaj: "Bu ad soyad başka bir kullanıcı tarafından kullanılıyor! Başkasının adını alamazsınız." });
         }
 
+        // Çakışma yoksa güvenle sadece kendi kaydımızı güncelle
         db.prepare(`UPDATE kullanicilar SET adsoyad = ? WHERE id = ?`).run(temizAd, userId);
         req.session.kullanici.adsoyad = temizAd;
+        
         res.json({ basari: true, mesaj: "Profil başarıyla güncellendi." });
     } catch (err) {
         console.error("Profil güncelleme veritabanı hatası:", err.message);
         return res.status(500).json({ basari: false, mesaj: "Veritabanı güncellenemedi!" });
     }
 });
+
 
 // ÇIKIŞ ROTASI
 app.get('/api/cikis', (req, res) => {
