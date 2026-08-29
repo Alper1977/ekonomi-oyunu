@@ -152,7 +152,7 @@ app.post('/api/admin/ayar-guncelle', (req, res) => {
     }
 });
 
-// YENİ ÜYE KAYIT ROTASI
+// YENİ ÜYE KAYIT ROTASI (Eksiksiz ve büyük/küçük harf duyarlı kontrolleriyle)
 app.post('/api/kayit', (req, res) => {
     const { kadi, email, sifre, adsoyad, portfoy } = req.body; 
     
@@ -167,8 +167,8 @@ app.post('/api/kayit', (req, res) => {
     const temizAdSoyad = adsoyad.trim();
 
     try {
-        // Ad Soyad daha önce alınmış mı kontrolü
-        const mevcutAd = db.prepare(`SELECT id FROM kullanicilar WHERE adsoyad = ?`).get(temizAdSoyad);
+        // Büyük/küçük harf ve boşluk farkını yok sayarak ad soyad kontrolü
+        const mevcutAd = db.prepare(`SELECT id FROM kullanicilar WHERE LOWER(TRIM(adsoyad)) = LOWER(TRIM(?))`).get(temizAdSoyad);
         if (mevcutAd) {
             return res.status(400).json({ basari: false, mesaj: 'Bu ad soyad (şirket ismi) daha önce alınmış! Lütfen başka bir tane seçin.' });
         }
@@ -196,7 +196,6 @@ app.post('/api/kayit', (req, res) => {
         return res.status(400).json({ basari: false, mesaj: 'Bu e-posta adresi zaten alınmış veya hata oluştu!' });
     }
 });
-
 app.post('/api/sifre-sifirla', (req, res) => {
     const { email, yeniSifre } = req.body;
 
