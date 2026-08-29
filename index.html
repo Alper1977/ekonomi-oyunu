@@ -618,21 +618,19 @@
     
 
 <div id="page-yatirim" class="page">
-    <!-- Yazılar ve Başlık .content Dışına Alındı ve Sabitlendi -->
-    <div style="position: sticky; top: 0; background: #1a1a1a; z-index: 10; padding: 10px 15px 0 15px;">
-        <div class="kredi-bilgi" style="margin: 0 0 10px 0; padding: 10px; background: #e8f5e9; border: 1px solid #c8e6c9; border-radius: 5px; text-align: center; font-weight: bold; color: #2e7d32;">
-            Maksimum Kredi Limitiniz: <span class="val-limit">0 TL</span>
-        </div>
-        <div class="faiz-mavi" style="margin-bottom: 5px;">Yatırım Kredisi Aylık Faiz Oranı %<span id="yazi-yatirim-faiz">5</span></div>
-        <h2 style="margin: 5px 0 10px 0;">Yatırım İşlemleri</h2>
-    </div>
-
-    <!-- Sadece İçerik Alanı .content İçerisinde Kaldı -->
     <div class="content">
+        <!-- Telefon formatını bozmayan, içeride sabit kalan alan -->
+        <div style="position: sticky; top: 0; background: inherit; z-index: 5; padding-top: 5px;">
+            <div class="kredi-bilgi" style="margin: 15px 0; padding: 10px; background: #e8f5e9; border: 1px solid #c8e6c9; border-radius: 5px; text-align: center; font-weight: bold; color: #2e7d32;">
+                Maksimum Kredi Limitiniz: <span class="val-limit">0 TL</span>
+            </div>
+            <div class="faiz-mavi">Yatırım Kredisi Aylık Faiz Oranı %<span id="yazi-yatirim-faiz">5</span></div>
+            <h2>Yatırım İşlemleri</h2>
+        </div>
+
         <!-- Tüm yatırım seçenekleri burada dinamik olarak listelenecek -->
         <div id="yatirimlar-kapsayici"></div>
     </div>
-
     <div class="nav-bar">
         <div class="nav-btn" onclick="changePage('page-mali')">MALİ TABLO</div>
         <div class="nav-btn" onclick="changePage('page-varlik')">VARLIKLARIM</div>
@@ -643,21 +641,19 @@
 </div>
     
 <div id="page-ilan" class="page">
-    <!-- Yazılar ve Başlık .content Dışına Alındı ve Sabitlendi -->
-    <div style="position: sticky; top: 0; background: #1a1a1a; z-index: 10; padding: 10px 15px 0 15px;">
-        <div class="kredi-bilgi" style="margin: 0 0 10px 0; padding: 10px; background: #e8f5e9; border: 1px solid #c8e6c9; border-radius: 5px; text-align: center; font-weight: bold; color: #2e7d32;">
-            Maksimum Kredi Limitiniz: <span class="val-limit">0 TL</span>
-        </div>
-        <div class="faiz-mavi" style="margin-bottom: 5px;">Yatırım Kredisi Aylık Faiz Oranı %<span id="yazi-ilan-faiz">5</span></div>
-        <h2 style="margin: 5px 0 10px 0;">Satılık İlanları</h2>
-    </div>
-
-    <!-- Sadece İçerik Alanı .content İçerisinde Kaldı -->
     <div class="content">
+        <!-- Telefon formatını bozmayan, içeride sabit kalan alan -->
+        <div style="position: sticky; top: 0; background: inherit; z-index: 5; padding-top: 5px;">
+            <div class="kredi-bilgi" style="margin: 15px 0; padding: 10px; background: #e8f5e9; border: 1px solid #c8e6c9; border-radius: 5px; text-align: center; font-weight: bold; color: #2e7d32;">
+                Maksimum Kredi Limitiniz: <span class="val-limit">0 TL</span>
+            </div>
+            <div class="faiz-mavi">Yatırım Kredisi Aylık Faiz Oranı %<span id="yazi-ilan-faiz">5</span></div>
+            <h2>Satılık İlanları</h2>
+        </div>
+        
         <!-- Tüm ilanlar burada dinamik olarak listelenecek -->
         <div id="ilanlar-kapsayici"></div>
     </div>
-
     <div class="nav-bar">
         <div class="nav-btn" onclick="changePage('page-mali')">MALİ TABLO</div>
         <div class="nav-btn" onclick="changePage('page-varlik')">VARLIKLARIM</div>
