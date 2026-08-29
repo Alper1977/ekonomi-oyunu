@@ -2992,58 +2992,65 @@ if (vList) {
     });
 }
 
-    let tList = document.getElementById('musteri-talepleri-listesi');
+let tList = document.getElementById('musteri-talepleri-listesi');
     if (tList) {
         tList.innerHTML = '';
-        state.varliklar.filter(v => (v.durum === 'sahip' || v.durum === 'ilan-aktif') && v.isim !== 'Konut').forEach(v => {
+        
+        // Sadece konut olmayan ve sahip olunan/ilan verilen varlıkları al
+        let aktifVarliklarTalepler = state.varliklar.filter(v => (v.durum === 'sahip' || v.durum === 'ilan-aktif') && v.isim && v.isim.toLowerCase() !== 'konut');
+        
+        aktifVarliklarTalepler.forEach(v => {
+            // 1. Önce state.talepler içinde var mı diye bak, yoksa otomatik oluştur!
             let talep = state.talepler.find(t => t.tur === v.isim || t.isim === v.isim);
-            if (talep) {
-                let isAktif = (v.talepAktif === true);
-                
-                let beklenenMetin = "Ödeme Bekleniyor";
-                if (!isAktif && typeof odemeProgrami !== 'undefined' && odemeProgrami.length > 0) {
-                    let s = typeof saat !== 'undefined' ? saat : new Date().getHours();
-                    let d = typeof dakika !== 'undefined' ? dakika : new Date().getMinutes();
-
-                    let siraIndex = odemeProgrami.findIndex(p => (s < p.saat) || (s === p.saat && d < p.dakika));
-                    if (siraIndex === -1) {
-                        siraIndex = 0; 
-                    }
-                    
-                    let aktifOdeme = odemeProgrami[siraIndex];
-                    let basSaat = String(aktifOdeme.saat).padStart(2, '0') + ':' + String(aktifOdeme.dakika).padStart(2, '0');
-                    
-                    let bitSaatSaat = aktifOdeme.saat + 1;
-                    if (bitSaatSaat >= 24) bitSaatSaat = 0;
-                    let bitSaat = String(bitSaatSaat).padStart(2, '0') + ':' + String(aktifOdeme.dakika).padStart(2, '0');
-
-                    beklenenMetin = `${basSaat} - ${bitSaat} arası Ödeme Bekleniyor`;
-                }
-
-                // Bedel bilgisini güncel talep objesinden alıyoruz
-                let guncelBedel = talep.bedel;
-                let altMetin = isAktif ? ('+' + guncelBedel.toLocaleString() + ' TL') : beklenenMetin;
-
-                tList.innerHTML += `
-                    <div class="demand-box" style="display: flex; flex-direction: column; align-items: stretch; padding: 10px;">
-                        <!-- Üst Satır: Tür (Kalın ve Mavi) + Yanında Butonlar -->
-                        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                            <span style="font-weight: bold; color: #00bfff; font-size: 14px;">${talep.isim}</span>
-                            <div>
-                                <button onclick="${isAktif ? 'talepAl(' + v.id + ')' : 'void(0)'}" 
-                                        ${!isAktif ? 'disabled' : ''} 
-                                        class="${isAktif ? 'nav-btn-kirmizi' : ''}">
-                                    ${isAktif ? 'TAHSİL ET' : 'BEKLE'}
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <!-- Alt Satır: Ödeme / Bekleme Durumu (Kalın ve Kırmızı) -->
-                        <div style="font-weight: bold; color: #ff4444; font-size: 12px; margin-top: 6px;">
-                            ${altMetin}
-                        </div>
-                    </div>`;
+            
+            if (!talep) {
+                // Eğer kullanıcının varlığı var ama taleplerde tanımlı değilse burada anında yaratıyoruz
+                let varsayilanBedel = (typeof kazancTablosu !== 'undefined' && kazancTablosu[v.isim]) ? kazancTablosu[v.isim] : 100000;
+                talep = { tur: v.isim, isim: v.isim, bedel: varsayilanBedel };
+                state.talepler.push(talep);
             }
+
+            let isAktif = (v.talepAktif === true);
+            
+            let beklenenMetin = "Ödeme Bekleniyor";
+            if (!isAktif && typeof odemeProgrami !== 'undefined' && odemeProgrami.length > 0) {
+                let s = typeof saat !== 'undefined' ? saat : new Date().getHours();
+                let d = typeof dakika !== 'undefined' ? dakika : new Date().getMinutes();
+
+                let siraIndex = odemeProgrami.findIndex(p => (s < p.saat) || (s === p.saat && d < p.dakika));
+                if (siraIndex === -1) {
+                    siraIndex = 0; 
+                }
+                
+                let aktifOdeme = odemeProgrami[siraIndex];
+                let basSaat = String(aktifOdeme.saat).padStart(2, '0') + ':' + String(aktifOdeme.dakika).padStart(2, '0');
+                
+                let bitSaatSaat = aktifOdeme.saat + 1;
+                if (bitSaatSaat >= 24) bitSaatSaat = 0;
+                let bitSaat = String(bitSaatSaat).padStart(2, '0') + ':' + String(aktifOdeme.dakika).padStart(2, '0');
+
+                beklenenMetin = `${basSaat} - ${bitSaat} arası Ödeme Bekleniyor`;
+            }
+
+            let guncelBedel = talep.bedel || 0;
+            let altMetin = isAktif ? ('+' + guncelBedel.toLocaleString() + ' TL') : beklenenMetin;
+
+            tList.innerHTML += `
+                <div class="demand-box" style="display: flex; flex-direction: column; align-items: stretch; padding: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                        <span style="font-weight: bold; color: #00bfff; font-size: 14px;">${v.isim}</span>
+                        <div>
+                            <button onclick="${isAktif ? 'talepAl(' + v.id + ')' : 'void(0)'}" 
+                                    ${!isAktif ? 'disabled' : ''} 
+                                    class="${isAktif ? 'nav-btn-kirmizi' : ''}">
+                                ${isAktif ? 'TAHSİL ET' : 'BEKLE'}
+                            </button>
+                        </div>
+                    </div>
+                    <div style="font-weight: bold; color: #ff4444; font-size: 12px; margin-top: 6px;">
+                        ${altMetin}
+                    </div>
+                </div>`;
         });
     }
 
