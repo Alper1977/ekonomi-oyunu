@@ -36,7 +36,7 @@ db.prepare(`CREATE TABLE IF NOT EXISTS kullanicilar (
     kadi TEXT UNIQUE,
     email TEXT UNIQUE,
     sifre TEXT,
-    adsoyad TEXT UNIQUE,
+    adsoyad TEXT,
     portfoy TEXT,
     tarih DATETIME DEFAULT CURRENT_TIMESTAMP
 )`).run();
@@ -85,7 +85,7 @@ if (!mevcutAyarlar) {
             'Fabrika Arsası': 300000000,
             'Otel Arsası': 400000000,
             'Hastane Arsası': 150000000,
-            'Özel Okul Arsası': 50000000,
+            'Özel Okul Arsası': 50000050,
             'AVM Arsası': 450000000,
             'Hipermarket Arsası': 125000000
         },
@@ -152,7 +152,7 @@ app.post('/api/admin/ayar-guncelle', (req, res) => {
     }
 });
 
-// YENİ ÜYE KAYIT ROTASI
+// YENİ ÜYE KAYIT ROTASI (İlk orijinal, hatasız çalışan hali)
 app.post('/api/kayit', (req, res) => {
     const { kadi, email, sifre, adsoyad, portfoy } = req.body; 
     
@@ -160,39 +160,16 @@ app.post('/api/kayit', (req, res) => {
         return res.status(400).json({ basari: false, mesaj: 'E-posta adresi boş olamaz!' });
     }
 
-    if (!adsoyad || !adsoyad.trim()) {
-        return res.status(400).json({ basari: false, mesaj: 'Ad Soyad (Şirket ismi) boş olamaz!' });
-    }
-
-    const temizAdSoyad = adsoyad.trim();
+    const varsayilanPortfoy = {
+        ...(portfoy || { para: 1000000, hisseler: [] }) 
+    };
 
     try {
-        // Ad Soyad daha önce alınmış mı kontrolü
-        const mevcutAd = db.prepare(`SELECT id FROM kullanicilar WHERE adsoyad = ?`).get(temizAdSoyad);
-        if (mevcutAd) {
-            return res.status(400).json({ basari: false, mesaj: 'Bu ad soyad (şirket ismi) daha önce alınmış! Lütfen başka bir tane seçin.' });
-        }
-
-        const varsayilanPortfoy = {
-            ...(portfoy || { para: 1000000, hisseler: [] }) 
-        };
-
         const stmt = db.prepare(`INSERT INTO kullanicilar (kadi, email, sifre, adsoyad, portfoy) VALUES (?, ?, ?, ?, ?)`);
-        const info = stmt.run(kadi, email, sifre, temizAdSoyad, JSON.stringify(varsayilanPortfoy));
+        const info = stmt.run(kadi, email, sifre, adsoyad, JSON.stringify(varsayilanPortfoy));
         res.json({ basari: true, id: info.lastInsertRowid, mesaj: 'Kayıt başarılı!' });
     } catch (err) {
         console.error("Kayıt hatası:", err.message); 
-        if (err.message.includes('UNIQUE constraint failed')) {
-            if (err.message.includes('adsoyad')) {
-                return res.status(400).json({ basari: false, mesaj: 'Bu ad soyad (şirket ismi) zaten kullanımda!' });
-            }
-            if (err.message.includes('email')) {
-                return res.status(400).json({ basari: false, mesaj: 'Bu e-posta adresi zaten alınmış!' });
-            }
-            if (err.message.includes('kadi')) {
-                return res.status(400).json({ basari: false, mesaj: 'Bu kullanıcı adı zaten alınmış!' });
-            }
-        }
         return res.status(400).json({ basari: false, mesaj: 'Bu e-posta adresi zaten alınmış veya hata oluştu!' });
     }
 });
@@ -216,7 +193,7 @@ app.post('/api/sifre-sifirla', (req, res) => {
     }
 });
 
-// Profil Güncelleme Rotalama
+// Profil Güncelleme Rotalama (Başka kullanıcılarda var mı diye güvenli kontrol eden hali)
 app.post('/api/profil-guncelle', (req, res) => {
     if (!req.session || !req.session.kullanici) {
         return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı, lütfen tekrar giriş yapın." });
@@ -232,7 +209,7 @@ app.post('/api/profil-guncelle', (req, res) => {
     const temizAd = yeniAdSoyad.trim();
 
     try {
-        // Başka bir kullanıcının bu adı kullanıp kullanmadığını kontrol et (kendi ID'miz hariç)
+        // Başka bir kullanıcı bu adı kullanıyor mu kontrol et (kendi ID'miz hariç)
         const baskaKullaniciVarmi = db.prepare(`SELECT id FROM kullanicilar WHERE adsoyad = ? AND id != ?`).get(temizAd, userId);
         if (baskaKullaniciVarmi) {
             return res.json({ basari: false, mesaj: "Bu ad soyad başka bir kullanıcı tarafından kullanılıyor!" });
