@@ -152,7 +152,7 @@ app.post('/api/admin/ayar-guncelle', (req, res) => {
     }
 });
 
-// YENİ ÜYE KAYIT ROTASI (Ad soyad benzersizlik kontrolü eklendi)
+// YENİ ÜYE KAYIT ROTASI (Güçlendirilmiş Ad Soyad Kontrolü)
 app.post('/api/kayit', (req, res) => {
     const { kadi, email, sifre, adsoyad, portfoy } = req.body; 
     
@@ -161,16 +161,16 @@ app.post('/api/kayit', (req, res) => {
     }
 
     if (!adsoyad || !adsoyad.trim()) {
-        return res.status(400).json({ basari: false, mesaj: 'Kullanıcı adı (Ad Soyad) boş olamaz!' });
+        return res.status(400).json({ basari: false, mesaj: 'Ad Soyad (Şirket ismi) boş olamaz!' });
     }
 
     const temizAdSoyad = adsoyad.trim();
 
-    // Aynı ad soyad (kullanıcı adı) ile daha önce kayıt olunmuş mu kontrolü
     try {
-        const varMi = db.prepare(`SELECT id FROM kullanicilar WHERE adsoyad = ?`).get(temizAdSoyad);
-        if (varMi) {
-            return res.status(400).json({ basari: false, mesaj: 'Bu ad soyad (kullanıcı adı) daha önce alınmış! Lütfen başka bir tane seçin.' });
+        // Önce veritabanında bu adsoyad birebir var mı kontrol edelim
+        const mevcutAd = db.prepare(`SELECT id FROM kullanicilar WHERE adsoyad = ?`).get(temizAdSoyad);
+        if (mevcutAd) {
+            return res.status(400).json({ basari: false, mesaj: 'Bu ad soyad (şirket ismi) daha önce alınmış! Lütfen başka bir tane seçin.' });
         }
 
         const varsayilanPortfoy = {
@@ -182,7 +182,19 @@ app.post('/api/kayit', (req, res) => {
         res.json({ basari: true, id: info.lastInsertRowid, mesaj: 'Kayıt başarılı!' });
     } catch (err) {
         console.error("Kayıt hatası:", err.message); 
-        return res.status(400).json({ basari: false, mesaj: 'Bu e-posta adresi zaten alınmış veya hata oluştu!' });
+        // SQLite UNIQUE kısıtına takılırsa yakala
+        if (err.message.includes('UNIQUE constraint failed')) {
+            if (err.message.includes('adsoyad')) {
+                return res.status(400).json({ basari: false, mesaj: 'Bu ad soyad (şirket ismi) zaten kullanımda!' });
+            }
+            if (err.message.includes('email')) {
+                return res.status(400).json({ basari: false, mesaj: 'Bu e-posta adresi zaten alınmış!' });
+            }
+            if (err.message.includes('kadi')) {
+                return res.status(400).json({ basari: false, mesaj: 'Bu kullanıcı adı zaten alınmış!' });
+            }
+        }
+        return res.status(400).json({ basari: false, mesaj: 'Kayıt oluşturulamadı, bilgiler benzersiz olmalıdır.' });
     }
 });
 
@@ -205,7 +217,7 @@ app.post('/api/sifre-sifirla', (req, res) => {
     }
 });
 
-// Profil Güncelleme Rotalama (Ad soyad benzersizlik kontrolü eklendi)
+// Profil Güncelleme Rotalama
 app.post('/api/profil-guncelle', (req, res) => {
     if (!req.session || !req.session.kullanici) {
         return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı, lütfen tekrar giriş yapın." });
