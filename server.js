@@ -152,7 +152,7 @@ app.post('/api/admin/ayar-guncelle', (req, res) => {
     }
 });
 
-// YENİ ÜYE KAYIT ROTASI (Güçlendirilmiş Ad Soyad Kontrolü)
+// YENİ ÜYE KAYIT ROTASI
 app.post('/api/kayit', (req, res) => {
     const { kadi, email, sifre, adsoyad, portfoy } = req.body; 
     
@@ -167,7 +167,7 @@ app.post('/api/kayit', (req, res) => {
     const temizAdSoyad = adsoyad.trim();
 
     try {
-        // Önce veritabanında bu adsoyad birebir var mı kontrol edelim
+        // Ad Soyad daha önce alınmış mı kontrolü
         const mevcutAd = db.prepare(`SELECT id FROM kullanicilar WHERE adsoyad = ?`).get(temizAdSoyad);
         if (mevcutAd) {
             return res.status(400).json({ basari: false, mesaj: 'Bu ad soyad (şirket ismi) daha önce alınmış! Lütfen başka bir tane seçin.' });
@@ -182,7 +182,6 @@ app.post('/api/kayit', (req, res) => {
         res.json({ basari: true, id: info.lastInsertRowid, mesaj: 'Kayıt başarılı!' });
     } catch (err) {
         console.error("Kayıt hatası:", err.message); 
-        // SQLite UNIQUE kısıtına takılırsa yakala
         if (err.message.includes('UNIQUE constraint failed')) {
             if (err.message.includes('adsoyad')) {
                 return res.status(400).json({ basari: false, mesaj: 'Bu ad soyad (şirket ismi) zaten kullanımda!' });
@@ -194,7 +193,7 @@ app.post('/api/kayit', (req, res) => {
                 return res.status(400).json({ basari: false, mesaj: 'Bu kullanıcı adı zaten alınmış!' });
             }
         }
-        return res.status(400).json({ basari: false, mesaj: 'Kayıt oluşturulamadı, bilgiler benzersiz olmalıdır.' });
+        return res.status(400).json({ basari: false, mesaj: 'Bu e-posta adresi zaten alınmış veya hata oluştu!' });
     }
 });
 
