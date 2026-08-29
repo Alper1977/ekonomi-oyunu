@@ -1528,7 +1528,6 @@ async function profilAdiGuncelle() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
-                kadi: aktifKullaniciAdiKaydi, 
                 yeniAdSoyad: yeniAd 
             })
         });
@@ -1537,8 +1536,10 @@ async function profilAdiGuncelle() {
 
         if (!sonuc.basari) {
             if (hataDiv) {
-                hataDiv.innerText = "⚠️ " + sonuc.mesaj; // Backend'den gelen "Bu ad soyad başka bir üyeye ait" mesajı burada görünür
+                hataDiv.innerText = "⚠️ " + sonuc.mesaj;
                 hataDiv.style.display = 'block';
+            } else {
+                modalGoster("⚠️ " + sonuc.mesaj);
             }
             return;
         }
@@ -1564,7 +1565,6 @@ async function profilAdiGuncelle() {
         }
     }
 }
-
 
 async function zenginlerListesiniGuncelle() {
     if (typeof state === 'undefined' || !state) {
