@@ -3857,20 +3857,18 @@ function ilaniKesinSatinAl(botIsmi, varlikIsmi, fiyat, ilanId) {
     if (hedefBot && hedefBot.varliklar) {
         hedefBot.nakit += fiyat;
         
-        // 🌟 KESİN ÇÖZÜM: Sadece ve sadece tam olarak eşleşen ID'ye sahip ilanı buluyoruz
+        // 🌟 Kesin eşleşme için Number dönüşümü ile arıyoruz
         alinanIlan = hedefBot.varliklar.find(v => Number(v.id) === Number(ilanId));
 
-        // Eğer ID ile bulunamazsa yedek olarak isme ve duruma bakıyoruz ama öncelik ID'de
         if (!alinanIlan) {
-            alinanIlan = hedefBot.varliklar.find(v => v.isim === varlikIsmi && v.durum === 'ilan-aktif');
+            alinanIlan = hedefBot.varliklar.find(v => v.isim === varlikIsmi && (v.durum === 'ilan-aktif' || v.durum === 'satildi-bekliyor'));
         }
 
-        // 🌟 KESİN ÇÖZÜM: Botun envanterinden SADECE bu ilana ait nesneyi ID ile siliyoruz (Diğer ilanlar etkilenmez)
+        // 1. Botun envanterinden bu mülkü tamamen siliyoruz
         if (alinanIlan && alinanIlan.id) {
             hedefBot.varliklar = hedefBot.varliklar.filter(v => Number(v.id) !== Number(alinanIlan.id));
         } else {
-            // Güvenlik önlemi: ID yoksa sadece bir tanesini listeden düşür
-            let silindiIndex = hedefBot.varliklar.findIndex(v => v.isim === varlikIsmi && v.durum === 'ilan-aktif');
+            let silindiIndex = hedefBot.varliklar.findIndex(v => v.isim === varlikIsmi && (v.durum === 'ilan-aktif' || v.durum === 'satildi-bekliyor'));
             if (silindiIndex !== -1) {
                 alinanIlan = hedefBot.varliklar[silindiIndex];
                 hedefBot.varliklar.splice(silindiIndex, 1);
@@ -3878,9 +3876,17 @@ function ilaniKesinSatinAl(botIsmi, varlikIsmi, fiyat, ilanId) {
         }
     }
 
+    // 🌟 2. KESİN ÇÖZÜM: Global ilanlar listesinden de bu ilanı uçuruyoruz ki ilanlar sayfasından silinsin!
+    if (typeof state !== 'undefined' && state.ilanlar) {
+        state.ilanlar = state.ilanlar.filter(i => Number(i.id) !== Number(ilanId));
+    }
+    // Eğer oyun genelinde ayrı bir global ilanlar dizisi tutuluyorsa (örneğin window.ilanlar gibi) onu da temizleyelim:
+    if (typeof window.ilanlar !== 'undefined' && Array.isArray(window.ilanlar)) {
+        window.ilanlar = window.ilanlar.filter(i => Number(i.id) !== Number(ilanId));
+    }
+
     if (!state.varliklar) state.varliklar = [];
     
-    // 🌟 İlandaki o an yazan atanan konumu aynen alıyoruz
     let gelenKonum = "Merkezi Konum";
     if (alinanIlan && alinanIlan.atananKonum) {
         gelenKonum = alinanIlan.atananKonum;
@@ -3890,9 +3896,9 @@ function ilaniKesinSatinAl(botIsmi, varlikIsmi, fiyat, ilanId) {
 
    state.varliklar.push({
         id: Date.now() + Math.random(),
-        isim: varlikIsmi, // veya baskasiSatinAl fonksiyonunda satilanVarlik.isim
+        isim: varlikIsmi, 
         durum: 'sahip',
-        talepAktif: true, // 🌟 İŞTE BU EKSİK! Bunu eklediğin an müşteri taleplerinde görünecek.
+        talepAktif: true, 
         bloke: false,
         krediID: null,
         atananKonum: gelenKonum 
@@ -3900,18 +3906,12 @@ function ilaniKesinSatinAl(botIsmi, varlikIsmi, fiyat, ilanId) {
 
     modalGoster(`Tebrikler! ${botIsmi} kişisinden ${varlikIsmi} varlığını ${Number(fiyat).toLocaleString()} TL ödeyerek satın aldınız.`);
 
-    let ilanKutusu = document.querySelector(`button[onclick*="${ilanId}"]`);
-    if (ilanKutusu) {
-        let parentBox = ilanKutusu.closest('.item-box');
-        if (parentBox) parentBox.remove();
-    }
-
-
+    // Arayüzü tazele
     if (typeof guncelle === 'function') guncelle();
     if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
     if (typeof portfoyuSunucuyaKaydet === 'function') portfoyuSunucuyaKaydet(state);
 }
-
+    
 function ilanaCikar(id) { 
     let v = state.varliklar.find(x => x.id == id);
     if (!v) return;
