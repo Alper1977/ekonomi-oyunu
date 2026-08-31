@@ -2935,25 +2935,24 @@ let tahsilatButonlari = document.querySelectorAll('.nav-btn-tahsilat-cls');
 let vList = document.getElementById('varliklar-listesi');
 if (vList) {
     vList.innerHTML = '';
-    state.varliklar.forEach(v => {
-        if (v.durum === 'silinecek') return;
+    
+    // Satılmış veya silinecek mülkleri filtreden tamamen eliyoruz ki listede görünmesinler
+    let aktifVarliklar = state.varliklar.filter(v => v.durum !== 'silinecek' && v.durum !== 'satildi' && v.durum !== 'satildi-bekliyor');
+    
+    aktifVarliklar.forEach(v => {
         let blokeYazisi = v.bloke ? '<span style="color:#ff4444">(BLOKELİ)</span>' : '';
         
-        // Merkezileştirdiğimiz kazanç tablosundan veya state.talepler'den güncel bedeli alıyoruz
         let talepBul = typeof state.talepler !== 'undefined' ? state.talepler.find(t => t.tur === v.isim || t.isim === v.isim) : null;
         let bedel = v.bedel || (talepBul ? talepBul.bedel : (typeof kazancTablosu !== 'undefined' && kazancTablosu[v.isim] ? kazancTablosu[v.isim] : 0));
         let gunlukKar = bedel * 3;
         
-        // 🌟 KESİN ÇÖZÜM: Hem arsalar hem de Otel, Fabrika, Hastane vb. tüm mülkler için Varlıklar sayfasında kalıcı konum sabitleme
         let haritalanabilirMulkler = ['arsası', 'otel', 'fabrika', 'hastane', 'okul', 'avm', 'hipermarket', 'konut'];
         let arsaMi = haritalanabilirMulkler.some(tur => v.isim.toLowerCase().includes(tur));
         
         if (arsaMi && !v.atananKonum) {
-            // Eğer daha önceden atanmış bir konumu yoksa, arsaKonumunuAl fonksiyonu ile kalıcı olarak sabitliyoruz
             v.atananKonum = arsaKonumunuAl(v);
         }
         
-        // Sağ taraftaki durum butonları ve etiketler (Üst kısım - SAT butonu)
         let sagButonlarHTML = '';
 
         if (v.durum === 'sahip') {
@@ -2965,14 +2964,10 @@ if (vList) {
             let kalanGun = Math.max(0, Math.ceil(kalanMs / (1000 * 60 * 60 * 24)));
             sagButonlarHTML += `<span style="color:#ffcc00; font-size:11px;">İnşaat: ${kalanGun} gün</span>`;
         } else if (v.durum === 'ilan-aktif') {
-            // SATIŞTA yazısı daha büyük ve net
             sagButonlarHTML += `<span style="color:#ff4444; font-size:13px; font-weight:bold;">SATIŞTA</span>
                                  <button onclick="vazgec(${v.id})" class="btn-red" style="margin-top: 4px; width: 100%; box-sizing: border-box;">Vazgeç</button>`;
-        } else if (v.durum === 'satildi-bekliyor') {
-            sagButonlarHTML += `<span style="color:#00c853; font-size:12px; font-weight:bold;">SATILDI</span>`;
         }
 
-        // 🌟 Görüntüle butonu: SAT butonuyla tam aynı genişlik, dolgu ve yapıya sahip (Mavi tema korundu)
         let goruntuleBtnVarlik = arsaMi ? `<button onclick="arsaKonumGoster('${v.isim}', '${v.atananKonum}')" style="background:#3498db; color:#fff; border:none; border-radius:4px; font-weight:bold; cursor:pointer; width: 100%; margin-top: 4px; box-sizing: border-box;">Görüntüle</button>` : '';
 
         let html = `
