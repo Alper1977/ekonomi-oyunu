@@ -3194,7 +3194,6 @@ async function ilanlariGuncelle() {
     let kapsayici = document.getElementById('ilanlar-kapsayici');
     if (!kapsayici) return;
 
-    // Faiz oranını ÖNCE güncelleyelim ki inputa odaklanılsa bile yazı uçmasın
     let ilanFaizSpan = document.getElementById('yazi-ilan-faiz');
     if (ilanFaizSpan) {
         let guncelFaiz = (typeof faizOranlari !== 'undefined' && faizOranlari.yatirimKredisiYuzde) 
@@ -3203,7 +3202,6 @@ async function ilanlariGuncelle() {
         ilanFaizSpan.innerText = guncelFaiz;
     }
 
-    // Aktif input kontrolü
     let activeEl = document.activeElement;
     if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'SELECT')) {
         if (activeEl.id && (activeEl.id.includes('bot-') || activeEl.id.includes('kamu-') || activeEl.id.includes('oyuncu-'))) {
@@ -3211,13 +3209,11 @@ async function ilanlariGuncelle() {
         }
     }
 
-    // Açık/kapalı durumlarını hafızada tutalım
     let eskiEmlakDurum = document.getElementById('emlak-ilanlari-icerik')?.style.display || 'none';
     let eskiArsaDurum = document.getElementById('arsa-ilanlari-icerik')?.style.display || 'none';
 
     kapsayici.innerHTML = '';
 
-    // Yardımcı HTML oluşturucu fonksiyon
     function kartHtmlUret(baslikMetni, botIsmi, varlikIsmi, satisBedeli, uniqueId, inputId, vadeInputId, arsaMi, atananKonum, tipKyn) {
         let goruntuleBtnHTML = arsaMi ? `<button onclick="arsaKonumGoster('${varlikIsmi}', '${atananKonum}')" style="background:#3498db; color:#fff; border:none; padding:4px 8px; border-radius:4px; font-weight:bold; font-size:10px; cursor:pointer; width:100%; margin-bottom:6px;">GÖRÜNTÜLE</button>` : '';
         
@@ -3275,7 +3271,6 @@ async function ilanlariGuncelle() {
         return itemBox;
     }
 
-    // --- LİSTELERİ HAZIRLA ---
     let botMulkListesi = [];
     let botArsaListesi = [];
 
@@ -3309,7 +3304,6 @@ async function ilanlariGuncelle() {
         });
     }
 
-    // 🌟 Sunucudan gelen ilanları çekelim
     let oyuncuMulkListesi = [];
     let oyuncuArsaListesi = [];
 
@@ -3392,18 +3386,20 @@ async function ilanlariGuncelle() {
     });
 
     // --- EMLAK İLANLARI (AKORDEON) ---
+    let emlakAcikMi = eskiEmlakDurum === 'flex';
     let emlakBaslikDiv = document.createElement('div');
     emlakBaslikDiv.style.cssText = "background: #27ae60; color: #fff; padding: 10px 15px; border-radius: 6px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 15px; margin-bottom: 10px; user-select: none;";
-    emlakBaslikDiv.innerHTML = `<span>🏢 Emlak İlanları</span> <span id="emlak-ok" style="font-size: 14px;">${eskiEmlakDurum === 'flex' ? '▼' : '▶'}</span>`;
+    emlakBaslikDiv.innerHTML = `<span>🏢 Emlak İlanları</span> <span id="emlak-ok" style="font-size: 14px;">${emlakAcikMi ? '▼' : '▶'}</span>`;
     
     let emlakIcerikDiv = document.createElement('div');
     emlakIcerikDiv.id = 'emlak-ilanlari-icerik';
-    emlakIcerikDiv.style.cssText = `display: ${eskiEmlakDurum}; flex-direction: column; gap: 10px; margin-bottom: 20px;`;
+    emlakIcerikDiv.style.cssText = `display: ${emlakAcikMi ? 'flex' : 'none'}; flex-direction: column; gap: 10px; margin-bottom: 20px;`;
 
     emlakBaslikDiv.onclick = function() {
         let icerik = document.getElementById('emlak-ilanlari-icerik');
         let ok = document.getElementById('emlak-ok');
-        if (icerik.style.display === 'none' || icerik.style.display === '') {
+        if (!icerik) return;
+        if (icerik.style.display === 'none' || !icerik.style.display) {
             icerik.style.display = 'flex';
             ok.innerText = '▼';
         } else {
@@ -3431,18 +3427,20 @@ async function ilanlariGuncelle() {
     kapsayici.appendChild(emlakIcerikDiv);
 
     // --- ARSA İLANLARI (AKORDEON) ---
+    let arsaAcikMi = eskiArsaDurum === 'flex';
     let arsaBaslikDiv = document.createElement('div');
     arsaBaslikDiv.style.cssText = "background: #27ae60; color: #fff; padding: 10px 15px; border-radius: 6px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 15px; margin-bottom: 10px; user-select: none;";
-    arsaBaslikDiv.innerHTML = `<span>🌳 Arsa İlanları</span> <span id="arsa-ok" style="font-size: 14px;">${eskiArsaDurum === 'flex' ? '▼' : '▶'}</span>`;
+    arsaBaslikDiv.innerHTML = `<span>🌳 Arsa İlanları</span> <span id="arsa-ok" style="font-size: 14px;">${arsaAcikMi ? '▼' : '▶'}</span>`;
 
     let arsaIcerikDiv = document.createElement('div');
     arsaIcerikDiv.id = 'arsa-ilanlari-icerik';
-    arsaIcerikDiv.style.cssText = `display: ${eskiArsaDurum}; flex-direction: column; gap: 10px; margin-bottom: 20px;`;
+    arsaIcerikDiv.style.cssText = `display: ${arsaAcikMi ? 'flex' : 'none'}; flex-direction: column; gap: 10px; margin-bottom: 20px;`;
 
     arsaBaslikDiv.onclick = function() {
         let icerik = document.getElementById('arsa-ilanlari-icerik');
         let ok = document.getElementById('arsa-ok');
-        if (icerik.style.display === 'none' || icerik.style.display === '') {
+        if (!icerik) return;
+        if (icerik.style.display === 'none' || !icerik.style.display) {
             icerik.style.display = 'flex';
             ok.innerText = '▼';
         } else {
@@ -3469,7 +3467,7 @@ async function ilanlariGuncelle() {
     kapsayici.appendChild(arsaBaslikDiv);
     kapsayici.appendChild(arsaIcerikDiv);
 }
-// Yardımcı döngü fonksiyonu
+
 function kamuUrunleriforEachSafe(arr, callback) {
     for (let i = 0; i < arr.length; i++) {
         callback(arr[i]);
