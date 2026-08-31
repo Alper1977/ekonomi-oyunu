@@ -3416,7 +3416,6 @@ async function ilanlariYukle() {
         let res = await fetch('/api/ilanlari-getir');
         let data = await res.json();
         if (data.basari) {
-            // DİKKAT: HTML'deki doğru ID buraya yazıldı
             let listeDiv = document.getElementById('ilanlar-kapsayici'); 
             if (!listeDiv) return;
             
@@ -3432,9 +3431,9 @@ async function ilanlariYukle() {
                     <div class="demand-box" style="padding: 15px; margin-bottom: 10px; border: 1px solid #444; border-radius: 8px; background: #fff;">
                         <h4 style="margin: 0 0 5px 0; color: #333;">${ilan.mulk_adi}</h4>
                         <p style="margin: 3px 0; font-size: 13px; color: #666;">Satıcı: <b>${ilan.satici_adsoyad}</b></p>
-                        <p style="margin: 3px 0; font-size: 14px; color: #008000; font-weight: bold;">Fiyat: ${ilan.fiyat.toLocaleString()} TL</p>
+                        <p style="margin: 3px 0; font-size: 14px; color: #008000; font-weight: bold;">Fiyat: ${Number(ilan.fiyat).toLocaleString()} TL</p>
                         <p style="margin: 5px 0 10px 0; font-size: 12px; color: #555;">${ilan.detaylar || ''}</p>
-                        <button onclick="ilanSatinAl(${ilan.id})" style="background: #2e7d32; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; width: 100%; font-weight: bold;">İlanı Satın Al</button>
+                        <button onclick="gercekIlanSatinAlOnay(${ilan.id}, '${ilan.mulk_adi}', ${ilan.fiyat}, '${ilan.satici_adsoyad}')" style="background: #2e7d32; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; width: 100%; font-weight: bold;">İlanı Satın Al</button>
                     </div>
                 `;
             });
@@ -3458,6 +3457,42 @@ async function ilanSatinAl(ilanId) {
         location.reload(); // Sayfayı yenileyerek güncel portföyü ve parayı göster
     }
 }   
+
+// 1. Onay Penceresini Aç
+function gercekIlanSatinAlOnay(ilanId, mulkAdi, fiyat, saticiAd) {
+    let butonlar = `
+        <button class="btn-green" onclick="gercekIlanKesinSatinAl(${ilanId})">ONAYLA</button>
+        <button onclick="document.getElementById('modal-overlay').style.display='none'" style="background-color: #d9534f; color: white; margin-left: 10px;">VAZGEÇ</button>
+    `;
+    modalGoster(`${saticiAd} kişisine ait ${mulkAdi} varlığını ${Number(fiyat).toLocaleString()} TL ödeyerek satın almak istiyor musunuz?`, butonlar);
+}
+
+// 2. Sunucuya İstek Atan Kesin Alım
+async function gercekIlanKesinSatinAl(ilanId) {
+    let modalOverlay = document.getElementById('modal-overlay');
+    if (modalOverlay) {
+        modalOverlay.style.display = 'none';
+    }
+
+    try {
+        let res = await fetch('/api/ilan-satin-al', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ilanId })
+        });
+        let data = await res.json();
+        
+        modalGoster(data.mesaj);
+        
+        if (data.basari) {
+            if (typeof guncelle === 'function') guncelle();
+            ilanlariYukle(); // Listeyi tazele
+        }
+    } catch (err) {
+        console.error("Satın alma hatası:", err);
+    }
+}
+    
 
 function paraAl(id) {
     let input = document.getElementById(id);
@@ -4380,6 +4415,12 @@ function changePage(p) {
     if (typeof yatirimlariGuncelle === 'function') yatirimlariGuncelle();
     if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
     if (typeof musteriTalepleriniGuncelle === 'function') musteriTalepleriniGuncelle();
+
+// 🌟 İŞTE BURAYA EKLİYORUZ:
+    if (p === 'page-ilan' && typeof ilanlariYukle === 'function') {
+        ilanlariYukle();
+    }
+
     
     // Eğer zenginler listesi açıldıysa direkt tetikle
     if (p === 'page-liste' && typeof zenginlerListesiniGuncelle === 'function') {
