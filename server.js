@@ -173,7 +173,7 @@ app.post('/api/ilan-satin-al', (req, res) => {
     // İlanı bul
     const ilan = db.prepare(`SELECT * FROM ilanlar_havuzu WHERE id = ?`).get(ilanId);
     if (!ilan) {
-        return.status(404).json({ basari: false, mesaj: "İlan bulunamadı veya zaten satılmış." });
+        return res.status(404).json({ basari: false, mesaj: "İlan bulunamadı veya zaten satılmış." });
     }
 
     if (ilan.satici_id === aliciId) {
