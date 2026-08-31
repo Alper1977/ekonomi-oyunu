@@ -132,21 +132,20 @@ db.prepare(`CREATE TABLE IF NOT EXISTS ilanlar (
 
 app.get('/api/ilanlar', (req, res) => {
     try {
-        const rows = db.prepare(`SELECT * FROM ilanlar`).all();
-        const ilanlar = rows.map(row => ({
-            id: row.id,
-            kullanici_id: row.kullanici_id,
-            satici_adsoyad: row.satici_adsoyad,
-            ilan_tipi: row.ilan_tipi,
-            fiyat: row.fiyat,
-            detaylar: row.detaylar ? JSON.parse(row.detaylar) : {}
+        const ilanlar = db.prepare(`SELECT * FROM ilanlar`).all();
+        const aktifKullaniciId = req.session && req.session.kullanici ? req.session.kullanici.id : null;
+
+        const duzenlenmisIlanlar = ilanlar.map(ilan => ({
+            ...ilan,
+            detaylar: JSON.parse(ilan.detaylar || '{}'),
+            benim_mi: aktifKullaniciId && ilan.kullanici_id === aktifKullaniciId
         }));
-        res.json({ basari: true, ilanlar });
+
+        res.json({ basari: true, ilanlar: duzenlenmisIlanlar });
     } catch (err) {
         res.status(500).json({ basari: false, mesaj: err.message });
     }
 });
-
 app.post('/api/ilan-ekle', (req, res) => {
     if (!req.session || !req.session.kullanici) {
         return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı!" });
@@ -156,9 +155,8 @@ app.post('/api/ilan-ekle', (req, res) => {
     const kullanici = req.session.kullanici;
 
     try {
-        // satici_adsoyad alanını doğrudan 'Ben' olarak kaydediyoruz ki frontend'deki kontrol direkt yakalasın
         const stmt = db.prepare(`INSERT INTO ilanlar (kullanici_id, satici_adsoyad, ilan_tipi, fiyat, detaylar) VALUES (?, ?, ?, ?, ?)`);
-        const info = stmt.run(kullanici.id, 'Ben', ilan_tipi, fiyat, JSON.stringify(detaylar || {}));
+        const info = stmt.run(kullanici.id, kullanici.adsoyad, ilan_tipi, fiyat, JSON.stringify(detaylar || {}));
         res.json({ basari: true, id: info.lastInsertRowid, mesaj: "İlan başarıyla yayınlandı." });
     } catch (err) {
         res.status(500).json({ basari: false, mesaj: err.message });
