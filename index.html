@@ -3005,7 +3005,6 @@ let tList = document.getElementById('musteri-talepleri-listesi');
         
        let aktifVarliklarTalepler = state.varliklar.filter(v => (v.durum === 'sahip' || v.durum === 'ilan-aktif') && v.isim && v.isim.toLowerCase() !== 'konut' && !v.isim.toLowerCase().includes('arsa') && !v.isim.toLowerCase().includes('arsası'));
        
-       aktifVarliklarTalepler.forEach(v => {
            let talep = state.talepler.find(t => t.tur === v.isim || t.isim === v.isim);
            
            if (!talep) {
