@@ -3209,8 +3209,12 @@ async function ilanlariGuncelle() {
         }
     }
 
-    let eskiEmlakDurum = document.getElementById('emlak-ilanlari-icerik')?.style.display || 'none';
-    let eskiArsaDurum = document.getElementById('arsa-ilanlari-icerik')?.style.display || 'none';
+    // Mevcut açık/kapalı durumlarını hafızada tutalım (çift oluşumu engellemek için id'leri spesifik alıyoruz)
+    let eskiEmlakIcerik = document.getElementById('emlak-ilanlari-icerik');
+    let eskiEmlakDurum = eskiEmlakIcerik ? eskiEmlakIcerik.style.display : 'none';
+
+    let eskiArsaIcerik = document.getElementById('arsa-ilanlari-icerik');
+    let eskiArsaDurum = eskiArsaIcerik ? eskiArsaIcerik.style.display : 'none';
 
     kapsayici.innerHTML = '';
 
@@ -3401,10 +3405,10 @@ async function ilanlariGuncelle() {
         if (!icerik) return;
         if (icerik.style.display === 'none' || !icerik.style.display) {
             icerik.style.display = 'flex';
-            ok.innerText = '▼';
+            if(ok) ok.innerText = '▼';
         } else {
             icerik.style.display = 'none';
-            ok.innerText = '▶';
+            if(ok) ok.innerText = '▶';
         }
     };
 
@@ -3442,10 +3446,10 @@ async function ilanlariGuncelle() {
         if (!icerik) return;
         if (icerik.style.display === 'none' || !icerik.style.display) {
             icerik.style.display = 'flex';
-            ok.innerText = '▼';
+            if(ok) ok.innerText = '▼';
         } else {
             icerik.style.display = 'none';
-            ok.innerText = '▶';
+            if(ok) ok.innerText = '▶';
         }
     };
 
@@ -3473,7 +3477,7 @@ function kamuUrunleriforEachSafe(arr, callback) {
         callback(arr[i]);
     }
 }
-
+    
 function paraAl(id) {
     let input = document.getElementById(id);
     if (!input || !input.value) return 0;
