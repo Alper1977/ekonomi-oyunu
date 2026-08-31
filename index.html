@@ -3411,24 +3411,30 @@ function kamuUrunleriforEachSafe(arr, callback) {
     }
 }
 
- // İlanları sunucudan çekip ekrana basma
 async function ilanlariYukle() {
     try {
         let res = await fetch('/api/ilanlari-getir');
         let data = await res.json();
         if (data.basari) {
-            let listeDiv = document.getElementById('pazar-ilanlari-listesi');
+            // DİKKAT: HTML'deki doğru ID buraya yazıldı
+            let listeDiv = document.getElementById('ilanlar-kapsayici'); 
             if (!listeDiv) return;
             
             listeDiv.innerHTML = '';
+            
+            if (data.ilanlar.length === 0) {
+                listeDiv.innerHTML = '<p style="text-align: center; color: #777; margin-top: 20px;">Şu an aktif ilan bulunmuyor.</p>';
+                return;
+            }
+
             data.ilanlar.forEach(ilan => {
                 listeDiv.innerHTML += `
-                    <div class="demand-box" style="padding: 15px; margin-bottom: 10px; border: 1px solid #444;">
-                        <h4>${ilan.mulk_adi}</h4>
-                        <p>Satıcı: <b>${ilan.satici_adsoyad}</b></p>
-                        <p>Fiyat: <span style="color: #00ff00;">${ilan.fiyat.toLocaleString()} TL</span></p>
-                        <p>${ilan.detaylar}</p>
-                        <button onclick="ilanSatinAl(${ilan.id})" class="nav-btn-yesil">İlanı Satın Al</button>
+                    <div class="demand-box" style="padding: 15px; margin-bottom: 10px; border: 1px solid #444; border-radius: 8px; background: #fff;">
+                        <h4 style="margin: 0 0 5px 0; color: #333;">${ilan.mulk_adi}</h4>
+                        <p style="margin: 3px 0; font-size: 13px; color: #666;">Satıcı: <b>${ilan.satici_adsoyad}</b></p>
+                        <p style="margin: 3px 0; font-size: 14px; color: #008000; font-weight: bold;">Fiyat: ${ilan.fiyat.toLocaleString()} TL</p>
+                        <p style="margin: 5px 0 10px 0; font-size: 12px; color: #555;">${ilan.detaylar || ''}</p>
+                        <button onclick="ilanSatinAl(${ilan.id})" style="background: #2e7d32; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; width: 100%; font-weight: bold;">İlanı Satın Al</button>
                     </div>
                 `;
             });
@@ -3437,7 +3443,6 @@ async function ilanlariYukle() {
         console.error("İlanlar yüklenirken hata:", err);
     }
 }
-
 // İlan Satın Alma İsteği
 async function ilanSatinAl(ilanId) {
     if (!confirm("Bu ilanı satın almak istediğinize emin misiniz?")) return;
