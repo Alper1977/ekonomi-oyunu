@@ -3945,7 +3945,7 @@ async function ilanaCikar(id) {
         console.error("İlan sunucuya kaydedilemedi:", err);
     }
 }
-function vazgec(id) {
+async function vazgec(id) {
     let v = state.varliklar.find(x => x.id == id);
     if (!v) return;
 
@@ -3963,8 +3963,23 @@ function vazgec(id) {
 
     guncelle();
 
+    if (typeof ilanlariGuncelle === 'function') {
+        ilanlariGuncelle();
+    }
+
     if (typeof portfoyuSunucuyaKaydet === 'function') {
         portfoyuSunucuyaKaydet(state);
+    }
+
+    // 🌟 İLANI VERİTABANINDAKİ ORTAK PAZARDAN DA SİL (Aşağıdaki API rotası ile haberleşir)
+    try {
+        await fetch('/api/ilan-sil', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ uniqueId: id })
+        });
+    } catch (err) {
+        console.error("İlan veritabanından silinemedi:", err);
     }
 }
 
