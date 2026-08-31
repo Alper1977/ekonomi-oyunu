@@ -3921,7 +3921,7 @@ function ilaniKesinSatinAl(botIsmi, varlikIsmi, fiyat, ilanId) {
 function ilanaCikar(id) { 
     let v = state.varliklar.find(x => x.id == id);
     if (!v) return;
-    
+     
     let satisFiyati = v.bedel || (typeof satisFiyatlari !== 'undefined' && satisFiyatlari[v.isim] ? satisFiyatlari[v.isim] : 2000000);
     let atananKonumVal = null;
 
@@ -3933,6 +3933,9 @@ function ilanaCikar(id) {
         atananKonumVal = v.atananKonum;
     }
 
+    // Aktif kullanıcı adını veya 'Ben' ifadesini sunucuya gönderiyoruz
+    let saticiAdi = (typeof aktifKullaniciAdi !== 'undefined' && aktifKullaniciAdi) ? aktifKullaniciAdi : 'Ben';
+
     // Sunucuya ilanı gönderiyoruz
     fetch('/api/ilan-ekle', {
         method: 'POST',
@@ -3940,6 +3943,7 @@ function ilanaCikar(id) {
         body: JSON.stringify({
             ilan_tipi: v.isim,
             fiyat: satisFiyati,
+            satici_adsoyad: saticiAdi, // İŞTE EKSİK OLAN PARÇA BURASIYDI
             detaylar: { atananKonum: atananKonumVal, varlikId: v.id }
         })
     })
@@ -3949,7 +3953,7 @@ function ilanaCikar(id) {
             v.durum = 'ilan-aktif';
             v.ilanSahibi = 'ben'; 
             v.ilanZamanKaydi = Date.now();
-            v.sunucuIlanId = data.id; // Sunucudaki ID'yi tutuyoruz
+            v.sunucuIlanId = data.id;
 
             guncelle(); 
             if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
