@@ -120,6 +120,64 @@ if (!mevcutAyarlar) {
     db.prepare(`INSERT OR REPLACE INTO oyun_ayarlari (id, ayarlar) VALUES (1, ?)`).run(JSON.stringify(varsayilanAyarlar));
 }
 
+db.prepare(`CREATE TABLE IF NOT EXISTS ilanlar (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    kullanici_id INTEGER,
+    satici_adsoyad TEXT,
+    ilan_tipi TEXT,
+    fiyat REAL,
+    detaylar TEXT,
+    tarih DATETIME DEFAULT CURRENT_TIMESTAMP
+)`).run();
+
+app.get('/api/ilanlar', (req, res) => {
+    try {
+        const rows = db.prepare(`SELECT * FROM ilanlar`).all();
+        const ilanlar = rows.map(row => ({
+            id: row.id,
+            kullanici_id: row.kullanici_id,
+            satici_adsoyad: row.satici_adsoyad,
+            ilan_tipi: row.ilan_tipi,
+            fiyat: row.fiyat,
+            detaylar: row.detaylar ? JSON.parse(row.detaylar) : {}
+        }));
+        res.json({ basari: true, ilanlar });
+    } catch (err) {
+        res.status(500).json({ basari: false, mesaj: err.message });
+    }
+});
+
+app.post('/api/ilan-ekle', (req, res) => {
+    if (!req.session || !req.session.kullanici) {
+        return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı!" });
+    }
+
+    const { ilan_tipi, fiyat, detaylar } = req.body;
+    const kullanici = req.session.kullanici;
+
+    try {
+        const stmt = db.prepare(`INSERT INTO ilanlar (kullanici_id, satici_adsoyad, ilan_tipi, fiyat, detaylar) VALUES (?, ?, ?, ?, ?)`);
+        const info = stmt.run(kullanici.id, kullanici.adsoyad, ilan_tipi, fiyat, JSON.stringify(detaylar || {}));
+        res.json({ basari: true, id: info.lastInsertRowid, mesaj: "İlan başarıyla yayınlandı." });
+    } catch (err) {
+        res.status(500).json({ basari: false, mesaj: err.message });
+    }
+});
+
+app.post('/api/ilan-sil', (req, res) => {
+    if (!req.session || !req.session.kullanici) {
+        return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı!" });
+    }
+
+    const { id } = req.body;
+    try {
+        db.prepare(`DELETE FROM ilanlar WHERE id = ? AND kullanici_id = ?`).run(id, req.session.kullanici.id);
+        res.json({ basari: true, mesaj: "İlan kaldırıldı." });
+    } catch (err) {
+        res.status(500).json({ basari: false, mesaj: err.message });
+    }
+});
+
 // 🌟 Ayar Okuma ve Güncelleme Rotaları
 app.get('/api/oyun-ayarlari', (req, res) => {
     try {
