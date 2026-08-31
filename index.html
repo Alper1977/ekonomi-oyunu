@@ -3012,13 +3012,17 @@ if (tList) {
     );
     
     aktifVarliklarTalepler.forEach(v => {
-        let talep = state.talepler.find(t => t.tur === v.isim || t.isim === v.isim);
-        
-        if (!talep) {
-            let varsayilanBedel = (typeof kazancTablosu !== 'undefined' && kazancTablosu[v.isim]) ? kazancTablosu[v.isim] : 100000;
-            talep = { tur: v.isim, isim: v.isim, bedel: varsayilanBedel };
-            state.talepler.push(talep);
-        }
+      let talep = state.talepler.find(t => t.tur === v.isim || t.isim === v.isim);
+
+if (!talep) {
+    let mulkAdiKucuk = (v.isim || "").toLowerCase();
+    // Eğer varlık arsa ise talep listesine otomatik ekleme ve es geç!
+    if (!mulkAdiKucuk.includes('arsa') && !mulkAdiKucuk.includes('arsası')) {
+        let varsayilanBedel = (typeof kazancTablosu !== 'undefined' && kazancTablosu[v.isim]) ? kazancTablosu[v.isim] : 100000;
+        talep = { tur: v.isim, isim: v.isim, bedel: varsayilanBedel };
+        state.talepler.push(talep);
+    }
+}
 
         let isAktif = (v.talepAktif === true);
         
