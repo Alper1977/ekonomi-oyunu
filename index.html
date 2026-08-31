@@ -3456,22 +3456,18 @@ async function ilanlariYukle() {
         let response = await fetch('/api/ilanlar', { credentials: 'include' });
         let sonuc = await response.json();
         
-        if (sonuc.basari) {
-            // Sunucudan gelen ilanları oyunun state nesnesine doğrudan aktarıyoruz
-            if (typeof state === 'undefined') {
-                window.state = {};
-            }
-            state.ilanlar = sonuc.ilanlar;
-
-            // Listeyi güncelleyen fonksiyonu tetikle
+        if (sonuc && sonuc.basari) {
+            if (typeof state === 'undefined') window.state = {};
+            state.ilanlar = sonuc.ilanlar; // Sunucudaki gerçek oyuncu ilanları buraya dolar
+            
             if (typeof ilanlarGuncelle === 'function') {
-                ilanlarGuncelle();
+                ilanlarGuncelle(); // Ekrana çizer
             }
         }
     } catch (err) {
-        console.error("İlanlar yüklenirken hata oluştu:", err);
+        console.error("İlanlar yüklenemedi:", err);
     }
-} 
+}
 
 async function yeniIlanOlustur(ilanTipi, detaylar, fiyat) {
     try {
