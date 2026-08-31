@@ -3194,6 +3194,7 @@ async function ilanlariGuncelle() {
     let kapsayici = document.getElementById('ilanlar-kapsayici');
     if (!kapsayici) return;
 
+    // Faiz oranını güncelle
     let ilanFaizSpan = document.getElementById('yazi-ilan-faiz');
     if (ilanFaizSpan) {
         let guncelFaiz = (typeof faizOranlari !== 'undefined' && faizOranlari.yatirimKredisiYuzde) 
@@ -3202,6 +3203,7 @@ async function ilanlariGuncelle() {
         ilanFaizSpan.innerText = guncelFaiz;
     }
 
+    // Aktif input odaklıysa güncelleme yapma (kullanıcı yazı yazarken klavye kapanmasın)
     let activeEl = document.activeElement;
     if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'SELECT')) {
         if (activeEl.id && (activeEl.id.includes('bot-') || activeEl.id.includes('kamu-') || activeEl.id.includes('oyuncu-'))) {
@@ -3209,15 +3211,67 @@ async function ilanlariGuncelle() {
         }
     }
 
-    // Mevcut açık/kapalı durumlarını hafızada tutalım (çift oluşumu engellemek için id'leri spesifik alıyoruz)
-    let eskiEmlakIcerik = document.getElementById('emlak-ilanlari-icerik');
-    let eskiEmlakDurum = eskiEmlakIcerik ? eskiEmlakIcerik.style.display : 'none';
+    // --- İLK ÇALIŞMADA AKORDİYONLARI İSKELET OLARAK OLUŞTUR ---
+    let emlakBaslik = document.getElementById('emlak-baslik-div');
+    let arsaBaslik = document.getElementById('arsa-baslik-div');
 
-    let eskiArsaIcerik = document.getElementById('arsa-ilanlari-icerik');
-    let eskiArsaDurum = eskiArsaIcerik ? eskiArsaIcerik.style.display : 'none';
+    if (!emlakBaslik || !arsaBaslik) {
+        kapsayici.innerHTML = ''; // Sadece ilk kurulumda temizlenir
 
-    kapsayici.innerHTML = '';
+        // Emlak Akordiyon İskeleti
+        emlakBaslik = document.createElement('div');
+        emlakBaslik.id = 'emlak-baslik-div';
+        emlakBaslik.style.cssText = "background: #27ae60; color: #fff; padding: 10px 15px; border-radius: 6px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 15px; margin-bottom: 10px; user-select: none;";
+        emlakBaslik.innerHTML = `<span>🏢 Emlak İlanları</span> <span id="emlak-ok" style="font-size: 14px;">▶</span>`;
+        
+        let emlakIcerikDiv = document.createElement('div');
+        emlakIcerikDiv.id = 'emlak-ilanlari-icerik';
+        emlakIcerikDiv.style.cssText = "display: none; flex-direction: column; gap: 10px; margin-bottom: 20px;";
 
+        emlakBaslik.onclick = function() {
+            let icerik = document.getElementById('emlak-ilanlari-icerik');
+            let ok = document.getElementById('emlak-ok');
+            if (!icerik) return;
+            if (icerik.style.display === 'none' || !icerik.style.display) {
+                icerik.style.display = 'flex';
+                if(ok) ok.innerText = '▼';
+            } else {
+                icerik.style.display = 'none';
+                if(ok) ok.innerText = '▶';
+            }
+        };
+
+        kapsayici.appendChild(emlakBaslik);
+        kapsayici.appendChild(emlakIcerikDiv);
+
+        // Arsa Akordiyon İskeleti
+        arsaBaslik = document.createElement('div');
+        arsaBaslik.id = 'arsa-baslik-div';
+        arsaBaslik.style.cssText = "background: #27ae60; color: #fff; padding: 10px 15px; border-radius: 6px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 15px; margin-bottom: 10px; user-select: none;";
+        arsaBaslik.innerHTML = `<span>🌳 Arsa İlanları</span> <span id="arsa-ok" style="font-size: 14px;">▶</span>`;
+
+        let arsaIcerikDiv = document.createElement('div');
+        arsaIcerikDiv.id = 'arsa-ilanlari-icerik';
+        arsaIcerikDiv.style.cssText = "display: none; flex-direction: column; gap: 10px; margin-bottom: 20px;";
+
+        arsaBaslik.onclick = function() {
+            let icerik = document.getElementById('arsa-ilanlari-icerik');
+            let ok = document.getElementById('arsa-ok');
+            if (!icerik) return;
+            if (icerik.style.display === 'none' || !icerik.style.display) {
+                icerik.style.display = 'flex';
+                if(ok) ok.innerText = '▼';
+            } else {
+                icerik.style.display = 'none';
+                if(ok) ok.innerText = '▶';
+            }
+        };
+
+        kapsayici.appendChild(arsaBaslik);
+        kapsayici.appendChild(arsaIcerikDiv);
+    }
+
+    // Kart HTML üretici fonksiyon
     function kartHtmlUret(baslikMetni, botIsmi, varlikIsmi, satisBedeli, uniqueId, inputId, vadeInputId, arsaMi, atananKonum, tipKyn) {
         let goruntuleBtnHTML = arsaMi ? `<button onclick="arsaKonumGoster('${varlikIsmi}', '${atananKonum}')" style="background:#3498db; color:#fff; border:none; padding:4px 8px; border-radius:4px; font-weight:bold; font-size:10px; cursor:pointer; width:100%; margin-bottom:6px;">GÖRÜNTÜLE</button>` : '';
         
@@ -3389,87 +3443,40 @@ async function ilanlariGuncelle() {
         }
     });
 
-    // --- EMLAK İLANLARI (AKORDEON) ---
-    let emlakAcikMi = eskiEmlakDurum === 'flex';
-    let emlakBaslikDiv = document.createElement('div');
-    emlakBaslikDiv.style.cssText = "background: #27ae60; color: #fff; padding: 10px 15px; border-radius: 6px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 15px; margin-bottom: 10px; user-select: none;";
-    emlakBaslikDiv.innerHTML = `<span>🏢 Emlak İlanları</span> <span id="emlak-ok" style="font-size: 14px;">${emlakAcikMi ? '▼' : '▶'}</span>`;
-    
-    let emlakIcerikDiv = document.createElement('div');
-    emlakIcerikDiv.id = 'emlak-ilanlari-icerik';
-    emlakIcerikDiv.style.cssText = `display: ${emlakAcikMi ? 'flex' : 'none'}; flex-direction: column; gap: 10px; margin-bottom: 20px;`;
+    // --- İÇERİKLERİ GÜNCELLE (Sadece içeriği tazele, butonlar yerinde kalsın) ---
+    let emlakIcerikDiv = document.getElementById('emlak-ilanlari-icerik');
+    if (emlakIcerikDiv) {
+        emlakIcerikDiv.innerHTML = '';
+        oyuncuMulkListesi.forEach(item => {
+            let kutu = kartHtmlUret(item.baslikMetni, item.botIsmi, item.varlikIsmi, item.satisBedeli, item.uniqueId, item.inputId, item.vadeInputId, item.arsaMi, item.atananKonum, item.tipKyn);
+            emlakIcerikDiv.appendChild(kutu);
+        });
+        botMulkListesi.forEach(item => {
+            let kutu = kartHtmlUret(item.bot.isim, item.bot.isim, item.varlik.isim, item.satisBedeli, item.uniqueId, item.inputId, item.vadeInputId, item.arsaMi, item.varlik.atananKonum, 'bot');
+            emlakIcerikDiv.appendChild(kutu);
+        });
+        kamuMulkListesi.forEach(item => {
+            let kutu = kartHtmlUret('Kamu Satışı', '', item.urun.isim, item.satisBedeli, null, item.inputId, item.vadeInputId, item.arsaMi, item.kamuKonumu, 'kamu');
+            emlakIcerikDiv.appendChild(kutu);
+        });
+    }
 
-    emlakBaslikDiv.onclick = function() {
-        let icerik = document.getElementById('emlak-ilanlari-icerik');
-        let ok = document.getElementById('emlak-ok');
-        if (!icerik) return;
-        if (icerik.style.display === 'none' || !icerik.style.display) {
-            icerik.style.display = 'flex';
-            if(ok) ok.innerText = '▼';
-        } else {
-            icerik.style.display = 'none';
-            if(ok) ok.innerText = '▶';
-        }
-    };
-
-    oyuncuMulkListesi.forEach(item => {
-        let kutu = kartHtmlUret(item.baslikMetni, item.botIsmi, item.varlikIsmi, item.satisBedeli, item.uniqueId, item.inputId, item.vadeInputId, item.arsaMi, item.atananKonum, item.tipKyn);
-        emlakIcerikDiv.appendChild(kutu);
-    });
-
-    botMulkListesi.forEach(item => {
-        let kutu = kartHtmlUret(item.bot.isim, item.bot.isim, item.varlik.isim, item.satisBedeli, item.uniqueId, item.inputId, item.vadeInputId, item.arsaMi, item.varlik.atananKonum, 'bot');
-        emlakIcerikDiv.appendChild(kutu);
-    });
-
-    kamuMulkListesi.forEach(item => {
-        let kutu = kartHtmlUret('Kamu Satışı', '', item.urun.isim, item.satisBedeli, null, item.inputId, item.vadeInputId, item.arsaMi, item.kamuKonumu, 'kamu');
-        emlakIcerikDiv.appendChild(kutu);
-    });
-
-    kapsayici.appendChild(emlakBaslikDiv);
-    kapsayici.appendChild(emlakIcerikDiv);
-
-    // --- ARSA İLANLARI (AKORDEON) ---
-    let arsaAcikMi = eskiArsaDurum === 'flex';
-    let arsaBaslikDiv = document.createElement('div');
-    arsaBaslikDiv.style.cssText = "background: #27ae60; color: #fff; padding: 10px 15px; border-radius: 6px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 15px; margin-bottom: 10px; user-select: none;";
-    arsaBaslikDiv.innerHTML = `<span>🌳 Arsa İlanları</span> <span id="arsa-ok" style="font-size: 14px;">${arsaAcikMi ? '▼' : '▶'}</span>`;
-
-    let arsaIcerikDiv = document.createElement('div');
-    arsaIcerikDiv.id = 'arsa-ilanlari-icerik';
-    arsaIcerikDiv.style.cssText = `display: ${arsaAcikMi ? 'flex' : 'none'}; flex-direction: column; gap: 10px; margin-bottom: 20px;`;
-
-    arsaBaslikDiv.onclick = function() {
-        let icerik = document.getElementById('arsa-ilanlari-icerik');
-        let ok = document.getElementById('arsa-ok');
-        if (!icerik) return;
-        if (icerik.style.display === 'none' || !icerik.style.display) {
-            icerik.style.display = 'flex';
-            if(ok) ok.innerText = '▼';
-        } else {
-            icerik.style.display = 'none';
-            if(ok) ok.innerText = '▶';
-        }
-    };
-
-    oyuncuArsaListesi.forEach(item => {
-        let kutu = kartHtmlUret(item.baslikMetni, item.botIsmi, item.varlikIsmi, item.satisBedeli, item.uniqueId, item.inputId, item.vadeInputId, item.arsaMi, item.atananKonum, item.tipKyn);
-        arsaIcerikDiv.appendChild(kutu);
-    });
-
-    botArsaListesi.forEach(item => {
-        let kutu = kartHtmlUret(item.bot.isim, item.bot.isim, item.varlik.isim, item.satisBedeli, item.uniqueId, item.inputId, item.vadeInputId, item.arsaMi, item.varlik.atananKonum, 'bot');
-        arsaIcerikDiv.appendChild(kutu);
-    });
-
-    kamuArsaListesi.forEach(item => {
-        let kutu = kartHtmlUret('Kamu Satışı', '', item.urun.isim, item.satisBedeli, null, item.inputId, item.vadeInputId, item.arsaMi, item.kamuKonumu, 'kamu');
-        arsaIcerikDiv.appendChild(kutu);
-    });
-
-    kapsayici.appendChild(arsaBaslikDiv);
-    kapsayici.appendChild(arsaIcerikDiv);
+    let arsaIcerikDiv = document.getElementById('arsa-ilanlari-icerik');
+    if (arsaIcerikDiv) {
+        arsaIcerikDiv.innerHTML = '';
+        oyuncuArsaListesi.forEach(item => {
+            let kutu = kartHtmlUret(item.baslikMetni, item.botIsmi, item.varlikIsmi, item.satisBedeli, item.uniqueId, item.inputId, item.vadeInputId, item.arsaMi, item.atananKonum, item.tipKyn);
+            arsaIcerikDiv.appendChild(kutu);
+        });
+        botArsaListesi.forEach(item => {
+            let kutu = kartHtmlUret(item.bot.isim, item.bot.isim, item.varlik.isim, item.satisBedeli, item.uniqueId, item.inputId, item.vadeInputId, item.arsaMi, item.varlik.atananKonum, 'bot');
+            arsaIcerikDiv.appendChild(kutu);
+        });
+        kamuArsaListesi.forEach(item => {
+            let kutu = kartHtmlUret('Kamu Satışı', '', item.urun.isim, item.satisBedeli, null, item.inputId, item.vadeInputId, item.arsaMi, item.kamuKonumu, 'kamu');
+            arsaIcerikDiv.appendChild(kutu);
+        });
+    }
 }
 
 function kamuUrunleriforEachSafe(arr, callback) {
