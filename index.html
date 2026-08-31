@@ -3411,6 +3411,49 @@ function kamuUrunleriforEachSafe(arr, callback) {
     }
 }
 
+ // İlanları sunucudan çekip ekrana basma
+async function ilanlariYukle() {
+    try {
+        let res = await fetch('/api/ilanlari-getir');
+        let data = await res.json();
+        if (data.basari) {
+            let listeDiv = document.getElementById('pazar-ilanlari-listesi');
+            if (!listeDiv) return;
+            
+            listeDiv.innerHTML = '';
+            data.ilanlar.forEach(ilan => {
+                listeDiv.innerHTML += `
+                    <div class="demand-box" style="padding: 15px; margin-bottom: 10px; border: 1px solid #444;">
+                        <h4>${ilan.mulk_adi}</h4>
+                        <p>Satıcı: <b>${ilan.satici_adsoyad}</b></p>
+                        <p>Fiyat: <span style="color: #00ff00;">${ilan.fiyat.toLocaleString()} TL</span></p>
+                        <p>${ilan.detaylar}</p>
+                        <button onclick="ilanSatinAl(${ilan.id})" class="nav-btn-yesil">İlanı Satın Al</button>
+                    </div>
+                `;
+            });
+        }
+    } catch (err) {
+        console.error("İlanlar yüklenirken hata:", err);
+    }
+}
+
+// İlan Satın Alma İsteği
+async function ilanSatinAl(ilanId) {
+    if (!confirm("Bu ilanı satın almak istediğinize emin misiniz?")) return;
+
+    let res = await fetch('/api/ilan-satin-al', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ilanId })
+    });
+    let data = await res.json();
+    alert(data.mesaj);
+    if (data.basari) {
+        location.reload(); // Sayfayı yenileyerek güncel portföyü ve parayı göster
+    }
+}   
+
 function paraAl(id) {
     let input = document.getElementById(id);
     if (!input || !input.value) return 0;
