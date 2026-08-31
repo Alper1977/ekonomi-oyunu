@@ -3889,69 +3889,76 @@ function ilanaCikar(id) {
     let v = state.varliklar.find(x => x.id == id);
     if (!v) return;
     
-    v.durum = 'ilan-aktif';
-    v.ilanSahibi = 'ben'; 
-    v.ilanZamanKaydi = Date.now();
+    let satisFiyati = v.bedel || (typeof satisFiyatlari !== 'undefined' && satisFiyatlari[v.isim] ? satisFiyatlari[v.isim] : 2000000);
+    let atananKonumVal = null;
 
     if (v.isim && v.isim.toLowerCase().includes('arsası')) {
         v.atananKonum = null;
         if (typeof arsaKonumunuAl === 'function') {
             v.atananKonum = arsaKonumunuAl(v);
         }
+        atananKonumVal = v.atananKonum;
     }
 
-    if (typeof state.ilanlar === 'undefined') state.ilanlar = [];
-    if (!state.ilanlar.some(i => i.id === v.id)) {
-        let satisFiyati = v.bedel || (typeof satisFiyatlari !== 'undefined' && satisFiyatlari[v.isim] ? satisFiyatlari[v.isim] : 2000000);
-        state.ilanlar.push({
-            id: v.id,
-            satici_adsoyad: (typeof aktifKullaniciAdi !== 'undefined' ? aktifKullaniciAdi : 'Ben'),
+    // Sunucuya ilanı gönderiyoruz
+    fetch('/api/ilan-ekle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
             ilan_tipi: v.isim,
             fiyat: satisFiyati,
-            detaylar: { atananKonum: v.atananKonum || '' }
-        });
-    }
+            detaylar: { atananKonum: atananKonumVal, varlikId: v.id }
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.basari) {
+            v.durum = 'ilan-aktif';
+            v.ilanSahibi = 'ben'; 
+            v.ilanZamanKaydi = Date.now();
+            v.sunucuIlanId = data.id; // Sunucudaki ID'yi tutuyoruz
 
-    guncelle(); 
-
-    if (typeof ilanlariGuncelle === 'function') {
-        ilanlariGuncelle();
-    }
-
-    if (typeof portfoyuSunucuyaKaydet === 'function') {
-        portfoyuSunucuyaKaydet(state);
-    }
+            guncelle(); 
+            if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
+            if (typeof portfoyuSunucuyaKaydet === 'function') portfoyuSunucuyaKaydet(state);
+        } else {
+            alert(data.mesaj || "İlan yayınlanamadı!");
+        }
+    })
+    .catch(err => console.error("İlan ekleme hatası:", err));
 }
 
 function vazgec(id) {
     let v = state.varliklar.find(x => x.id == id);
     if (!v) return;
 
-    if (v.durum === 'ilan-aktif') {
-        if (v.ilanSahibi === 'ben') {
-            v.durum = 'sahip';
-            v.ilanSahibi = null;
+    let sunucuId = v.sunucuIlanId; // Eğer id eşleşmezse veritabanından sildirmek için ortak ID kullanabiliriz
+
+    fetch('/api/ilan-sil', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: sunucuId || id })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.basari || true) { // Garanti olsun diye lokalde de düşürüyoruz
+            if (v.durum === 'ilan-aktif') {
+                if (v.ilanSahibi === 'ben') {
+                    v.durum = 'sahip';
+                    v.ilanSahibi = null;
+                    v.sunucuIlanId = null;
+                }
+            }
+
+            let modalOverlay = document.getElementById('modal-overlay');
+            if (modalOverlay) modalOverlay.style.display = 'none';
+
+            guncelle();
+            if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
+            if (typeof portfoyuSunucuyaKaydet === 'function') portfoyuSunucuyaKaydet(state);
         }
-    }
-
-    if (typeof state.ilanlar !== 'undefined' && Array.isArray(state.ilanlar)) {
-        state.ilanlar = state.ilanlar.filter(i => i.id !== v.id);
-    }
-
-    let modalOverlay = document.getElementById('modal-overlay');
-    if (modalOverlay) {
-        modalOverlay.style.display = 'none';
-    }
-
-    guncelle();
-
-    if (typeof ilanlariGuncelle === 'function') {
-        ilanlariGuncelle();
-    }
-
-    if (typeof portfoyuSunucuyaKaydet === 'function') {
-        portfoyuSunucuyaKaydet(state);
-    }
+    })
+    .catch(err => console.error("İlan silme hatası:", err));
 }
 async function siralamayiGuncelle() {
     let listeKapsayici = document.getElementById('siralama-listesi');
