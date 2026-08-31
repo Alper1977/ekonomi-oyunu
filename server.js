@@ -249,7 +249,17 @@ app.post('/api/gercek-ilan-satin-al', (req, res) => {
     }
 });
 
-
+app.post('/api/ilan-sil', (req, res) => {
+    const { uniqueId } = req.body;
+    try {
+        // İlanın unique_id'sine göre veritabanından siliyoruz
+        db.prepare(`DELETE FROM ilanlar WHERE unique_id = ?`).run(uniqueId);
+        res.json({ basari: true });
+    } catch (err) {
+        console.error("İlan silme hatası:", err.message);
+        res.status(500).json({ basari: false });
+    }
+});
 
 // 🌟 Ayar Okuma ve Güncelleme Rotaları
 app.get('/api/oyun-ayarlari', (req, res) => {
