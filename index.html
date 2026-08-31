@@ -3004,7 +3004,12 @@ let tList = document.getElementById('musteri-talepleri-listesi');
         tList.innerHTML = '';
         
         // Sadece konut olmayan ve sahip olunan/ilan verilen varlıkları al
-        let aktifVarliklarTalepler = state.varliklar.filter(v => (v.durum === 'sahip' || v.durum === 'ilan-aktif') && v.isim && v.isim.toLowerCase() !== 'konut');
+        let aktifVarliklarTalepler = state.varliklar.filter(v => 
+    (v.durum === 'sahip' || v.durum === 'ilan-aktif') && 
+    v.isim && 
+    v.isim.toLowerCase() !== 'konut' && 
+    !v.isim.toLowerCase().includes('arsa')
+);
         
         aktifVarliklarTalepler.forEach(v => {
             // 1. Önce state.talepler içinde var mı diye bak, yoksa otomatik oluştur!
