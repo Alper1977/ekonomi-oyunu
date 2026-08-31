@@ -3004,8 +3004,14 @@ let tList = document.getElementById('musteri-talepleri-listesi');
     if (tList) {
        tList.innerHTML = '';
         
-       let aktifVarliklarTalepler = state.varliklar.filter(v => (v.durum === 'sahip' || v.durum === 'ilan-aktif') && v.isim && v.isim.toLowerCase() !== 'konut' && !v.isim.toLowerCase().includes('arsa') && !v.isim.toLowerCase().includes('arsası'));
-       
+      // Müşteri talepleri listelenirken veya oluşturulurken:
+let aktifVarliklarTalepler = state.varliklar.filter(v => {
+    let isim = (v.isim || "").toLowerCase();
+    return (v.durum === 'sahip' || v.durum === 'ilan-aktif') && 
+           isim !== 'konut' && 
+           !isim.includes('arsa') && 
+           !isim.includes('arsası');
+});
            let talep = state.talepler.find(t => t.tur === v.isim || t.isim === v.isim);
            
            if (!talep) {
