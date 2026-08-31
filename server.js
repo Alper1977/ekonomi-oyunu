@@ -170,7 +170,7 @@ app.get('/api/ilanlari-getir', (req, res) => {
 // 3. Gerçek Üye İlanını Satın Alma Rotası (Nakit veya Kredi önceliğiyle)
 app.post('/api/gercek-ilan-satin-al', (req, res) => {
     if (!req.session || !req.session.kullanici) {
-        return.status(401).json({ basari: false, mesaj: "Oturum bulunamadı!" });
+        return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı!" }); // Doğrusu bu (noktasız)
     }
 
     const aliciId = req.session.kullanici.id;
