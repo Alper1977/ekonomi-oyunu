@@ -5072,13 +5072,19 @@ window.addEventListener('DOMContentLoaded', async () => {
                     sirketBaslik.innerText = gorunenIsim.toUpperCase() + " A.Ş.";
                 }
 
-                // 🌟 Veritabanından gelen portföyü oyuna aktarıyoruz
+                // 🌟 Veritabanından gelen portföyü güvenli bir şekilde aktarıyoruz
                 if (data.portfoy) {
-                    state = data.portfoy; 
+                    let parsedPortfoy = typeof data.portfoy === 'string' ? JSON.parse(data.portfoy) : data.portfoy;
+                    state = { ...state, ...parsedPortfoy };
                 }
 
                 changePage('page-mali');
                 guncelle(); // Ekrana yeni değerleri yansıt
+
+                // 🌟 İLANLARIN GÖRÜNMESİNİ SAĞLAYAN KRİTİK EKLENTİ BURASI:
+                if (typeof ilanlariYukle === 'function') {
+                    ilanlariYukle();
+                }
 
                 if (typeof zenginlerListesiniGuncelle === 'function') {
                     zenginlerListesiniGuncelle();
