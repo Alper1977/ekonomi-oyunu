@@ -3417,7 +3417,7 @@ async function ilanlariYukle() {
         let sonuc = await response.json();
         
         if (sonuc.basari) {
-            // sonuc.ilanlar dizisini pazar yeri arayüzünde ekrana basabilirsin
+            // Pazar yeri arayüzünü güncelleyen kendi fonksiyonun
             pazarYeriEkraniGuncelle(sonuc.ilanlar);
         }
     } catch (err) {
@@ -3425,7 +3425,7 @@ async function ilanlariYukle() {
     }
 }
 
-async function yeniilanOlustur(ilanTipi, detaylar, fiyat) {
+async function yeniIlanOlustur(ilanTipi, detaylar, fiyat) {
     try {
         let response = await fetch('/api/ilan-ekle', {
             method: 'POST',
@@ -3458,7 +3458,14 @@ async function ilaniKesinSatinAl(ilanId) {
         let sonuc = await response.json();
         if (sonuc.basari) {
             console.log("Satın alma başarılı, portföy güncelleniyor...");
-            // Burada kendi portföyüne satın aldığın varlığı ekleyip portfoyuSunucuyaKaydet fonksiyonunu çağırabilirsin
+            
+            // Eğer satın alınan ilanı kendi portföyüne ekleyip sunucuya kaydetmek istiyorsan:
+            if (sonuc.ilan && typeof state !== 'undefined' && state.portfoy) {
+                // Örnek portföy güncellemesi ve sunucuya kayıt:
+                // state.portfoy.varliklar.push(sonuc.ilan.detaylar);
+                // portfoyuSunucuyaKaydet(state.portfoy);
+            }
+            
             ilanlariYukle(); // Listeyi tazele
         } else {
             alert(sonuc.mesaj || "Satın alma başarısız.");
@@ -3466,8 +3473,7 @@ async function ilaniKesinSatinAl(ilanId) {
     } catch (err) {
         console.error("İlan satın alma bağlantı hatası:", err);
     }
-}    
-
+}
 function paraAl(id) {
     let input = document.getElementById(id);
     if (!input || !input.value) return 0;
