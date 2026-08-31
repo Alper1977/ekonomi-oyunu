@@ -3190,6 +3190,7 @@ function yatirimlariGuncelle() {
 }
 
 
+
 async function ilanlariGuncelle() {
     let kapsayici = document.getElementById('ilanlar-kapsayici');
     if (!kapsayici) return;
@@ -3275,30 +3276,51 @@ async function ilanlariGuncelle() {
     function kartHtmlUret(baslikMetni, botIsmi, varlikIsmi, satisBedeli, uniqueId, inputId, vadeInputId, arsaMi, atananKonum, tipKyn) {
         let goruntuleBtnHTML = arsaMi ? `<button onclick="arsaKonumGoster('${varlikIsmi}', '${atananKonum}')" style="background:#3498db; color:#fff; border:none; padding:4px 8px; border-radius:4px; font-weight:bold; font-size:10px; cursor:pointer; width:100%; margin-bottom:6px;">GÖRÜNTÜLE</button>` : '';
         
-        let nakitBtnHTML = '';
-        let krediBtnHTML = '';
+        let ortaAlanHTML = '';
 
-        if (tipKyn === 'bot') {
-            nakitBtnHTML = `<button class="btn-green" onclick="ilaniSatinAlOnayla('${botIsmi}', '${varlikIsmi}', ${satisBedeli}, ${uniqueId})">NAKİT</button>`;
-            krediBtnHTML = `<button class="btn-red" onclick="krediIslem('${inputId}', '${vadeInputId}', '${varlikIsmi}', ${satisBedeli}, 'ilan', ${uniqueId}, '${botIsmi}')">KREDİ</button>`;
-        } else if (tipKyn === 'oyuncu') {
-            let itemBoxOyuncu = document.createElement('div');
-            itemBoxOyuncu.className = 'item-box';
-            itemBoxOyuncu.innerHTML = `
-                <div class="item-header-row">
-                    <span class="item-ilan-veren">${baslikMetni}</span>
-                    <span class="item-tur">${varlikIsmi}</span>
-                </div>
-                <div class="item-bedel">${satisBedeli.toLocaleString()} TL</div>
-                <div class="action-group">
-                    ${goruntuleBtnHTML}
-                    <button onclick="vazgec(${uniqueId})" class="btn-red" style="width: 100%; box-sizing: border-box; margin-top: 4px;">Vazgeç</button>
+        if (tipKyn === 'benim-ilanim') {
+            ortaAlanHTML = `
+                <div class="button-row" style="margin-top: 4px;">
+                    <button class="btn-red" onclick="vazgec(${uniqueId})" style="width: 100%;">Vazgeç</button>
                 </div>
             `;
-            return itemBoxOyuncu;
+        } else if (tipKyn === 'diger-oyuncu' || tipKyn === 'bot') {
+            let nakitFonk = tipKyn === 'bot' 
+                ? `ilaniSatinAlOnayla('${botIsmi}', '${varlikIsmi}', ${satisBedeli}, ${uniqueId})` 
+                : `onayPenceresi('${varlikIsmi}', ${satisBedeli}, 'al')`;
+            
+            ortaAlanHTML = `
+                <div class="kredi-group">
+                    <input type="text" id="${inputId}" placeholder="Kredi Tutarı" oninput="parayiFormatlaMetin(this)" value="">
+                    <select id="${vadeInputId}">
+                        <option value="12">12 Ay</option>
+                        <option value="24">24 Ay</option>
+                        <option value="36">36 Ay</option>
+                        <option value="48" selected>48 Ay</option>
+                    </select>
+                </div>
+                <div class="button-row">
+                    <button class="btn-green" onclick="${nakitFonk}">NAKİT</button>
+                    <button class="btn-red" onclick="krediIslem('${inputId}', '${vadeInputId}', '${varlikIsmi}', ${satisBedeli}, 'ilan', ${uniqueId}, '${botIsmi}')">KREDİ</button>
+                </div>
+            `;
         } else {
-            nakitBtnHTML = `<button class="btn-green" onclick="onayPenceresi('${varlikIsmi}', ${satisBedeli}, 'al')">NAKİT</button>`;
-            krediBtnHTML = `<button class="btn-red" onclick="krediIslem('${inputId}', '${vadeInputId}', '${varlikIsmi}', ${satisBedeli}, 'ilan')">KREDİ</button>`;
+            // Kamu satışları için
+            ortaAlanHTML = `
+                <div class="kredi-group">
+                    <input type="text" id="${inputId}" placeholder="Kredi Tutarı" oninput="parayiFormatlaMetin(this)" value="">
+                    <select id="${vadeInputId}">
+                        <option value="12">12 Ay</option>
+                        <option value="24">24 Ay</option>
+                        <option value="36">36 Ay</option>
+                        <option value="48" selected>48 Ay</option>
+                    </select>
+                </div>
+                <div class="button-row">
+                    <button class="btn-green" onclick="onayPenceresi('${varlikIsmi}', ${satisBedeli}, 'al')">NAKİT</button>
+                    <button class="btn-red" onclick="krediIslem('${inputId}', '${vadeInputId}', '${varlikIsmi}', ${satisBedeli}, 'ilan')">KREDİ</button>
+                </div>
+            `;
         }
 
         let itemBox = document.createElement('div');
@@ -3311,19 +3333,7 @@ async function ilanlariGuncelle() {
             <div class="item-bedel">${satisBedeli.toLocaleString()} TL</div>
             <div class="action-group">
                 ${goruntuleBtnHTML}
-                <div class="kredi-group">
-                    <input type="text" id="${inputId}" placeholder="Kredi Tutarı" oninput="parayiFormatlaMetin(this)" value="">
-                    <select id="${vadeInputId}">
-                        <option value="12">12 Ay</option>
-                        <option value="24">24 Ay</option>
-                        <option value="36">36 Ay</option>
-                        <option value="48" selected>48 Ay</option>
-                    </select>
-                </div>
-                <div class="button-row">
-                    ${nakitBtnHTML}
-                    ${krediBtnHTML}
-                </div>
+                ${ortaAlanHTML}
             </div>
         `;
         return itemBox;
@@ -3380,6 +3390,8 @@ async function ilanlariGuncelle() {
                 let arsaMi = haritalanabilirMulkler.some(tur => ilan.ilan_tipi.toLowerCase().includes(tur));
                 let konum = ilan.detaylar?.atananKonum || '';
 
+                let benimIlanimMi = (ilan.satici_adsoyad === 'Ben' || (typeof aktifKullaniciAdi !== 'undefined' && ilan.satici_adsoyad === aktifKullaniciAdi));
+
                 let veriObj = { 
                     baslikMetni: ilan.satici_adsoyad || 'Ben', 
                     botIsmi: ilan.satici_adsoyad || 'Ben', 
@@ -3390,7 +3402,7 @@ async function ilanlariGuncelle() {
                     vadeInputId, 
                     arsaMi, 
                     atananKonum: konum, 
-                    tipKyn: 'oyuncu' 
+                    tipKyn: benimIlanimMi ? 'benim-ilanim' : 'diger-oyuncu' 
                 };
 
                 if (ilan.ilan_tipi.toLowerCase().includes('arsa')) {
