@@ -3228,8 +3228,20 @@ function ilanlariGuncelle() {
             nakitBtnHTML = `<button class="btn-green" onclick="ilaniSatinAlOnayla('${botIsmi}', '${varlikIsmi}', ${satisBedeli}, ${uniqueId})">NAKİT</button>`;
             krediBtnHTML = `<button class="btn-red" onclick="krediIslem('${inputId}', '${vadeInputId}', '${varlikIsmi}', ${satisBedeli}, 'ilan', ${uniqueId}, '${botIsmi}')">KREDİ</button>`;
         } else if (tipKyn === 'oyuncu') {
-            nakitBtnHTML = `<button class="btn-green" onclick="onayPenceresi('${varlikIsmi}', ${satisBedeli}, 'al')">NAKİT</button>`;
-            krediBtnHTML = `<button class="btn-red" onclick="krediIslem('${inputId}', '${vadeInputId}', '${varlikIsmi}', ${satisBedeli}, 'ilan')">KREDİ</button>`;
+            let itemBoxOyuncu = document.createElement('div');
+            itemBoxOyuncu.className = 'item-box';
+            itemBoxOyuncu.innerHTML = `
+                <div class="item-header-row">
+                    <span class="item-ilan-veren">${baslikMetni}</span>
+                    <span class="item-tur">${varlikIsmi}</span>
+                </div>
+                <div class="item-bedel">${satisBedeli.toLocaleString()} TL</div>
+                <div class="action-group">
+                    ${goruntuleBtnHTML}
+                    <button onclick="vazgec(${uniqueId})" class="btn-red" style="width: 100%; box-sizing: border-box; margin-top: 4px;">Vazgeç</button>
+                </div>
+            `;
+            return itemBoxOyuncu;
         } else {
             nakitBtnHTML = `<button class="btn-green" onclick="onayPenceresi('${varlikIsmi}', ${satisBedeli}, 'al')">NAKİT</button>`;
             krediBtnHTML = `<button class="btn-red" onclick="krediIslem('${inputId}', '${vadeInputId}', '${varlikIsmi}', ${satisBedeli}, 'ilan')">KREDİ</button>`;
@@ -3267,7 +3279,6 @@ function ilanlariGuncelle() {
     let botMulkListesi = [];
     let botArsaListesi = [];
 
-    // Botların ilanları
     if (typeof botlar !== 'undefined' && Array.isArray(botlar)) {
         botlar.forEach(bot => {
             if (!bot.varliklar || !Array.isArray(bot.varliklar)) return;
@@ -3298,7 +3309,6 @@ function ilanlariGuncelle() {
         });
     }
 
-    // 🌟 Oyuncunun kendi ilanları (state.ilanlar içindekiler)
     let oyuncuMulkListesi = [];
     let oyuncuArsaListesi = [];
 
@@ -3395,19 +3405,16 @@ function ilanlariGuncelle() {
         }
     };
 
-    // Oyuncu mülk ilanları
     oyuncuMulkListesi.forEach(item => {
         let kutu = kartHtmlUret(item.baslikMetni, item.botIsmi, item.varlikIsmi, item.satisBedeli, item.uniqueId, item.inputId, item.vadeInputId, item.arsaMi, item.atananKonum, item.tipKyn);
         emlakIcerikDiv.appendChild(kutu);
     });
 
-    // Bot mülk ilanları
     botMulkListesi.forEach(item => {
         let kutu = kartHtmlUret(item.bot.isim, item.bot.isim, item.varlik.isim, item.satisBedeli, item.uniqueId, item.inputId, item.vadeInputId, item.arsaMi, item.varlik.atananKonum, 'bot');
         emlakIcerikDiv.appendChild(kutu);
     });
 
-    // Kamu mülk ilanları
     kamuMulkListesi.forEach(item => {
         let kutu = kartHtmlUret('Kamu Satışı', '', item.urun.isim, item.satisBedeli, null, item.inputId, item.vadeInputId, item.arsaMi, item.kamuKonumu, 'kamu');
         emlakIcerikDiv.appendChild(kutu);
@@ -3438,19 +3445,16 @@ function ilanlariGuncelle() {
         }
     };
 
-    // Oyuncu arsa ilanları
     oyuncuArsaListesi.forEach(item => {
         let kutu = kartHtmlUret(item.baslikMetni, item.botIsmi, item.varlikIsmi, item.satisBedeli, item.uniqueId, item.inputId, item.vadeInputId, item.arsaMi, item.atananKonum, item.tipKyn);
         arsaIcerikDiv.appendChild(kutu);
     });
 
-    // Bot arsa ilanları
     botArsaListesi.forEach(item => {
         let kutu = kartHtmlUret(item.bot.isim, item.bot.isim, item.varlik.isim, item.satisBedeli, item.uniqueId, item.inputId, item.vadeInputId, item.arsaMi, item.varlik.atananKonum, 'bot');
         arsaIcerikDiv.appendChild(kutu);
     });
 
-    // Kamu arsa ilanları
     kamuArsaListesi.forEach(item => {
         let kutu = kartHtmlUret('Kamu Satışı', '', item.urun.isim, item.satisBedeli, null, item.inputId, item.vadeInputId, item.arsaMi, item.kamuKonumu, 'kamu');
         arsaIcerikDiv.appendChild(kutu);
@@ -3459,7 +3463,6 @@ function ilanlariGuncelle() {
     kapsayici.appendChild(arsaBaslikDiv);
     kapsayici.appendChild(arsaIcerikDiv);
 }
-
 // Yardımcı döngü fonksiyonu
 function kamuUrunleriforEachSafe(arr, callback) {
     for (let i = 0; i < arr.length; i++) {
