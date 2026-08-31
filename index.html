@@ -3272,7 +3272,6 @@ async function ilanlariGuncelle() {
         
         let ortaAlanHTML = '';
 
-        // KESİN KONTROL: Eğer tipKyn 'benim-ilanim' ise SADECE Vazgeç butonu basılır.
         if (tipKyn === 'benim-ilanim') {
             ortaAlanHTML = `
                 <div class="button-row" style="margin-top: 4px;">
@@ -3396,12 +3395,12 @@ async function ilanlariGuncelle() {
                 let arsaMi = haritalanabilirMulkler.some(tur => ilan.ilan_tipi.toLowerCase().includes(tur));
                 let konum = ilan.detaylar?.atananKonum || '';
 
-                // Senin ilanın mı kontrolü (Ben veya aktif kullanıcı adın)
-                let benimIlanimMi = (ilan.satici_adsoyad === 'Ben' || (typeof aktifKullaniciAdi !== 'undefined' && ilan.satici_adsoyad === aktifKullaniciAdi));
+                // Doğrudan sunucudan gelen güvenli bayrak
+                let benimIlanimMi = ilan.benim_mi; 
 
                 let veriObj = { 
-                    baslikMetni: ilan.satici_adsoyad || 'Ben', 
-                    botIsmi: ilan.satici_adsoyad || 'Ben', 
+                    baslikMetni: benimIlanimMi ? 'Ben' : (ilan.satici_adsoyad || 'Oyuncu'), 
+                    botIsmi: ilan.satici_adsoyad, 
                     varlikIsmi: ilan.ilan_tipi, 
                     satisBedeli, 
                     uniqueId, 
