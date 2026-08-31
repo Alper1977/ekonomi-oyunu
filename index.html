@@ -2999,23 +2999,35 @@ if (vList) {
     });
 }
 
+
+
+    let faizBaslikElementi = document.getElementById('faiz-baslik-orani');
+    if (faizBaslikElementi) {
+        let yuzdeDegeri = Math.round((faizOranlari.krediKatsayi - 1) * 100);
+        faizBaslikElementi.innerText = `Yatırım Kredisi (Faiz Oranı: %${yuzdeDegeri})`;
+    }
+
+    
+    await zenginlerListesiniGuncelle();
+
+   if (typeof portfoyuSunucuyaKaydet === 'function') {
+        portfoyuSunucuyaKaydet(state);
+    }
+}
+
 let tList = document.getElementById('musteri-talepleri-listesi');
 if (tList) {
     tList.innerHTML = '';
     
-    // Konut ve içinde 'arsa' veya 'arsası' geçenleri tamamen eleyoruz
-    let aktifVarliklarTalepler = state.varliklar.filter(v => 
-        (v.durum === 'sahip' || v.durum === 'ilan-aktif') && 
-        v.isim && 
-        v.isim.toLowerCase() !== 'konut' && 
-        !v.isim.toLowerCase().includes('arsa') && 
-        !v.isim.toLowerCase().includes('arsası')
-    );
+    // Sadece konut olmayan ve sahip olunan/ilan verilen varlıkları al (Orijinal Filtre)
+    let aktifVarliklarTalepler = state.varliklar.filter(v => (v.durum === 'sahip' || v.durum === 'ilan-aktif') && v.isim && v.isim.toLowerCase() !== 'konut');
     
     aktifVarliklarTalepler.forEach(v => {
+        // 1. Önce state.talepler içinde var mı diye bak, yoksa otomatik oluştur!
         let talep = state.talepler.find(t => t.tur === v.isim || t.isim === v.isim);
         
         if (!talep) {
+            // Eğer kullanıcının varlığı var ama taleplerde tanımlı değilse burada anında yaratıyoruz
             let varsayilanBedel = (typeof kazancTablosu !== 'undefined' && kazancTablosu[v.isim]) ? kazancTablosu[v.isim] : 100000;
             talep = { tur: v.isim, isim: v.isim, bedel: varsayilanBedel };
             state.talepler.push(talep);
@@ -3064,22 +3076,6 @@ if (tList) {
             </div>`;
     });
 }
-
-    let faizBaslikElementi = document.getElementById('faiz-baslik-orani');
-    if (faizBaslikElementi) {
-        let yuzdeDegeri = Math.round((faizOranlari.krediKatsayi - 1) * 100);
-        faizBaslikElementi.innerText = `Yatırım Kredisi (Faiz Oranı: %${yuzdeDegeri})`;
-    }
-
-    
-    await zenginlerListesiniGuncelle();
-
-   if (typeof portfoyuSunucuyaKaydet === 'function') {
-        portfoyuSunucuyaKaydet(state);
-    }
-}
-
-
 
 function hesaplaServet(oyuncu) {
     if (!oyuncu) return 0;
