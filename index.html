@@ -3272,72 +3272,71 @@ async function ilanlariGuncelle() {
         kapsayici.appendChild(arsaIcerikDiv);
     }
 
-    // Kart HTML üretici fonksiyon
-    function kartHtmlUret(baslikMetni, botIsmi, varlikIsmi, satisBedeli, uniqueId, inputId, vadeInputId, arsaMi, atananKonum, tipKyn) {
-        let goruntuleBtnHTML = arsaMi ? `<button onclick="arsaKonumGoster('${varlikIsmi}', '${atananKonum}')" style="background:#3498db; color:#fff; border:none; padding:4px 8px; border-radius:4px; font-weight:bold; font-size:10px; cursor:pointer; width:100%; margin-bottom:6px;">GÖRÜNTÜLE</button>` : '';
-        
-        let ortaAlanHTML = '';
+function kartHtmlUret(baslikMetni, botIsmi, varlikIsmi, satisBedeli, uniqueId, inputId, vadeInputId, arsaMi, atananKonum, tipKyn) {
+    let goruntuleBtnHTML = arsaMi ? `<button onclick="arsaKonumGoster('${varlikIsmi}', '${atananKonum}')" style="background:#3498db; color:#fff; border:none; padding:4px 8px; border-radius:4px; font-weight:bold; font-size:10px; cursor:pointer; width:100%; margin-bottom:6px;">GÖRÜNTÜLE</button>` : '';
+    
+    let ortaAlanHTML = '';
 
-        if (tipKyn === 'benim-ilanim') {
-            ortaAlanHTML = `
-                <div class="button-row" style="margin-top: 4px;">
-                    <button class="btn-red" onclick="vazgec(${uniqueId})" style="width: 100%;">Vazgeç</button>
-                </div>
-            `;
-        } else if (tipKyn === 'diger-oyuncu' || tipKyn === 'bot') {
-            let nakitFonk = tipKyn === 'bot' 
-                ? `ilaniSatinAlOnayla('${botIsmi}', '${varlikIsmi}', ${satisBedeli}, ${uniqueId})` 
-                : `onayPenceresi('${varlikIsmi}', ${satisBedeli}, 'al')`;
-            
-            ortaAlanHTML = `
-                <div class="kredi-group">
-                    <input type="text" id="${inputId}" placeholder="Kredi Tutarı" oninput="parayiFormatlaMetin(this)" value="">
-                    <select id="${vadeInputId}">
-                        <option value="12">12 Ay</option>
-                        <option value="24">24 Ay</option>
-                        <option value="36">36 Ay</option>
-                        <option value="48" selected>48 Ay</option>
-                    </select>
-                </div>
-                <div class="button-row">
-                    <button class="btn-green" onclick="${nakitFonk}">NAKİT</button>
-                    <button class="btn-red" onclick="krediIslem('${inputId}', '${vadeInputId}', '${varlikIsmi}', ${satisBedeli}, 'ilan', ${uniqueId}, '${botIsmi}')">KREDİ</button>
-                </div>
-            `;
-        } else {
-            // Kamu satışları için
-            ortaAlanHTML = `
-                <div class="kredi-group">
-                    <input type="text" id="${inputId}" placeholder="Kredi Tutarı" oninput="parayiFormatlaMetin(this)" value="">
-                    <select id="${vadeInputId}">
-                        <option value="12">12 Ay</option>
-                        <option value="24">24 Ay</option>
-                        <option value="36">36 Ay</option>
-                        <option value="48" selected>48 Ay</option>
-                    </select>
-                </div>
-                <div class="button-row">
-                    <button class="btn-green" onclick="onayPenceresi('${varlikIsmi}', ${satisBedeli}, 'al')">NAKİT</button>
-                    <button class="btn-red" onclick="krediIslem('${inputId}', '${vadeInputId}', '${varlikIsmi}', ${satisBedeli}, 'ilan')">KREDİ</button>
-                </div>
-            `;
-        }
-
-        let itemBox = document.createElement('div');
-        itemBox.className = 'item-box';
-        itemBox.innerHTML = `
-            <div class="item-header-row">
-                <span class="item-ilan-veren">${baslikMetni}</span>
-                <span class="item-tur">${varlikIsmi}</span>
-            </div>
-            <div class="item-bedel">${satisBedeli.toLocaleString()} TL</div>
-            <div class="action-group">
-                ${goruntuleBtnHTML}
-                ${ortaAlanHTML}
+    if (tipKyn === 'benim-ilanim') {
+        ortaAlanHTML = `
+            <div class="button-row" style="margin-top: 4px;">
+                <button class="btn-red" onclick="vazgec(${uniqueId})" style="width: 100%;">Vazgeç</button>
             </div>
         `;
-        return itemBox;
+    } else if (tipKyn === 'diger-oyuncu' || tipKyn === 'bot') {
+        let nakitFonk = tipKyn === 'bot' 
+            ? `ilaniSatinAlOnayla('${botIsmi}', '${varlikIsmi}', ${satisBedeli}, ${uniqueId})` 
+            : `onayPenceresi('${varlikIsmi}', ${satisBedeli}, 'al')`;
+        
+        ortaAlanHTML = `
+            <div class="kredi-group">
+                <input type="text" id="${inputId}" placeholder="Kredi Tutarı" oninput="parayiFormatlaMetin(this)" value="">
+                <select id="${vadeInputId}">
+                    <option value="12">12 Ay</option>
+                    <option value="24">24 Ay</option>
+                    <option value="36">36 Ay</option>
+                    <option value="48" selected>48 Ay</option>
+                </select>
+            </div>
+            <div class="button-row">
+                <button class="btn-green" onclick="${nakitFonk}">NAKİT</button>
+                <button class="btn-red" onclick="krediIslem('${inputId}', '${vadeInputId}', '${varlikIsmi}', ${satisBedeli}, 'ilan', ${uniqueId}, '${botIsmi}')">KREDİ</button>
+            </div>
+        `;
+    } else {
+        // Kamu satışları için
+        ortaAlanHTML = `
+            <div class="kredi-group">
+                <input type="text" id="${inputId}" placeholder="Kredi Tutarı" oninput="parayiFormatlaMetin(this)" value="">
+                <select id="${vadeInputId}">
+                    <option value="12">12 Ay</option>
+                    <option value="24">24 Ay</option>
+                    <option value="36">36 Ay</option>
+                    <option value="48" selected>48 Ay</option>
+                </select>
+            </div>
+            <div class="button-row">
+                <button class="btn-green" onclick="onayPenceresi('${varlikIsmi}', ${satisBedeli}, 'al')">NAKİT</button>
+                <button class="btn-red" onclick="krediIslem('${inputId}', '${vadeInputId}', '${varlikIsmi}', ${satisBedeli}, 'ilan')">KREDİ</button>
+            </div>
+        `;
     }
+
+    let itemBox = document.createElement('div');
+    itemBox.className = 'item-box';
+    itemBox.innerHTML = `
+        <div class="item-header-row">
+            <span class="item-ilan-veren">${baslikMetni}</span>
+            <span class="item-tur">${varlikIsmi}</span>
+        </div>
+        <div class="item-bedel">${satisBedeli.toLocaleString()} TL</div>
+        <div class="action-group">
+            ${goruntuleBtnHTML}
+            ${ortaAlanHTML}
+        </div>
+    `;
+    return itemBox;
+}
 
     let botMulkListesi = [];
     let botArsaListesi = [];
