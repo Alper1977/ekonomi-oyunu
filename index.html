@@ -3207,6 +3207,7 @@ async function ilanlariGuncelle() {
         ilanFaizSpan.innerText = guncelFaiz;
     }
 
+    // Kullanıcı input veya select içindeyse ekranın zıplamasını / inputun silinmesini engelle
     let activeEl = document.activeElement;
     if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'SELECT')) {
         if (activeEl.id && (activeEl.id.includes('bot-') || activeEl.id.includes('kamu-') || activeEl.id.includes('gercek-'))) {
@@ -3286,7 +3287,7 @@ async function ilanlariGuncelle() {
     // Gerçek Üye İlanlarını Dağıt
     gercekIlanListesi.forEach(ilan => {
         let satisBedeli = ilan.satis_bedeli;
-        let uniqueId = ilan.id; // Tablodaki ilan ID'si
+        let uniqueId = ilan.id; 
         let inputId = `in-kredi-gercek-${uniqueId}`;
         let vadeInputId = `vade-kredi-gercek-${uniqueId}`;
 
@@ -3352,7 +3353,8 @@ async function ilanlariGuncelle() {
     let kamuMulkListesi = [];
     let kamuArsaListesi = [];
 
-    kamuUrunleriforEachSafe(kamuUrunleri, (urun) => {
+    // DÜZELTME: Orijinal koddaki hatalı 'kamuUrunleriforEachSafe' yerine standart .forEach kullanıldı
+    kamuUrunleri.forEach((urun) => {
         let satisBedeli = (typeof satisFiyatlari !== 'undefined' && satisFiyatlari && satisFiyatlari[urun.isim]) ? satisFiyatlari[urun.isim] : urun.varsayilanFiyat;
         let slug = urun.isim.toLowerCase().replace(/ı/g, 'i').replace(/\s+/g, '-');
         let inputId = `in-kredi-kamu-${slug}`;
