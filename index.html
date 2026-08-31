@@ -2829,8 +2829,15 @@ if (typeof maksimumIlanSiniri === 'undefined') { var maksimumIlanSiniri = window
     // 5. Arayüz ve Sunucu Güncellemeleri
   guncelle();
 
-    if (typeof ilanlariGuncelle === 'function') { ilanlariGuncelle(); }
-    
+
+    // Zaten senin kodunda olan kısım:
+    if (typeof ilanlariYukle === 'function') {
+        ilanlariYukle(); // Önce sunucudan güncel ilanları çekip state'e yazıyoruz
+    }
+
+    if (typeof ilanlariGuncelle === 'function') { 
+        ilanlariGuncelle(); // Sonra ekrandaki akordeonu güncelliyoruz
+    }
     // Sadece veri değiştiğinde sunucuya kaydet ki arkayı boğmasın!
     if (typeof veriDegisti !== 'undefined' && veriDegisti && typeof portfoyuSunucuyaKaydet === 'function') {
         portfoyuSunucuyaKaydet(state);
