@@ -3839,7 +3839,7 @@ function ilaniSatinAlOnayla(botIsmi, varlikIsmi, fiyat, ilanId) {
 }
 
 // 2️⃣ Onay Verilince Çalışan Kesin Alım Fonksiyonu
-function ilaniKesinSatinAl(botIsmi, varlikIsmi, fiyat, ilanId) {
+async function ilaniKesinSatinAl(botIsmi, varlikIsmi, fiyat, ilanId) {
     let modalOverlay = document.getElementById('modal-overlay');
     if (modalOverlay) {
         modalOverlay.style.display = 'none';
@@ -3857,7 +3857,7 @@ function ilaniKesinSatinAl(botIsmi, varlikIsmi, fiyat, ilanId) {
     if (hedefBot && hedefBot.varliklar) {
         hedefBot.nakit += fiyat;
         
-        // 🌟 Kesin eşleşme için Number dönüşümü ile arıyoruz
+        // Kesin eşleşme için Number dönüşümü ile arıyoruz
         alinanIlan = hedefBot.varliklar.find(v => Number(v.id) === Number(ilanId));
 
         if (!alinanIlan) {
@@ -3876,13 +3876,23 @@ function ilaniKesinSatinAl(botIsmi, varlikIsmi, fiyat, ilanId) {
         }
     }
 
-    // 🌟 2. KESİN ÇÖZÜM: Global ilanlar listesinden de bu ilanı uçuruyoruz ki ilanlar sayfasından silinsin!
+    // 2. Global ilanlar listesinden de bu ilanı uçuruyoruz
     if (typeof state !== 'undefined' && state.ilanlar) {
         state.ilanlar = state.ilanlar.filter(i => Number(i.id) !== Number(ilanId));
     }
-    // Eğer oyun genelinde ayrı bir global ilanlar dizisi tutuluyorsa (örneğin window.ilanlar gibi) onu da temizleyelim:
     if (typeof window.ilanlar !== 'undefined' && Array.isArray(window.ilanlar)) {
         window.ilanlar = window.ilanlar.filter(i => Number(i.id) !== Number(ilanId));
+    }
+
+    // 3. Sunucu tarafındaki ilan veritabanından da silinmesini sağlıyoruz
+    try {
+        await fetch('/api/ilan-satin-al', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ilanId: ilanId })
+        });
+    } catch (err) {
+        console.error("İlan sunucudan silinemedi:", err);
     }
 
     if (!state.varliklar) state.varliklar = [];
@@ -3894,7 +3904,7 @@ function ilaniKesinSatinAl(botIsmi, varlikIsmi, fiyat, ilanId) {
         gelenKonum = arsaKonumunuAl(varlikIsmi);
     }
 
-   state.varliklar.push({
+    state.varliklar.push({
         id: Date.now() + Math.random(),
         isim: varlikIsmi, 
         durum: 'sahip',
