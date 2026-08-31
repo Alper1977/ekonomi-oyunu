@@ -120,6 +120,73 @@ if (!mevcutAyarlar) {
     db.prepare(`INSERT OR REPLACE INTO oyun_ayarlari (id, ayarlar) VALUES (1, ?)`).run(JSON.stringify(varsayilanAyarlar));
 }
 
+// 1. Veritabanına İlanlar Tablosunu Ekleyin (Açılış kısımlarına)
+db.prepare(`CREATE TABLE IF NOT EXISTS ilanlar (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    satici_id INTEGER,
+    satici_adsoyad TEXT,
+    ilan_tipi TEXT,
+    detaylar TEXT,
+    fiyat REAL,
+    tarih DATETIME DEFAULT CURRENT_TIMESTAMP
+)`).run();
+
+// 2. İlanları Listeleme Rotası (Herkesin pazar yerindeki ilanları görebilmesi için)
+app.get('/api/ilanlar', (req, res) => {
+    try {
+        const ilanlar = db.prepare(`SELECT * FROM ilanlar ORDER BY id DESC`).all();
+        // Detayları JSON objesine çevirelim
+        const formatliIlanlar = ilanlar.map(i => ({
+            ...i,
+            detaylar: JSON.parse(i.detaylar || '{}')
+        }));
+        res.json({ basari: true, ilanlar: formatliIlanlar });
+    } catch (err) {
+        res.status(500).json({ basari: false, mesaj: err.message });
+    }
+});
+
+// 3. Yeni İlan Ekleme Rotası
+app.post('/api/ilan-ekle', (req, res) => {
+    if (!req.session || !req.session.kullanici) {
+        return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı!" });
+    }
+
+    const saticiId = req.session.kullanici.id;
+    const saticiAdSoyad = req.session.kullanici.adsoyad;
+    const { ilanTipi, detaylar, fiyat } = req.body;
+
+    try {
+        const stmt = db.prepare(`INSERT INTO ilanlar (satici_id, satici_adsoyad, ilan_tipi, detaylar, fiyat) VALUES (?, ?, ?, ?, ?)`);
+        stmt.run(saticiId, saticiAdSoyad, ilanTipi, JSON.stringify(detaylar || {}), fiyat);
+        res.json({ basari: true, mesaj: "İlan başarıyla oluşturuldu." });
+    } catch (err) {
+        res.status(500).json({ basari: false, mesaj: err.message });
+    }
+});
+
+// 4. İlanı Satın Alma / Kaldırma Rotası
+app.post('/api/ilan-satin-al', (req, res) => {
+    if (!req.session || !req.session.kullanici) {
+        return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı!" });
+    }
+    
+    const { ilanId } = req.body;
+    try {
+        const ilan = db.prepare(`SELECT * FROM ilanlar WHERE id = ?`).get(ilanId);
+        if (!ilan) {
+            return res.status(404).json({ basari: false, mesaj: "İlan bulunamadı veya zaten satılmış." });
+        }
+
+        // İlanı tablodan siliyoruz
+        db.prepare(`DELETE FROM ilanlar WHERE id = ?`).run(ilanId);
+        
+        res.json({ basari: true, mesaj: "İlan başarıyla satın alındı.", ilan });
+    } catch (err) {
+        res.status(500).json({ basari: false, mesaj: err.message });
+    }
+});
+
 // 🌟 Ayar Okuma ve Güncelleme Rotaları
 app.get('/api/oyun-ayarlari', (req, res) => {
     try {
