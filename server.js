@@ -135,7 +135,7 @@ db.exec(`
 
 app.post('/api/ilan-ver', (req, res) => {
     if (!req.session || !req.session.kullanici) {
-        return.status(401).json({ basari: false, mesaj: "Oturum bulunamadı!" });
+        return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı!" });
     }
 
     const userId = req.session.kullanici.id;
