@@ -3195,7 +3195,6 @@ async function ilanlariGuncelle() {
     let kapsayici = document.getElementById('ilanlar-kapsayici');
     if (!kapsayici) return;
 
-    // Faiz oranını güncelle
     let ilanFaizSpan = document.getElementById('yazi-ilan-faiz');
     if (ilanFaizSpan) {
         let guncelFaiz = (typeof faizOranlari !== 'undefined' && faizOranlari.yatirimKredisiYuzde) 
@@ -3204,7 +3203,6 @@ async function ilanlariGuncelle() {
         ilanFaizSpan.innerText = guncelFaiz;
     }
 
-    // Aktif input odaklıysa güncelleme yapma (klavye kapanmasın)
     let activeEl = document.activeElement;
     if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'SELECT')) {
         if (activeEl.id && (activeEl.id.includes('bot-') || activeEl.id.includes('kamu-') || activeEl.id.includes('oyuncu-'))) {
@@ -3212,14 +3210,12 @@ async function ilanlariGuncelle() {
         }
     }
 
-    // --- İLK ÇALIŞMADA AKORDİYONLARI İSKELET OLARAK OLUŞTUR ---
     let emlakBaslik = document.getElementById('emlak-baslik-div');
     let arsaBaslik = document.getElementById('arsa-baslik-div');
 
     if (!emlakBaslik || !arsaBaslik) {
         kapsayici.innerHTML = ''; 
 
-        // Emlak Akordiyon İskeleti
         emlakBaslik = document.createElement('div');
         emlakBaslik.id = 'emlak-baslik-div';
         emlakBaslik.style.cssText = "background: #27ae60; color: #fff; padding: 10px 15px; border-radius: 6px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 15px; margin-bottom: 10px; user-select: none;";
@@ -3245,7 +3241,6 @@ async function ilanlariGuncelle() {
         kapsayici.appendChild(emlakBaslik);
         kapsayici.appendChild(emlakIcerikDiv);
 
-        // Arsa Akordiyon İskeleti
         arsaBaslik = document.createElement('div');
         arsaBaslik.id = 'arsa-baslik-div';
         arsaBaslik.style.cssText = "background: #27ae60; color: #fff; padding: 10px 15px; border-radius: 6px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 15px; margin-bottom: 10px; user-select: none;";
@@ -3272,21 +3267,20 @@ async function ilanlariGuncelle() {
         kapsayici.appendChild(arsaIcerikDiv);
     }
 
-    // Kart HTML üretici fonksiyon
     function kartHtmlUret(baslikMetni, botIsmi, varlikIsmi, satisBedeli, uniqueId, inputId, vadeInputId, arsaMi, atananKonum, tipKyn) {
         let goruntuleBtnHTML = arsaMi ? `<button onclick="arsaKonumGoster('${varlikIsmi}', '${atananKonum}')" style="background:#3498db; color:#fff; border:none; padding:4px 8px; border-radius:4px; font-weight:bold; font-size:10px; cursor:pointer; width:100%; margin-bottom:6px;">GÖRÜNTÜLE</button>` : '';
         
-        let aksiyonHTML = '';
+        let ortaAlanHTML = '';
 
-        // Kesin Ayrım: Eğer ilan sana aitse ('benim-ilanim'), sadece Vazgeç çıkacak. Nokta.
+        // KESİN KONTROL: Eğer tipKyn 'benim-ilanim' ise SADECE Vazgeç butonu basılır.
         if (tipKyn === 'benim-ilanim') {
-            aksiyonHTML = `
+            ortaAlanHTML = `
                 <div class="button-row" style="margin-top: 4px;">
                     <button class="btn-red" onclick="vazgec(${uniqueId})" style="width: 100%;">Vazgeç</button>
                 </div>
             `;
         } else if (tipKyn === 'bot') {
-            aksiyonHTML = `
+            ortaAlanHTML = `
                 <div class="kredi-group">
                     <input type="text" id="${inputId}" placeholder="Kredi Tutarı" oninput="parayiFormatlaMetin(this)" value="">
                     <select id="${vadeInputId}">
@@ -3302,7 +3296,7 @@ async function ilanlariGuncelle() {
                 </div>
             `;
         } else if (tipKyn === 'diger-oyuncu') {
-            aksiyonHTML = `
+            ortaAlanHTML = `
                 <div class="kredi-group">
                     <input type="text" id="${inputId}" placeholder="Kredi Tutarı" oninput="parayiFormatlaMetin(this)" value="">
                     <select id="${vadeInputId}">
@@ -3318,8 +3312,7 @@ async function ilanlariGuncelle() {
                 </div>
             `;
         } else {
-            // Kamu satışları için
-            aksiyonHTML = `
+            ortaAlanHTML = `
                 <div class="kredi-group">
                     <input type="text" id="${inputId}" placeholder="Kredi Tutarı" oninput="parayiFormatlaMetin(this)" value="">
                     <select id="${vadeInputId}">
@@ -3346,7 +3339,7 @@ async function ilanlariGuncelle() {
             <div class="item-bedel">${satisBedeli.toLocaleString()} TL</div>
             <div class="action-group">
                 ${goruntuleBtnHTML}
-                ${aksiyonHTML}
+                ${ortaAlanHTML}
             </div>
         `;
         return itemBox;
@@ -3403,8 +3396,7 @@ async function ilanlariGuncelle() {
                 let arsaMi = haritalanabilirMulkler.some(tur => ilan.ilan_tipi.toLowerCase().includes(tur));
                 let konum = ilan.detaylar?.atananKonum || '';
 
-                // İlanın sana ait olup olmadığını netleştiriyoruz: 
-                // Saticinin adi 'Ben' ise VEYA senin kullanıcı adınla eşleşiyorsa kesinlikle senin ilanın.
+                // Senin ilanın mı kontrolü (Ben veya aktif kullanıcı adın)
                 let benimIlanimMi = (ilan.satici_adsoyad === 'Ben' || (typeof aktifKullaniciAdi !== 'undefined' && ilan.satici_adsoyad === aktifKullaniciAdi));
 
                 let veriObj = { 
@@ -3470,7 +3462,6 @@ async function ilanlariGuncelle() {
         }
     });
 
-    // --- İÇERİKLERİ GÜNCELLE ---
     let emlakIcerikDiv = document.getElementById('emlak-ilanlari-icerik');
     if (emlakIcerikDiv) {
         emlakIcerikDiv.innerHTML = '';
