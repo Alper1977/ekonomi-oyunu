@@ -146,6 +146,7 @@ app.get('/api/ilanlar', (req, res) => {
         res.status(500).json({ basari: false, mesaj: err.message });
     }
 });
+
 app.post('/api/ilan-ekle', (req, res) => {
     if (!req.session || !req.session.kullanici) {
         return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı!" });
