@@ -467,32 +467,6 @@
     <div class="content">
 
         <button id="admin-panel-buton" onclick="adminPaneliniAc()" style="display: none; background: #dc3545; color: white; border: none; padding: 8px 15px; border-radius: 5px; font-weight: bold; cursor: pointer; margin-left: 10px;">🛡️ Admin Paneli</button>
-
-<!-- Şirket Başlığı ve Çıkış -->
-        <div class="header-brand" style="display: flex; justify-content: space-between; align-items: center; padding: 0 10px; margin-bottom: 15px;font-size: 20px;">
-            <span id="sirket-adi-mali" style="font-weight: bold;">STRATEJİK HOLDİNG A.Ş.</span>
-            <button onclick="sistemdenCikisYap()" style="padding: 6px 12px; background: #ff4444; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold;">
-                Çıkış
-            </button>
-        </div>
-
-<!-- Şirket Unvanı Güncelleme -->
-        <div class="item-box" style="flex-direction: column; align-items: stretch; gap: 6px; margin-bottom: 15px;">
-            <span style="font-weight: bold; font-size: 14px; color: #b0b0b0;">👤 Şirket Unvanı / Ad Soyad Güncelle</span>
-            <div style="display: flex; gap: 6px; width: 100%;">
-                <input type="text" id="yeni-adsoyad-input" placeholder="Yeni Ad Soyad Yazın" style="flex: 1; padding: 6px 10px; border-radius: 4px; border: 1px solid #444; background: #222; color: #fff; font-size: 12px; height: 32px; box-sizing: border-box;">
-                <button onclick="profilAdiGuncelle()" style="background: #28a745; color: white; padding: 0 15px; font-weight: bold; font-size: 12px; border: none; border-radius: 4px; height: 32px; cursor: pointer;">GÜNCELLE</button>
-            </div>
-            <div id="profil-hata" style="color: #ff4d4d; font-size: 12px; display: none;"></div>
-        </div>
-
-<!-- Zenginler Listesi Bilgisi -->
-        <div style="background: #f0f0f0; padding: 10px; margin-bottom: 15px; text-align: center; color: black; border-radius: 6px;">
-            <span id="siralama-bilgisi" style="color: black; font-weight: bold; display: block; margin-bottom: 6px;">Zenginler Sıralamasında hesaplanıyor...</span>
-            <button onclick="changePage('page-liste')" style="padding: 6px 12px; background: #333; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Zenginler Listesine Git</button>
-        </div>
-
-
         
         <!-- Oyun Kuralları Banner -->
         <div style="background: linear-gradient(135deg, #f39c12, #d35400); color: white; padding: 14px 20px; border-radius: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 15px rgba(243, 156, 18, 0.3);">
@@ -504,11 +478,29 @@
             </button>
         </div> 
 
-        
+        <!-- Şirket Başlığı ve Çıkış -->
+        <div class="header-brand" style="display: flex; justify-content: space-between; align-items: center; padding: 0 10px; margin-bottom: 15px;">
+            <span id="sirket-adi-mali" style="font-weight: bold;">STRATEJİK HOLDİNG A.Ş.</span>
+            <button onclick="sistemdenCikisYap()" style="padding: 6px 12px; background: #ff4444; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold;">
+                Çıkış
+            </button>
+        </div>
 
-        
+        <!-- Şirket Unvanı Güncelleme -->
+        <div class="item-box" style="flex-direction: column; align-items: stretch; gap: 6px; margin-bottom: 15px;">
+            <span style="font-weight: bold; font-size: 14px; color: #b0b0b0;">👤 Şirket Unvanı / Ad Soyad Güncelle</span>
+            <div style="display: flex; gap: 6px; width: 100%;">
+                <input type="text" id="yeni-adsoyad-input" placeholder="Yeni Ad Soyad Yazın" style="flex: 1; padding: 6px 10px; border-radius: 4px; border: 1px solid #444; background: #222; color: #fff; font-size: 12px; height: 32px; box-sizing: border-box;">
+                <button onclick="profilAdiGuncelle()" style="background: #28a745; color: white; padding: 0 15px; font-weight: bold; font-size: 12px; border: none; border-radius: 4px; height: 32px; cursor: pointer;">GÜNCELLE</button>
+            </div>
+            <div id="profil-hata" style="color: #ff4d4d; font-size: 12px; display: none;"></div>
+        </div>
 
-        
+        <!-- Zenginler Listesi Bilgisi -->
+        <div style="background: #f0f0f0; padding: 10px; margin-bottom: 15px; text-align: center; color: black; border-radius: 6px;">
+            <span id="siralama-bilgisi" style="color: black; font-weight: bold; display: block; margin-bottom: 6px;">Zenginler Sıralamasında hesaplanıyor...</span>
+            <button onclick="changePage('page-liste')" style="padding: 6px 12px; background: #333; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Zenginler Listesine Git</button>
+        </div>
 
         <!-- Nakit Rezervleri -->
         <h2>Nakit Rezervleri</h2>
@@ -1362,13 +1354,12 @@ async function sistemeGirisYap() {
                 }
             });
 
-           state.talepler = Array.isArray(gelenPortfoy.talepler) ? gelenPortfoy.talepler : [];
-        
-        // 🌟 ARSALARI TALEPLERDEN KESİN OLARAK TEMİZLE
-        state.talepler = state.talepler.filter(t => {
-            let isimStr = (t.tur || t.isim || "").toLowerCase();
-            return !isimStr.includes('arsa') && !isimStr.includes('arsası');
-        });
+            state.talepler = Array.isArray(gelenPortfoy.talepler) ? gelenPortfoy.talepler : [];
+            
+            if (!state.talepler.some(t => t.tur === 'Bayi' || t.isim === 'Bayi')) {
+                state.talepler.push({ tur: 'Bayi', isim: 'Bayi', bedel: 300000 });
+            }
+        }
 
         // Şirket başlıklarını güncelle
         if (sonuc.kullanici && sonuc.kullanici.adsoyad) {
@@ -3002,75 +2993,73 @@ if (vList) {
 
 let tList = document.getElementById('musteri-talepleri-listesi');
     if (tList) {
-       tList.innerHTML = '';
+        tList.innerHTML = '';
         
-      // Müşteri talepleri listelenirken veya oluşturulurken:
-let aktifVarliklarTalepler = state.varliklar.filter(v => {
-    let isim = (v.isim || "").toLowerCase();
-    return (v.durum === 'sahip' || v.durum === 'ilan-aktif') && 
-           isim !== 'konut' && 
-           !isim.includes('arsa') && 
-           !isim.includes('arsası');
-});
-           let talep = state.talepler.find(t => t.tur === v.isim || t.isim === v.isim);
-           
-           if (!talep) {
-               let varsayilanBedel = (typeof kazancTablosu !== 'undefined' && kazancTablosu[v.isim]) ? kazancTablosu[v.isim] : 100000;
-               talep = { tur: v.isim, isim: v.isim, bedel: varsayilanBedel };
-               state.talepler.push(talep);
-           }
- 
-           let isAktif = (v.talepAktif === true);
-           
-           let beklenenMetin = "Ödeme Bekleniyor";
-           if (!isAktif && typeof odemeProgrami !== 'undefined' && odemeProgrami.length > 0) {
-               let s = typeof saat !== 'undefined' ? saat : new Date().getHours();
-               let d = typeof dakika !== 'undefined' ? dakika : new Date().getMinutes();
- 
-               let siraIndex = odemeProgrami.findIndex(p => (s < p.saat) || (s === p.saat && d < p.dakika));
-               if (siraIndex === -1) {
-                   siraIndex = 0; 
-               }
-               
-               let aktifOdeme = odemeProgrami[siraIndex];
-               let basSaat = String(aktifOdeme.saat).padStart(2, '0') + ':' + String(aktifOdeme.dakika).padStart(2, '0');
-               
-               let bitSaatSaat = aktifOdeme.saat + 1;
-               if (bitSaatSaat >= 24) bitSaatSaat = 0;
-               let bitSaat = String(bitSaatSaat).padStart(2, '0') + ':' + String(aktifOdeme.dakika).padStart(2, '0');
- 
-               beklenenMetin = `${basSaat} - ${bitSaat} arası Ödeme Bekleniyor`;
-           }
- 
-           let guncelBedel = talep.bedel || 0;
-           let altMetin = isAktif ? ('+' + guncelBedel.toLocaleString() + ' TL') : beklenenMetin;
- 
-          tList.innerHTML += `
-               <div class="demand-box" style="display: flex; flex-direction: column; align-items: stretch; padding: 10px;">
-                   <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                       <span style="font-weight: bold; color: #00bfff; font-size: 14px;">${v.isim}</span>
-                       <div>
-                           <button onclick="${isAktif ? 'talepAl(' + v.id + ')' : 'void(0)'}" 
-                                   ${!isAktif ? 'disabled' : ''} 
-                                   class="${isAktif ? 'nav-btn-kirmizi' : ''}">
-                               ${isAktif ? 'TAHSİL ET' : 'BEKLE'}
-                           </button>
-                       </div>
-                   </div>
-                   <div style="font-weight: bold; color: #ff4444; font-size: 12px; margin-top: 6px;">
-                       ${altMetin}
-                   </div>
-               </div>`;
-       });
+        // Sadece konut olmayan ve sahip olunan/ilan verilen varlıkları al
+        let aktifVarliklarTalepler = state.varliklar.filter(v => (v.durum === 'sahip' || v.durum === 'ilan-aktif') && v.isim && v.isim.toLowerCase() !== 'konut');
+        
+        aktifVarliklarTalepler.forEach(v => {
+            // 1. Önce state.talepler içinde var mı diye bak, yoksa otomatik oluştur!
+            let talep = state.talepler.find(t => t.tur === v.isim || t.isim === v.isim);
+            
+            if (!talep) {
+                // Eğer kullanıcının varlığı var ama taleplerde tanımlı değilse burada anında yaratıyoruz
+                let varsayilanBedel = (typeof kazancTablosu !== 'undefined' && kazancTablosu[v.isim]) ? kazancTablosu[v.isim] : 100000;
+                talep = { tur: v.isim, isim: v.isim, bedel: varsayilanBedel };
+                state.talepler.push(talep);
+            }
+
+            let isAktif = (v.talepAktif === true);
+            
+            let beklenenMetin = "Ödeme Bekleniyor";
+            if (!isAktif && typeof odemeProgrami !== 'undefined' && odemeProgrami.length > 0) {
+                let s = typeof saat !== 'undefined' ? saat : new Date().getHours();
+                let d = typeof dakika !== 'undefined' ? dakika : new Date().getMinutes();
+
+                let siraIndex = odemeProgrami.findIndex(p => (s < p.saat) || (s === p.saat && d < p.dakika));
+                if (siraIndex === -1) {
+                    siraIndex = 0; 
+                }
+                
+                let aktifOdeme = odemeProgrami[siraIndex];
+                let basSaat = String(aktifOdeme.saat).padStart(2, '0') + ':' + String(aktifOdeme.dakika).padStart(2, '0');
+                
+                let bitSaatSaat = aktifOdeme.saat + 1;
+                if (bitSaatSaat >= 24) bitSaatSaat = 0;
+                let bitSaat = String(bitSaatSaat).padStart(2, '0') + ':' + String(aktifOdeme.dakika).padStart(2, '0');
+
+                beklenenMetin = `${basSaat} - ${bitSaat} arası Ödeme Bekleniyor`;
+            }
+
+            let guncelBedel = talep.bedel || 0;
+            let altMetin = isAktif ? ('+' + guncelBedel.toLocaleString() + ' TL') : beklenenMetin;
+
+            tList.innerHTML += `
+                <div class="demand-box" style="display: flex; flex-direction: column; align-items: stretch; padding: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                        <span style="font-weight: bold; color: #00bfff; font-size: 14px;">${v.isim}</span>
+                        <div>
+                            <button onclick="${isAktif ? 'talepAl(' + v.id + ')' : 'void(0)'}" 
+                                    ${!isAktif ? 'disabled' : ''} 
+                                    class="${isAktif ? 'nav-btn-kirmizi' : ''}">
+                                ${isAktif ? 'TAHSİL ET' : 'BEKLE'}
+                            </button>
+                        </div>
+                    </div>
+                    <div style="font-weight: bold; color: #ff4444; font-size: 12px; margin-top: 6px;">
+                        ${altMetin}
+                    </div>
+                </div>`;
+        });
     }
-    
+
     let faizBaslikElementi = document.getElementById('faiz-baslik-orani');
     if (faizBaslikElementi) {
         let yuzdeDegeri = Math.round((faizOranlari.krediKatsayi - 1) * 100);
         faizBaslikElementi.innerText = `Yatırım Kredisi (Faiz Oranı: %${yuzdeDegeri})`;
     }
 
-    
+    ilanlariGuncelle();
     await zenginlerListesiniGuncelle();
 
    if (typeof portfoyuSunucuyaKaydet === 'function') {
@@ -3197,10 +3186,11 @@ function yatirimlariGuncelle() {
 }
 
 
-async function ilanlariGuncelle() {
+function ilanlariGuncelle() {
     let kapsayici = document.getElementById('ilanlar-kapsayici');
     if (!kapsayici) return;
 
+    // 1️⃣ Faiz oranını ÖNCE güncelleyelim ki inputa odaklanılsa bile yazı uçmasın
     let ilanFaizSpan = document.getElementById('yazi-ilan-faiz');
     if (ilanFaizSpan) {
         let guncelFaiz = (typeof faizOranlari !== 'undefined' && faizOranlari.yatirimKredisiYuzde) 
@@ -3209,18 +3199,21 @@ async function ilanlariGuncelle() {
         ilanFaizSpan.innerText = guncelFaiz;
     }
 
+    // 2️⃣ Şimdi aktif input kontrolünü yapabiliriz
     let activeEl = document.activeElement;
     if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'SELECT')) {
-        if (activeEl.id && (activeEl.id.includes('bot-') || activeEl.id.includes('kamu-') || activeEl.id.includes('gercek-'))) {
+        if (activeEl.id && (activeEl.id.includes('bot-') || activeEl.id.includes('kamu-'))) {
             return; 
         }
     }
 
+    // Açık/kapalı durumlarını hafızada tutalım (sayfa yenilendiğinde kapanmasın)
     let eskiEmlakDurum = document.getElementById('emlak-ilanlari-icerik')?.style.display || 'none';
     let eskiArsaDurum = document.getElementById('arsa-ilanlari-icerik')?.style.display || 'none';
 
     kapsayici.innerHTML = '';
 
+    // Yardımcı HTML oluşturucu fonksiyon
     function kartHtmlUret(baslikMetni, botIsmi, varlikIsmi, satisBedeli, uniqueId, inputId, vadeInputId, arsaMi, atananKonum, tipKyn) {
         let goruntuleBtnHTML = arsaMi ? `<button onclick="arsaKonumGoster('${varlikIsmi}', '${atananKonum}')" style="background:#3498db; color:#fff; border:none; padding:4px 8px; border-radius:4px; font-weight:bold; font-size:10px; cursor:pointer; width:100%; margin-bottom:6px;">GÖRÜNTÜLE</button>` : '';
         
@@ -3230,9 +3223,6 @@ async function ilanlariGuncelle() {
         if (tipKyn === 'bot') {
             nakitBtnHTML = `<button class="btn-green" onclick="ilaniSatinAlOnayla('${botIsmi}', '${varlikIsmi}', ${satisBedeli}, ${uniqueId})">NAKİT</button>`;
             krediBtnHTML = `<button class="btn-red" onclick="krediIslem('${inputId}', '${vadeInputId}', '${varlikIsmi}', ${satisBedeli}, 'ilan', ${uniqueId}, '${botIsmi}')">KREDİ</button>`;
-        } else if (tipKyn === 'gercek') {
-            nakitBtnHTML = `<button class="btn-green" onclick="gercekIlaniSatinAl(${uniqueId})">NAKİT</button>`;
-            krediBtnHTML = `<button class="btn-red" onclick="krediIslem('${inputId}', '${vadeInputId}', '${varlikIsmi}', ${satisBedeli}, 'ilan-gercek', ${uniqueId})">KREDİ</button>`;
         } else {
             nakitBtnHTML = `<button class="btn-green" onclick="onayPenceresi('${varlikIsmi}', ${satisBedeli}, 'al')">NAKİT</button>`;
             krediBtnHTML = `<button class="btn-red" onclick="krediIslem('${inputId}', '${vadeInputId}', '${varlikIsmi}', ${satisBedeli}, 'ilan')">KREDİ</button>`;
@@ -3266,51 +3256,14 @@ async function ilanlariGuncelle() {
         return itemBox;
     }
 
-    // --- SUNUCUDAN GERÇEK ÜYE İLANLARINI ÇEK ---
-    let gercekIlanListesi = [];
-    try {
-        let res = await fetch('/api/ilanlari-getir');
-        let data = await res.json();
-        if (data.basari) {
-            gercekIlanListesi = data.ilanlar;
-        }
-    } catch (e) {
-        console.error("Gerçek ilanlar alınamadı:", e);
-    }
-
+    // --- 1️⃣ LİSTELERİ HAZIRLA ---
     let botMulkListesi = [];
     let botArsaListesi = [];
-    let gercekMulkListesi = [];
-    let gercekArsaListesi = [];
-
-    // Gerçek Üye İlanlarını Dağıt ve Kontrol Et
-    gercekIlanListesi.forEach(ilan => {
-        let satisBedeli = ilan.satis_bedeli;
-        let uniqueId = ilan.id; 
-        let inputId = `in-kredi-gercek-${uniqueId}`;
-        let vadeInputId = `vade-kredi-gercek-${uniqueId}`;
-
-        let haritalanabilirMulkler = ['arsası', 'otel', 'fabrika', 'hastane', 'okul', 'avm', 'hipermarket', 'konut'];
-        let arsaMi = haritalanabilirMulkler.some(tur => ilan.varlik_adi.toLowerCase().includes(tur));
-
-        // Eğer konum atanmamışsa otomatik konum üret
-        let atananKonum = ilan.atanan_konum;
-        if (arsaMi && (!atananKonum || atananKonum === 'Merkezi Konum')) {
-            atananKonum = arsaKonumunuAl ? arsaKonumunuAl(ilan.varlik_adi) : 'Ankara / Çankaya';
-        }
-
-        let veriObj = { ilan, satisBedeli, uniqueId, inputId, vadeInputId, arsaMi, atananKonum };
-
-        if (ilan.varlik_adi.toLowerCase().includes('arsa')) {
-            gercekArsaListesi.push(veriObj);
-        } else {
-            gercekMulkListesi.push(veriObj);
-        }
-    });
 
     if (typeof botlar !== 'undefined' && Array.isArray(botlar)) {
         botlar.forEach(bot => {
             if (!bot.varliklar || !Array.isArray(bot.varliklar)) return;
+
             bot.varliklar.forEach(varlik => {
                 if (varlik.durum !== 'ilan-aktif') return;
 
@@ -3357,7 +3310,7 @@ async function ilanlariGuncelle() {
     let kamuMulkListesi = [];
     let kamuArsaListesi = [];
 
-    kamuUrunleri.forEach((urun) => {
+    kamuUrunleriforEachSafe(kamuUrunleri, (urun) => {
         let satisBedeli = (typeof satisFiyatlari !== 'undefined' && satisFiyatlari && satisFiyatlari[urun.isim]) ? satisFiyatlari[urun.isim] : urun.varsayilanFiyat;
         let slug = urun.isim.toLowerCase().replace(/ı/g, 'i').replace(/\s+/g, '-');
         let inputId = `in-kredi-kamu-${slug}`;
@@ -3376,6 +3329,8 @@ async function ilanlariGuncelle() {
         }
     });
 
+
+    // --- 2️⃣ EMLAK İLANLARI (AKORDEON) ---
     let emlakBaslikDiv = document.createElement('div');
     emlakBaslikDiv.style.cssText = "background: #27ae60; color: #fff; padding: 10px 15px; border-radius: 6px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 15px; margin-bottom: 10px; user-select: none;";
     emlakBaslikDiv.innerHTML = `<span>🏢 Emlak İlanları</span> <span id="emlak-ok" style="font-size: 14px;">${eskiEmlakDurum === 'flex' ? '▼' : '▶'}</span>`;
@@ -3396,12 +3351,6 @@ async function ilanlariGuncelle() {
         }
     };
 
-    // Gerçek Üye İlanlarını Emlak Bölümüne Ekle
-    gercekMulkListesi.forEach(item => {
-        let kutu = kartHtmlUret(item.ilan.satici_adi, '', item.ilan.varlik_adi, item.satisBedeli, item.uniqueId, item.inputId, item.vadeInputId, item.arsaMi, item.atananKonum, 'gercek');
-        emlakIcerikDiv.appendChild(kutu);
-    });
-
     botMulkListesi.forEach(item => {
         let kutu = kartHtmlUret(item.bot.isim, item.bot.isim, item.varlik.isim, item.satisBedeli, item.uniqueId, item.inputId, item.vadeInputId, item.arsaMi, item.varlik.atananKonum, 'bot');
         emlakIcerikDiv.appendChild(kutu);
@@ -3415,6 +3364,8 @@ async function ilanlariGuncelle() {
     kapsayici.appendChild(emlakBaslikDiv);
     kapsayici.appendChild(emlakIcerikDiv);
 
+
+    // --- 3️⃣ ARSA İLANLARI (AKORDEON) ---
     let arsaBaslikDiv = document.createElement('div');
     arsaBaslikDiv.style.cssText = "background: #27ae60; color: #fff; padding: 10px 15px; border-radius: 6px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 15px; margin-bottom: 10px; user-select: none;";
     arsaBaslikDiv.innerHTML = `<span>🌳 Arsa İlanları</span> <span id="arsa-ok" style="font-size: 14px;">${eskiArsaDurum === 'flex' ? '▼' : '▶'}</span>`;
@@ -3435,12 +3386,6 @@ async function ilanlariGuncelle() {
         }
     };
 
-    // Gerçek Üye Arsa İlanlarını Arsa Bölümüne Ekle
-    gercekArsaListesi.forEach(item => {
-        let kutu = kartHtmlUret(item.ilan.satici_adi, '', item.ilan.varlik_adi, item.satisBedeli, item.uniqueId, item.inputId, item.vadeInputId, item.arsaMi, item.atananKonum, 'gercek');
-        arsaIcerikDiv.appendChild(kutu);
-    });
-
     botArsaListesi.forEach(item => {
         let kutu = kartHtmlUret(item.bot.isim, item.bot.isim, item.varlik.isim, item.satisBedeli, item.uniqueId, item.inputId, item.vadeInputId, item.arsaMi, item.varlik.atananKonum, 'bot');
         arsaIcerikDiv.appendChild(kutu);
@@ -3453,28 +3398,6 @@ async function ilanlariGuncelle() {
 
     kapsayici.appendChild(arsaBaslikDiv);
     kapsayici.appendChild(arsaIcerikDiv);
-}
-
-// Gerçek Üye İlanını Satın Alma Tetikleyicisi
-async function gercekIlaniSatinAl(ilanId) {
-    if (!confirm("Bu mülkü satın almak istediğinize emin misiniz?")) return;
-
-    try {
-        let res = await fetch('/api/gercek-ilan-satin-al', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ilanId })
-        });
-        let data = await res.json();
-        alert(data.mesaj);
-        if (data.basari) {
-            ilanlariGuncelle(); // Sayfayı yenile
-            if (typeof portfoyGuncelle === 'function') portfoyGuncelle();
-        }
-    } catch (err) {
-        console.error("Satın alma hatası:", err);
-        alert("Bağlantı hatası oluştu!");
-    }
 }
 
 // Yardımcı döngü fonksiyonu
@@ -3899,49 +3822,23 @@ function ilaniKesinSatinAl(botIsmi, varlikIsmi, fiyat, ilanId) {
     if (typeof portfoyuSunucuyaKaydet === 'function') portfoyuSunucuyaKaydet(state);
 }
 
-async function ilanaCikar(id) {  
+function ilanaCikar(id) { 
     let v = state.varliklar.find(x => x.id == id);
     if (!v) return;
     
-    // Satış fiyatını sistemdeki fiyatlardan veya varsayılan bir değerden alalım
-    let satisBedeli = (typeof satisFiyatlari !== 'undefined' && satisFiyatlari && satisFiyatlari[v.isim]) ? satisFiyatlari[v.isim] : 2000000;
-
     v.durum = 'ilan-aktif';
-    v.ilanSahibi = 'ben';  
-    v.ilanZamanKaydi = Date.now(); 
+    v.ilanSahibi = 'ben'; 
+    v.ilanZamanKaydi = Date.now(); // ⏱️ Zamanı direkt varlığın içine kaydediyoruz
 
+    // 🌟 ARSA İSE İLANA ÇIKARILDIĞINDA YENİ BİR BÖLGE ATANSIN:
     if (v.isim && v.isim.toLowerCase().includes('arsası')) {
-        v.atananKonum = null;  
+        v.atananKonum = null; // Eski konumunu sıfırlıyoruz ki her ilana çıkışta yeni bölge alsın
         if (typeof arsaKonumunuAl === 'function') {
-            v.atananKonum = arsaKonumunuAl(v);  
+            v.atananKonum = arsaKonumunuAl(v); // Yeni ve farklı bir bölge üretiyoruz
         }
     }
 
-    // 🌟 1. ÖNCE İLANI VERİTABANINA GÖNDER VE KAYDEDİLMESİNİ BEKLE (await)
-    try {
-        let res = await fetch('/api/ilan-ver', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                varlikAdi: v.isim,
-                satisBedeli: satisBedeli,
-                uniqueId: v.id,
-                atananKonum: v.atananKonum
-            })
-        });
-        let data = await res.json();
-        if (!data.basari) {
-            alert("İlan verilemedi: " + (data.mesaj || "Bilinmeyen hata"));
-            return;
-        }
-    } catch (err) {
-        console.error("İlan sunucuya kaydedilemedi:", err);
-        alert("Bağlantı hatası oluştu!");
-        return;
-    }
-
-    // 🌟 2. SUNUCU KAYDI BAŞARIYLA BİTTİKTEN SONRA EKRANI GÜNCELLE
-    guncelle();  
+    guncelle(); 
 
     if (typeof ilanlariGuncelle === 'function') {
         ilanlariGuncelle();
@@ -3951,7 +3848,8 @@ async function ilanaCikar(id) {
         portfoyuSunucuyaKaydet(state);
     }
 }
-async function vazgec(id) {
+
+function vazgec(id) {
     let v = state.varliklar.find(x => x.id == id);
     if (!v) return;
 
@@ -3969,23 +3867,8 @@ async function vazgec(id) {
 
     guncelle();
 
-    if (typeof ilanlariGuncelle === 'function') {
-        ilanlariGuncelle();
-    }
-
     if (typeof portfoyuSunucuyaKaydet === 'function') {
         portfoyuSunucuyaKaydet(state);
-    }
-
-    // 🌟 İLANI VERİTABANINDAKİ ORTAK PAZARDAN DA SİL (Aşağıdaki API rotası ile haberleşir)
-    try {
-        await fetch('/api/ilan-sil', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ uniqueId: id })
-        });
-    } catch (err) {
-        console.error("İlan veritabanından silinemedi:", err);
     }
 }
 
