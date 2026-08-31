@@ -3194,11 +3194,11 @@ function yatirimlariGuncelle() {
 }
 
 
-function ilanlariGuncelle() {
+async function ilanlariGuncelle() {
     let kapsayici = document.getElementById('ilanlar-kapsayici');
     if (!kapsayici) return;
 
-    // 1️⃣ Faiz oranını ÖNCE güncelleyelim ki inputa odaklanılsa bile yazı uçmasın
+    // 1️⃣ Faiz oranını güncelle
     let ilanFaizSpan = document.getElementById('yazi-ilan-faiz');
     if (ilanFaizSpan) {
         let guncelFaiz = (typeof faizOranlari !== 'undefined' && faizOranlari.yatirimKredisiYuzde) 
@@ -3207,15 +3207,13 @@ function ilanlariGuncelle() {
         ilanFaizSpan.innerText = guncelFaiz;
     }
 
-    // 2️⃣ Şimdi aktif input kontrolünü yapabiliriz
     let activeEl = document.activeElement;
     if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'SELECT')) {
-        if (activeEl.id && (activeEl.id.includes('bot-') || activeEl.id.includes('kamu-'))) {
+        if (activeEl.id && (activeEl.id.includes('bot-') || activeEl.id.includes('kamu-') || activeEl.id.includes('gercek-'))) {
             return; 
         }
     }
 
-    // Açık/kapalı durumlarını hafızada tutalım (sayfa yenilendiğinde kapanmasın)
     let eskiEmlakDurum = document.getElementById('emlak-ilanlari-icerik')?.style.display || 'none';
     let eskiArsaDurum = document.getElementById('arsa-ilanlari-icerik')?.style.display || 'none';
 
@@ -3231,6 +3229,9 @@ function ilanlariGuncelle() {
         if (tipKyn === 'bot') {
             nakitBtnHTML = `<button class="btn-green" onclick="ilaniSatinAlOnayla('${botIsmi}', '${varlikIsmi}', ${satisBedeli}, ${uniqueId})">NAKİT</button>`;
             krediBtnHTML = `<button class="btn-red" onclick="krediIslem('${inputId}', '${vadeInputId}', '${varlikIsmi}', ${satisBedeli}, 'ilan', ${uniqueId}, '${botIsmi}')">KREDİ</button>`;
+        } else if (tipKyn === 'gercek') {
+            nakitBtnHTML = `<button class="btn-green" onclick="gercekIlaniSatinAl(${uniqueId})">NAKİT</button>`;
+            krediBtnHTML = `<button class="btn-red" onclick="krediIslem('${inputId}', '${vadeInputId}', '${varlikIsmi}', ${satisBedeli}, 'ilan-gercek', ${uniqueId})">KREDİ</button>`;
         } else {
             nakitBtnHTML = `<button class="btn-green" onclick="onayPenceresi('${varlikIsmi}', ${satisBedeli}, 'al')">NAKİT</button>`;
             krediBtnHTML = `<button class="btn-red" onclick="krediIslem('${inputId}', '${vadeInputId}', '${varlikIsmi}', ${satisBedeli}, 'ilan')">KREDİ</button>`;
@@ -3264,14 +3265,47 @@ function ilanlariGuncelle() {
         return itemBox;
     }
 
+    // --- SUNUCUDAN GERÇEK ÜYE İLANLARINI ÇEK ---
+    let gercekIlanListesi = [];
+    try {
+        let res = await fetch('/api/ilanlari-getir');
+        let data = await res.json();
+        if (data.basari) {
+            gercekIlanListesi = data.ilanlar;
+        }
+    } catch (e) {
+        console.error("Gerçek ilanlar alınamadı:", e);
+    }
+
     // --- 1️⃣ LİSTELERİ HAZIRLA ---
     let botMulkListesi = [];
     let botArsaListesi = [];
+    let gercekMulkListesi = [];
+    let gercekArsaListesi = [];
 
+    // Gerçek Üye İlanlarını Dağıt
+    gercekIlanListesi.forEach(ilan => {
+        let satisBedeli = ilan.satis_bedeli;
+        let uniqueId = ilan.id; // Tablodaki ilan ID'si
+        let inputId = `in-kredi-gercek-${uniqueId}`;
+        let vadeInputId = `vade-kredi-gercek-${uniqueId}`;
+
+        let haritalanabilirMulkler = ['arsası', 'otel', 'fabrika', 'hastane', 'okul', 'avm', 'hipermarket', 'konut'];
+        let arsaMi = haritalanabilirMulkler.some(tur => ilan.varlik_adi.toLowerCase().includes(tur));
+
+        let veriObj = { ilan, satisBedeli, uniqueId, inputId, vadeInputId, arsaMi };
+
+        if (ilan.varlik_adi.toLowerCase().includes('arsa')) {
+            gercekArsaListesi.push(veriObj);
+        } else {
+            gercekMulkListesi.push(veriObj);
+        }
+    });
+
+    // Bot İlanlarını Dağıt
     if (typeof botlar !== 'undefined' && Array.isArray(botlar)) {
         botlar.forEach(bot => {
             if (!bot.varliklar || !Array.isArray(bot.varliklar)) return;
-
             bot.varliklar.forEach(varlik => {
                 if (varlik.durum !== 'ilan-aktif') return;
 
@@ -3337,7 +3371,6 @@ function ilanlariGuncelle() {
         }
     });
 
-
     // --- 2️⃣ EMLAK İLANLARI (AKORDEON) ---
     let emlakBaslikDiv = document.createElement('div');
     emlakBaslikDiv.style.cssText = "background: #27ae60; color: #fff; padding: 10px 15px; border-radius: 6px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 15px; margin-bottom: 10px; user-select: none;";
@@ -3359,11 +3392,19 @@ function ilanlariGuncelle() {
         }
     };
 
+    // Önce Gerçek Üye İlanlarını Bas
+    gercekMulkListesi.forEach(item => {
+        let kutu = kartHtmlUret(item.ilan.satici_adi, '', item.ilan.varlik_adi, item.satisBedeli, item.uniqueId, item.inputId, item.vadeInputId, item.arsaMi, item.ilan.atanan_konum, 'gercek');
+        emlakIcerikDiv.appendChild(kutu);
+    });
+
+    // Sonra Bot İlanları
     botMulkListesi.forEach(item => {
         let kutu = kartHtmlUret(item.bot.isim, item.bot.isim, item.varlik.isim, item.satisBedeli, item.uniqueId, item.inputId, item.vadeInputId, item.arsaMi, item.varlik.atananKonum, 'bot');
         emlakIcerikDiv.appendChild(kutu);
     });
 
+    // Sonra Kamu Satışları
     kamuMulkListesi.forEach(item => {
         let kutu = kartHtmlUret('Kamu Satışı', '', item.urun.isim, item.satisBedeli, null, item.inputId, item.vadeInputId, item.arsaMi, item.kamuKonumu, 'kamu');
         emlakIcerikDiv.appendChild(kutu);
@@ -3371,7 +3412,6 @@ function ilanlariGuncelle() {
 
     kapsayici.appendChild(emlakBaslikDiv);
     kapsayici.appendChild(emlakIcerikDiv);
-
 
     // --- 3️⃣ ARSA İLANLARI (AKORDEON) ---
     let arsaBaslikDiv = document.createElement('div');
@@ -3394,11 +3434,19 @@ function ilanlariGuncelle() {
         }
     };
 
+    // Gerçek Üye Arsa İlanları
+    gercekArsaListesi.forEach(item => {
+        let kutu = kartHtmlUret(item.ilan.satici_adi, '', item.ilan.varlik_adi, item.satisBedeli, item.uniqueId, item.inputId, item.vadeInputId, item.arsaMi, item.ilan.atanan_konum, 'gercek');
+        arsaIcerikDiv.appendChild(kutu);
+    });
+
+    // Bot Arsa İlanları
     botArsaListesi.forEach(item => {
         let kutu = kartHtmlUret(item.bot.isim, item.bot.isim, item.varlik.isim, item.satisBedeli, item.uniqueId, item.inputId, item.vadeInputId, item.arsaMi, item.varlik.atananKonum, 'bot');
         arsaIcerikDiv.appendChild(kutu);
     });
 
+    // Kamu Arsa Satışları
     kamuArsaListesi.forEach(item => {
         let kutu = kartHtmlUret('Kamu Satışı', '', item.urun.isim, item.satisBedeli, null, item.inputId, item.vadeInputId, item.arsaMi, item.kamuKonumu, 'kamu');
         arsaIcerikDiv.appendChild(kutu);
@@ -3406,6 +3454,28 @@ function ilanlariGuncelle() {
 
     kapsayici.appendChild(arsaBaslikDiv);
     kapsayici.appendChild(arsaIcerikDiv);
+}
+
+// Gerçek Üye İlanını Satın Alma Tetikleyicisi
+async function gercekIlaniSatinAl(ilanId) {
+    if (!confirm("Bu mülkü satın almak istediğinize emin misiniz?")) return;
+
+    try {
+        let res = await fetch('/api/gercek-ilan-satin-al', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ilanId })
+        });
+        let data = await res.json();
+        alert(data.mesaj);
+        if (data.basari) {
+            ilanlariGuncelle(); // Sayfayı yenile
+            if (typeof portfoyGuncelle === 'function') portfoyGuncelle();
+        }
+    } catch (err) {
+        console.error("Satın alma hatası:", err);
+        alert("Bağlantı hatası oluştu!");
+    }
 }
 
 // Yardımcı döngü fonksiyonu
