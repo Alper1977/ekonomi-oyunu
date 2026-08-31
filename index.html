@@ -3224,9 +3224,9 @@ function ilanlariGuncelle() {
         let nakitBtnHTML = '';
         let krediBtnHTML = '';
 
-        if (tipKyn === 'bot') {
-            nakitBtnHTML = `<button class="btn-green" onclick="ilaniSatinAlOnayla('${botIsmi}', '${varlikIsmi}', ${satisBedeli}, ${uniqueId})">NAKİT</button>`;
-            krediBtnHTML = `<button class="btn-red" onclick="krediIslem('${inputId}', '${vadeInputId}', '${varlikIsmi}', ${satisBedeli}, 'ilan', ${uniqueId}, '${botIsmi}')">KREDİ</button>`;
+      if (tipKyn === 'bot' || tipKyn === 'sunucu') {
+            nakitBtnHTML = `<button class="btn-green" onclick="ilaniKesinSatinAl(${uniqueId}, ${satisBedeli})">NAKİT</button>`;
+            krediBtnHTML = `<button class="btn-red" onclick="krediIslem('${inputId}', '${vadeInputId}', '${varlikIsmi}', ${satisBedeli}, 'ilan', ${uniqueId})">KREDİ</button>`;
         } else {
             nakitBtnHTML = `<button class="btn-green" onclick="onayPenceresi('${varlikIsmi}', ${satisBedeli}, 'al')">NAKİT</button>`;
             krediBtnHTML = `<button class="btn-red" onclick="krediIslem('${inputId}', '${vadeInputId}', '${varlikIsmi}', ${satisBedeli}, 'ilan')">KREDİ</button>`;
@@ -3291,6 +3291,39 @@ function ilanlariGuncelle() {
                     botMulkListesi.push(veriObj);
                 }
             });
+        });
+    }
+
+    // Sunucudan gelen ortak ilanları da buraya dahil edelim
+    if (typeof state !== 'undefined' && state.ilanlar && Array.isArray(state.ilanlar)) {
+        state.ilanlar.forEach(ilan => {
+            let satisBedeli = ilan.fiyat;
+            let uniqueId = ilan.id;
+            let inputId = `in-kredi-sunucu-${uniqueId}`;
+            let vadeInputId = `vade-kredi-sunucu-${uniqueId}`;
+
+            let haritalanabilirMulkler = ['arsası', 'otel', 'fabrika', 'hastane', 'okul', 'avm', 'hipermarket', 'konut'];
+            let arsaMi = haritalanabilirMulkler.some(tur => ilan.ilan_tipi.toLowerCase().includes(tur));
+            let konum = ilan.detaylar?.atananKonum || '';
+
+            let veriObj = { 
+                baslik: ilan.satici_adsoyad, 
+                saticiIsmi: ilan.satici_adsoyad, 
+                varlikIsmi: ilan.ilan_tipi, 
+                satisBedeli, 
+                uniqueId, 
+                inputId, 
+                vadeInputId, 
+                arsaMi, 
+                konum, 
+                tipKyn: 'sunucu' 
+            };
+
+            if (ilan.ilan_tipi.toLowerCase().includes('arsa')) {
+                botArsaListesi.push(veriObj);
+            } else {
+                botMulkListesi.push(veriObj);
+            }
         });
     }
 
