@@ -3023,7 +3023,12 @@ if (!talep) {
         state.talepler.push(talep);
     }
 }
+} else {
+                return; // Eğer arsa ise bu döngü turunu (hiç eklemeden) doğrudan atlar
+            }
+        }
 
+        
         let isAktif = (v.talepAktif === true);
         
         let beklenenMetin = "Ödeme Bekleniyor";
