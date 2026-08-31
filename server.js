@@ -156,8 +156,9 @@ app.post('/api/ilan-ekle', (req, res) => {
     const kullanici = req.session.kullanici;
 
     try {
+        // satici_adsoyad alanını doğrudan 'Ben' olarak kaydediyoruz ki frontend'deki kontrol direkt yakalasın
         const stmt = db.prepare(`INSERT INTO ilanlar (kullanici_id, satici_adsoyad, ilan_tipi, fiyat, detaylar) VALUES (?, ?, ?, ?, ?)`);
-        const info = stmt.run(kullanici.id, kullanici.adsoyad, ilan_tipi, fiyat, JSON.stringify(detaylar || {}));
+        const info = stmt.run(kullanici.id, 'Ben', ilan_tipi, fiyat, JSON.stringify(detaylar || {}));
         res.json({ basari: true, id: info.lastInsertRowid, mesaj: "İlan başarıyla yayınlandı." });
     } catch (err) {
         res.status(500).json({ basari: false, mesaj: err.message });
