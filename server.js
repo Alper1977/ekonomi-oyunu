@@ -120,6 +120,114 @@ if (!mevcutAyarlar) {
     db.prepare(`INSERT OR REPLACE INTO oyun_ayarlari (id, ayarlar) VALUES (1, ?)`).run(JSON.stringify(varsayilanAyarlar));
 }
 
+// 1. İlanlar Veritabanı Tablosu (Sunucu açıldığında otomatik oluşur)
+db.exec(`
+    CREATE TABLE IF NOT EXISTS ilanlar (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        satici_id INTEGER,
+        satici_adi TEXT,
+        varlik_adi TEXT,
+        satis_bedeli REAL,
+        unique_id TEXT,
+        atanan_konum TEXT
+    )
+`);
+
+// 2. Tüm Aktif İlanları Çekme Rotası (Botlar, Kamu ve Gerçek Üyeler)
+app.get('/api/ilanlari-getir', (req, res) => {
+    try {
+        const gercekUyeIlanlari = db.prepare(`SELECT * FROM ilanlar`).all();
+        res.json({ basari: true, ilanlar: gercekUyeIlanlari });
+    } catch (err) {
+        console.error("Gerçek ilanları çekme hatası:", err.message);
+        res.status(500).json({ basari: false, mesaj: "İlanlar yüklenirken hata oluştu." });
+    }
+});
+
+// 3. Gerçek Üye İlanını Satın Alma Rotası (Nakit veya Kredi önceliğiyle)
+app.post('/api/gercek-ilan-satin-al', (req, res) => {
+    if (!req.session || !req.session.kullanici) {
+        return.status(401).json({ basari: false, mesaj: "Oturum bulunamadı!" });
+    }
+
+    const aliciId = req.session.kullanici.id;
+    const { ilanId } = req.body;
+
+    try {
+        // İlanı bul
+        const ilan = db.prepare(`SELECT * FROM ilanlar WHERE id = ?`).get(ilanId);
+        if (!ilan) {
+            return.status(404).json({ basari: false, mesaj: "Bu ilan bulunamadı veya daha önce satılmış!" });
+        }
+
+        if (ilan.satici_id === aliciId) {
+            return.status(400).json({ basari: false, mesaj: "Kendi ilanınızı satın alamazsınız!" });
+        }
+
+        // Alıcı ve Satıcıyı çek
+        const alici = db.prepare(`SELECT * FROM kullanicilar WHERE id = ?`).get(aliciId);
+        const satici = db.prepare(`SELECT * FROM kullanicilar WHERE id = ?`).get(ilan.satici_id);
+
+        if (!alici || !satici) {
+            return.status(404).json({ basari: false, mesaj: "Alıcı veya satıcı hesabı bulunamadı." });
+        }
+
+        let aliciPortfoy = JSON.parse(alici.portfoy);
+        let saticiPortfoy = JSON.parse(satici.portfoy);
+
+        // Nakit kontrolü
+        if (aliciPortfoy.para < ilan.satis_bedeli) {
+            return.json({ basari: false, mesaj: "Yeterli nakit paranız bulunmuyor!" });
+        }
+
+        // 1. Alıcının parasını düş
+        aliciPortfoy.para -= ilan.satis_bedeli;
+
+        // 2. Varlığı satıcının portföyünden bul ve alıcının portföyüne aktar
+        let varlikIndex = saticiPortfoy.varliklar.findIndex(v => String(v.id) === String(ilan.unique_id));
+        if (varlikIndex === -1) {
+            return.status(400).json({ basari: false, mesaj: "Satılacak mülk satıcının portföyünde bulunamadı!" });
+        }
+
+        let satilanVarlik = saticiPortfoy.varliklar.splice(varlikIndex, 1)[0];
+        satilanVarlik.durum = 'aktif'; // İlan durumundan çıkarıp normal aktif mülk yapıyoruz
+        
+        if (!aliciPortfoy.varliklar) aliciPortfoy.varliklar = [];
+        aliciPortfoy.varliklar.push(satilanVarlik);
+
+        // 3. Paranın Satıcıya Aktarımı (Kredi / Borç Önceliği Kuralı)
+        let gelenPara = ilan.satis_bedeli;
+        if (saticiPortfoy.kredi && saticiPortfoy.kredi > 0) {
+            if (gelenPara >= saticiPortfoy.kredi) {
+                gelenPara -= saticiPortfoy.kredi;
+                saticiPortfoy.kredi = 0; // Kredi tamamen kapandı
+                saticiPortfoy.para += gelenPara; // Kalan para nakite geçti
+            } else {
+                saticiPortfoy.kredi -= gelenPara; // Kredi kısmen ödendi
+            }
+        } else {
+            saticiPortfoy.para += gelenPara; // Kredisi yoksa direkt kasaya nakit geçer
+        }
+
+        // Veritabanını güncelle
+        db.prepare(`UPDATE kullanicilar SET portfoy = ? WHERE id = ?`).run(JSON.stringify(aliciPortfoy), alici.id);
+        db.prepare(`UPDATE kullanicilar SET portfoy = ? WHERE id = ?`).run(JSON.stringify(saticiPortfoy), satici.id);
+
+        // İlanı tablodan sil
+        db.prepare(`DELETE FROM ilanlar WHERE id = ?`).run(ilanId);
+
+        // Oturumu güncelle
+        req.session.kullanici.portfoy = JSON.stringify(aliciPortfoy);
+
+        res.json({ basari: true, mesaj: "Satın alma işlemi başarıyla gerçekleşti!" });
+    } catch (err) {
+        console.error("Satın alma hatası:", err.message);
+        res.status(500).json({ basari: false, mesaj: "İşlem sırasında hata oluştu." });
+    }
+});
+
+
+
 // 🌟 Ayar Okuma ve Güncelleme Rotaları
 app.get('/api/oyun-ayarlari', (req, res) => {
     try {
