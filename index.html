@@ -3900,19 +3900,22 @@ function ilaniKesinSatinAl(botIsmi, varlikIsmi, fiyat, ilanId) {
     if (typeof portfoyuSunucuyaKaydet === 'function') portfoyuSunucuyaKaydet(state);
 }
 
-function ilanaCikar(id) { 
+async function ilanaCikar(id) { 
     let v = state.varliklar.find(x => x.id == id);
     if (!v) return;
     
+    // Satış fiyatını sistemdeki fiyatlardan veya varsayılan bir değerden alalım
+    let satisBedeli = (typeof satisFiyatlari !== 'undefined' && satisFiyatlari && satisFiyatlari[v.isim]) ? satisFiyatlari[v.isim] : 2000000;
+
     v.durum = 'ilan-aktif';
     v.ilanSahibi = 'ben'; 
     v.ilanZamanKaydi = Date.now(); // ⏱️ Zamanı direkt varlığın içine kaydediyoruz
 
     // 🌟 ARSA İSE İLANA ÇIKARILDIĞINDA YENİ BİR BÖLGE ATANSIN:
     if (v.isim && v.isim.toLowerCase().includes('arsası')) {
-        v.atananKonum = null; // Eski konumunu sıfırlıyoruz ki her ilana çıkışta yeni bölge alsın
+        v.atananKonum = null; 
         if (typeof arsaKonumunuAl === 'function') {
-            v.atananKonum = arsaKonumunuAl(v); // Yeni ve farklı bir bölge üretiyoruz
+            v.atananKonum = arsaKonumunuAl(v); 
         }
     }
 
@@ -3925,8 +3928,23 @@ function ilanaCikar(id) {
     if (typeof portfoyuSunucuyaKaydet === 'function') {
         portfoyuSunucuyaKaydet(state);
     }
-}
 
+    // 🌟 İLANI VERİTABANINDAKİ ORTAK PAZARA GÖNDER (Diğer üyeler görsün!)
+    try {
+        await fetch('/api/ilan-ver', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                varlikAdi: v.isim,
+                satisBedeli: satisBedeli,
+                uniqueId: v.id,
+                atananKonum: v.atananKonum
+            })
+        });
+    } catch (err) {
+        console.error("İlan sunucuya kaydedilemedi:", err);
+    }
+}
 function vazgec(id) {
     let v = state.varliklar.find(x => x.id == id);
     if (!v) return;
