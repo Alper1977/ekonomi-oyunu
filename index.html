@@ -3206,7 +3206,7 @@ function ilanlariGuncelle() {
     // 2️⃣ Şimdi aktif input kontrolünü yapabiliriz
     let activeEl = document.activeElement;
     if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'SELECT')) {
-        if (activeEl.id && (activeEl.id.includes('bot-') || activeEl.id.includes('kamu-'))) {
+        if (activeEl.id && (activeEl.id.includes('bot-') || activeEl.id.includes('kamu-') || activeEl.id.includes('oyuncu-'))) {
             return; 
         }
     }
@@ -3227,6 +3227,9 @@ function ilanlariGuncelle() {
         if (tipKyn === 'bot') {
             nakitBtnHTML = `<button class="btn-green" onclick="ilaniSatinAlOnayla('${botIsmi}', '${varlikIsmi}', ${satisBedeli}, ${uniqueId})">NAKİT</button>`;
             krediBtnHTML = `<button class="btn-red" onclick="krediIslem('${inputId}', '${vadeInputId}', '${varlikIsmi}', ${satisBedeli}, 'ilan', ${uniqueId}, '${botIsmi}')">KREDİ</button>`;
+        } else if (tipKyn === 'oyuncu') {
+            nakitBtnHTML = `<button class="btn-green" onclick="onayPenceresi('${varlikIsmi}', ${satisBedeli}, 'al')">NAKİT</button>`;
+            krediBtnHTML = `<button class="btn-red" onclick="krediIslem('${inputId}', '${vadeInputId}', '${varlikIsmi}', ${satisBedeli}, 'ilan')">KREDİ</button>`;
         } else {
             nakitBtnHTML = `<button class="btn-green" onclick="onayPenceresi('${varlikIsmi}', ${satisBedeli}, 'al')">NAKİT</button>`;
             krediBtnHTML = `<button class="btn-red" onclick="krediIslem('${inputId}', '${vadeInputId}', '${varlikIsmi}', ${satisBedeli}, 'ilan')">KREDİ</button>`;
@@ -3264,6 +3267,7 @@ function ilanlariGuncelle() {
     let botMulkListesi = [];
     let botArsaListesi = [];
 
+    // Botların ilanları
     if (typeof botlar !== 'undefined' && Array.isArray(botlar)) {
         botlar.forEach(bot => {
             if (!bot.varliklar || !Array.isArray(bot.varliklar)) return;
@@ -3291,6 +3295,42 @@ function ilanlariGuncelle() {
                     botMulkListesi.push(veriObj);
                 }
             });
+        });
+    }
+
+    // 🌟 Oyuncunun kendi ilanları (state.ilanlar içindekiler)
+    let oyuncuMulkListesi = [];
+    let oyuncuArsaListesi = [];
+
+    if (typeof state !== 'undefined' && state.ilanlar && Array.isArray(state.ilanlar)) {
+        state.ilanlar.forEach(ilan => {
+            let satisBedeli = ilan.fiyat;
+            let uniqueId = ilan.id;
+            let inputId = `in-kredi-oyuncu-${uniqueId}`;
+            let vadeInputId = `vade-kredi-oyuncu-${uniqueId}`;
+
+            let haritalanabilirMulkler = ['arsası', 'otel', 'fabrika', 'hastane', 'okul', 'avm', 'hipermarket', 'konut'];
+            let arsaMi = haritalanabilirMulkler.some(tur => ilan.ilan_tipi.toLowerCase().includes(tur));
+            let konum = ilan.detaylar?.atananKonum || '';
+
+            let veriObj = { 
+                baslikMetni: ilan.satici_adsoyad || 'Ben', 
+                botIsmi: ilan.satici_adsoyad || 'Ben', 
+                varlikIsmi: ilan.ilan_tipi, 
+                satisBedeli, 
+                uniqueId, 
+                inputId, 
+                vadeInputId, 
+                arsaMi, 
+                atananKonum: konum, 
+                tipKyn: 'oyuncu' 
+            };
+
+            if (ilan.ilan_tipi.toLowerCase().includes('arsa')) {
+                oyuncuArsaListesi.push(veriObj);
+            } else {
+                oyuncuMulkListesi.push(veriObj);
+            }
         });
     }
 
@@ -3355,11 +3395,19 @@ function ilanlariGuncelle() {
         }
     };
 
+    // Oyuncu mülk ilanları
+    oyuncuMulkListesi.forEach(item => {
+        let kutu = kartHtmlUret(item.baslikMetni, item.botIsmi, item.varlikIsmi, item.satisBedeli, item.uniqueId, item.inputId, item.vadeInputId, item.arsaMi, item.atananKonum, item.tipKyn);
+        emlakIcerikDiv.appendChild(kutu);
+    });
+
+    // Bot mülk ilanları
     botMulkListesi.forEach(item => {
         let kutu = kartHtmlUret(item.bot.isim, item.bot.isim, item.varlik.isim, item.satisBedeli, item.uniqueId, item.inputId, item.vadeInputId, item.arsaMi, item.varlik.atananKonum, 'bot');
         emlakIcerikDiv.appendChild(kutu);
     });
 
+    // Kamu mülk ilanları
     kamuMulkListesi.forEach(item => {
         let kutu = kartHtmlUret('Kamu Satışı', '', item.urun.isim, item.satisBedeli, null, item.inputId, item.vadeInputId, item.arsaMi, item.kamuKonumu, 'kamu');
         emlakIcerikDiv.appendChild(kutu);
@@ -3390,11 +3438,19 @@ function ilanlariGuncelle() {
         }
     };
 
+    // Oyuncu arsa ilanları
+    oyuncuArsaListesi.forEach(item => {
+        let kutu = kartHtmlUret(item.baslikMetni, item.botIsmi, item.varlikIsmi, item.satisBedeli, item.uniqueId, item.inputId, item.vadeInputId, item.arsaMi, item.atananKonum, item.tipKyn);
+        arsaIcerikDiv.appendChild(kutu);
+    });
+
+    // Bot arsa ilanları
     botArsaListesi.forEach(item => {
         let kutu = kartHtmlUret(item.bot.isim, item.bot.isim, item.varlik.isim, item.satisBedeli, item.uniqueId, item.inputId, item.vadeInputId, item.arsaMi, item.varlik.atananKonum, 'bot');
         arsaIcerikDiv.appendChild(kutu);
     });
 
+    // Kamu arsa ilanları
     kamuArsaListesi.forEach(item => {
         let kutu = kartHtmlUret('Kamu Satışı', '', item.urun.isim, item.satisBedeli, null, item.inputId, item.vadeInputId, item.arsaMi, item.kamuKonumu, 'kamu');
         arsaIcerikDiv.appendChild(kutu);
