@@ -178,6 +178,30 @@ app.post('/api/ilan-sil', (req, res) => {
     }
 });
 
+app.post('/api/ilan-guncelle', (req, res) => {
+    if (!req.session || !req.session.kullanici) {
+        return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı!" });
+    }
+
+    const { id, fiyat, detaylar } = req.body;
+    try {
+        const info = db.prepare(`UPDATE ilanlar SET fiyat = ?, detaylar = ? WHERE id = ? AND kullanici_id = ?`).run(
+            fiyat, 
+            JSON.stringify(detaylar || {}), 
+            id, 
+            req.session.kullanici.id
+        );
+
+        if (info.changes === 0) {
+            return res.status(403).json({ basari: false, mesaj: "Bu ilanı güncelleme yetkiniz yok veya ilan bulunamadı." });
+        }
+
+        res.json({ basari: true, mesaj: "İlan başarıyla güncellendi." });
+    } catch (err) {
+        res.status(500).json({ basari: false, mesaj: err.message });
+    }
+});
+
 // 🌟 Ayar Okuma ve Güncelleme Rotaları
 app.get('/api/oyun-ayarlari', (req, res) => {
     try {
