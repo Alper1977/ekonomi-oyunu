@@ -3832,14 +3832,25 @@ function ilanaCikar(id) {
     
     v.durum = 'ilan-aktif';
     v.ilanSahibi = 'ben'; 
-    v.ilanZamanKaydi = Date.now(); // ⏱️ Zamanı direkt varlığın içine kaydediyoruz
+    v.ilanZamanKaydi = Date.now();
 
-    // 🌟 ARSA İSE İLANA ÇIKARILDIĞINDA YENİ BİR BÖLGE ATANSIN:
     if (v.isim && v.isim.toLowerCase().includes('arsası')) {
-        v.atananKonum = null; // Eski konumunu sıfırlıyoruz ki her ilana çıkışta yeni bölge alsın
+        v.atananKonum = null;
         if (typeof arsaKonumunuAl === 'function') {
-            v.atananKonum = arsaKonumunuAl(v); // Yeni ve farklı bir bölge üretiyoruz
+            v.atananKonum = arsaKonumunuAl(v);
         }
+    }
+
+    if (typeof state.ilanlar === 'undefined') state.ilanlar = [];
+    if (!state.ilanlar.some(i => i.id === v.id)) {
+        let satisFiyati = v.bedel || (typeof satisFiyatlari !== 'undefined' && satisFiyatlari[v.isim] ? satisFiyatlari[v.isim] : 2000000);
+        state.ilanlar.push({
+            id: v.id,
+            satici_adsoyad: (typeof aktifKullaniciAdi !== 'undefined' ? aktifKullaniciAdi : 'Ben'),
+            ilan_tipi: v.isim,
+            fiyat: satisFiyati,
+            detaylar: { atananKonum: v.atananKonum || '' }
+        });
     }
 
     guncelle(); 
@@ -3864,6 +3875,10 @@ function vazgec(id) {
         }
     }
 
+    if (typeof state.ilanlar !== 'undefined' && Array.isArray(state.ilanlar)) {
+        state.ilanlar = state.ilanlar.filter(i => i.id !== v.id);
+    }
+
     let modalOverlay = document.getElementById('modal-overlay');
     if (modalOverlay) {
         modalOverlay.style.display = 'none';
@@ -3871,11 +3886,14 @@ function vazgec(id) {
 
     guncelle();
 
+    if (typeof ilanlariGuncelle === 'function') {
+        ilanlariGuncelle();
+    }
+
     if (typeof portfoyuSunucuyaKaydet === 'function') {
         portfoyuSunucuyaKaydet(state);
     }
 }
-
 async function siralamayiGuncelle() {
     let listeKapsayici = document.getElementById('siralama-listesi');
     if (!listeKapsayici) return;
