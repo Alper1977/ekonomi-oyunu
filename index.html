@@ -3198,7 +3198,6 @@ async function ilanlariGuncelle() {
     let kapsayici = document.getElementById('ilanlar-kapsayici');
     if (!kapsayici) return;
 
-    // 1️⃣ Faiz oranını güncelle
     let ilanFaizSpan = document.getElementById('yazi-ilan-faiz');
     if (ilanFaizSpan) {
         let guncelFaiz = (typeof faizOranlari !== 'undefined' && faizOranlari.yatirimKredisiYuzde) 
@@ -3207,7 +3206,6 @@ async function ilanlariGuncelle() {
         ilanFaizSpan.innerText = guncelFaiz;
     }
 
-    // Kullanıcı input veya select içindeyse ekranın zıplamasını / inputun silinmesini engelle
     let activeEl = document.activeElement;
     if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'SELECT')) {
         if (activeEl.id && (activeEl.id.includes('bot-') || activeEl.id.includes('kamu-') || activeEl.id.includes('gercek-'))) {
@@ -3220,7 +3218,6 @@ async function ilanlariGuncelle() {
 
     kapsayici.innerHTML = '';
 
-    // Yardımcı HTML oluşturucu fonksiyon
     function kartHtmlUret(baslikMetni, botIsmi, varlikIsmi, satisBedeli, uniqueId, inputId, vadeInputId, arsaMi, atananKonum, tipKyn) {
         let goruntuleBtnHTML = arsaMi ? `<button onclick="arsaKonumGoster('${varlikIsmi}', '${atananKonum}')" style="background:#3498db; color:#fff; border:none; padding:4px 8px; border-radius:4px; font-weight:bold; font-size:10px; cursor:pointer; width:100%; margin-bottom:6px;">GÖRÜNTÜLE</button>` : '';
         
@@ -3278,13 +3275,12 @@ async function ilanlariGuncelle() {
         console.error("Gerçek ilanlar alınamadı:", e);
     }
 
-    // --- 1️⃣ LİSTELERİ HAZIRLA ---
     let botMulkListesi = [];
     let botArsaListesi = [];
     let gercekMulkListesi = [];
     let gercekArsaListesi = [];
 
-    // Gerçek Üye İlanlarını Dağıt
+    // Gerçek Üye İlanlarını Dağıt ve Kontrol Et
     gercekIlanListesi.forEach(ilan => {
         let satisBedeli = ilan.satis_bedeli;
         let uniqueId = ilan.id; 
@@ -3294,7 +3290,13 @@ async function ilanlariGuncelle() {
         let haritalanabilirMulkler = ['arsası', 'otel', 'fabrika', 'hastane', 'okul', 'avm', 'hipermarket', 'konut'];
         let arsaMi = haritalanabilirMulkler.some(tur => ilan.varlik_adi.toLowerCase().includes(tur));
 
-        let veriObj = { ilan, satisBedeli, uniqueId, inputId, vadeInputId, arsaMi };
+        // Eğer konum atanmamışsa otomatik konum üret
+        let atananKonum = ilan.atanan_konum;
+        if (arsaMi && (!atananKonum || atananKonum === 'Merkezi Konum')) {
+            atananKonum = arsaKonumunuAl ? arsaKonumunuAl(ilan.varlik_adi) : 'Ankara / Çankaya';
+        }
+
+        let veriObj = { ilan, satisBedeli, uniqueId, inputId, vadeInputId, arsaMi, atananKonum };
 
         if (ilan.varlik_adi.toLowerCase().includes('arsa')) {
             gercekArsaListesi.push(veriObj);
@@ -3303,7 +3305,6 @@ async function ilanlariGuncelle() {
         }
     });
 
-    // Bot İlanlarını Dağıt
     if (typeof botlar !== 'undefined' && Array.isArray(botlar)) {
         botlar.forEach(bot => {
             if (!bot.varliklar || !Array.isArray(bot.varliklar)) return;
@@ -3353,7 +3354,6 @@ async function ilanlariGuncelle() {
     let kamuMulkListesi = [];
     let kamuArsaListesi = [];
 
-    // DÜZELTME: Orijinal koddaki hatalı 'kamuUrunleriforEachSafe' yerine standart .forEach kullanıldı
     kamuUrunleri.forEach((urun) => {
         let satisBedeli = (typeof satisFiyatlari !== 'undefined' && satisFiyatlari && satisFiyatlari[urun.isim]) ? satisFiyatlari[urun.isim] : urun.varsayilanFiyat;
         let slug = urun.isim.toLowerCase().replace(/ı/g, 'i').replace(/\s+/g, '-');
@@ -3373,7 +3373,6 @@ async function ilanlariGuncelle() {
         }
     });
 
-    // --- 2️⃣ EMLAK İLANLARI (AKORDEON) ---
     let emlakBaslikDiv = document.createElement('div');
     emlakBaslikDiv.style.cssText = "background: #27ae60; color: #fff; padding: 10px 15px; border-radius: 6px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 15px; margin-bottom: 10px; user-select: none;";
     emlakBaslikDiv.innerHTML = `<span>🏢 Emlak İlanları</span> <span id="emlak-ok" style="font-size: 14px;">${eskiEmlakDurum === 'flex' ? '▼' : '▶'}</span>`;
@@ -3394,19 +3393,17 @@ async function ilanlariGuncelle() {
         }
     };
 
-    // Önce Gerçek Üye İlanlarını Bas
+    // Gerçek Üye İlanlarını Emlak Bölümüne Ekle
     gercekMulkListesi.forEach(item => {
-        let kutu = kartHtmlUret(item.ilan.satici_adi, '', item.ilan.varlik_adi, item.satisBedeli, item.uniqueId, item.inputId, item.vadeInputId, item.arsaMi, item.ilan.atanan_konum, 'gercek');
+        let kutu = kartHtmlUret(item.ilan.satici_adi, '', item.ilan.varlik_adi, item.satisBedeli, item.uniqueId, item.inputId, item.vadeInputId, item.arsaMi, item.atananKonum, 'gercek');
         emlakIcerikDiv.appendChild(kutu);
     });
 
-    // Sonra Bot İlanları
     botMulkListesi.forEach(item => {
         let kutu = kartHtmlUret(item.bot.isim, item.bot.isim, item.varlik.isim, item.satisBedeli, item.uniqueId, item.inputId, item.vadeInputId, item.arsaMi, item.varlik.atananKonum, 'bot');
         emlakIcerikDiv.appendChild(kutu);
     });
 
-    // Sonra Kamu Satışları
     kamuMulkListesi.forEach(item => {
         let kutu = kartHtmlUret('Kamu Satışı', '', item.urun.isim, item.satisBedeli, null, item.inputId, item.vadeInputId, item.arsaMi, item.kamuKonumu, 'kamu');
         emlakIcerikDiv.appendChild(kutu);
@@ -3415,7 +3412,6 @@ async function ilanlariGuncelle() {
     kapsayici.appendChild(emlakBaslikDiv);
     kapsayici.appendChild(emlakIcerikDiv);
 
-    // --- 3️⃣ ARSA İLANLARI (AKORDEON) ---
     let arsaBaslikDiv = document.createElement('div');
     arsaBaslikDiv.style.cssText = "background: #27ae60; color: #fff; padding: 10px 15px; border-radius: 6px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 15px; margin-bottom: 10px; user-select: none;";
     arsaBaslikDiv.innerHTML = `<span>🌳 Arsa İlanları</span> <span id="arsa-ok" style="font-size: 14px;">${eskiArsaDurum === 'flex' ? '▼' : '▶'}</span>`;
@@ -3436,19 +3432,17 @@ async function ilanlariGuncelle() {
         }
     };
 
-    // Gerçek Üye Arsa İlanları
+    // Gerçek Üye Arsa İlanlarını Arsa Bölümüne Ekle
     gercekArsaListesi.forEach(item => {
-        let kutu = kartHtmlUret(item.ilan.satici_adi, '', item.ilan.varlik_adi, item.satisBedeli, item.uniqueId, item.inputId, item.vadeInputId, item.arsaMi, item.ilan.atanan_konum, 'gercek');
+        let kutu = kartHtmlUret(item.ilan.satici_adi, '', item.ilan.varlik_adi, item.satisBedeli, item.uniqueId, item.inputId, item.vadeInputId, item.arsaMi, item.atananKonum, 'gercek');
         arsaIcerikDiv.appendChild(kutu);
     });
 
-    // Bot Arsa İlanları
     botArsaListesi.forEach(item => {
         let kutu = kartHtmlUret(item.bot.isim, item.bot.isim, item.varlik.isim, item.satisBedeli, item.uniqueId, item.inputId, item.vadeInputId, item.arsaMi, item.varlik.atananKonum, 'bot');
         arsaIcerikDiv.appendChild(kutu);
     });
 
-    // Kamu Arsa Satışları
     kamuArsaListesi.forEach(item => {
         let kutu = kartHtmlUret('Kamu Satışı', '', item.urun.isim, item.satisBedeli, null, item.inputId, item.vadeInputId, item.arsaMi, item.kamuKonumu, 'kamu');
         arsaIcerikDiv.appendChild(kutu);
