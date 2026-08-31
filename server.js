@@ -134,16 +134,38 @@ db.exec(`
 `);
 
 app.post('/api/ilan-ver', (req, res) => {
-   if (!req.session || !req.session.kullanici) {
-    return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı!" }); // ✅ Doğru
-}
+    if (!req.session || !req.session.kullanici) {
+        return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı!" });
+    }
 
     const userId = req.session.kullanici.id;
     const userAd = req.session.kullanici.adsoyad;
     const { varlikAdi, satisBedeli, uniqueId, atananKonum } = req.body;
 
     try {
-        // İlanı veritabanındaki ortak ilanlar tablosuna ekle
+        // 1. Kullanıcının güncel portföyünü veritabanından çek
+        const kullanici = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(userId);
+        if (!kullanici) {
+            return res.status(404).json({ basari: false, mesaj: "Kullanıcı bulunamadı." });
+        }
+
+        let portfoy = JSON.parse(kullanici.portfoy);
+
+        // 2. Varlığı kullanıcının portföyünde bul ve durumunu 'ilan-aktif' yap
+        let varlik = portfoy.varliklar.find(v => String(v.id) === String(uniqueId));
+        if (!varlik) {
+            return res.status(400).json({ basari: false, mesaj: "İlana çıkarılacak mülk portföyünüzde bulunamadı!" });
+        }
+
+        varlik.durum = 'ilan-aktif';
+        varlik.ilanSahibi = 'ben';
+        varlik.ilanZamanKaydi = Date.now();
+        if (atananKonum) varlik.atananKonum = atananKonum;
+
+        // 3. Kullanıcının portföyünü veritabanında güncelle
+        db.prepare(`UPDATE kullanicilar SET portfoy = ? WHERE id = ?`).run(JSON.stringify(portfoy), userId);
+
+        // 4. Ortak ilanlar tablosuna kaydı at (Diğer kullanıcılar görebilsin)
         db.prepare(`
             INSERT INTO ilanlar (satici_id, satici_adi, varlik_adi, satis_bedeli, unique_id, atanan_konum) 
             VALUES (?, ?, ?, ?, ?, ?)
@@ -155,7 +177,6 @@ app.post('/api/ilan-ver', (req, res) => {
         res.status(500).json({ basari: false, mesaj: "İlan verilirken hata oluştu." });
     }
 });
-
 // 2. Tüm Aktif İlanları Çekme Rotası (Botlar, Kamu ve Gerçek Üyeler)
 app.get('/api/ilanlari-getir', (req, res) => {
     try {
