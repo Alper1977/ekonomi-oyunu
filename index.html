@@ -3067,7 +3067,7 @@ let tList = document.getElementById('musteri-talepleri-listesi');
         faizBaslikElementi.innerText = `Yatırım Kredisi (Faiz Oranı: %${yuzdeDegeri})`;
     }
 
-    ilanlariGuncelle();
+    
     await zenginlerListesiniGuncelle();
 
    if (typeof portfoyuSunucuyaKaydet === 'function') {
@@ -3896,7 +3896,7 @@ function ilaniKesinSatinAl(botIsmi, varlikIsmi, fiyat, ilanId) {
     if (typeof portfoyuSunucuyaKaydet === 'function') portfoyuSunucuyaKaydet(state);
 }
 
-async function ilanaCikar(id) { 
+async function ilanaCikar(id) {  
     let v = state.varliklar.find(x => x.id == id);
     if (!v) return;
     
@@ -3904,30 +3904,19 @@ async function ilanaCikar(id) {
     let satisBedeli = (typeof satisFiyatlari !== 'undefined' && satisFiyatlari && satisFiyatlari[v.isim]) ? satisFiyatlari[v.isim] : 2000000;
 
     v.durum = 'ilan-aktif';
-    v.ilanSahibi = 'ben'; 
-    v.ilanZamanKaydi = Date.now(); // ⏱️ Zamanı direkt varlığın içine kaydediyoruz
+    v.ilanSahibi = 'ben';  
+    v.ilanZamanKaydi = Date.now(); 
 
-    // 🌟 ARSA İSE İLANA ÇIKARILDIĞINDA YENİ BİR BÖLGE ATANSIN:
     if (v.isim && v.isim.toLowerCase().includes('arsası')) {
-        v.atananKonum = null; 
+        v.atananKonum = null;  
         if (typeof arsaKonumunuAl === 'function') {
-            v.atananKonum = arsaKonumunuAl(v); 
+            v.atananKonum = arsaKonumunuAl(v);  
         }
     }
 
-    guncelle(); 
-
-    if (typeof ilanlariGuncelle === 'function') {
-        ilanlariGuncelle();
-    }
-
-    if (typeof portfoyuSunucuyaKaydet === 'function') {
-        portfoyuSunucuyaKaydet(state);
-    }
-
-    // 🌟 İLANI VERİTABANINDAKİ ORTAK PAZARA GÖNDER (Diğer üyeler görsün!)
+    // 🌟 1. ÖNCE İLANI VERİTABANINA GÖNDER VE KAYDEDİLMESİNİ BEKLE (await)
     try {
-        await fetch('/api/ilan-ver', {
+        let res = await fetch('/api/ilan-ver', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -3937,8 +3926,26 @@ async function ilanaCikar(id) {
                 atananKonum: v.atananKonum
             })
         });
+        let data = await res.json();
+        if (!data.basari) {
+            alert("İlan verilemedi: " + (data.mesaj || "Bilinmeyen hata"));
+            return;
+        }
     } catch (err) {
         console.error("İlan sunucuya kaydedilemedi:", err);
+        alert("Bağlantı hatası oluştu!");
+        return;
+    }
+
+    // 🌟 2. SUNUCU KAYDI BAŞARIYLA BİTTİKTEN SONRA EKRANI GÜNCELLE
+    guncelle();  
+
+    if (typeof ilanlariGuncelle === 'function') {
+        ilanlariGuncelle();
+    }
+
+    if (typeof portfoyuSunucuyaKaydet === 'function') {
+        portfoyuSunucuyaKaydet(state);
     }
 }
 async function vazgec(id) {
