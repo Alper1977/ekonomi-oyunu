@@ -133,6 +133,29 @@ db.exec(`
     )
 `);
 
+app.post('/api/ilan-ver', (req, res) => {
+    if (!req.session || !req.session.kullanici) {
+        return.status(401).json({ basari: false, mesaj: "Oturum bulunamadı!" });
+    }
+
+    const userId = req.session.kullanici.id;
+    const userAd = req.session.kullanici.adsoyad;
+    const { varlikAdi, satisBedeli, uniqueId, atananKonum } = req.body;
+
+    try {
+        // İlanı veritabanındaki ortak ilanlar tablosuna ekle
+        db.prepare(`
+            INSERT INTO ilanlar (satici_id, satici_adi, varlik_adi, satis_bedeli, unique_id, atanan_konum) 
+            VALUES (?, ?, ?, ?, ?, ?)
+        `).run(userId, userAd, varlikAdi, satisBedeli, uniqueId, atananKonum || "Merkezi Konum");
+
+        res.json({ basari: true, mesaj: "İlan başarıyla yayına alındı!" });
+    } catch (err) {
+        console.error("İlan verme hatası:", err.message);
+        res.status(500).json({ basari: false, mesaj: "İlan verilirken hata oluştu." });
+    }
+});
+
 // 2. Tüm Aktif İlanları Çekme Rotası (Botlar, Kamu ve Gerçek Üyeler)
 app.get('/api/ilanlari-getir', (req, res) => {
     try {
