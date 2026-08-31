@@ -3190,11 +3190,11 @@ function yatirimlariGuncelle() {
 }
 
 
-function ilanlariGuncelle() {
+async function ilanlariGuncelle() {
     let kapsayici = document.getElementById('ilanlar-kapsayici');
     if (!kapsayici) return;
 
-    // 1️⃣ Faiz oranını ÖNCE güncelleyelim ki inputa odaklanılsa bile yazı uçmasın
+    // Faiz oranını ÖNCE güncelleyelim ki inputa odaklanılsa bile yazı uçmasın
     let ilanFaizSpan = document.getElementById('yazi-ilan-faiz');
     if (ilanFaizSpan) {
         let guncelFaiz = (typeof faizOranlari !== 'undefined' && faizOranlari.yatirimKredisiYuzde) 
@@ -3203,7 +3203,7 @@ function ilanlariGuncelle() {
         ilanFaizSpan.innerText = guncelFaiz;
     }
 
-    // 2️⃣ Şimdi aktif input kontrolünü yapabiliriz
+    // Aktif input kontrolü
     let activeEl = document.activeElement;
     if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'SELECT')) {
         if (activeEl.id && (activeEl.id.includes('bot-') || activeEl.id.includes('kamu-') || activeEl.id.includes('oyuncu-'))) {
@@ -3211,7 +3211,7 @@ function ilanlariGuncelle() {
         }
     }
 
-    // Açık/kapalı durumlarını hafızada tutalım (sayfa yenilendiğinde kapanmasın)
+    // Açık/kapalı durumlarını hafızada tutalım
     let eskiEmlakDurum = document.getElementById('emlak-ilanlari-icerik')?.style.display || 'none';
     let eskiArsaDurum = document.getElementById('arsa-ilanlari-icerik')?.style.display || 'none';
 
@@ -3275,7 +3275,7 @@ function ilanlariGuncelle() {
         return itemBox;
     }
 
-    // --- 1️⃣ LİSTELERİ HAZIRLA ---
+    // --- LİSTELERİ HAZIRLA ---
     let botMulkListesi = [];
     let botArsaListesi = [];
 
@@ -3309,39 +3309,47 @@ function ilanlariGuncelle() {
         });
     }
 
+    // 🌟 Sunucudan gelen ilanları çekelim
     let oyuncuMulkListesi = [];
     let oyuncuArsaListesi = [];
 
-    if (typeof state !== 'undefined' && state.ilanlar && Array.isArray(state.ilanlar)) {
-        state.ilanlar.forEach(ilan => {
-            let satisBedeli = ilan.fiyat;
-            let uniqueId = ilan.id;
-            let inputId = `in-kredi-oyuncu-${uniqueId}`;
-            let vadeInputId = `vade-kredi-oyuncu-${uniqueId}`;
+    try {
+        let response = await fetch('/api/ilanlar');
+        let data = await response.json();
+        
+        if (data.basari && Array.isArray(data.ilanlar)) {
+            data.ilanlar.forEach(ilan => {
+                let satisBedeli = ilan.fiyat;
+                let uniqueId = ilan.id;
+                let inputId = `in-kredi-oyuncu-${uniqueId}`;
+                let vadeInputId = `vade-kredi-oyuncu-${uniqueId}`;
 
-            let haritalanabilirMulkler = ['arsası', 'otel', 'fabrika', 'hastane', 'okul', 'avm', 'hipermarket', 'konut'];
-            let arsaMi = haritalanabilirMulkler.some(tur => ilan.ilan_tipi.toLowerCase().includes(tur));
-            let konum = ilan.detaylar?.atananKonum || '';
+                let haritalanabilirMulkler = ['arsası', 'otel', 'fabrika', 'hastane', 'okul', 'avm', 'hipermarket', 'konut'];
+                let arsaMi = haritalanabilirMulkler.some(tur => ilan.ilan_tipi.toLowerCase().includes(tur));
+                let konum = ilan.detaylar?.atananKonum || '';
 
-            let veriObj = { 
-                baslikMetni: ilan.satici_adsoyad || 'Ben', 
-                botIsmi: ilan.satici_adsoyad || 'Ben', 
-                varlikIsmi: ilan.ilan_tipi, 
-                satisBedeli, 
-                uniqueId, 
-                inputId, 
-                vadeInputId, 
-                arsaMi, 
-                atananKonum: konum, 
-                tipKyn: 'oyuncu' 
-            };
+                let veriObj = { 
+                    baslikMetni: ilan.satici_adsoyad || 'Ben', 
+                    botIsmi: ilan.satici_adsoyad || 'Ben', 
+                    varlikIsmi: ilan.ilan_tipi, 
+                    satisBedeli, 
+                    uniqueId, 
+                    inputId, 
+                    vadeInputId, 
+                    arsaMi, 
+                    atananKonum: konum, 
+                    tipKyn: 'oyuncu' 
+                };
 
-            if (ilan.ilan_tipi.toLowerCase().includes('arsa')) {
-                oyuncuArsaListesi.push(veriObj);
-            } else {
-                oyuncuMulkListesi.push(veriObj);
-            }
-        });
+                if (ilan.ilan_tipi.toLowerCase().includes('arsa')) {
+                    oyuncuArsaListesi.push(veriObj);
+                } else {
+                    oyuncuMulkListesi.push(veriObj);
+                }
+            });
+        }
+    } catch (e) {
+        console.error("Sunucu ilanları çekilemedi:", e);
     }
 
     let kamuUrunleri = [
@@ -3383,8 +3391,7 @@ function ilanlariGuncelle() {
         }
     });
 
-
-    // --- 2️⃣ EMLAK İLANLARI (AKORDEON) ---
+    // --- EMLAK İLANLARI (AKORDEON) ---
     let emlakBaslikDiv = document.createElement('div');
     emlakBaslikDiv.style.cssText = "background: #27ae60; color: #fff; padding: 10px 15px; border-radius: 6px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 15px; margin-bottom: 10px; user-select: none;";
     emlakBaslikDiv.innerHTML = `<span>🏢 Emlak İlanları</span> <span id="emlak-ok" style="font-size: 14px;">${eskiEmlakDurum === 'flex' ? '▼' : '▶'}</span>`;
@@ -3423,8 +3430,7 @@ function ilanlariGuncelle() {
     kapsayici.appendChild(emlakBaslikDiv);
     kapsayici.appendChild(emlakIcerikDiv);
 
-
-    // --- 3️⃣ ARSA İLANLARI (AKORDEON) ---
+    // --- ARSA İLANLARI (AKORDEON) ---
     let arsaBaslikDiv = document.createElement('div');
     arsaBaslikDiv.style.cssText = "background: #27ae60; color: #fff; padding: 10px 15px; border-radius: 6px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 15px; margin-bottom: 10px; user-select: none;";
     arsaBaslikDiv.innerHTML = `<span>🌳 Arsa İlanları</span> <span id="arsa-ok" style="font-size: 14px;">${eskiArsaDurum === 'flex' ? '▼' : '▶'}</span>`;
