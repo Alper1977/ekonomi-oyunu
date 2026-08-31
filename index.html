@@ -3444,25 +3444,27 @@ function kamuUrunleriforEachSafe(arr, callback) {
     }
 }
 
-
 async function ilanlariYukle() {
     try {
         let response = await fetch('/api/ilanlar', { credentials: 'include' });
         let sonuc = await response.json();
         
         if (sonuc.basari) {
-            if (typeof state !== 'undefined') {
-                state.ilanlar = sonuc.ilanlar;
+            // Sunucudan gelen ilanları oyunun state nesnesine doğrudan aktarıyoruz
+            if (typeof state === 'undefined') {
+                window.state = {};
             }
-            // Senin kendi arayüz fonksiyonun olan ilanlariGuncelle'yi burada tetikliyoruz
-            if (typeof ilanlariGuncelle === 'function') {
-                ilanlariGuncelle();
+            state.ilanlar = sonuc.ilanlar;
+
+            // Listeyi güncelleyen fonksiyonu tetikle
+            if (typeof ilanlarGuncelle === 'function') {
+                ilanlarGuncelle();
             }
         }
     } catch (err) {
         console.error("İlanlar yüklenirken hata oluştu:", err);
     }
-}    
+} 
 
 async function yeniIlanOlustur(ilanTipi, detaylar, fiyat) {
     try {
