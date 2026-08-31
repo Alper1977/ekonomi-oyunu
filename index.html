@@ -1362,12 +1362,13 @@ async function sistemeGirisYap() {
                 }
             });
 
-            state.talepler = Array.isArray(gelenPortfoy.talepler) ? gelenPortfoy.talepler : [];
-            
-            if (!state.talepler.some(t => t.tur === 'Bayi' || t.isim === 'Bayi')) {
-                state.talepler.push({ tur: 'Bayi', isim: 'Bayi', bedel: 300000 });
-            }
-        }
+           state.talepler = Array.isArray(gelenPortfoy.talepler) ? gelenPortfoy.talepler : [];
+        
+        // 🌟 ARSALARI TALEPLERDEN KESİN OLARAK TEMİZLE
+        state.talepler = state.talepler.filter(t => {
+            let isimStr = (t.tur || t.isim || "").toLowerCase();
+            return !isimStr.includes('arsa') && !isimStr.includes('arsası');
+        });
 
         // Şirket başlıklarını güncelle
         if (sonuc.kullanici && sonuc.kullanici.adsoyad) {
