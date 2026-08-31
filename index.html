@@ -3522,6 +3522,41 @@ async function ilaniKesinSatinAl(ilanId) {
         console.error("İlan satın alma bağlantı hatası:", err);
     }
 }
+
+// Örnek: Varlığı satışa çıkarma fonksiyonunun içi
+async function varligiSatisaCikar(varlikId, fiyat) {
+    // 1. Önce oyun içi state'te varlığın durumunu ilan yapıyoruz
+    let varlik = state.varliklar.find(v => v.id === varlikId);
+    if (varlik) {
+        varlik.durum = 'ilan-aktif';
+        varlik.satisFiyat = fiyat;
+    }
+
+    // 2. 🌟 BURASI KRİTİK: Varlığı sunucudaki ilanlar tablosuna gönderiyoruz
+    try {
+        let response = await fetch('/api/ilan-ekle', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+                ilan_tipi: varlik.isim,
+                fiyat: fiyat,
+                detaylar: { atananKonum: varlik.atananKonum || '' }
+            })
+        });
+        let sonuc = await response.json();
+        if (sonuc.basari) {
+            console.log("İlan sunucuya başarıyla kaydedildi!");
+        }
+    } catch (err) {
+        console.error("İlan sunucuya kaydedilemedi:", err);
+    }
+
+    // 3. Listeyi ve portföyü güncelle
+    if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
+    if (typeof portfoyuSunucuyaKaydet === 'function') portfoyuSunucuyaKaydet(state);
+}    
+    
 function paraAl(id) {
     let input = document.getElementById(id);
     if (!input || !input.value) return 0;
