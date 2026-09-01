@@ -203,7 +203,9 @@ app.post('/api/ilan-guncelle', (req, res) => {
 });
 
 app.post('/api/ilan-satin-al', (req, res) => {
-    if (!req.session || !req.session.kullanici) {
+    // Oyuncu veya bot kontrolü (Oturum yoksa ama bot isteğiyse geçmesine izin ver)
+    const isBot = req.body.botKontrolu === true;
+    if (!isBot && (!req.session || !req.session.kullanici)) {
         return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı!" });
     }
 
@@ -215,15 +217,17 @@ app.post('/api/ilan-satin-al', (req, res) => {
     try {
         const ilan = db.prepare(`SELECT * FROM ilanlar WHERE id = ?`).get(ilanId);
         if (!ilan) {
-            return res.status(404).json({ basari: false, mesaj: "İlan bulunamadı veya zaten satın alınmış." });
+            return res.status(404).json({ basari: false, mesaj: "İlan bulunamadı veya zaten alınmış." });
         }
 
         const saticiId = ilan.kullanici_id; 
         const satilanMulkIsmi = ilan.ilan_tipi || ilan.isim || ilan.mulk_adi; 
 
+        // 1. İlanı tablodan sil
         db.prepare(`DELETE FROM ilanlar WHERE id = ?`).run(ilanId);
 
-        if (saticiId) {
+        // 2. Satıcının portföyünden bu mülkü bul ve uçur
+        if (saticiId && satilanMulkIsmi) {
             const satici = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(saticiId);
             if (satici && satici.portfoy) {
                 let saticiPortfoy;
@@ -232,12 +236,13 @@ app.post('/api/ilan-satin-al', (req, res) => {
                 } catch (e) {
                     saticiPortfoy = [];
                 }
-                
+
                 let varlikDizisi = Array.isArray(saticiPortfoy) ? saticiPortfoy : (saticiPortfoy.varliklar || []);
                 
                 let silindi = false;
                 varlikDizisi = varlikDizisi.filter(v => {
-                    if (!silindi && v.isim === satilanMulkIsmi && v.durum === 'ilan-aktif') {
+                    // Hem isme hem de aktif ilan durumuna bakarak doğru mülkü siliyoruz
+                    if (!silindi && (v.isim === satilanMulkIsmi || v.tur === satilanMulkIsmi) && (v.durum === 'ilan-aktif' || v.durum === 'sahip')) {
                         silindi = true;
                         return false; 
                     }
@@ -254,25 +259,12 @@ app.post('/api/ilan-satin-al', (req, res) => {
             }
         }
 
-        res.json({ basari: true, mesaj: "İlan başarıyla satın alındı." });
+        res.json({ basari: true, mesaj: "Satın alma ve temizlik başarılı." });
     } catch (err) {
-        console.error("İlan satın alma hatası:", err.message);
+        console.error("Satın alma hatası:", err.message);
         res.status(500).json({ basari: false, mesaj: err.message });
     }
 });
-// 🌟 Ayar Okuma ve Güncelleme Rotaları
-app.get('/api/oyun-ayarlari', (req, res) => {
-    try {
-        const row = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
-        if (!row) {
-            return res.status(500).json({ basari: false, mesaj: "Ayarlar okunamadı" });
-        }
-        res.json({ basari: true, ayarlar: JSON.parse(row.ayarlar) });
-    } catch (err) {
-        res.status(500).json({ basari: false, mesaj: err.message });
-    }
-});
-
 app.post('/api/admin/ayar-guncelle', (req, res) => {
     const { ayarlar, sureler } = req.body;
     if (!ayarlar) {
