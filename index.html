@@ -3784,11 +3784,8 @@ function baskasiSatinAl(varlikId, botIsmi, fiyat) {
 
     let ilanVarligiIndex = hedefBot.varliklar.findIndex(v => v.id == varlikId);
     if (ilanVarligiIndex === -1) {
-        // 🟢 İLAN ARTIK YOKSA VEYA SATILDIYSA: 
-        // 1. Önce kullanıcıya uyarıyı bas
         modalGoster("Bu ilan artık geçerli değil veya satılmış!");
         
-        // 2. Hemen arkasından ilanlar ekranını ve arayüzü tazele ki o ölü ilan ekrandan kaybolsun, yenisi gelebilsin
         if (typeof ilanlariGuncelle === 'function') {
             ilanlariGuncelle();
         }
@@ -3805,17 +3802,21 @@ function baskasiSatinAl(varlikId, botIsmi, fiyat) {
 
     hedefBot.varliklar.splice(ilanVarligiIndex, 1);
     
+    // Tanımsız değişken patlamasını önlemek için bilgileri satilanVarlik'ten alıyoruz:
+    let dogruIsim = satilanVarlik.isim;
+    let dogruKonum = satilanVarlik.atananKonum || (typeof arsaKonumunuAl === 'function' ? arsaKonumunuAl(satilanVarlik) : "Merkezi Konum");
+
     state.varliklar.push({
         id: Date.now() + Math.random(),
-        isim: varlikIsmi, // veya baskasiSatinAl fonksiyonunda satilanVarlik.isim
+        isim: dogruIsim, 
         durum: 'sahip',
-        talepAktif: true, // 🌟 İŞTE BU EKSİK! Bunu eklediğin an müşteri taleplerinde görünecek.
+        talepAktif: true, 
         bloke: false,
         krediID: null,
-        atananKonum: gelenKonum 
+        atananKonum: dogruKonum 
     });
 
-    modalGoster(`Tebrikler! ${botIsmi} kişisinden ${satilanVarlik.isim} varlığını ${fiyat.toLocaleString()} TL ödeyerek satın aldınız.`);
+    modalGoster(`Tebrikler! ${botIsmi} kişisinden ${dogruIsim} varlığını ${fiyat.toLocaleString()} TL ödeyerek satın aldınız.`);
     
     guncelle();
 
@@ -3827,8 +3828,6 @@ function baskasiSatinAl(varlikId, botIsmi, fiyat) {
         portfoyuSunucuyaKaydet(state);
     }
 }
-
-
 // Gerçek Oyuncu İlanı İçin Onay Penceresi
 function oyuncuIlaniSatinAlOnayla(saticiAdi, varlikIsmi, fiyat, ilanId) {
     let butonlar = `
