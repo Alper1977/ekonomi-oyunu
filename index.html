@@ -3301,7 +3301,7 @@ async function ilanlariGuncelle() {
                     </select>
                 </div>
                 <div class="button-row">
-                    <button class="btn-green" onclick="onayPenceresi('${varlikIsmi}', ${satisBedeli}, 'al')">NAKİT</button>
+                    <button class="btn-green" onclick="oyuncuIlaniSatinAlOnayla('${item.baslikMetni}', '${varlikIsmi}', ${satisBedeli}, ${uniqueId})">NAKİT</button>
                     <button class="btn-red" onclick="krediIslem('${inputId}', '${vadeInputId}', '${varlikIsmi}', ${satisBedeli}, 'ilan', ${uniqueId})">KREDİ</button>
                 </div>
             `;
@@ -3528,7 +3528,7 @@ function modalGoster(m, b = '<button onclick="document.getElementById(\'modal-ov
     document.getElementById('modal-overlay').style.display = 'flex';
 }
 
-function onayPenceresi(isim, bedel, tip) {    
+function onayPenceresi(isim, bedel, tip, ilanId) {    
     let gercekBedel = bedel;
     if (isim === 'Fabrika' && tip === 'yap') gercekBedel = 150000000; 
     let talepBul = state.talepler.find(t => t.isim === isim || t.tur === isim);
@@ -3536,8 +3536,10 @@ function onayPenceresi(isim, bedel, tip) {
         gercekBedel = talepBul.bedel; 
     }
 
+    let onayFonksiyonu = ilanId ? `oyuncuIlaniKesinSatinAl('${isim}', ${gercekBedel}, ${ilanId})` : `islemKesinOnayla('${isim}', ${gercekBedel}, '${tip}')`;
+
     let butonlar = `
-        <button class="btn-green" onclick="islemKesinOnayla('${isim}', ${gercekBedel}, '${tip}')">ONAYLA</button>
+        <button class="btn-green" onclick="${onayFonksiyonu}">ONAYLA</button>
         <button onclick="document.getElementById('modal-overlay').style.display='none'" style="background-color: #d9534f; color: white; margin-left: 10px;">VAZGEÇ</button>
     `;
     modalGoster(isim + " için " + Number(gercekBedel).toLocaleString() + " TL ödeyeceksiniz.", butonlar);    
@@ -3829,17 +3831,17 @@ function baskasiSatinAl(varlikId, botIsmi, fiyat) {
 }
 
 
-// 1️⃣ Önce Onay Penceresini Açan Fonksiyon
-function ilaniSatinAlOnayla(botIsmi, varlikIsmi, fiyat, ilanId) {
+// Gerçek Oyuncu İlanı İçin Onay Penceresi
+function oyuncuIlaniSatinAlOnayla(saticiAdi, varlikIsmi, fiyat, ilanId) {
     let butonlar = `
-        <button class="btn-green" onclick="ilaniKesinSatinAl('${botIsmi}', '${varlikIsmi}', ${fiyat}, ${ilanId})">ONAYLA</button>
+        <button class="btn-green" onclick="oyuncuIlaniKesinSatinAl('${saticiAdi}', '${varlikIsmi}', ${fiyat}, ${ilanId})">ONAYLA</button>
         <button onclick="document.getElementById('modal-overlay').style.display='none'" style="background-color: #d9534f; color: white; margin-left: 10px;">VAZGEÇ</button>
     `;
-    modalGoster(`${botIsmi} kişisinden ${varlikIsmi} varlığını ${Number(fiyat).toLocaleString()} TL ödeyerek satın almak istiyor musunuz?`, butonlar);
+    modalGoster(`${saticiAdi} kişisinden ${varlikIsmi} varlığını ${Number(fiyat).toLocaleString()} TL ödeyerek satın almak istiyor musunuz?`, butonlar);
 }
 
-// 2️⃣ Onay Verilince Çalışan Kesin Alım Fonksiyonu
-async function ilaniKesinSatinAl(botIsmi, varlikIsmi, fiyat, ilanId) {
+// Gerçek Oyuncu İlanı Kesin Satın Alma ve Sunucudan Silme
+async function oyuncuIlaniKesinSatinAl(saticiAdi, varlikIsmi, fiyat, ilanId) {
     let modalOverlay = document.getElementById('modal-overlay');
     if (modalOverlay) {
         modalOverlay.style.display = 'none';
@@ -3851,59 +3853,29 @@ async function ilaniKesinSatinAl(botIsmi, varlikIsmi, fiyat, ilanId) {
     }
     state.nakit -= fiyat;
 
-    let hedefBot = botlar.find(b => b.isim === botIsmi);
-    let alinanIlan = null; 
-
-    if (hedefBot && hedefBot.varliklar) {
-        hedefBot.nakit += fiyat;
-        
-        // Kesin eşleşme için Number dönüşümü ile arıyoruz
-        alinanIlan = hedefBot.varliklar.find(v => Number(v.id) === Number(ilanId));
-
-        if (!alinanIlan) {
-            alinanIlan = hedefBot.varliklar.find(v => v.isim === varlikIsmi && (v.durum === 'ilan-aktif' || v.durum === 'satildi-bekliyor'));
-        }
-
-        // 1. Botun envanterinden bu mülkü tamamen siliyoruz
-        if (alinanIlan && alinanIlan.id) {
-            hedefBot.varliklar = hedefBot.varliklar.filter(v => Number(v.id) !== Number(alinanIlan.id));
-        } else {
-            let silindiIndex = hedefBot.varliklar.findIndex(v => v.isim === varlikIsmi && (v.durum === 'ilan-aktif' || v.durum === 'satildi-bekliyor'));
-            if (silindiIndex !== -1) {
-                alinanIlan = hedefBot.varliklar[silindiIndex];
-                hedefBot.varliklar.splice(silindiIndex, 1);
-            }
-        }
-    }
-
-    // 2. Global ilanlar listesinden de bu ilanı uçuruyoruz
-    if (typeof state !== 'undefined' && state.ilanlar) {
-        state.ilanlar = state.ilanlar.filter(i => Number(i.id) !== Number(ilanId));
-    }
-    if (typeof window.ilanlar !== 'undefined' && Array.isArray(window.ilanlar)) {
-        window.ilanlar = window.ilanlar.filter(i => Number(i.id) !== Number(ilanId));
-    }
-
-    // 3. Sunucu tarafındaki ilan veritabanından da silinmesini sağlıyoruz
+    // Sunucudaki ilanlar veritabanından bu ilanı tamamen siliyoruz (Böylece herkesin ekranından kalkacak)
     try {
-        await fetch('/api/ilan-satin-al', {
+        let response = await fetch('/api/ilan-satin-al', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ilanId: ilanId })
         });
+        let data = await response.json();
+        if (!data.basari) {
+            console.error("İlan sunucudan silinemedi:", data.mesaj);
+        }
     } catch (err) {
-        console.error("İlan sunucudan silinemedi:", err);
+        console.error("İlan satın alma isteği başarısız:", err);
     }
 
     if (!state.varliklar) state.varliklar = [];
     
     let gelenKonum = "Merkezi Konum";
-    if (alinanIlan && alinanIlan.atananKonum) {
-        gelenKonum = alinanIlan.atananKonum;
-    } else if (typeof arsaKonumunuAl === 'function') {
+    if (typeof arsaKonumunuAl === 'function') {
         gelenKonum = arsaKonumunuAl(varlikIsmi);
     }
 
+    // Varlığı kendi envanterimize ekliyoruz
     state.varliklar.push({
         id: Date.now() + Math.random(),
         isim: varlikIsmi, 
@@ -3914,7 +3886,7 @@ async function ilaniKesinSatinAl(botIsmi, varlikIsmi, fiyat, ilanId) {
         atananKonum: gelenKonum 
     });
 
-    modalGoster(`Tebrikler! ${botIsmi} kişisinden ${varlikIsmi} varlığını ${Number(fiyat).toLocaleString()} TL ödeyerek satın aldınız.`);
+    modalGoster(`Tebrikler! ${saticiAdi} kişisinden ${varlikIsmi} varlığını ${Number(fiyat).toLocaleString()} TL ödeyerek satın aldınız.`);
 
     // Arayüzü tazele
     if (typeof guncelle === 'function') guncelle();
