@@ -254,7 +254,7 @@ app.post('/api/ilan-satin-al', (req, res) => {
                 db.prepare(`UPDATE kullanicilar SET portfoy = ? WHERE id = ?`).run(JSON.stringify(saticiPortfoy), saticiId);
             }
         }
-        }
+        
 
         res.json({ basari: true, mesaj: "İlan başarıyla satın alındı, sistemden kaldırıldı ve satıcının portföyünden silindi." });
     } catch (err) {
