@@ -17,7 +17,7 @@ app.get('/', (req, res) => {
 
 // Ana oyun veritabanı (better-sqlite3 senkron yapısı)
 const db = new Database('./database.db');
-console.log("SQLite veritabanına başarıyla bağlanıldı.");
+console.log("SQLite veritabanına başarıyla bağlanıldı."); 
 
 // Oturumları çakışmayı önlemek için ayrı bir veritabanında (sessions.db) saklıyoruz
 app.use(session({
