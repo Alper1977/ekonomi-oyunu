@@ -213,7 +213,6 @@ app.post('/api/ilan-satin-al', (req, res) => {
     }
 
     try {
-        // 1. Önce silinecek ilanı veritabanından bulalım ki satan kişinin ID'sine ve ilan bilgilerine ulaşalım
         const ilan = db.prepare(`SELECT * FROM ilanlar WHERE id = ?`).get(ilanId);
 
         if (!ilan) {
@@ -221,13 +220,10 @@ app.post('/api/ilan-satin-al', (req, res) => {
         }
 
         const saticiId = ilan.kullanici_id; 
-        // İlan tablosundaki sütun adının ne olabileceğine dair yedekli kontrol (ilan_tipi veya isim)
         const satilanMulkIsmi = ilan.ilan_tipi || ilan.isim || ilan.mulk_adi; 
 
-        // 2. İlanı veritabanından siliyoruz
         db.prepare(`DELETE FROM ilanlar WHERE id = ?`).run(ilanId);
 
-        // 3. Satan kişinin portföyünden bu mülkü güvenle çıkarıyoruz
         if (saticiId) {
             const satici = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(saticiId);
             if (satici && satici.portfoy) {
@@ -236,11 +232,10 @@ app.post('/api/ilan-satin-al', (req, res) => {
                 let varlikDizisi = Array.isArray(saticiPortfoy) ? saticiPortfoy : (saticiPortfoy.varliklar || []);
                 
                 let silindi = false;
-                // İsmi uyan ve durumu satışta olan sadece 1 tanesini portföyden uçuruyoruz
                 varlikDizisi = varlikDizisi.filter(v => {
-                    if (!silindi && v.isim === satilanMulkIsmi) {
+                    if (!silindi && v.isim === satilanMulkIsmi && v.durum === 'ilan-aktif') {
                         silindi = true;
-                        return false; // Bu mülkü sil
+                        return false; 
                     }
                     return true;
                 });
@@ -254,7 +249,6 @@ app.post('/api/ilan-satin-al', (req, res) => {
                 db.prepare(`UPDATE kullanicilar SET portfoy = ? WHERE id = ?`).run(JSON.stringify(saticiPortfoy), saticiId);
             }
         }
-        
 
         res.json({ basari: true, mesaj: "İlan başarıyla satın alındı, sistemden kaldırıldı ve satıcının portföyünden silindi." });
     } catch (err) {
