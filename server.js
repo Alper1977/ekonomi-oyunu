@@ -213,15 +213,39 @@ app.post('/api/ilan-satin-al', (req, res) => {
     }
 
     try {
-        // İlanı veritabanından tamamen siliyoruz ki diğer tüm oyunculardan da anında kalksın
-        const info = db.prepare(`DELETE FROM ilanlar WHERE id = ?`).run(ilanId);
+        // 1. Önce silinecek ilanı veritabanından bulalım ki satan kişinin ID'sine ve ilan bilgilerine ulaşalım
+        const ilan = db.prepare(`SELECT * FROM ilanlar WHERE id = ?`).get(ilanId);
 
-        if (info.changes === 0) {
+        if (!ilan) {
             return res.status(404).json({ basari: false, mesaj: "İlan bulunamadı veya zaten satın alınmış." });
         }
 
-        res.json({ basari: true, mesaj: "İlan başarıyla satın alındı ve sistemden kaldırıldı." });
+        const saticiId = ilan.kullanici_id; // İlanı veren oyuncunun ID'si
+        const satilanMulkIsmi = ilan.ilan_tipi; // Satılan mülkün adı
+
+        // 2. İlanı veritabanından siliyoruz
+        db.prepare(`DELETE FROM ilanlar WHERE id = ?`).run(ilanId);
+
+        // 3. Satan kişinin veritabanındaki portföyünü güncelleyelim (o mülkü portföyünden kaldıralım)
+        if (saticiId) {
+            const satici = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(saticiId);
+            if (satici && satici.portfoy) {
+                let saticiPortfoy = JSON.parse(satici.portfoy);
+                
+                // Eğer portföy içinde varlıklar dizisi varsa, satılan mülkü filtreleyip çıkaralım
+                if (saticiPortfoy.varliklar && Array.isArray(saticiPortfoy.varliklar)) {
+                    // Mülkü eşleştirirken uniqueId (ilanId ile tutuyorsa) veya ismine göre silebiliriz
+                    saticiPortfoy.varliklar = saticiPortfoy.varliklar.filter(v => v.id !== ilan.varlik_id && v.isim !== satilanMulkIsmi);
+                    
+                    // Güncellenmiş portföyü veritabanına geri kaydedelim
+                    db.prepare(`UPDATE kullanicilar SET portfoy = ? WHERE id = ?`).run(JSON.stringify(saticiPortfoy), saticiId);
+                }
+            }
+        }
+
+        res.json({ basari: true, mesaj: "İlan başarıyla satın alındı, sistemden kaldırıldı ve satıcının portföyünden silindi." });
     } catch (err) {
+        console.error("İlan satın alma hatası:", err.message);
         res.status(500).json({ basari: false, mesaj: err.message });
     }
 });
