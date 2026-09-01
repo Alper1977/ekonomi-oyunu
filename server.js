@@ -220,27 +220,40 @@ app.post('/api/ilan-satin-al', (req, res) => {
             return res.status(404).json({ basari: false, mesaj: "İlan bulunamadı veya zaten satın alınmış." });
         }
 
-        const saticiId = ilan.kullanici_id; // İlanı veren oyuncunun ID'si
-        const satilanMulkIsmi = ilan.ilan_tipi; // Satılan mülkün adı
+        const saticiId = ilan.kullanici_id; 
+        // İlan tablosundaki sütun adının ne olabileceğine dair yedekli kontrol (ilan_tipi veya isim)
+        const satilanMulkIsmi = ilan.ilan_tipi || ilan.isim || ilan.mulk_adi; 
 
         // 2. İlanı veritabanından siliyoruz
         db.prepare(`DELETE FROM ilanlar WHERE id = ?`).run(ilanId);
 
-        // 3. Satan kişinin veritabanındaki portföyünü güncelleyelim (o mülkü portföyünden kaldıralım)
+        // 3. Satan kişinin portföyünden bu mülkü güvenle çıkarıyoruz
         if (saticiId) {
             const satici = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(saticiId);
             if (satici && satici.portfoy) {
                 let saticiPortfoy = JSON.parse(satici.portfoy);
                 
-                // Eğer portföy içinde varlıklar dizisi varsa, satılan mülkü filtreleyip çıkaralım
-                if (saticiPortfoy.varliklar && Array.isArray(saticiPortfoy.varliklar)) {
-                    // Mülkü eşleştirirken uniqueId (ilanId ile tutuyorsa) veya ismine göre silebiliriz
-                    saticiPortfoy.varliklar = saticiPortfoy.varliklar.filter(v => v.id !== ilan.varlik_id && v.isim !== satilanMulkIsmi);
-                    
-                    // Güncellenmiş portföyü veritabanına geri kaydedelim
-                    db.prepare(`UPDATE kullanicilar SET portfoy = ? WHERE id = ?`).run(JSON.stringify(saticiPortfoy), saticiId);
+                let varlikDizisi = Array.isArray(saticiPortfoy) ? saticiPortfoy : (saticiPortfoy.varliklar || []);
+                
+                let silindi = false;
+                // İsmi uyan ve durumu satışta olan sadece 1 tanesini portföyden uçuruyoruz
+                varlikDizisi = varlikDizisi.filter(v => {
+                    if (!silindi && v.isim === satilanMulkIsmi) {
+                        silindi = true;
+                        return false; // Bu mülkü sil
+                    }
+                    return true;
+                });
+
+                if (Array.isArray(saticiPortfoy)) {
+                    saticiPortfoy = varlikDizisi;
+                } else {
+                    saticiPortfoy.varliklar = varlikDizisi;
                 }
+                
+                db.prepare(`UPDATE kullanicilar SET portfoy = ? WHERE id = ?`).run(JSON.stringify(saticiPortfoy), saticiId);
             }
+        }
         }
 
         res.json({ basari: true, mesaj: "İlan başarıyla satın alındı, sistemden kaldırıldı ve satıcının portföyünden silindi." });
