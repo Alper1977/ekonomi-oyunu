@@ -202,6 +202,30 @@ app.post('/api/ilan-guncelle', (req, res) => {
     }
 });
 
+app.post('/api/ilan-satin-al', (req, res) => {
+    if (!req.session || !req.session.kullanici) {
+        return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı!" });
+    }
+
+    const { ilanId } = req.body;
+    if (!ilanId) {
+        return res.status(400).json({ basari: false, mesaj: "İlan ID belirtilmedi!" });
+    }
+
+    try {
+        // İlanı veritabanından tamamen siliyoruz ki diğer tüm oyunculardan da anında kalksın
+        const info = db.prepare(`DELETE FROM ilanlar WHERE id = ?`).run(ilanId);
+
+        if (info.changes === 0) {
+            return res.status(404).json({ basari: false, mesaj: "İlan bulunamadı veya zaten satın alınmış." });
+        }
+
+        res.json({ basari: true, mesaj: "İlan başarıyla satın alındı ve sistemden kaldırıldı." });
+    } catch (err) {
+        res.status(500).json({ basari: false, mesaj: err.message });
+    }
+});
+
 // 🌟 Ayar Okuma ve Güncelleme Rotaları
 app.get('/api/oyun-ayarlari', (req, res) => {
     try {
