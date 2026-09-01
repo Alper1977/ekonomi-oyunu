@@ -214,7 +214,6 @@ app.post('/api/ilan-satin-al', (req, res) => {
 
     try {
         const ilan = db.prepare(`SELECT * FROM ilanlar WHERE id = ?`).get(ilanId);
-
         if (!ilan) {
             return res.status(404).json({ basari: false, mesaj: "İlan bulunamadı veya zaten satın alınmış." });
         }
@@ -227,7 +226,12 @@ app.post('/api/ilan-satin-al', (req, res) => {
         if (saticiId) {
             const satici = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(saticiId);
             if (satici && satici.portfoy) {
-                let saticiPortfoy = JSON.parse(satici.portfoy);
+                let saticiPortfoy;
+                try {
+                    saticiPortfoy = JSON.parse(satici.portfoy);
+                } catch (e) {
+                    saticiPortfoy = [];
+                }
                 
                 let varlikDizisi = Array.isArray(saticiPortfoy) ? saticiPortfoy : (saticiPortfoy.varliklar || []);
                 
@@ -250,13 +254,12 @@ app.post('/api/ilan-satin-al', (req, res) => {
             }
         }
 
-        res.json({ basari: true, mesaj: "İlan başarıyla satın alındı, sistemden kaldırıldı ve satıcının portföyünden silindi." });
+        res.json({ basari: true, mesaj: "İlan başarıyla satın alındı." });
     } catch (err) {
         console.error("İlan satın alma hatası:", err.message);
         res.status(500).json({ basari: false, mesaj: err.message });
     }
 });
-
 // 🌟 Ayar Okuma ve Güncelleme Rotaları
 app.get('/api/oyun-ayarlari', (req, res) => {
     try {
