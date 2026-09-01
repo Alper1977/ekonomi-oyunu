@@ -2938,7 +2938,7 @@ if (vList) {
     
     // Satılmış veya silinecek mülkleri filtreden tamamen eliyoruz ki listede görünmesinler
     let aktifVarliklar = state.varliklar.filter(v => v.durum !== 'silinecek' && v.durum !== 'satildi' && v.durum !== 'satildi-bekliyor');
-    
+     
     aktifVarliklar.forEach(v => {
         let blokeYazisi = v.bloke ? '<span style="color:#ff4444">(BLOKELİ)</span>' : '';
         
@@ -4420,22 +4420,34 @@ function changePage(p) {
     hedefSayfa.style.display = 'block';
     state.aktifSayfa = p;
 
-    // Sayfa açıldığında dinamik listeleri güncelle
-    if (typeof yatirimlariGuncelle === 'function') yatirimlariGuncelle();
-    if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
-    if (typeof musteriTalepleriniGuncelle === 'function') musteriTalepleriniGuncelle();
-    
-    // Eğer zenginler listesi açıldıysa direkt tetikle
-    if (p === 'page-liste' && typeof zenginlerListesiniGuncelle === 'function') {
-        zenginlerListesiniGuncelle();
-    }
+    // 🌟 İŞTE BURASI: Sayfa değiştirildiğinde sunucudan en güncel portföyü çekelim ki satılan mülkler anında düşsün!
+    fetch('/api/kullanici-bilgi', { credentials: 'include' })
+        .then(res => res.json())
+        .then(data => {
+            if (data.basari && data.kullanici && data.kullanici.portfoy) {
+                let gelenPortfoy = typeof data.kullanici.portfoy === 'string' ? JSON.parse(data.kullanici.portfoy) : data.kullanici.portfoy;
+                if (gelenPortfoy && gelenPortfoy.varliklar) {
+                    state.varliklar = gelenPortfoy.varliklar;
+                }
+            }
+        })
+        .catch(err => console.error("Portföy senkronizasyon hatası:", err))
+        .finally(() => {
+            // Sayfa açıldığında dinamik listeleri güncelle
+            if (typeof yatirimlariGuncelle === 'function') yatirimlariGuncelle();
+            if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
+            if (typeof musteriTalepleriniGuncelle === 'function') musteriTalepleriniGuncelle();
+            
+            if (p === 'page-liste' && typeof zenginlerListesiniGuncelle === 'function') {
+                zenginlerListesiniGuncelle();
+            }
 
-    // Eğer Mali Tablo açıldıysa grafiği tetikle
-    if (p === 'page-mali' && typeof maliGrafigiBaslat === 'function') {
-        setTimeout(maliGrafigiBaslat, 50);
-    }
-    
-    if (typeof guncelle === 'function') guncelle();
+            if (p === 'page-mali' && typeof maliGrafigiBaslat === 'function') {
+                setTimeout(maliGrafigiBaslat, 50);
+            }
+            
+            if (typeof guncelle === 'function') guncelle();
+        });
 }
 
 
