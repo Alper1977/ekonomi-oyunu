@@ -3839,7 +3839,7 @@ function oyuncuIlaniSatinAlOnayla(saticiAdi, varlikIsmi, fiyat, ilanId) {
 }
 
 // Gerçek Oyuncu İlanı Kesin Satın Alma ve Sunucudan Silme
-async function oyuncuIlaniKesinSatinAl(varlikIsmi, fiyat, ilanId) {
+async function oyuncuIlaniKesinSatinAl(saticiAdi, varlikIsmi, fiyat, ilanId) {
     let modalOverlay = document.getElementById('modal-overlay');
     if (modalOverlay) {
         modalOverlay.style.display = 'none';
