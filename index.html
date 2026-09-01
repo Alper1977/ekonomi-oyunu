@@ -3301,7 +3301,7 @@ async function ilanlariGuncelle() {
                     </select>
                 </div>
                 <div class="button-row">
-                    <button class="btn-green" onclick="oyuncuIlaniSatinAlOnayla('${item.baslikMetni}', '${varlikIsmi}', ${satisBedeli}, ${uniqueId})">NAKİT</button>
+                    <button class="btn-green" onclick="onayPenceresi('${varlikIsmi}', ${satisBedeli}, 'al', ${uniqueId})">NAKİT</button>
                     <button class="btn-red" onclick="krediIslem('${inputId}', '${vadeInputId}', '${varlikIsmi}', ${satisBedeli}, 'ilan', ${uniqueId})">KREDİ</button>
                 </div>
             `;
@@ -3390,7 +3390,6 @@ async function ilanlariGuncelle() {
                 let arsaMi = haritalanabilirMulkler.some(tur => ilan.ilan_tipi.toLowerCase().includes(tur));
                 let konum = ilan.detaylar?.atananKonum || '';
 
-                // Doğrudan sunucudan gelen güvenli bayrak
                 let benimIlanimMi = ilan.benim_mi; 
 
                 let veriObj = { 
@@ -3437,7 +3436,7 @@ async function ilanlariGuncelle() {
     let kamuMulkListesi = [];
     let kamuArsaListesi = [];
 
-    kamuUrunleriforEachSafe(kamuUrunleri, (urun) => {
+    kamuUrunleri.forEach(urun => {
         let satisBedeli = (typeof satisFiyatlari !== 'undefined' && satisFiyatlari && satisFiyatlari[urun.isim]) ? satisFiyatlari[urun.isim] : urun.varsayilanFiyat;
         let slug = urun.isim.toLowerCase().replace(/ı/g, 'i').replace(/\s+/g, '-');
         let inputId = `in-kredi-kamu-${slug}`;
@@ -3490,7 +3489,6 @@ async function ilanlariGuncelle() {
         });
     }
 }
-
 function kamuUrunleriforEachSafe(arr, callback) {
     for (let i = 0; i < arr.length; i++) {
         callback(arr[i]);
@@ -3528,6 +3526,7 @@ function modalGoster(m, b = '<button onclick="document.getElementById(\'modal-ov
     document.getElementById('modal-overlay').style.display = 'flex';
 }
 
+// Güncellenmiş onayPenceresi (Gerçek oyuncu ilan ID'sini yakalayabilmesi için)
 function onayPenceresi(isim, bedel, tip, ilanId) {    
     let gercekBedel = bedel;
     if (isim === 'Fabrika' && tip === 'yap') gercekBedel = 150000000; 
@@ -3544,7 +3543,6 @@ function onayPenceresi(isim, bedel, tip, ilanId) {
     `;
     modalGoster(isim + " için " + Number(gercekBedel).toLocaleString() + " TL ödeyeceksiniz.", butonlar);    
 }
-
 
 
 // Döviz ve Altın için Onay İsteme
@@ -3841,7 +3839,7 @@ function oyuncuIlaniSatinAlOnayla(saticiAdi, varlikIsmi, fiyat, ilanId) {
 }
 
 // Gerçek Oyuncu İlanı Kesin Satın Alma ve Sunucudan Silme
-async function oyuncuIlaniKesinSatinAl(saticiAdi, varlikIsmi, fiyat, ilanId) {
+async function oyuncuIlaniKesinSatinAl(varlikIsmi, fiyat, ilanId) {
     let modalOverlay = document.getElementById('modal-overlay');
     if (modalOverlay) {
         modalOverlay.style.display = 'none';
@@ -3853,7 +3851,6 @@ async function oyuncuIlaniKesinSatinAl(saticiAdi, varlikIsmi, fiyat, ilanId) {
     }
     state.nakit -= fiyat;
 
-    // Sunucudaki ilanlar veritabanından bu ilanı tamamen siliyoruz (Böylece herkesin ekranından kalkacak)
     try {
         let response = await fetch('/api/ilan-satin-al', {
             method: 'POST',
@@ -3875,7 +3872,6 @@ async function oyuncuIlaniKesinSatinAl(saticiAdi, varlikIsmi, fiyat, ilanId) {
         gelenKonum = arsaKonumunuAl(varlikIsmi);
     }
 
-    // Varlığı kendi envanterimize ekliyoruz
     state.varliklar.push({
         id: Date.now() + Math.random(),
         isim: varlikIsmi, 
@@ -3886,9 +3882,8 @@ async function oyuncuIlaniKesinSatinAl(saticiAdi, varlikIsmi, fiyat, ilanId) {
         atananKonum: gelenKonum 
     });
 
-    modalGoster(`Tebrikler! ${saticiAdi} kişisinden ${varlikIsmi} varlığını ${Number(fiyat).toLocaleString()} TL ödeyerek satın aldınız.`);
+    modalGoster(`${varlikIsmi} varlığını ${Number(fiyat).toLocaleString()} TL ödeyerek başarıyla satın aldınız.`);
 
-    // Arayüzü tazele
     if (typeof guncelle === 'function') guncelle();
     if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
     if (typeof portfoyuSunucuyaKaydet === 'function') portfoyuSunucuyaKaydet(state);
