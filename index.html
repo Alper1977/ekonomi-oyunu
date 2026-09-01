@@ -2938,7 +2938,7 @@ if (vList) {
     
     // Satılmış veya silinecek mülkleri filtreden tamamen eliyoruz ki listede görünmesinler
     let aktifVarliklar = state.varliklar.filter(v => v.durum !== 'silinecek' && v.durum !== 'satildi' && v.durum !== 'satildi-bekliyor');
-     
+    
     aktifVarliklar.forEach(v => {
         let blokeYazisi = v.bloke ? '<span style="color:#ff4444">(BLOKELİ)</span>' : '';
         
@@ -3761,18 +3761,17 @@ function baskasiSatinAlOnay(varlikId, botIsmi, fiyat) {
         <button class="btn-green" onclick="baskasiSatinAl(${varlikId}, '${botIsmi}', ${fiyat})">ONAYLA</button>
         <button onclick="document.getElementById('modal-overlay').style.display='none'" style="background-color: #d9534f; color: white; margin-left: 10px;">VAZGEÇ</button>
     `;
-    modalGoster(`${botIsmi} kişisine ait ${Number(fiyat).toLocaleString()} TL bedelli varlığı satın almak istiyor musunuz?`, butonlar);
+    modalGoster(`${botIsmi} kişisine ait ${fiyat.toLocaleString()} TL bedelli varlığı satın almak istiyor musunuz?`, butonlar);
 }
 
+// 2. Onay verilince çalışan asıl işlem fonksiyonu
 function baskasiSatinAl(varlikId, botIsmi, fiyat) {
     let modalOverlay = document.getElementById('modal-overlay');
     if (modalOverlay) {
         modalOverlay.style.display = 'none';
     }
 
-    let sayisalFiyat = Number(fiyat) || 0;
-
-    if (state.nakit < sayisalFiyat) {
+    if (state.nakit < fiyat) {
         modalGoster("Yetersiz Nakit! Bu ilanı satın almak için yeterli paranız yok.");
         return;
     }
@@ -3785,38 +3784,52 @@ function baskasiSatinAl(varlikId, botIsmi, fiyat) {
 
     let ilanVarligiIndex = hedefBot.varliklar.findIndex(v => v.id == varlikId);
     if (ilanVarligiIndex === -1) {
+        // 🟢 İLAN ARTIK YOKSA VEYA SATILDIYSA: 
+        // 1. Önce kullanıcıya uyarıyı bas
         modalGoster("Bu ilan artık geçerli değil veya satılmış!");
-        if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
-        if (typeof guncelle === 'function') guncelle();
+        
+        // 2. Hemen arkasından ilanlar ekranını ve arayüzü tazele ki o ölü ilan ekrandan kaybolsun, yenisi gelebilsin
+        if (typeof ilanlariGuncelle === 'function') {
+            ilanlariGuncelle();
+        }
+        if (typeof guncelle === 'function') {
+            guncelle();
+        }
         return;
     }
 
     let satilanVarlik = hedefBot.varliklar[ilanVarligiIndex];
 
-    state.nakit -= sayisalFiyat;
-    hedefBot.nakit += sayisalFiyat;
+    state.nakit -= fiyat;
+    hedefBot.nakit += fiyat;
+
     hedefBot.varliklar.splice(ilanVarligiIndex, 1);
     
-    let gelenKonum = satilanVarlik.atananKonum || (typeof arsaKonumunuAl === 'function' ? arsaKonumunuAl(satilanVarlik.isim) : "Merkezi Konum");
-
     state.varliklar.push({
         id: Date.now() + Math.random(),
-        isim: satilanVarlik.isim, 
+        isim: varlikIsmi, // veya baskasiSatinAl fonksiyonunda satilanVarlik.isim
         durum: 'sahip',
-        talepAktif: true, 
+        talepAktif: true, // 🌟 İŞTE BU EKSİK! Bunu eklediğin an müşteri taleplerinde görünecek.
         bloke: false,
         krediID: null,
         atananKonum: gelenKonum 
     });
 
-    modalGoster(`Tebrikler! ${botIsmi} kişisinden ${satilanVarlik.isim} varlığını ${sayisalFiyat.toLocaleString()} TL ödeyerek satın aldınız.`);
+    modalGoster(`Tebrikler! ${botIsmi} kişisinden ${satilanVarlik.isim} varlığını ${fiyat.toLocaleString()} TL ödeyerek satın aldınız.`);
     
     guncelle();
-    if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
-    if (typeof portfoyuSunucuyaKaydet === 'function') portfoyuSunucuyaKaydet(state);
+
+    if (typeof ilanlariGuncelle === 'function') {
+        ilanlariGuncelle();
+    }
+
+    if (typeof portfoyuSunucuyaKaydet === 'function') {
+        portfoyuSunucuyaKaydet(state);
+    }
 }
 
 
+// Gerçek Oyuncu İlanı İçin Onay Penceresi
 function oyuncuIlaniSatinAlOnayla(saticiAdi, varlikIsmi, fiyat, ilanId) {
     let butonlar = `
         <button class="btn-green" onclick="oyuncuIlaniKesinSatinAl('${saticiAdi}', '${varlikIsmi}', ${fiyat}, ${ilanId})">ONAYLA</button>
@@ -3825,20 +3838,18 @@ function oyuncuIlaniSatinAlOnayla(saticiAdi, varlikIsmi, fiyat, ilanId) {
     modalGoster(`${saticiAdi} kişisinden ${varlikIsmi} varlığını ${Number(fiyat).toLocaleString()} TL ödeyerek satın almak istiyor musunuz?`, butonlar);
 }
 
-// Gerçek Oyuncu İlanı Kesin Satın Alma (Sıralama: saticiAdi, varlikIsmi, fiyat, ilanId)
-async function oyuncuIlaniKesinSatinAl(saticiAdi, varlikIsmi, fiyat, ilanId) {
+// Gerçek Oyuncu İlanı Kesin Satın Alma ve Sunucudan Silme
+async function oyuncuIlaniKesinSatinAl(varlikIsmi, fiyat, ilanId) {
     let modalOverlay = document.getElementById('modal-overlay');
     if (modalOverlay) {
         modalOverlay.style.display = 'none';
     }
 
-    let sayisalFiyat = Number(fiyat) || 0;
-
-    if (state.nakit < sayisalFiyat) {
+    if (state.nakit < fiyat) {
         modalGoster("Yetersiz nakit!");
         return;
     }
-    state.nakit -= sayisalFiyat;
+    state.nakit -= fiyat;
 
     try {
         let response = await fetch('/api/ilan-satin-al', {
@@ -3871,7 +3882,7 @@ async function oyuncuIlaniKesinSatinAl(saticiAdi, varlikIsmi, fiyat, ilanId) {
         atananKonum: gelenKonum 
     });
 
-    modalGoster(`${varlikIsmi} varlığını ${sayisalFiyat.toLocaleString()} TL ödeyerek başarıyla satın aldınız.`);
+    modalGoster(`${varlikIsmi} varlığını ${Number(fiyat).toLocaleString()} TL ödeyerek başarıyla satın aldınız.`);
 
     if (typeof guncelle === 'function') guncelle();
     if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
@@ -4409,34 +4420,22 @@ function changePage(p) {
     hedefSayfa.style.display = 'block';
     state.aktifSayfa = p;
 
-    // 🌟 İŞTE BURASI: Sayfa değiştirildiğinde sunucudan en güncel portföyü çekelim ki satılan mülkler anında düşsün!
-    fetch('/api/kullanici-bilgi', { credentials: 'include' })
-        .then(res => res.json())
-        .then(data => {
-            if (data.basari && data.kullanici && data.kullanici.portfoy) {
-                let gelenPortfoy = typeof data.kullanici.portfoy === 'string' ? JSON.parse(data.kullanici.portfoy) : data.kullanici.portfoy;
-                if (gelenPortfoy && gelenPortfoy.varliklar) {
-                    state.varliklar = gelenPortfoy.varliklar;
-                }
-            }
-        })
-        .catch(err => console.error("Portföy senkronizasyon hatası:", err))
-        .finally(() => {
-            // Sayfa açıldığında dinamik listeleri güncelle
-            if (typeof yatirimlariGuncelle === 'function') yatirimlariGuncelle();
-            if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
-            if (typeof musteriTalepleriniGuncelle === 'function') musteriTalepleriniGuncelle();
-            
-            if (p === 'page-liste' && typeof zenginlerListesiniGuncelle === 'function') {
-                zenginlerListesiniGuncelle();
-            }
+    // Sayfa açıldığında dinamik listeleri güncelle
+    if (typeof yatirimlariGuncelle === 'function') yatirimlariGuncelle();
+    if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
+    if (typeof musteriTalepleriniGuncelle === 'function') musteriTalepleriniGuncelle();
+    
+    // Eğer zenginler listesi açıldıysa direkt tetikle
+    if (p === 'page-liste' && typeof zenginlerListesiniGuncelle === 'function') {
+        zenginlerListesiniGuncelle();
+    }
 
-            if (p === 'page-mali' && typeof maliGrafigiBaslat === 'function') {
-                setTimeout(maliGrafigiBaslat, 50);
-            }
-            
-            if (typeof guncelle === 'function') guncelle();
-        });
+    // Eğer Mali Tablo açıldıysa grafiği tetikle
+    if (p === 'page-mali' && typeof maliGrafigiBaslat === 'function') {
+        setTimeout(maliGrafigiBaslat, 50);
+    }
+    
+    if (typeof guncelle === 'function') guncelle();
 }
 
 
