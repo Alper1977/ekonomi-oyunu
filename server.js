@@ -12,7 +12,7 @@ app.use(express.static(__dirname));
 console.log("Klasördeki dosyalar:", fs.readdirSync(__dirname));
 
 app.get('/', (req, res) => {
-    res.sendFile(__dirname + '/index.html'); 
+    res.sendFile(__dirname + '/index.html');
 });
 
 // Ana oyun veritabanı (better-sqlite3 senkron yapısı)
@@ -213,6 +213,7 @@ app.post('/api/ilan-satin-al', (req, res) => {
     }
 
     try {
+        // İlanı veritabanından tamamen siliyoruz ki diğer tüm oyunculardan da anında kalksın
         const info = db.prepare(`DELETE FROM ilanlar WHERE id = ?`).run(ilanId);
 
         if (info.changes === 0) {
