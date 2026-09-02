@@ -213,19 +213,56 @@ app.post('/api/ilan-satin-al', (req, res) => {
     }
 
     try {
-        // İlanı veritabanından tamamen siliyoruz ki diğer tüm oyunculardan da anında kalksın
-        const info = db.prepare(`DELETE FROM ilanlar WHERE id = ?`).run(ilanId);
-
-        if (info.changes === 0) {
+        // 1. Önce ilanı bulalım ki hangi kullanıcıya (satıcıya) ait olduğunu ve hangi mülk olduğunu bilelim
+        const ilan = db.prepare(`SELECT * FROM ilanlar WHERE id = ?`).get(ilanId);
+        if (!ilan) {
             return res.status(404).json({ basari: false, mesaj: "İlan bulunamadı veya zaten satın alınmış." });
         }
 
-        res.json({ basari: true, mesaj: "İlan başarıyla satın alındı ve sistemden kaldırıldı." });
+        const saticiId = ilan.kullanici_id;
+        const satilanMulkIsmi = ilan.ilan_tipi;
+        const satisFiyati = ilan.fiyat;
+
+        // 2. İlanı ilanlar tablosundan silelim
+        db.prepare(`DELETE FROM ilanlar WHERE id = ?`).run(ilanId);
+
+        // 3. Satıcının portföyünden bu mülkü tamamen silelim (veya sahiplik durumunu düşelim)
+        if (saticiId) {
+            const saticiRow = db.prepare(`SELECT portfoy, nakit FROM kullanicilar WHERE id = ?`).get(saticiId);
+            if (saticiRow && saticiRow.portfoy) {
+                let portfoyData = JSON.parse(saticiRow.portfoy);
+                let varliklarDizisi = Array.isArray(portfoyData) ? portfoyData : (portfoyData.varliklar || []);
+                
+                // Satıcının portföyünden ilandaki mülkü bulup çıkarıyoruz
+                let mülkBulundu = false;
+                varliklarDizisi = varliklarDizisi.filter(v => {
+                    if (!mülkBulundu && v.isim === satilanMulkIsmi && (v.durum === 'ilan-aktif' || v.durum === 'sahip')) {
+                        mülkBulundu = true;
+                        return false; // Portföyden atıyoruz
+                    }
+                    return true;
+                });
+
+                if (Array.isArray(portfoyData)) {
+                    portfoyData = varliklarDizisi;
+                } else {
+                    portfoyData.varliklar = varliklarDizisi;
+                }
+
+                // Satıcıya parasını da ekleyelim (opsiyonel ama mantıklı: satılan malın ücreti satıcıya gider)
+                const yeniSaticiNakit = (saticiRow.nakit || 0) + satisFiyati;
+
+                db.prepare(`UPDATE kullanicilar SET portfoy = ?, nakit = ? WHERE id = ?`)
+                  .run(JSON.stringify(portfoyData), yeniSaticiNakit, saticiId);
+            }
+        }
+
+        res.json({ basari: true, mesaj: "İlan başarıyla satın alındı ve satıcının portföyünden kaldırıldı." });
     } catch (err) {
+        console.error("İlan satın alma hata:", err.message);
         res.status(500).json({ basari: false, mesaj: err.message });
     }
 });
-
 // 🌟 Ayar Okuma ve Güncelleme Rotaları
 app.get('/api/oyun-ayarlari', (req, res) => {
     try {
