@@ -218,50 +218,84 @@ app.post('/api/ilan-satin-al', (req, res) => {
             return res.status(404).json({ basari: false, mesaj: "İlan bulunamadı veya zaten satın alınmış." });
         }
 
+        const aliciId = req.session.kullanici.id;
         const saticiId = ilan.kullanici_id;
         const satilanMulkIsmi = ilan.ilan_tipi;
         const satisFiyati = Number(ilan.fiyat) || 0;
 
+        if (saticiId === aliciId) {
+            return res.status(400).json({ basari: false, mesaj: "Kendi ilanınızı satın alamazsınız!" });
+        }
+
+        // Alıcının güncel verisini çek ve bakiye kontrolü yap
+        const alici = db.prepare(`SELECT * FROM kullanicilar WHERE id = ?`).get(aliciId);
+        if (!alici) {
+            return res.status(404).json({ basari: false, mesaj: "Alıcı profili bulunamadı." });
+        }
+
+        let aliciPortfoy = { para: 0, varliklar: [] };
+        try {
+            let parsed = typeof alici.portfoy === 'string' ? JSON.parse(alici.portfoy) : alici.portfoy;
+            if (parsed && typeof parsed === 'object') aliciPortfoy = parsed;
+        } catch (e) {
+            aliciPortfoy = { para: 0, varliklar: [] };
+        }
+        if (!Array.isArray(aliciPortfoy.varliklar)) aliciPortfoy.varliklar = [];
+
+        if ((Number(aliciPortfoy.para) || 0) < satisFiyati) {
+            return res.status(400).json({ basari: false, mesaj: "Yeterli bakiyeniz yok!" });
+        }
+
+        // İlanı sistemden kaldır
         const info = db.prepare(`DELETE FROM ilanlar WHERE id = ?`).run(ilanId);
         if (info.changes === 0) {
             return res.status(404).json({ basari: false, mesaj: "İlan bulunamadı veya zaten satın alınmış." });
         }
 
+        // 1. ALICI: Parasını düş, mülkü portföyüne ekle
+        aliciPortfoy.para = (Number(aliciPortfoy.para) || 0) - satisFiyati;
+        aliciPortfoy.varliklar.push({
+            id: Date.now(),
+            isim: satilanMulkIsmi,
+            durum: 'sahip',
+            bedel: satisFiyati
+        });
+
+        db.prepare(`UPDATE kullanicilar SET portfoy = ? WHERE id = ?`)
+          .run(JSON.stringify(aliciPortfoy), aliciId);
+
+        req.session.kullanici.portfoy = aliciPortfoy;
+
+        // 2. SATICI: Parasını artır, mülkünü portföyünden sil
         if (saticiId) {
             const satici = db.prepare(`SELECT * FROM kullanicilar WHERE id = ?`).get(saticiId);
             if (satici) {
-                // Satıcının portföy JSON verisini güvenli şekilde parse ediyoruz
-                let portfoyObj = { para: 0, varliklar: [] };
+                let saticiPortfoy = { para: 0, varliklar: [] };
                 try {
                     let parsed = typeof satici.portfoy === 'string' ? JSON.parse(satici.portfoy) : satici.portfoy;
-                    if (parsed && typeof parsed === 'object') {
-                        portfoyObj = parsed;
-                    }
+                    if (parsed && typeof parsed === 'object') saticiPortfoy = parsed;
                 } catch (e) {
-                    portfoyObj = { para: 0, varliklar: [] };
+                    saticiPortfoy = { para: 0, varliklar: [] };
                 }
+                if (!Array.isArray(saticiPortfoy.varliklar)) saticiPortfoy.varliklar = [];
 
-                if (!Array.isArray(portfoyObj.varliklar)) {
-                    portfoyObj.varliklar = [];
-                }
-
-                // Satıcının kasasına (portföy içindeki para değerine) satış fiyatını ekliyoruz
-                portfoyObj.para = (Number(portfoyObj.para) || 0) + satisFiyati;
-
-                // Satılan mülkü satıcının portföyündeki varlıklardan çıkarıyoruz
-                portfoyObj.varliklar = portfoyObj.varliklar.filter(v => {
+                saticiPortfoy.para = (Number(saticiPortfoy.para) || 0) + satisFiyati;
+                saticiPortfoy.varliklar = saticiPortfoy.varliklar.filter(v => {
                     let vIsim = (v.isim || "").trim().toLowerCase();
                     let aIsim = (satilanMulkIsmi || "").trim().toLowerCase();
                     return vIsim !== aIsim;
                 });
 
-                // Güncellenmiş portföyü veritabanına kaydediyoruz
                 db.prepare(`UPDATE kullanicilar SET portfoy = ? WHERE id = ?`)
-                  .run(JSON.stringify(portfoyObj), saticiId);
+                  .run(JSON.stringify(saticiPortfoy), saticiId);
+
+                if (req.session.kullanici.id === saticiId) {
+                    req.session.kullanici.portfoy = saticiPortfoy;
+                }
             }
         }
 
-        res.json({ basari: true, mesaj: "İlan başarıyla satın alındı, satıcı hesabı güncellendi." });
+        res.json({ basari: true, mesaj: "İlan başarıyla satın alındı!" });
     } catch (err) {
         console.error("Satın alma hata:", err.message);
         res.status(500).json({ basari: false, mesaj: err.message });
