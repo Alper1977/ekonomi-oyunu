@@ -208,24 +208,47 @@ app.post('/api/ilan-satin-al', (req, res) => {
     }
 
     const { ilanId } = req.body;
+    const aliciAdi = req.session.kullanici;
+
     if (!ilanId) {
         return res.status(400).json({ basari: false, mesaj: "İlan ID belirtilmedi!" });
     }
 
     try {
-        // İlanı veritabanından tamamen siliyoruz ki diğer tüm oyunculardan da anında kalksın
-        const info = db.prepare(`DELETE FROM ilanlar WHERE id = ?`).run(ilanId);
+        // 1. Önce ilanı ve sahibini, fiyatını bulalım
+        const ilan = db.prepare(`SELECT * FROM ilanlar WHERE id = ?`).get(ilanId);
 
-        if (info.changes === 0) {
+        if (!ilan) {
             return res.status(404).json({ basari: false, mesaj: "İlan bulunamadı veya zaten satın alınmış." });
         }
 
-        res.json({ basari: true, mesaj: "İlan başarıyla satın alındı ve sistemden kaldırıldı." });
+        // İlan tablosundan ilanı siliyoruz
+        db.prepare(`DELETE FROM ilanlar WHERE id = ?`).run(ilanId);
+
+        // 2. Satıcı bir gerçek oyuncu mu yoksa bot mu? 
+        // (Veritabanındaki kullanıcılar tablonuzun yapısına göre satıcının parasını ve portföyünü güncelleyin)
+        const satici = db.prepare(`SELECT * FROM kullanicilar WHERE isim = ?`).get(ilan.saticiAdi);
+
+        if (satici) {
+            // Satıcının nakitini artır
+            let yeniBakiye = satici.nakit + ilan.fiyat;
+            
+            // Satıcının varlıklarını (portföyünü) JSON veya tablo olarak tutuyorsan buradan çıkar
+            let varliklar = satici.varliklar ? JSON.parse(satici.varliklar) : [];
+            varliklar = varliklar.filter(v => v.id !== ilan.varlikId);
+
+            db.prepare(`UPDATE kullanicilar SET nakit = ?, varliklar = ? WHERE isim = ?`)
+              .run(yeniBakiye, JSON.stringify(varliklar), ilan.saticiAdi);
+        }
+
+        // 3. Alıcının kendi envanterine mülkü eklemek için gerekli veriyi de dönebiliriz 
+        // ya da client tarafındaki fetch zaten hallediyorsa burası yeterlidir.
+
+        res.json({ basari: true, mesaj: "İlan başarıyla satın alındı, para satıcıya aktarıldı ve sistemden kaldırıldı." });
     } catch (err) {
         res.status(500).json({ basari: false, mesaj: err.message });
     }
 });
-
 // 🌟 Ayar Okuma ve Güncelleme Rotaları
 app.get('/api/oyun-ayarlari', (req, res) => {
     try {
