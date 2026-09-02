@@ -3850,7 +3850,7 @@ async function oyuncuIlaniKesinSatinAl(varlikIsmi, fiyat, ilanId) {
     }
     state.nakit -= fiyat;
 
-    try {
+   try {
         let response = await fetch('/api/ilan-satin-al', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -3859,9 +3859,11 @@ async function oyuncuIlaniKesinSatinAl(varlikIsmi, fiyat, ilanId) {
         let data = await response.json();
         if (!data.basari) {
             console.error("İlan sunucudan silinemedi:", data.mesaj);
+            return;
         }
     } catch (err) {
         console.error("İlan satın alma isteği başarısız:", err);
+        return;
     }
 
     if (!state.varliklar) state.varliklar = [];
@@ -3871,6 +3873,7 @@ async function oyuncuIlaniKesinSatinAl(varlikIsmi, fiyat, ilanId) {
         gelenKonum = arsaKonumunuAl(varlikIsmi);
     }
 
+    // Alıcının varlıklarına ekle
     state.varliklar.push({
         id: Date.now() + Math.random(),
         isim: varlikIsmi, 
@@ -3885,8 +3888,11 @@ async function oyuncuIlaniKesinSatinAl(varlikIsmi, fiyat, ilanId) {
 
     if (typeof guncelle === 'function') guncelle();
     if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
-    if (typeof portfoyuSunucuyaKaydet === 'function') portfoyuSunucuyaKaydet(state);
-}
+    
+    // Kesin kayıt: Güncel state'i sunucuya yaz ki veritabanı ile tarayıcı senkronize olsun
+    if (typeof portfoyuSunucuyaKaydet === 'function') {
+        portfoyuSunucuyaKaydet(state);
+    } 
     
 function ilanaCikar(id) { 
     let v = state.varliklar.find(x => x.id == id);
