@@ -213,53 +213,64 @@ app.post('/api/ilan-satin-al', (req, res) => {
     }
 
     try {
-        // 1. Önce ilanı bulalım ki kimin sattığını, ne sattığını ve kaça sattığını bilelim
+        // 1. İlanı bulalım
         const ilan = db.prepare(`SELECT * FROM ilanlar WHERE id = ?`).get(ilanId);
         if (!ilan) {
             return res.status(404).json({ basari: false, mesaj: "İlan bulunamadı veya zaten satın alınmış." });
         }
 
-        const saticiId = ilan.kullanici_id;
-        const satilanMulkIsmi = ilan.ilan_tipi;
-        const satisFiyati = ilan.fiyat;
+        // Hangi kolon adını kullanıyorsa yakalayalım
+        const saticiId = ilan.kullanici_id || ilan.satici_id;
+        const satilanMulkIsmi = ilan.ilan_tipi || ilan.isim;
+        const satisFiyati = ilan.fiyat || 0;
 
-        // 2. İlanı ilanlar tablosundan silelim (Zaten çalışan kısım)
+        // 2. İlanı tablodan silelim
         db.prepare(`DELETE FROM ilanlar WHERE id = ?`).run(ilanId);
 
-        // 3. SATICIYA PARA EKLEME VE PORTFÖYDEN DÜŞME İŞLEMİ
+        // 3. SATICIYI GÜNCELLE (Para ve Portföy)
         if (saticiId) {
-            const satici = db.prepare(`SELECT nakit, portfoy FROM kullanicilar WHERE id = ?`).get(saticiId);
+            // Satıcıyı kullanicilar tablosundan çekelim
+            const satici = db.prepare(`SELECT * FROM kullanicilar WHERE id = ?`).get(saticiId);
             
             if (satici) {
-                // A) Parasını satıcının kasasına ekle
-                const yeniNakit = (satici.nakit || 0) + satisFiyati;
+                // Nakit ekle
+                const yeniNakit = (Number(satici.nakit) || 0) + Number(satisFiyati);
 
-                // B) Portföyünden o mülkü filtrele (sil)
+                // Portföyü parse et (Dizi veya obje olabilir)
                 let portfoyDizisi = [];
                 try {
-                    portfoyDizisi = JSON.parse(satici.portfoy) || [];
+                    if (typeof satici.portfoy === 'string') {
+                        portfoyDizisi = JSON.parse(satici.portfoy);
+                    } else if (Array.isArray(satici.portfoy)) {
+                        portfoyDizisi = satici.portfoy;
+                    }
                 } catch (e) {
                     portfoyDizisi = [];
                 }
 
-                // Eşleşen mülkü portföyden çıkarıyoruz
-                let mülkBulundu = false;
+                if (!Array.isArray(portfoyDizisi)) {
+                    portfoyDizisi = [];
+                }
+
+                // Satılan mülkü portföyden çıkar (is mine ve durumuna göre)
+                let silindiMi = false;
                 portfoyDizisi = portfoyDizisi.filter(v => {
-                    if (!mülkBulundu && v.isim === satilanMulkIsmi) {
-                        mülkBulundu = true;
-                        return false; // Silindi
+                    if (!silindiMi && v.isim === satilanMulkIsmi) {
+                        silindiMi = true;
+                        return false; // Bu mülk uçuruldu
                     }
                     return true;
                 });
 
-                // C) Satıcının hem yeni parasını hem de güncel portföyünü veritabanına kaydet
+                // Veritabanına yeni nakit ve temizlenmiş portföyü bas
                 db.prepare(`UPDATE kullanicilar SET nakit = ?, portfoy = ? WHERE id = ?`)
                   .run(yeniNakit, JSON.stringify(portfoyDizisi), saticiId);
             }
         }
 
-        res.json({ basari: true, mesaj: "İlan başarıyla satın alındı, para satıcıya geçti ve mülk satıcının portföyünden silindi." });
+        res.json({ basari: true, mesaj: "Satın alma başarılı, para satıcıya aktarıldı ve portföy güncellendi." });
     } catch (err) {
+        console.error("Satın alma hatası:", err.message);
         res.status(500).json({ basari: false, mesaj: err.message });
     }
 });
