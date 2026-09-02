@@ -213,50 +213,15 @@ app.post('/api/ilan-satin-al', (req, res) => {
     }
 
     try {
-        const ilan = db.prepare(`SELECT * FROM ilanlar WHERE id = ?`).get(ilanId);
-        if (!ilan) {
+        // İlanı veritabanından tamamen siliyoruz ki diğer tüm oyunculardan da anında kalksın
+        const info = db.prepare(`DELETE FROM ilanlar WHERE id = ?`).run(ilanId);
+
+        if (info.changes === 0) {
             return res.status(404).json({ basari: false, mesaj: "İlan bulunamadı veya zaten satın alınmış." });
         }
 
-        const saticiId = ilan.kullanici_id || ilan.satici_id;
-        const satilanMulkIsmi = ilan.ilan_tipi || ilan.isim;
-        const satisFiyati = ilan.fiyat || 0;
-
-        // İlanı kaldır
-        db.prepare(`DELETE FROM ilanlar WHERE id = ?`).run(ilanId);
-
-        // Satıcıyı güncelle (Para ekle, mülkü portföyden uçur)
-        if (saticiId) {
-            const satici = db.prepare(`SELECT * FROM kullanicilar WHERE id = ?`).get(saticiId);
-            if (satici) {
-                const yeniNakit = (Number(satici.nakit) || 0) + Number(satisFiyati);
-
-                let portfoyDizisi = [];
-                try {
-                    portfoyDizisi = typeof satici.portfoy === 'string' ? JSON.parse(satici.portfoy) : satici.portfoy;
-                } catch (e) {
-                    portfoyDizisi = [];
-                }
-                if (!Array.isArray(portfoyDizisi)) portfoyDizisi = [];
-
-                let silindiMi = false;
-                portfoyDizisi = portfoyDizisi.filter(v => {
-                    if (!silindiMi && v.isim === satilanMulkIsmi) {
-                        silindiMi = true;
-                        return false; 
-                    }
-                    return true;
-                });
-
-                db.prepare(`UPDATE kullanicilar SET nakit = ?, portfoy = ? WHERE id = ?`)
-                  .run(yeniNakit, JSON.stringify(portfoyDizisi), saticiId);
-            }
-        }
-
-        // Alıcının da kendi portföyüne bu mülkü ekleyebilmesi veya state'i tazeleyebilmesi için güncel veriyi verelim
-        res.json({ basari: true, mesaj: "Satın alma başarılı." });
+        res.json({ basari: true, mesaj: "İlan başarıyla satın alındı ve sistemden kaldırıldı." });
     } catch (err) {
-        console.error("Satın alma hatası:", err.message);
         res.status(500).json({ basari: false, mesaj: err.message });
     }
 });
@@ -448,29 +413,11 @@ app.post('/api/portfoy-guncelle', (req, res) => {
     }
 
     const userId = req.session.kullanici.id;
-    // Gelen veri ister direkt portfoy olsun ister bütün state olsun, doğru kısmı yakalayalım
-    const gelenVeri = req.body.portfoy || req.body;
-    
-    // Eğer gelen verinin içinde varliklar veya nakit varsa onu alalım, yoksa direkt kendisi portföydür
-    const yeniPortfoy = {
-        nakit: gelenVeri.nakit !== undefined ? gelenVeri.nakit : (req.session.kullanici.portfoy?.nakit || 0),
-        dolar: gelenVeri.dolar !== undefined ? gelenVeri.dolar : 0,
-        euro: gelenVeri.euro !== undefined ? gelenVeri.euro : 0,
-        altin: gelenVeri.altin !== undefined ? gelenVeri.altin : 0,
-        vadeli: gelenVeri.vadeli !== undefined ? gelenVeri.vadeli : 0,
-        faiz: gelenVeri.faiz !== undefined ? gelenVeri.faiz : 0,
-        kredi: gelenVeri.kredi !== undefined ? gelenVeri.kredi : 0,
-        taksit: gelenVeri.taksit !== undefined ? gelenVeri.taksit : 0,
-        gunlukGelir: gelenVeri.gunlukGelir !== undefined ? gelenVeri.gunlukGelir : 900000,
-        konutKiraGeliri: gelenVeri.konutKiraGeliri !== undefined ? gelenVeri.konutKiraGeliri : 150000,
-        varliklar: Array.isArray(gelenVeri.varliklar) ? gelenVeri.varliklar : (Array.isArray(gelenVeri) ? gelenVeri : []),
-        talepler: Array.isArray(gelenVeri.talepler) ? gelenVeri.talepler : []
-    };
-
-    const portfoyStr = JSON.stringify(yeniPortfoy);
+    const yeniPortfoy = req.body.portfoy;
+    const portfoyStr = JSON.stringify(yeniPortfoy || {});
 
     try {
-        db.prepare(`UPDATE kullanicilar SET portfoy = ?, nakit = ? WHERE id = ?`).run(portfoyStr, yeniPortfoy.nakit, userId);
+        db.prepare(`UPDATE kullanicilar SET portfoy = ? WHERE id = ?`).run(portfoyStr, userId);
         req.session.kullanici.portfoy = yeniPortfoy;
         res.json({ basari: true, mesaj: "Portföy kaydedildi." });
     } catch (err) {
