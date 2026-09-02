@@ -213,7 +213,6 @@ app.post('/api/ilan-satin-al', (req, res) => {
     }
 
     try {
-        // İlanı veritabanından siliyoruz
         const info = db.prepare(`DELETE FROM ilanlar WHERE id = ?`).run(ilanId);
 
         if (info.changes === 0) {
