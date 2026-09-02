@@ -3838,7 +3838,7 @@ function oyuncuIlaniSatinAlOnayla(saticiAdi, varlikIsmi, fiyat, ilanId) {
 }
 
 // Gerçek Oyuncu İlanı Kesin Satın Alma ve Sunucudan Silme
-async function oyuncuIlaniKesinSatinAl(varlikIsmi, fiyat, ilanId) {
+async function oyuncuIlaniKesinSatinAl(saticiAdi, varlikIsmi, fiyat, ilanId) {
     let modalOverlay = document.getElementById('modal-overlay');
     if (modalOverlay) {
         modalOverlay.style.display = 'none';
@@ -3854,7 +3854,7 @@ async function oyuncuIlaniKesinSatinAl(varlikIsmi, fiyat, ilanId) {
         let response = await fetch('/api/ilan-satin-al', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ilanId: ilanId })
+            body: JSON.stringify({ ilanId: ilanId, aliciAdi: state.isim || 'ben', fiyat: fiyat })
         });
         let data = await response.json();
         if (!data.basari) {
@@ -3862,6 +3862,18 @@ async function oyuncuIlaniKesinSatinAl(varlikIsmi, fiyat, ilanId) {
         }
     } catch (err) {
         console.error("İlan satın alma isteği başarısız:", err);
+    }
+
+    // Eğer satan kişi bir bot ise veya yerel listedeyse buradan da düş
+    if (typeof botlar !== 'undefined' && botlar) {
+        let hedefBot = botlar.find(b => b.isim === saticiAdi);
+        if (hedefBot && hedefBot.varliklar) {
+            let index = hedefBot.varliklar.findIndex(v => v.id === ilanId || (v.durum === 'ilan-aktif' && v.isim === varlikIsmi));
+            if (index !== -1) {
+                hedefBot.varliklar.splice(index, 1);
+                hedefBot.nakit += fiyat; // Satıcının kasasına parayı ekle
+            }
+        }
     }
 
     if (!state.varliklar) state.varliklar = [];
