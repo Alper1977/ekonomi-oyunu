@@ -3837,18 +3837,20 @@ function oyuncuIlaniSatinAlOnayla(saticiAdi, varlikIsmi, fiyat, ilanId) {
     modalGoster(`${saticiAdi} kişisinden ${varlikIsmi} varlığını ${Number(fiyat).toLocaleString()} TL ödeyerek satın almak istiyor musunuz?`, butonlar);
 }
 
-// Gerçek Oyuncu İlanı Kesin Satın Alma ve Sunucudan Silme
-async function oyuncuIlaniKesinSatinAl(varlikIsmi, fiyat, ilanId) {
+// Gerçek Oyuncu İlanı Kesin Satın Alma (Parametre sıralaması yukarıdaki butonla birebir aynı)
+async function oyuncuIlaniKesinSatinAl(saticiAdi, varlikIsmi, fiyat, ilanId) {
     let modalOverlay = document.getElementById('modal-overlay');
     if (modalOverlay) {
         modalOverlay.style.display = 'none';
     }
 
-    if (state.nakit < fiyat) {
+    let sayisalFiyat = Number(fiyat) || 0;
+
+    if (state.nakit < sayisalFiyat) {
         modalGoster("Yetersiz nakit!");
         return;
     }
-    state.nakit -= fiyat;
+    state.nakit -= sayisalFiyat;
 
     try {
         let response = await fetch('/api/ilan-satin-al', {
@@ -3881,7 +3883,7 @@ async function oyuncuIlaniKesinSatinAl(varlikIsmi, fiyat, ilanId) {
         atananKonum: gelenKonum 
     });
 
-    modalGoster(`${varlikIsmi} varlığını ${Number(fiyat).toLocaleString()} TL ödeyerek başarıyla satın aldınız.`);
+    modalGoster(`${varlikIsmi} varlığını ${sayisalFiyat.toLocaleString()} TL ödeyerek başarıyla satın aldınız.`);
 
     if (typeof guncelle === 'function') guncelle();
     if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
