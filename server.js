@@ -213,23 +213,24 @@ app.post('/api/ilan-satin-al', (req, res) => {
     }
 
     try {
-        // 1. Önce ilanı bulalım ki satan kişiyi ve mülk bilgilerini bilelim
+        // Önce ilanı veritabanından çekelim
         const ilan = db.prepare(`SELECT * FROM ilanlar WHERE id = ?`).get(ilanId);
         if (!ilan) {
             return res.status(404).json({ basari: false, mesaj: "İlan bulunamadı veya zaten satın alınmış." });
         }
 
-        const saticiId = ilan.kullanici_id || ilan.satici_id;
+        // Hangi sütun adıyla kaydedildiyse yakalayalım
+        const saticiId = ilan.kullanici_id || ilan.satici_id || ilan.user_id;
         const satilanMulkIsmi = ilan.ilan_tipi || ilan.isim;
         const satisFiyati = Number(ilan.fiyat) || 0;
 
-        // 2. İlanı veritabanından tamamen siliyoruz
+        // İlanı sistemden silelim
         const info = db.prepare(`DELETE FROM ilanlar WHERE id = ?`).run(ilanId);
         if (info.changes === 0) {
             return res.status(404).json({ basari: false, mesaj: "İlan bulunamadı veya zaten satın alınmış." });
         }
 
-        // 3. Eğer ilanı koyan bir satıcı varsa, parasını ekle ve portföyünden mülkü uçur
+        // Eğer satıcı ID'si bulunduysa satıcının kasasına parayı ekle ve portföyünden mülkü uçur
         if (saticiId) {
             const satici = db.prepare(`SELECT * FROM kullanicilar WHERE id = ?`).get(saticiId);
             if (satici) {
@@ -242,7 +243,7 @@ app.post('/api/ilan-satin-al', (req, res) => {
                     portfoyDizisi = [];
                 }
 
-                // Eğer portfoy bir obje içindeyse (örn: portfoy.varliklar) veya direkt diziyse koruyalım
+                // Portföy içerisinden satılan mülkü filtreleyip çıkaralım
                 if (portfoyDizisi && !Array.isArray(portfoyDizisi) && Array.isArray(portfoyDizisi.varliklar)) {
                     portfoyDizisi.varliklar = portfoyDizisi.varliklar.filter(v => v.isim !== satilanMulkIsmi);
                 } else if (Array.isArray(portfoyDizisi)) {
@@ -256,18 +257,18 @@ app.post('/api/ilan-satin-al', (req, res) => {
                     });
                 }
 
-                // Satıcının veritabanındaki nakit ve portföyünü güncelle
                 db.prepare(`UPDATE kullanicilar SET nakit = ?, portfoy = ? WHERE id = ?`)
                   .run(yeniNakit, JSON.stringify(portfoyDizisi), saticiId);
             }
         }
 
-        res.json({ basari: true, mesaj: "İlan başarıyla satın alındı ve sistemden kaldırıldı." });
+        res.json({ basari: true, mesaj: "İlan başarıyla satın alındı." });
     } catch (err) {
-        console.error("İlan satın alma hatası:", err.message);
+        console.error("Satın alma hatası:", err.message);
         res.status(500).json({ basari: false, mesaj: err.message });
     }
 });
+
 // 🌟 Ayar Okuma ve Güncelleme Rotaları
 app.get('/api/oyun-ayarlari', (req, res) => {
     try {
