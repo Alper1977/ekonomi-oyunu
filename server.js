@@ -448,11 +448,29 @@ app.post('/api/portfoy-guncelle', (req, res) => {
     }
 
     const userId = req.session.kullanici.id;
-    const yeniPortfoy = req.body.portfoy;
-    const portfoyStr = JSON.stringify(yeniPortfoy || {});
+    // Gelen veri ister direkt portfoy olsun ister bütün state olsun, doğru kısmı yakalayalım
+    const gelenVeri = req.body.portfoy || req.body;
+    
+    // Eğer gelen verinin içinde varliklar veya nakit varsa onu alalım, yoksa direkt kendisi portföydür
+    const yeniPortfoy = {
+        nakit: gelenVeri.nakit !== undefined ? gelenVeri.nakit : (req.session.kullanici.portfoy?.nakit || 0),
+        dolar: gelenVeri.dolar !== undefined ? gelenVeri.dolar : 0,
+        euro: gelenVeri.euro !== undefined ? gelenVeri.euro : 0,
+        altin: gelenVeri.altin !== undefined ? gelenVeri.altin : 0,
+        vadeli: gelenVeri.vadeli !== undefined ? gelenVeri.vadeli : 0,
+        faiz: gelenVeri.faiz !== undefined ? gelenVeri.faiz : 0,
+        kredi: gelenVeri.kredi !== undefined ? gelenVeri.kredi : 0,
+        taksit: gelenVeri.taksit !== undefined ? gelenVeri.taksit : 0,
+        gunlukGelir: gelenVeri.gunlukGelir !== undefined ? gelenVeri.gunlukGelir : 900000,
+        konutKiraGeliri: gelenVeri.konutKiraGeliri !== undefined ? gelenVeri.konutKiraGeliri : 150000,
+        varliklar: Array.isArray(gelenVeri.varliklar) ? gelenVeri.varliklar : (Array.isArray(gelenVeri) ? gelenVeri : []),
+        talepler: Array.isArray(gelenVeri.talepler) ? gelenVeri.talepler : []
+    };
+
+    const portfoyStr = JSON.stringify(yeniPortfoy);
 
     try {
-        db.prepare(`UPDATE kullanicilar SET portfoy = ? WHERE id = ?`).run(portfoyStr, userId);
+        db.prepare(`UPDATE kullanicilar SET portfoy = ?, nakit = ? WHERE id = ?`).run(portfoyStr, yeniPortfoy.nakit, userId);
         req.session.kullanici.portfoy = yeniPortfoy;
         res.json({ basari: true, mesaj: "Portföy kaydedildi." });
     } catch (err) {
