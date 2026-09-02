@@ -3893,7 +3893,7 @@ async function oyuncuIlaniKesinSatinAl(varlikIsmi, fiyat, ilanId) {
     if (typeof portfoyuSunucuyaKaydet === 'function') {
         portfoyuSunucuyaKaydet(state);
     } 
-    
+}
 function ilanaCikar(id) { 
     let v = state.varliklar.find(x => x.id == id);
     if (!v) return;
