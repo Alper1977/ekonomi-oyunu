@@ -227,35 +227,42 @@ app.post('/api/ilan-satin-al', (req, res) => {
             return res.status(400).json({ basari: false, mesaj: "Kendi ilanınızı satın alamazsınız!" });
         }
 
-        // Alıcının güncel verisini çek ve bakiye kontrolü yap
         const alici = db.prepare(`SELECT * FROM kullanicilar WHERE id = ?`).get(aliciId);
         if (!alici) {
             return res.status(404).json({ basari: false, mesaj: "Alıcı profili bulunamadı." });
         }
 
-        let aliciPortfoy = { para: 0, varliklar: [] };
+        let aliciPortfoy = {};
         try {
             let parsed = typeof alici.portfoy === 'string' ? JSON.parse(alici.portfoy) : alici.portfoy;
             if (parsed && typeof parsed === 'object') aliciPortfoy = parsed;
         } catch (e) {
-            aliciPortfoy = { para: 0, varliklar: [] };
+            aliciPortfoy = {};
         }
-        if (!Array.isArray(aliciPortfoy.varliklar)) aliciPortfoy.varliklar = [];
 
-        if ((Number(aliciPortfoy.para) || 0) < satisFiyati) {
+        if (!Array.isArray(aliciPortfoy.varliklar)) {
+            aliciPortfoy.varliklar = [];
+        }
+
+        // Nakit parasını hem 'nakit' hem 'para' anahtarına göre güvenle alıyoruz
+        let aliciNakiti = Number(aliciPortfoy.nakit !== undefined ? aliciPortfoy.nakit : (aliciPortfoy.para !== undefined ? aliciPortfoy.para : 0));
+
+        if (aliciNakiti < satisFiyati) {
             return res.status(400).json({ basari: false, mesaj: "Yeterli bakiyeniz yok!" });
         }
 
-        // İlanı sistemden kaldır
         const info = db.prepare(`DELETE FROM ilanlar WHERE id = ?`).run(ilanId);
         if (info.changes === 0) {
             return res.status(404).json({ basari: false, mesaj: "İlan bulunamadı veya zaten satın alınmış." });
         }
 
-        // 1. ALICI: Parasını düş, mülkü portföyüne ekle
-        aliciPortfoy.para = (Number(aliciPortfoy.para) || 0) - satisFiyati;
+        // 1. ALICI: Parayı düş, mülkü ekle
+        aliciNakiti -= satisFiyati;
+        aliciPortfoy.nakit = aliciNakiti;
+        aliciPortfoy.para = aliciNakiti; // Her ihtimale karşı ikisini de senkron tutuyoruz
+        
         aliciPortfoy.varliklar.push({
-            id: Date.now(),
+            id: Date.now() + Math.random(),
             isim: satilanMulkIsmi,
             durum: 'sahip',
             bedel: satisFiyati
@@ -266,20 +273,28 @@ app.post('/api/ilan-satin-al', (req, res) => {
 
         req.session.kullanici.portfoy = aliciPortfoy;
 
-        // 2. SATICI: Parasını artır, mülkünü portföyünden sil
+        // 2. SATICI: Parayı ekle, mülkü sil
         if (saticiId) {
             const satici = db.prepare(`SELECT * FROM kullanicilar WHERE id = ?`).get(saticiId);
             if (satici) {
-                let saticiPortfoy = { para: 0, varliklar: [] };
+                let saticiPortfoy = {};
                 try {
                     let parsed = typeof satici.portfoy === 'string' ? JSON.parse(satici.portfoy) : satici.portfoy;
                     if (parsed && typeof parsed === 'object') saticiPortfoy = parsed;
                 } catch (e) {
-                    saticiPortfoy = { para: 0, varliklar: [] };
+                    saticiPortfoy = {};
                 }
-                if (!Array.isArray(saticiPortfoy.varliklar)) saticiPortfoy.varliklar = [];
 
-                saticiPortfoy.para = (Number(saticiPortfoy.para) || 0) + satisFiyati;
+                if (!Array.isArray(saticiPortfoy.varliklar)) {
+                    saticiPortfoy.varliklar = [];
+                }
+
+                let saticiNakiti = Number(saticiPortfoy.nakit !== undefined ? saticiPortfoy.nakit : (saticiPortfoy.para !== undefined ? saticiPortfoy.para : 0));
+                saticiNakiti += satisFiyati;
+
+                saticiPortfoy.nakit = saticiNakiti;
+                saticiPortfoy.para = saticiNakiti;
+
                 saticiPortfoy.varliklar = saticiPortfoy.varliklar.filter(v => {
                     let vIsim = (v.isim || "").trim().toLowerCase();
                     let aIsim = (satilanMulkIsmi || "").trim().toLowerCase();
