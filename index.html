@@ -3850,6 +3850,7 @@ async function oyuncuIlaniKesinSatinAl(varlikIsmi, fiyat, ilanId) {
     }
     state.nakit -= fiyat;
 
+    // Sunucuya satın alma ve satıcı tarafını güncelleme isteği
     try {
         let response = await fetch('/api/ilan-satin-al', {
             method: 'POST',
@@ -3859,9 +3860,12 @@ async function oyuncuIlaniKesinSatinAl(varlikIsmi, fiyat, ilanId) {
         let data = await response.json();
         if (!data.basari) {
             console.error("İlan sunucudan silinemedi:", data.mesaj);
+            modalGoster("Hata: " + (data.mesaj || "İşlem tamamlanamadı"));
+            return;
         }
     } catch (err) {
         console.error("İlan satın alma isteği başarısız:", err);
+        return;
     }
 
     if (!state.varliklar) state.varliklar = [];
