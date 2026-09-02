@@ -12,8 +12,8 @@ app.use(express.static(__dirname));
 console.log("Klasördeki dosyalar:", fs.readdirSync(__dirname));
 
 app.get('/', (req, res) => {
-    res.sendFile(__dirname + '/index.html');  
-}); 
+    res.sendFile(__dirname + '/index.html');
+});
 
 // Ana oyun veritabanı (better-sqlite3 senkron yapısı)
 const db = new Database('./database.db');
@@ -213,106 +213,15 @@ app.post('/api/ilan-satin-al', (req, res) => {
     }
 
     try {
-        const ilan = db.prepare(`SELECT * FROM ilanlar WHERE id = ?`).get(ilanId);
-        if (!ilan) {
-            return res.status(404).json({ basari: false, mesaj: "İlan bulunamadı veya zaten satın alınmış." });
-        }
-
-        const aliciId = req.session.kullanici.id;
-        const saticiId = ilan.kullanici_id;
-        const satilanMulkIsmi = ilan.ilan_tipi;
-        const satisFiyati = Number(ilan.fiyat) || 0;
-
-        if (saticiId === aliciId) {
-            return res.status(400).json({ basari: false, mesaj: "Kendi ilanınızı satın alamazsınız!" });
-        }
-
-        const alici = db.prepare(`SELECT * FROM kullanicilar WHERE id = ?`).get(aliciId);
-        if (!alici) {
-            return res.status(404).json({ basari: false, mesaj: "Alıcı profili bulunamadı." });
-        }
-
-        let aliciPortfoy = {};
-        try {
-            let parsed = typeof alici.portfoy === 'string' ? JSON.parse(alici.portfoy) : alici.portfoy;
-            if (parsed && typeof parsed === 'object') aliciPortfoy = parsed;
-        } catch (e) {
-            aliciPortfoy = {};
-        }
-
-        if (!Array.isArray(aliciPortfoy.varliklar)) {
-            aliciPortfoy.varliklar = [];
-        }
-
-        // Nakit parasını hem 'nakit' hem 'para' anahtarına göre güvenle alıyoruz
-        let aliciNakiti = Number(aliciPortfoy.nakit !== undefined ? aliciPortfoy.nakit : (aliciPortfoy.para !== undefined ? aliciPortfoy.para : 0));
-
-        if (aliciNakiti < satisFiyati) {
-            return res.status(400).json({ basari: false, mesaj: "Yeterli bakiyeniz yok!" });
-        }
-
+        // İlanı veritabanından tamamen siliyoruz ki diğer tüm oyunculardan da anında kalksın
         const info = db.prepare(`DELETE FROM ilanlar WHERE id = ?`).run(ilanId);
+
         if (info.changes === 0) {
             return res.status(404).json({ basari: false, mesaj: "İlan bulunamadı veya zaten satın alınmış." });
         }
 
-        // 1. ALICI: Parayı düş, mülkü ekle
-        aliciNakiti -= satisFiyati;
-        aliciPortfoy.nakit = aliciNakiti;
-        aliciPortfoy.para = aliciNakiti; // Her ihtimale karşı ikisini de senkron tutuyoruz
-        
-        aliciPortfoy.varliklar.push({
-            id: Date.now() + Math.random(),
-            isim: satilanMulkIsmi,
-            durum: 'sahip',
-            bedel: satisFiyati
-        });
-
-        db.prepare(`UPDATE kullanicilar SET portfoy = ? WHERE id = ?`)
-          .run(JSON.stringify(aliciPortfoy), aliciId);
-
-        req.session.kullanici.portfoy = aliciPortfoy;
-
-        // 2. SATICI: Parayı ekle, mülkü sil
-        if (saticiId) {
-            const satici = db.prepare(`SELECT * FROM kullanicilar WHERE id = ?`).get(saticiId);
-            if (satici) {
-                let saticiPortfoy = {};
-                try {
-                    let parsed = typeof satici.portfoy === 'string' ? JSON.parse(satici.portfoy) : satici.portfoy;
-                    if (parsed && typeof parsed === 'object') saticiPortfoy = parsed;
-                } catch (e) {
-                    saticiPortfoy = {};
-                }
-
-                if (!Array.isArray(saticiPortfoy.varliklar)) {
-                    saticiPortfoy.varliklar = [];
-                }
-
-                let saticiNakiti = Number(saticiPortfoy.nakit !== undefined ? saticiPortfoy.nakit : (saticiPortfoy.para !== undefined ? saticiPortfoy.para : 0));
-                saticiNakiti += satisFiyati;
-
-                saticiPortfoy.nakit = saticiNakiti;
-                saticiPortfoy.para = saticiNakiti;
-
-                saticiPortfoy.varliklar = saticiPortfoy.varliklar.filter(v => {
-                    let vIsim = (v.isim || "").trim().toLowerCase();
-                    let aIsim = (satilanMulkIsmi || "").trim().toLowerCase();
-                    return vIsim !== aIsim;
-                });
-
-                db.prepare(`UPDATE kullanicilar SET portfoy = ? WHERE id = ?`)
-                  .run(JSON.stringify(saticiPortfoy), saticiId);
-
-                if (req.session.kullanici.id === saticiId) {
-                    req.session.kullanici.portfoy = saticiPortfoy;
-                }
-            }
-        }
-
-        res.json({ basari: true, mesaj: "İlan başarıyla satın alındı!" });
+        res.json({ basari: true, mesaj: "İlan başarıyla satın alındı ve sistemden kaldırıldı." });
     } catch (err) {
-        console.error("Satın alma hata:", err.message);
         res.status(500).json({ basari: false, mesaj: err.message });
     }
 });
