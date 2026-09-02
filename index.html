@@ -3850,7 +3850,7 @@ async function oyuncuIlaniKesinSatinAl(varlikIsmi, fiyat, ilanId) {
     }
     state.nakit -= fiyat;
 
-   try {
+    try {
         let response = await fetch('/api/ilan-satin-al', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -3859,11 +3859,9 @@ async function oyuncuIlaniKesinSatinAl(varlikIsmi, fiyat, ilanId) {
         let data = await response.json();
         if (!data.basari) {
             console.error("İlan sunucudan silinemedi:", data.mesaj);
-            return;
         }
     } catch (err) {
         console.error("İlan satın alma isteği başarısız:", err);
-        return;
     }
 
     if (!state.varliklar) state.varliklar = [];
@@ -3873,7 +3871,6 @@ async function oyuncuIlaniKesinSatinAl(varlikIsmi, fiyat, ilanId) {
         gelenKonum = arsaKonumunuAl(varlikIsmi);
     }
 
-    // Alıcının varlıklarına ekle
     state.varliklar.push({
         id: Date.now() + Math.random(),
         isim: varlikIsmi, 
@@ -3888,28 +3885,9 @@ async function oyuncuIlaniKesinSatinAl(varlikIsmi, fiyat, ilanId) {
 
     if (typeof guncelle === 'function') guncelle();
     if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
-
-    // Sunucuya gönderilecek portföy paketini net olarak hazırlayalım
-    let gonderilecekPortfoyPaketi = {
-        nakit: state.nakit,
-        dolar: state.dolar,
-        euro: state.euro,
-        altin: state.altin,
-        vadeli: state.vadeli,
-        faiz: state.faiz,
-        kredi: state.kredi,
-        taksit: state.taksit,
-        gunlukGelir: state.gunlukGelir,
-        konutKiraGeliri: state.konutKiraGeliri,
-        varliklar: state.varliklar,
-        talepler: state.talepler
-    };
-    
-    // Kesin kayıt: Güncel state'i sunucuya yaz ki veritabanı ile tarayıcı senkronize olsun
-    if (typeof portfoyuSunucuyaKaydet === 'function') {
-        portfoyuSunucuyaKaydet(state);
-    } 
+    if (typeof portfoyuSunucuyaKaydet === 'function') portfoyuSunucuyaKaydet(state);
 }
+    
 function ilanaCikar(id) { 
     let v = state.varliklar.find(x => x.id == id);
     if (!v) return;
