@@ -12,7 +12,7 @@ app.use(express.static(__dirname));
 console.log("Klasördeki dosyalar:", fs.readdirSync(__dirname));
 
 app.get('/', (req, res) => {
-    res.sendFile(__dirname + '/index.html');
+    res.sendFile(__dirname + '/index.html'); 
 });
 
 // Ana oyun veritabanı (better-sqlite3 senkron yapısı)
