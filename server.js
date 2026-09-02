@@ -213,62 +213,58 @@ app.post('/api/ilan-satin-al', (req, res) => {
     }
 
     try {
-        // Önce ilanı veritabanından çekelim
+        // 1. İlanı silmeden önce kimin koyduğunu (kullanici_id) ve detaylarını öğrenmek için çekiyoruz
         const ilan = db.prepare(`SELECT * FROM ilanlar WHERE id = ?`).get(ilanId);
         if (!ilan) {
             return res.status(404).json({ basari: false, mesaj: "İlan bulunamadı veya zaten satın alınmış." });
         }
 
-        // Hangi sütun adıyla kaydedildiyse yakalayalım
-        const saticiId = ilan.kullanici_id || ilan.satici_id || ilan.user_id;
-        const satilanMulkIsmi = ilan.ilan_tipi || ilan.isim;
+        const saticiId = ilan.kullanici_id;
+        const satilanMulkIsmi = ilan.ilan_tipi;
         const satisFiyati = Number(ilan.fiyat) || 0;
 
-        // İlanı sistemden silelim
+        // 2. İlanı veritabanından siliyoruz
         const info = db.prepare(`DELETE FROM ilanlar WHERE id = ?`).run(ilanId);
         if (info.changes === 0) {
             return res.status(404).json({ basari: false, mesaj: "İlan bulunamadı veya zaten satın alınmış." });
         }
 
-        // Eğer satıcı ID'si bulunduysa satıcının kasasına parayı ekle ve portföyünden mülkü uçur
+        // 3. Eğer ilanı bir oyuncu koyduysa (kullanici_id varsa), satıcının parasını artır ve mülkünü portföyünden sil
         if (saticiId) {
             const satici = db.prepare(`SELECT * FROM kullanicilar WHERE id = ?`).get(saticiId);
             if (satici) {
                 const yeniNakit = (Number(satici.nakit) || 0) + satisFiyati;
 
-                let portfoyDizisi = [];
+                let portfoyObj = { varliklar: [] };
                 try {
-                    portfoyDizisi = typeof satici.portfoy === 'string' ? JSON.parse(satici.portfoy) : satici.portfoy;
-                } catch (e) {
-                    portfoyDizisi = [];
-                }
-
-                // Portföy içerisinden satılan mülkü filtreleyip çıkaralım
-                if (portfoyDizisi && !Array.isArray(portfoyDizisi) && Array.isArray(portfoyDizisi.varliklar)) {
-                    portfoyDizisi.varliklar = portfoyDizisi.varliklar.filter(v => v.isim !== satilanMulkIsmi);
-                } else if (Array.isArray(portfoyDizisi)) {
-                    let silindiMi = false;
-                    portfoyDizisi = portfoyDizisi.filter(v => {
-                        if (!silindiMi && (v.isim === satilanMulkIsmi || v.tur === satilanMulkIsmi)) {
-                            silindiMi = true;
-                            return false;
+                    let parsed = typeof satici.portfoy === 'string' ? JSON.parse(satici.portfoy) : satici.portfoy;
+                    if (Array.isArray(parsed)) {
+                        portfoyObj.varliklar = parsed;
+                    } else if (parsed && typeof parsed === 'object') {
+                        portfoyObj = parsed;
+                        if (!Array.isArray(portfoyObj.varliklar)) {
+                            portfoyObj.varliklar = [];
                         }
-                        return true;
-                    });
+                    }
+                } catch (e) {
+                    portfoyObj = { varliklar: [] };
                 }
 
+                // Satıcının portföyündeki varlıklardan satılan mülkü çıkarıyoruz
+                portfoyObj.varliklar = portfoyObj.varliklar.filter(v => v.isim !== satilanMulkIsmi);
+
+                // Satıcının güncellenen nakit ve portföyünü veritabanına yazıyoruz
                 db.prepare(`UPDATE kullanicilar SET nakit = ?, portfoy = ? WHERE id = ?`)
-                  .run(yeniNakit, JSON.stringify(portfoyDizisi), saticiId);
+                  .run(yeniNakit, JSON.stringify(portfoyObj), saticiId);
             }
         }
 
-        res.json({ basari: true, mesaj: "İlan başarıyla satın alındı." });
+        res.json({ basari: true, mesaj: "İlan başarıyla satın alındı, satıcı hesabı güncellendi." });
     } catch (err) {
-        console.error("Satın alma hatası:", err.message);
+        console.error("Satın alma hata:", err.message);
         res.status(500).json({ basari: false, mesaj: err.message });
     }
 });
-
 // 🌟 Ayar Okuma ve Güncelleme Rotaları
 app.get('/api/oyun-ayarlari', (req, res) => {
     try {
