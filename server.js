@@ -213,14 +213,52 @@ app.post('/api/ilan-satin-al', (req, res) => {
     }
 
     try {
-        // İlanı veritabanından tamamen siliyoruz ki diğer tüm oyunculardan da anında kalksın
-        const info = db.prepare(`DELETE FROM ilanlar WHERE id = ?`).run(ilanId);
-
-        if (info.changes === 0) {
+        // 1. Önce ilanı bulalım ki kimin sattığını, ne sattığını ve kaça sattığını bilelim
+        const ilan = db.prepare(`SELECT * FROM ilanlar WHERE id = ?`).get(ilanId);
+        if (!ilan) {
             return res.status(404).json({ basari: false, mesaj: "İlan bulunamadı veya zaten satın alınmış." });
         }
 
-        res.json({ basari: true, mesaj: "İlan başarıyla satın alındı ve sistemden kaldırıldı." });
+        const saticiId = ilan.kullanici_id;
+        const satilanMulkIsmi = ilan.ilan_tipi;
+        const satisFiyati = ilan.fiyat;
+
+        // 2. İlanı ilanlar tablosundan silelim (Zaten çalışan kısım)
+        db.prepare(`DELETE FROM ilanlar WHERE id = ?`).run(ilanId);
+
+        // 3. SATICIYA PARA EKLEME VE PORTFÖYDEN DÜŞME İŞLEMİ
+        if (saticiId) {
+            const satici = db.prepare(`SELECT nakit, portfoy FROM kullanicilar WHERE id = ?`).get(saticiId);
+            
+            if (satici) {
+                // A) Parasını satıcının kasasına ekle
+                const yeniNakit = (satici.nakit || 0) + satisFiyati;
+
+                // B) Portföyünden o mülkü filtrele (sil)
+                let portfoyDizisi = [];
+                try {
+                    portfoyDizisi = JSON.parse(satici.portfoy) || [];
+                } catch (e) {
+                    portfoyDizisi = [];
+                }
+
+                // Eşleşen mülkü portföyden çıkarıyoruz
+                let mülkBulundu = false;
+                portfoyDizisi = portfoyDizisi.filter(v => {
+                    if (!mülkBulundu && v.isim === satilanMulkIsmi) {
+                        mülkBulundu = true;
+                        return false; // Silindi
+                    }
+                    return true;
+                });
+
+                // C) Satıcının hem yeni parasını hem de güncel portföyünü veritabanına kaydet
+                db.prepare(`UPDATE kullanicilar SET nakit = ?, portfoy = ? WHERE id = ?`)
+                  .run(yeniNakit, JSON.stringify(portfoyDizisi), saticiId);
+            }
+        }
+
+        res.json({ basari: true, mesaj: "İlan başarıyla satın alındı, para satıcıya geçti ve mülk satıcının portföyünden silindi." });
     } catch (err) {
         res.status(500).json({ basari: false, mesaj: err.message });
     }
