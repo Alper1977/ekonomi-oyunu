@@ -3734,69 +3734,80 @@ function baskasiSatinAlOnay(varlikId, botIsmi, fiyat) {
 }
 
 // 2. Onay verilince çalışan asıl işlem fonksiyonu
-function baskasiSatinAl(varlikId, botIsmi, fiyat) {
-    let modalOverlay = document.getElementById('modal-overlay');
-    if (modalOverlay) {
-        modalOverlay.style.display = 'none';
-    }
+async function botlarIlanlariSatinAl() {
+    if (typeof botlar === 'undefined' || !Array.isArray(botlar) || botlar.length === 0) return;
 
-    if (state.nakit < fiyat) {
-        modalGoster("Yetersiz Nakit! Bu ilanı satın almak için yeterli paranız yok.");
-        return;
-    }
-
-    let hedefBot = botlar.find(b => b.isim === botIsmi);
-    if (!hedefBot) {
-        modalGoster("İlan sahibi bulunamadı!");
-        return;
-    }
-
-    let ilanVarligiIndex = hedefBot.varliklar.findIndex(v => v.id == varlikId);
-    if (ilanVarligiIndex === -1) {
-        modalGoster("Bu ilan artık geçerli değil veya satılmış!");
+    try {
+        let response = await fetch('/api/ilanlar');
+        let data = await response.json();
         
-        if (typeof ilanlariGuncelle === 'function') {
-            ilanlariGuncelle();
+        if (!data.basari || !Array.isArray(data.ilanlar) || data.ilanlar.length === 0) return;
+
+        let simdi = Date.now();
+        // Global bekleme süresi (Örn: 3 gün = 3 * 24 * 60 * 60 * 1000 ms ya da sunucudan gelen süre)
+        // Eğer sunucu tarafında ilan nesnesinde 'olusturmaTarihi' veya 'beklemeSuresiBitis' tutuluyorsa onu baz alıyoruz:
+        
+        for (let ilan of data.ilanlar) {
+            // Kendi ilanını kendi botu almasın
+            let ilanYasiMs = simdi - (ilan.olusturmaZamani || simdi);
+            let globalBeklemeSuresiMs = (window.oyunAyar && window.oyunAyar.ilanBeklemeSuresiMs) ? window.oyunAyar.ilanBeklemeSuresiMs : (24 * 60 * 60 * 1000); // Varsayılan 24 saat veya ayarlanan süre
+
+            // Eğer global bekleme süresi henüz DOLMADIYSA botlar bu ilana dokunamaz! 
+            // (Ama gerçek oyuncular yukarıdaki butonlarla dilediği an alabilir).
+            if (ilanYasiMs < globalBeklemeSuresiMs) {
+                continue; 
+            }
+
+            // Süre doldu, bütçesi uygun olan rastgele bir bot bu ilanı satın almaya çalışsın
+            let uygunBotlar = botlar.filter(b => b.nakit >= ilan.fiyat && b.isim !== ilan.satici_adsoyad);
+            if (uygunBotlar.length === 0) continue;
+
+            // Rastgele bir bot seç
+            let satinAlanBot = uygunBotlar[Math.floor(Math.random() * uygunBotlar.length)];
+
+            // Sunucuya bot adına satın alma isteği at
+            let alimRes = await fetch('/api/ilan-satin-al', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    ilanId: ilan.id, 
+                    aliciAdi: satinAlanBot.isim, 
+                    fiyat: ilan.fiyat 
+                })
+            });
+            let alimData = await alimRes.json();
+
+            if (alimData.basari) {
+                // Botun kasasından parayı düş, mülkü ekle
+                satinAlanBot.nakit -= ilan.fiyat;
+                if (!satinAlanBot.varliklar) satinAlanBot.varliklar = [];
+                
+                satinAlanBot.varliklar.push({
+                    id: Date.now() + Math.random(),
+                    isim: ilan.ilan_tipi,
+                    durum: 'sahip',
+                    talepAktif: true,
+                    bloke: false,
+                    krediID: null,
+                    atananKonum: ilan.detaylar?.atananKonum || (typeof arsaKonumunuAl === 'function' ? arsaKonumunuAl(ilan.ilan_tipi) : "Merkezi Konum")
+                });
+
+                console.log(`[Bot Alımı] ${satinAlanBot.isim}, ${ilan.satici_adsoyad} kişisinin ${ilan.ilan_tipi} ilanını ${ilan.fiyat} TL'ye satın aldı.`);
+                
+                // Pazar ekranını tazele
+                if (typeof ilanlariGuncelle === 'function') {
+                    ilanlariGuncelle();
+                }
+                break; // Her döngüde bir bot alımı yeterli, sıradaki döngüde devam eder
+            }
         }
-        if (typeof guncelle === 'function') {
-            guncelle();
-        }
-        return;
-    }
-
-    let satilanVarlik = hedefBot.varliklar[ilanVarligiIndex];
-
-    state.nakit -= fiyat;
-    hedefBot.nakit += fiyat;
-
-    hedefBot.varliklar.splice(ilanVarligiIndex, 1);
-    
-    // Tanımsız değişken patlamasını önlemek için bilgileri satilanVarlik'ten alıyoruz:
-    let dogruIsim = satilanVarlik.isim;
-    let dogruKonum = satilanVarlik.atananKonum || (typeof arsaKonumunuAl === 'function' ? arsaKonumunuAl(satilanVarlik) : "Merkezi Konum");
-
-    state.varliklar.push({
-        id: Date.now() + Math.random(),
-        isim: dogruIsim, 
-        durum: 'sahip',
-        talepAktif: true, 
-        bloke: false,
-        krediID: null,
-        atananKonum: dogruKonum 
-    });
-
-    modalGoster(`Tebrikler! ${botIsmi} kişisinden ${dogruIsim} varlığını ${fiyat.toLocaleString()} TL ödeyerek satın aldınız.`);
-    
-    guncelle();
-
-    if (typeof ilanlariGuncelle === 'function') {
-        ilanlariGuncelle();
-    }
-
-    if (typeof portfoyuSunucuyaKaydet === 'function') {
-        portfoyuSunucuyaKaydet(state);
+    } catch (err) {
+        console.error("Bot ilan alım döngüsünde hata:", err);
     }
 }
+
+// Botların havuz kontrolünü her 10-15 saniyede bir çalıştırabilirsin:
+setInterval(botlarIlanlariSatinAl, 15000);
 // Ortak İlan Satın Alma Onay Penceresi
 function ilanSatinAlOnay(saticiAdi, varlikIsmi, fiyat, ilanId) {
     let butonlar = `
