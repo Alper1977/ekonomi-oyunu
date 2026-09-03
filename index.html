@@ -4231,12 +4231,10 @@ function botlarIlanlariKontrolEt() {
 
     let gercekVarliklar = Object.keys(satisFiyatlari); 
 
-    // 🌟 KESİN ÇÖZÜM: Her arsa türü için havuzdaki listeden tamamen rastgele ve benzersiz bir bölge seçer
     function tamKarmaliBolgeUret(arsaIsmi) {
         if (typeof arsaKonumHaritasi !== 'undefined' && arsaKonumHaritasi[arsaIsmi]) {
             let veri = arsaKonumHaritasi[arsaIsmi];
             if (veri && veri.liste && veri.liste.length > 0) {
-                // Listeyi kopyalayıp karıştırıyoruz ki aynı bölge üst üste gelmesin
                 let listeKopya = [...veri.liste];
                 listeKopya.sort(() => Math.random() - 0.5);
                 return listeKopya[Math.floor(Math.random() * listeKopya.length)];
@@ -4311,7 +4309,6 @@ function botlarIlanlariKontrolEt() {
                         secilenVarlik.ilanSahibi = bot.isim;
                         secilenVarlik.ilanVerilisZamani = simdiMs;
                         
-                        // İlana çıktığında hastane arsası vb. için tamamen yeni ve farklı bir bölge ata
                         if (secilenVarlik.isim.toLowerCase().includes('arsası')) {
                             secilenVarlik.atananKonum = tamKarmaliBolgeUret(secilenVarlik.isim);
                         }
@@ -4347,54 +4344,11 @@ function botlarIlanlariKontrolEt() {
         });
     }
 
-    // 4. Diğer botların ilanlarının arka planda kendi aralarında dönmesi ve temizlenmesi
-    botlar.forEach(bot => {
-        if (!bot.varliklar || !Array.isArray(bot.varliklar)) return;
-
-        bot.varliklar.forEach(varlik => {
-            if (varlik.durum === 'ilan-aktif') {
-                if (!varlik.ilanVerilisZamani) {
-                    varlik.ilanVerilisZamani = simdiMs;
-                    return;
-                }
-
-                if ((simdiMs - varlik.ilanVerilisZamani) < beklemeSuresiMs) return;
-
-                let satisBedeli = (satisFiyatlari && satisFiyatlari[varlik.isim]) ? satisFiyatlari[varlik.isim] : 2000000;
-                let alabilecekBotlar = botlar.filter(b => b.isim !== bot.isim && b.nakit >= satisBedeli);
-                let aliciBot = alabilecekBotlar.length > 0 ? 
-                            alabilecekBotlar[Math.floor(Math.random() * alabilecekBotlar.length)] : 
-                            botlar.filter(b => b.isim !== bot.isim)[Math.floor(Math.random() * (botlar.length - 1))];
-
-                if (aliciBot) {
-                    if (!alabilecekBotlar.length) aliciBot.nakit += satisBedeli + 5000000;
-
-                    aliciBot.nakit -= satisBedeli;
-                    bot.nakit += satisBedeli;
-
-                    varlik.durum = 'sahip';
-                    varlik.ilanSahibi = null;
-                    varlik.ilanVerilisZamani = null;
-                    
-                    if (varlik.isim.toLowerCase().includes('arsası')) {
-                        varlik.atananKonum = tamKarmaliBolgeUret(varlik.isim);
-                    }
-                }
-            }
-        });
-    });
-
-    botlar.forEach(bot => {
-        if (!bot.varliklar) return;
-        bot.varliklar = bot.varliklar.filter(v => !(v.durum === 'ilan-aktif' && v.ilanVerilisZamani && (simdiMs - v.ilanVerilisZamani >= beklemeSuresiMs)));
-    });
-
-    // 5. Güncellemeler
+    // 4. Güncellemeler
     guncelle();
     if (typeof ilanlariGuncelle === 'function') { ilanlariGuncelle(); }
     if (typeof portfoyuSunucuyaKaydet === 'function') { portfoyuSunucuyaKaydet(state); }
 }
-
 
 function changePage(p) {
     let hedefSayfa = document.getElementById(p);
