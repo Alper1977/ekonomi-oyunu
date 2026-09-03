@@ -3262,7 +3262,7 @@ async function ilanlariGuncelle() {
         kapsayici.appendChild(arsaIcerikDiv);
     }
 
-   function kartHtmlUret(baslikMetni, botIsmi, varlikIsmi, satisBedeli, uniqueId, inputId, vadeInputId, arsaMi, atananKonum, tipKyn) {
+    function kartHtmlUret(baslikMetni, botIsmi, varlikIsmi, satisBedeli, uniqueId, inputId, vadeInputId, arsaMi, atananKonum, tipKyn) {
         let goruntuleBtnHTML = arsaMi ? `<button onclick="arsaKonumGoster('${varlikIsmi}', '${atananKonum}')" style="background:#3498db; color:#fff; border:none; padding:4px 8px; border-radius:4px; font-weight:bold; font-size:10px; cursor:pointer; width:100%; margin-bottom:6px;">GÖRÜNTÜLE</button>` : '';
         
         let ortaAlanHTML = '';
@@ -3339,39 +3339,6 @@ async function ilanlariGuncelle() {
         return itemBox;
     }
 
-    let botMulkListesi = [];
-    let botArsaListesi = [];
-
-    if (typeof botlar !== 'undefined' && Array.isArray(botlar)) {
-        botlar.forEach(bot => {
-            if (!bot.varliklar || !Array.isArray(bot.varliklar)) return;
-
-            bot.varliklar.forEach(varlik => {
-                if (varlik.durum !== 'ilan-aktif') return;
-
-                let satisBedeli = (typeof satisFiyatlari !== 'undefined' && satisFiyatlari && satisFiyatlari[varlik.isim]) ? satisFiyatlari[varlik.isim] : 2000000;
-                let uniqueId = varlik.id;
-                let inputId = `in-kredi-bot-${uniqueId}`;
-                let vadeInputId = `vade-kredi-bot-${uniqueId}`;
-
-                let haritalanabilirMulkler = ['arsası', 'otel', 'fabrika', 'hastane', 'okul', 'avm', 'hipermarket', 'konut'];
-                let arsaMi = haritalanabilirMulkler.some(tur => varlik.isim.toLowerCase().includes(tur));
-                
-                if (arsaMi && !varlik.atananKonum) {
-                    varlik.atananKonum = arsaKonumunuAl(varlik);
-                }
-
-                let veriObj = { bot, varlik, satisBedeli, uniqueId, inputId, vadeInputId, arsaMi };
-
-                if (varlik.isim.toLowerCase().includes('arsa')) {
-                    botArsaListesi.push(veriObj);
-                } else {
-                    botMulkListesi.push(veriObj);
-                }
-            });
-        });
-    }
-
     let oyuncuMulkListesi = [];
     let oyuncuArsaListesi = [];
 
@@ -3383,18 +3350,27 @@ async function ilanlariGuncelle() {
             data.ilanlar.forEach(ilan => {
                 let satisBedeli = ilan.fiyat;
                 let uniqueId = ilan.id;
-                let inputId = `in-kredi-oyuncu-${uniqueId}`;
-                let vadeInputId = `vade-kredi-oyuncu-${uniqueId}`;
+                let saticiAdi = ilan.satici_adsoyad || 'Bilinmiyor';
+                let benimIlanimMi = ilan.benim_mi; 
+                let botMu = ilan.satici_tipi === 'bot' || (typeof botlar !== 'undefined' && botlar.some(b => b.isim === saticiAdi));
+
+                let inputId = `in-kredi-ilan-${uniqueId}`;
+                let vadeInputId = `vade-kredi-ilan-${uniqueId}`;
 
                 let haritalanabilirMulkler = ['arsası', 'otel', 'fabrika', 'hastane', 'okul', 'avm', 'hipermarket', 'konut'];
                 let arsaMi = haritalanabilirMulkler.some(tur => ilan.ilan_tipi.toLowerCase().includes(tur));
                 let konum = ilan.detaylar?.atananKonum || '';
 
-                let benimIlanimMi = ilan.benim_mi; 
+                if (arsaMi && !konum && typeof arsaKonumunuAl === 'function') {
+                    konum = arsaKonumunuAl(ilan.ilan_tipi);
+                }
+
+                let baslikMetni = benimIlanimMi ? 'Ben' : saticiAdi;
+                let tipKyn = benimIlanimMi ? 'benim-ilanim' : (botMu ? 'bot' : 'diger-oyuncu');
 
                 let veriObj = { 
-                    baslikMetni: benimIlanimMi ? 'Ben' : (ilan.satici_adsoyad || 'Oyuncu'), 
-                    botIsmi: ilan.satici_adsoyad, 
+                    baslikMetni, 
+                    botIsmi: saticiAdi, 
                     varlikIsmi: ilan.ilan_tipi, 
                     satisBedeli, 
                     uniqueId, 
@@ -3402,7 +3378,7 @@ async function ilanlariGuncelle() {
                     vadeInputId, 
                     arsaMi, 
                     atananKonum: konum, 
-                    tipKyn: benimIlanimMi ? 'benim-ilanim' : 'diger-oyuncu' 
+                    tipKyn 
                 };
 
                 if (ilan.ilan_tipi.toLowerCase().includes('arsa')) {
@@ -3462,10 +3438,6 @@ async function ilanlariGuncelle() {
             let kutu = kartHtmlUret(item.baslikMetni, item.botIsmi, item.varlikIsmi, item.satisBedeli, item.uniqueId, item.inputId, item.vadeInputId, item.arsaMi, item.atananKonum, item.tipKyn);
             emlakIcerikDiv.appendChild(kutu);
         });
-        botMulkListesi.forEach(item => {
-            let kutu = kartHtmlUret(item.bot.isim, item.bot.isim, item.varlik.isim, item.satisBedeli, item.uniqueId, item.inputId, item.vadeInputId, item.arsaMi, item.varlik.atananKonum, 'bot');
-            emlakIcerikDiv.appendChild(kutu);
-        });
         kamuMulkListesi.forEach(item => {
             let kutu = kartHtmlUret('Kamu Satışı', '', item.urun.isim, item.satisBedeli, null, item.inputId, item.vadeInputId, item.arsaMi, item.kamuKonumu, 'kamu');
             emlakIcerikDiv.appendChild(kutu);
@@ -3477,10 +3449,6 @@ async function ilanlariGuncelle() {
         arsaIcerikDiv.innerHTML = '';
         oyuncuArsaListesi.forEach(item => {
             let kutu = kartHtmlUret(item.baslikMetni, item.botIsmi, item.varlikIsmi, item.satisBedeli, item.uniqueId, item.inputId, item.vadeInputId, item.arsaMi, item.atananKonum, item.tipKyn);
-            arsaIcerikDiv.appendChild(kutu);
-        });
-        botArsaListesi.forEach(item => {
-            let kutu = kartHtmlUret(item.bot.isim, item.bot.isim, item.varlik.isim, item.satisBedeli, item.uniqueId, item.inputId, item.vadeInputId, item.arsaMi, item.varlik.atananKonum, 'bot');
             arsaIcerikDiv.appendChild(kutu);
         });
         kamuArsaListesi.forEach(item => {
