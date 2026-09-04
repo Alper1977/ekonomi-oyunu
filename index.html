@@ -3685,7 +3685,10 @@ function onayPenceresi(isim, bedel, tip, ilanId) {
         gercekBedel = talepBul.bedel; 
     }
 
-    let onayFonksiyonu = ilanId ? `oyuncuIlaniSatinAlOnayla(${ilanId}, '${isim}', ${gercekBedel})` : `islemKesinOnayla('${isim}', ${gercekBedel}, '${tip}')`;
+    // İlan varsa doğru parametre sırasıyla (isim, bedel, ilanId) gönderiyoruz
+    let onayFonksiyonu = (typeof ilanId !== 'undefined' && ilanId) 
+        ? `oyuncuIlaniKesinSatinAl('${isim}', ${gercekBedel}, ${ilanId})` 
+        : `islemKesinOnayla('${isim}', ${gercekBedel}, '${tip}')`;
     
     let butonlar = `
         <button class="btn-green" onclick="${onayFonksiyonu}">ONAYLA</button>
@@ -3908,8 +3911,13 @@ async function islemKesinOnayla(isim, bedel, tip, ilanId) {
     }
 
     // 8. Sunucuya Kendi Portföyünü Kaydet
-    if (typeof portfoyuSunucuyaKaydet === 'function') {
-        portfoyuSunucuyaKaydet(state);
+   if (typeof portfoyuSunucuyaKaydet === 'function') {
+        await portfoyuSunucuyaKaydet(state);
+    }
+    
+    // Satın alım sonrası sunucudaki güncel durumu hemen içeri aktar ki polling ezmesin
+    if (typeof portfoyuSenkronizeEt === 'function') {
+        await portfoyuSenkronizeEt();
     }
 
     // 9. Tebrikler Mesajı
