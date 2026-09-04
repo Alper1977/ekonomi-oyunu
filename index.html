@@ -3329,7 +3329,7 @@ async function ilanlariGuncelle() {
                 </select>
             </div>
             <div class="button-row">
-                <button class="btn-green" onclick="onayPenceresi('${varlikIsmi}', ${satisBedeli}, 'al', ${uniqueId})">NAKİT</button>
+                <button class="btn-green" onclick="oyuncuIlaniSatinAlOnayla(${uniqueId}, '${baslikMetni}', '${varlikIsmi}', ${satisBedeli})">NAKİT</button>
                 <button class="btn-red" onclick="krediIslem('${inputId}', '${vadeInputId}', '${varlikIsmi}', ${satisBedeli}, 'ilan', ${uniqueId})">KREDİ</button>
             </div>
         `;
