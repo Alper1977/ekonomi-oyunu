@@ -441,6 +441,31 @@ app.post('/api/profil-guncelle', (req, res) => {
     }
 });
 
+app.get('/api/portfoy-getir', (req, res) => {
+    if (!req.session || !req.session.kullanici) {
+        return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı!" });
+    }
+
+    try {
+        const user = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(req.session.kullanici.id);
+        if (!user) {
+            return res.status(404).json({ basari: false, mesaj: "Kullanıcı bulunamadı!" });
+        }
+
+        let portfoyObj = {};
+        try {
+            portfoyObj = JSON.parse(user.portfoy || '{}');
+        } catch (e) {
+            portfoyObj = {};
+        }
+
+        res.json({ basari: true, ...portfoyObj });
+    } catch (err) {
+        console.error("Portföy getirme hatası:", err.message);
+        res.status(500).json({ basari: false, mesaj: err.message });
+    }
+});
+
 // ÇIKIŞ ROTASI
 app.get('/api/cikis', (req, res) => {
     req.session.destroy((err) => {
