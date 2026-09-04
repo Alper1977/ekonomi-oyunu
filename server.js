@@ -271,59 +271,57 @@ app.post('/api/ilan-satin-al', (req, res) => {
 
             db.prepare(`UPDATE kullanicilar SET portfoy = ? WHERE id = ?`).run(JSON.stringify(aliciPortfoy), alici.id);
 
-            // 3. Eğer ilanı açan bir kullanıcıysa, satıcının portföyünden mülkü sök ve parasını ekle
-            if (ilan.kullanici_id) {
-                const satici = db.prepare(`SELECT * FROM kullanicilar WHERE id = ?`).get(ilan.kullanici_id);
-                
-                if (satici) {
-                    let saticiPortfoy = {};
-                    try {
-                        saticiPortfoy = JSON.parse(satici.portfoy || '{}');
-                    } catch (e) {
-                        saticiPortfoy = {};
+           // 3. Eğer ilanı açan bir kullanıcıysa, satıcının portföyünden mülkünü sök ve parasını ekle
+if (ilan.kullanici_id) {
+    const satici = db.prepare(`SELECT * FROM kullanicilar WHERE id = ?`).get(ilan.kullanici_id);
+    
+    if (satici) {
+        let saticiPortfoy = {};
+        try {
+            saticiPortfoy = JSON.parse(satici.portfoy || '{}');
+        } catch (e) {
+            saticiPortfoy = {};
+        }
+
+        if (typeof saticiPortfoy.nakit === 'number') {
+            saticiPortfoy.nakit += ilan.fiyat;
+        } else if (typeof saticiPortfoy.para === 'number') {
+            saticiPortfoy.para += ilan.fiyat;
+        } else {
+            saticiPortfoy.nakit = ilan.fiyat;
+        }
+
+        if (saticiPortfoy.varliklar && Array.isArray(saticiPortfoy.varliklar)) {
+            let silindi = false;
+            
+            // 1. Önce detaylarda varlikId varsa tam eşleşme ile silmeyi dene
+            if (detaylar.varlikId) {
+                saticiPortfoy.varliklar = saticiPortfoy.varliklar.filter(v => {
+                    if (silindi) return true;
+                    if (String(v.id) === String(detaylar.varlikId)) {
+                        silindi = true;
+                        return false; // Sil
                     }
-
-                    if (typeof saticiPortfoy.nakit === 'number') {
-                        saticiPortfoy.nakit += ilan.fiyat;
-                    } else if (typeof saticiPortfoy.para === 'number') {
-                        saticiPortfoy.para += ilan.fiyat;
-                    } else {
-                        saticiPortfoy.nakit = ilan.fiyat;
-                    }
-
-                if (saticiPortfoy.varliklar && Array.isArray(saticiPortfoy.varliklar)) {
-     let silindi = false;
-     
-     // 1. Önce detaylarda varlikId varsa tam eşleşme ile silmeyi dene
-     if (detaylar.varlikId) {
-         saticiPortfoy.varliklar = saticiPortfoy.varliklar.filter(v => {
-             if (silindi) return true;
-             if (String(v.id) === String(detaylar.varlikId)) {
-                 silindi = true;
-                 return false; // Sil
-             }
-             return true;
-         });
-     }
-
-     // 2. Eğer varlikId ile silinemediyse veya detaylarda yoksa, rezerve/ilan durumundaki veya ismi eşleşen ilk mülkü sil
-     if (!silindi) {
-         saticiPortfoy.varliklar = saticiPortfoy.varliklar.filter(v => {
-             if (silindi) return true;
-             // İsim eşleşiyorsa ve başka bir blokede değilse uçur
-             if (v.isim === ilan.ilan_tipi) {
-                 silindi = true;
-                 return false;
-             }
-             return true;
-         });
-     }
- }
-
-                    db.prepare(`UPDATE kullanicilar SET portfoy = ? WHERE id = ?`).run(JSON.stringify(saticiPortfoy), satici.id);
-                }
+                    return true;
+                });
             }
 
+            // 2. Eğer varlikId ile silinemediyse veya detaylarda yoksa, ismi eşleşen ilk mülkü sil
+            if (!silindi) {
+                saticiPortfoy.varliklar = saticiPortfoy.varliklar.filter(v => {
+                    if (silindi) return true;
+                    if (v.isim === ilan.ilan_tipi) {
+                        silindi = true;
+                        return false;
+                    }
+                    return true;
+                });
+            }
+        }
+
+        db.prepare(`UPDATE kullanicilar SET portfoy = ? WHERE id = ?`).run(JSON.stringify(saticiPortfoy), satici.id);
+    }
+}
             // 4. İlanı pazar tablosundan sil
             db.prepare(`DELETE FROM ilanlar WHERE id = ?`).run(ilanId);
         });
