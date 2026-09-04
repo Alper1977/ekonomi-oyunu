@@ -153,28 +153,46 @@ app.post('/api/ilan-ekle', (req, res) => {
     }
 
     const { ilan_tipi, fiyat, detaylar } = req.body;
-    
-    // Oturum verisinin obje veya ham ID/string olma durumunu güvenli hale getiriyoruz
     const sessionKullanici = req.session.kullanici;
     const userId = typeof sessionKullanici === 'object' ? sessionKullanici.id : sessionKullanici;
-    
-    // Eğer ad soyad session içinde yoksa veritabanından çekelim veya varsayılan atayalım
-    let userAdSoyad = (typeof sessionKullanici === 'object' && sessionKullanici.adsoyad) ? sessionKullanici.adsoyad : null;
-    
-    if (!userAdSoyad && userId) {
-        const dbUser = db.prepare(`SELECT adsoyad FROM kullanicilar WHERE id = ?`).get(userId);
-        if (dbUser) userAdSoyad = dbUser.adsoyad;
-    }
-    userAdSoyad = userAdSoyad || "Satıcı";
+    const varlikId = detaylar && detaylar.varlikId ? detaylar.varlikId : null;
+
+    let userAdSoyad = (typeof sessionKullanici === 'object' && sessionKullanici.adsoyad) ? sessionKullanici.adsoyad : "Satıcı";
 
     try {
-        const stmt = db.prepare(`INSERT INTO ilanlar (kullanici_id, satici_adsoyad, ilan_tipi, fiyat, detaylar) VALUES (?, ?, ?, ?, ?)`);
-        const info = stmt.run(userId, userAdSoyad, ilan_tipi, fiyat, JSON.stringify(detaylar || {}));
-        res.json({ basari: true, id: info.lastInsertRowid, mesaj: "İlan başarıyla yayınlandı." });
+        // Transaction ile hem ilanı ekleyelim hem de satıcının envanterindeki mülkün durumunu 'ilan-aktif' yapalım
+        const transaction = db.transaction(() => {
+            // 1. İlanı ekle
+            const stmt = db.prepare(`INSERT INTO ilanlar (kullanici_id, satici_adsoyad, ilan_tipi, fiyat, detaylar) VALUES (?, ?, ?, ?, ?)`);
+            const info = stmt.run(userId, userAdSoyad, ilan_tipi, fiyat, JSON.stringify(detaylar || {}));
+
+            // 2. Kullanıcının portföyünü taze çekip ilgili mülkün durumunu güncelle
+            if (varlikId) {
+                const userRow = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(userId);
+                if (userRow && userRow.portfoy) {
+                    let portfoyObj = JSON.parse(userRow.portfoy);
+                    if (portfoyObj && portfoyObj.varliklar) {
+                        portfoyObj.varliklar.forEach(v => {
+                            if (v.id == varlikId) {
+                                v.durum = 'ilan-aktif';
+                                v.sunucuIlanId = info.lastInsertRowid;
+                            }
+                        });
+                        db.prepare(`UPDATE kullanicilar SET portfoy = ? WHERE id = ?`).run(JSON.stringify(portfoyObj), userId);
+                        req.session.kullanici.portfoy = portfoyObj;
+                    }
+                }
+            }
+            return info.lastInsertRowid;
+        });
+
+        const yeniIlanId = transaction();
+        res.json({ basari: true, id: yeniIlanId, mesaj: "İlan başarıyla yayınlandı." });
     } catch (err) {
         res.status(500).json({ basari: false, mesaj: err.message });
     }
 });
+
 app.post('/api/ilan-sil', (req, res) => {
     if (!req.session || !req.session.kullanici) {
         return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı!" });
