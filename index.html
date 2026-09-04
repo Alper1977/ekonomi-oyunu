@@ -3828,7 +3828,7 @@ function baskasiSatinAl(varlikId, botIsmi, fiyat) {
         portfoyuSunucuyaKaydet(state);
     }
 }
-// Gerçek Oyuncu İlanı İçin Onay Penceresi
+// Gerçek Oyuncu İlanı İçin Onay Penceresi (Parametre sırası düzeltildi)
 function oyuncuIlaniSatinAlOnayla(saticiAdi, varlikIsmi, fiyat, ilanId) {
     let butonlar = `
         <button class="btn-green" onclick="oyuncuIlaniKesinSatinAl('${saticiAdi}', '${varlikIsmi}', ${fiyat}, ${ilanId})">ONAYLA</button>
@@ -3837,8 +3837,8 @@ function oyuncuIlaniSatinAlOnayla(saticiAdi, varlikIsmi, fiyat, ilanId) {
     modalGoster(`${saticiAdi} kişisinden ${varlikIsmi} varlığını ${Number(fiyat).toLocaleString()} TL ödeyerek satın almak istiyor musunuz?`, butonlar);
 }
 
-// Gerçek Oyuncu İlanı Kesin Satın Alma ve Sunucudan Silme
-async function oyuncuIlaniKesinSatinAl(varlikIsmi, fiyat, ilanId) {
+// Gerçek Oyuncu İlanı Kesin Satın Alma ve Sunucuya Bildirme
+async function oyuncuIlaniKesinSatinAl(saticiAdi, varlikIsmi, fiyat, ilanId) {
     let modalOverlay = document.getElementById('modal-overlay');
     if (modalOverlay) {
         modalOverlay.style.display = 'none';
@@ -3871,6 +3871,7 @@ async function oyuncuIlaniKesinSatinAl(varlikIsmi, fiyat, ilanId) {
         gelenKonum = arsaKonumunuAl(varlikIsmi);
     }
 
+    // Alıcının portföyüne mülkü ekliyoruz
     state.varliklar.push({
         id: Date.now() + Math.random(),
         isim: varlikIsmi, 
