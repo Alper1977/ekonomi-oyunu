@@ -4001,6 +4001,15 @@ async function oyuncuIlaniKesinSatinAl(isim, bedel, ilanId) {
             krediID: null
         });
 
+        // Satın alma veya silme gerçekleştiğinde botların hafızasındaki çakışan ilanları temizle
+        if (typeof botlar !== 'undefined' && Array.isArray(botlar)) {
+            botlar.forEach(b => {
+                if (b.varliklar && Array.isArray(b.varliklar)) {
+                    b.varliklar = b.varliklar.filter(v => !(v.isim === isim && v.durum === 'ilan-aktif'));
+                }
+            });
+        }
+
         let modalOverlay = document.getElementById('modal-overlay');
         if (modalOverlay) modalOverlay.style.display = 'none';
 
