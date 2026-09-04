@@ -3679,7 +3679,7 @@ function vadeliOnayIste(yon) {
     modalGoster(`${Number(miktar).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL tutarındaki ${islemAdi.toLowerCase()} işlemini onaylıyor musunuz?`, butonlar);
 }
 
-function islemKesinOnayla(isim, bedel, tip) {
+async function islemKesinOnayla(isim, bedel, tip, ilanId) {
     let modalOverlay = document.getElementById('modal-overlay');
     if (modalOverlay) {
         modalOverlay.style.display = 'none';
@@ -3717,7 +3717,7 @@ function islemKesinOnayla(isim, bedel, tip) {
     // 3. Süreler (Bayi için 3 gün, diğerleri için 12 gün - Milisaniye cinsinden)
     let sure = (isim === 'Bayi') ? window.oyunAyarlari.insaatSuresiBayi : window.oyunAyarlari.insaatSuresiDiger;
 
-   // 4. Yeni varlığı ekle
+    // 4. Yeni varlığı ekle
     let yeniVarlik = {
         id: Date.now() + Math.random(),
         isim: isim,
@@ -3732,22 +3732,17 @@ function islemKesinOnayla(isim, bedel, tip) {
     let haritadaGosterilir = haritalanabilirMulkler.some(tur => isim.toLowerCase().includes(tur));
 
     if (haritadaGosterilir) {
-        // Eğer daha önceden kamu ilanlarında cache'lenen (ekranda yazan) bir konum varsa onu alıyoruz
         if (window._kamuArsaKonumlari && window._kamuArsaKonumlari[isim]) {
             yeniVarlik.atananKonum = window._kamuArsaKonumlari[isim];
         } else {
-            // Yoksa o an türetip sabitliyoruz
             yeniVarlik.atananKonum = arsaKonumunuAl(yeniVarlik);
         }
         
-        // Satın alındığı için havuzdaki cache'i sıfırlıyoruz ki ilanlar yenilendiğinde yeni bölge çıksın
         if (window._kamuArsaKonumlari) {
             window._kamuArsaKonumlari[isim] = null; 
         }
     }
 
-    // Eğer işlem 'tip === 'yap'' ise (Yani arsa üzerine bina inşa ediliyorsa) 
-    // Arsanın o anki sabit konumunu yeni binaya aynen devrediyoruz!
     if (tip === 'yap' && isim !== 'Bayi') {
         let arsaIsmi = (isim === 'Konut') ? "Konut Arsası" : isim + " Arsası";
         let eskiArsa = state.varliklar.find(v => v.isim === arsaIsmi && v.durum === 'silinecek');
@@ -3770,20 +3765,34 @@ function islemKesinOnayla(isim, bedel, tip) {
                 b.varliklar = b.varliklar.filter(v => v.isim !== isim);
             }
         });
-        // Listeyi anında tazele
         if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
     }
 
-    // 7. Sunucuya Kaydet
+    // 🌟 7. EĞER GERÇEK OYUNCU İLANI SATIN ALINDDIYSA (ilanId varsa) SUNUCUYA BİLDİR
+    if (typeof ilanId !== 'undefined' && ilanId) {
+        try {
+            let res = await fetch('/api/ilan-satin-al', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ilanId: ilanId })
+            });
+            let sonuc = await res.json();
+            if (!sonuc.basari) {
+                console.error("Satıcının envanterinden düşerken hata oluştu:", sonuc.mesaj);
+            }
+        } catch (err) {
+            console.error("İlan satın alma sunucu bağlantı hatası:", err);
+        }
+    }
+
+    // 8. Sunucuya Kendi Portföyünü Kaydet
     if (typeof portfoyuSunucuyaKaydet === 'function') {
         portfoyuSunucuyaKaydet(state);
     }
 
-    // 8. Tebrikler Mesajı
+    // 9. Tebrikler Mesajı
     modalGoster(`Tebrikler! ${isim} varlığını ${sayisalBedel.toLocaleString()} TL ödeyerek başarıyla satın aldınız.`);
 }
-
-
 function baskasiSatinAlOnay(varlikId, botIsmi, fiyat) {
     let butonlar = `
         <button class="btn-green" onclick="baskasiSatinAl(${varlikId}, '${botIsmi}', ${fiyat})">ONAYLA</button>
@@ -3867,50 +3876,59 @@ function oyuncuIlaniSatinAlOnayla(ilanId, saticiAdi, varlikIsmi, fiyat) {
 }
 
 // Alım Onaylandığında Çalışacak Kesin Fonksiyon
-async function oyuncuIlaniKesinSatinAl(ilanId, fiyat) {
-    let modalOverlay = document.getElementById('modal-overlay');
-    if (modalOverlay) {
-        modalOverlay.style.display = 'none';
-    }
-
-    let gercekFiyat = Number(fiyat) || 0;
-
-    if (state.nakit < gercekFiyat) {
-        modalGoster("Yetersiz nakit!");
+async function oyuncuIlaniKesinSatinAl(isim, bedel, ilanId) {
+    // 1. Nakit kontrolü
+    if (state.nakit < bedel) {
+        alert("Yeterli nakit paranız yok!");
         return;
     }
-    
-    state.nakit -= gercekFiyat;
 
     try {
+        // Sunucuya satın alma isteği gönder (Backend'de ilanı silip satıcıya parayı aktarması için)
         let response = await fetch('/api/ilan-satin-al', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ilanId: ilanId })
         });
-        let data = await response.json();
-        
-        if (!data.basari) {
-            state.nakit += gercekFiyat; 
-            modalGoster("Satın alma başarısız: " + data.mesaj);
+
+        let sonuc = await response.json();
+        if (!sonuc.basari) {
+            alert(sonuc.mesaj || "Satın alma işleminde bir hata oluştu!");
             return;
         }
 
-        modalGoster(`Varlığı ${gercekFiyat.toLocaleString()} TL ödeyerek başarıyla satın aldınız.`);
+        // 2. İşlem başarılıysa client state'ini güncelle
+        state.nakit -= bedel;
 
-        if (typeof portfoyuSunucudanYukle === 'function') {
-            await portfoyuSunucudanYukle();
-        } else if (typeof guncelle === 'function') {
-            guncelle();
+        // Satın alınan mülkü kullanıcının envanterine 'sahip' olarak ekle
+        state.varliklar.push({
+            id: Date.now() + Math.random(),
+            isim: isim,
+            durum: 'sahip',
+            bloke: false,
+            krediID: null
+        });
+
+        // 3. Modalı kapat
+        let modalOverlay = document.getElementById('modal-overlay');
+        if (modalOverlay) modalOverlay.style.display = 'none';
+
+        // 4. Verinin değiştiğini işaretle
+        if (typeof veriDegisti !== 'undefined') {
+            veriDegisti = true;
         }
 
+        // 5. Arayüzü güncelle
+        if (typeof guncelle === 'function') guncelle();
         if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
-        if (typeof portfoyuSunucuyaKaydet === 'function') portfoyuSunucuyaKaydet(state);
+        
+        if (typeof portfoyuSunucuyaKaydet === 'function') {
+            portfoyuSunucuyaKaydet(state);
+        }
 
     } catch (err) {
-        console.error("Satın alma isteği hatası:", err);
-        state.nakit += gercekFiyat;
-        modalGoster("Sunucu bağlantı hatası oluştu.");
+        console.error("Satın alma hatası:", err);
+        alert("Bağlantı hatası oluştu.");
     }
 }
     
