@@ -2300,16 +2300,20 @@ setInterval(async () => {
         return;
     }
 
-// 🌟 SUNUCUDAN GÜNCEL PORTFÖYÜ ÇEK (Render'da satılan malların anında düşmesi için)
-    try {
-        let res = await fetch('/api/portfoy-getir'); // Sunucudan güncel portföyü çeken rotan
+try {
+        let res = await fetch('/api/portfoy-getir'); 
         let data = await res.json();
         if (data && data.varliklar) {
             state.varliklar = data.varliklar;
             if (data.nakit !== undefined) state.nakit = data.nakit;
+            
+            // 🌟 İŞTE BU ŞART: Veri değiştiğinde arayüzü hemen yeniden çiz ki filtre çalışıp malı silsin!
+            if (typeof guncelle === 'function') {
+                guncelle();
+            }
         }
     } catch (e) {
-        // Ağ hatası durumunda döngü sessizce devam eder
+        // Ağ hatası
     }
     
     let simdiMs = Date.now();
