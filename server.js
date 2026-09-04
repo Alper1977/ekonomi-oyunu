@@ -454,7 +454,11 @@ app.get('/api/portfoy-getir', (req, res) => {
     }
 
     try {
-        const user = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(req.session.kullanici.id);
+        const userId = req.session.kullanici.id;
+        
+        // ÖNEMLİ: Session'a güvenmek yerine veritabanından anlık taze veriyi çekiyoruz
+        const user = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(userId);
+        
         if (!user) {
             return res.status(404).json({ basari: false, mesaj: "Kullanıcı bulunamadı!" });
         }
@@ -466,13 +470,16 @@ app.get('/api/portfoy-getir', (req, res) => {
             portfoyObj = {};
         }
 
-        res.json({ basari: true, ...portfoyObj });
+        res.json({
+            basari: true,
+            nakit: portfoyObj.nakit !== undefined ? portfoyObj.nakit : (portfoyObj.para || 0),
+            varliklar: portfoyObj.varliklar || []
+        });
     } catch (err) {
         console.error("Portföy getirme hatası:", err.message);
         res.status(500).json({ basari: false, mesaj: err.message });
     }
 });
-
 // ÇIKIŞ ROTASI
 app.get('/api/cikis', (req, res) => {
     req.session.destroy((err) => {
