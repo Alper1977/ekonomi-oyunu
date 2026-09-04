@@ -522,10 +522,36 @@ app.post('/api/giris', (req, res) => {
 });
 
 app.get('/api/aktif-kullanici', (req, res) => {
-    if (req.session && req.session.kullanici) {
-        res.json(req.session.kullanici);
-    } else {
-        res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı" });
+    if (!req.session || !req.session.kullanici) {
+        return res.status(401).json({ basari: false, mesaj: "Oturum yok" });
+    }
+
+    try {
+        const userId = req.session.kullanici.id;
+        // Oturuma güvenmiyoruz, doğrudan DB'den güncel kullanıcıyı ve portföyünü çekiyoruz
+        const dbUser = db.prepare(`SELECT id, adsoyad, portfoy FROM kullanicilar WHERE id = ?`).get(userId);
+        
+        if (!dbUser) {
+            return res.status(404).json({ basari: false, mesaj: "Kullanıcı bulunamadı" });
+        }
+
+        let portfoyObj = {};
+        try {
+            portfoyObj = JSON.parse(dbUser.portfoy || '{}');
+        } catch (e) {
+            portfoyObj = {};
+        }
+
+        // Oturumu da güncelleyelim
+        req.session.kullanici.portfoy = portfoyObj;
+
+        res.json({
+            id: dbUser.id,
+            adsoyad: dbUser.adsoyad,
+            portfoy: portfoyObj
+        });
+    } catch (err) {
+        res.status(500).json({ basari: false, mesaj: err.message });
     }
 });
 
