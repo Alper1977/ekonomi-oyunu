@@ -2293,13 +2293,25 @@ function islemGerceklessin(isim, bedel, tip, krediKullaniliyor = false, krediID 
 let sonKiraZamani = Date.now();
 
 
-setInterval(() => {
+setInterval(async () => {
 
 
     if (typeof state === 'undefined' || !state) {
         return;
     }
 
+// 🌟 SUNUCUDAN GÜNCEL PORTFÖYÜ ÇEK (Render'da satılan malların anında düşmesi için)
+    try {
+        let res = await fetch('/api/portfoy-getir'); // Sunucudan güncel portföyü çeken rotan
+        let data = await res.json();
+        if (data && data.varliklar) {
+            state.varliklar = data.varliklar;
+            if (data.nakit !== undefined) state.nakit = data.nakit;
+        }
+    } catch (e) {
+        // Ağ hatası durumunda döngü sessizce devam eder
+    }
+    
     let simdiMs = Date.now();
     let veriDegisti = false; // Veritabanına ne zaman kayıt atacağımızı takip etmek için
 
