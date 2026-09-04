@@ -2965,8 +2965,13 @@ if (vList) {
     vList.innerHTML = '';
     
     // Satılmış veya silinecek mülkleri filtreden tamamen eliyoruz ki listede görünmesinler
-    let aktifVarliklar = state.varliklar.filter(v => v.durum !== 'silinecek' && v.durum !== 'satildi' && v.durum !== 'satildi-bekliyor');
-    
+    let aktifVarliklar = (state.varliklar || []).filter(v => 
+    v && 
+    v.durum !== 'silinecek' && 
+    v.durum !== 'satildi' && 
+    v.durum !== 'satildi-bekliyor' && 
+    v.durum !== 'ilan-aktif'
+);
     aktifVarliklar.forEach(v => {
         let blokeYazisi = v.bloke ? '<span style="color:#ff4444">(BLOKELİ)</span>' : '';
         
