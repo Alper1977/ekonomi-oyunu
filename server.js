@@ -213,37 +213,60 @@ app.post('/api/ilan-satin-al', (req, res) => {
     }
 
     try {
-        // 1. Önce ilanı bulalım ki satan kişinin kim olduğunu (kullanici_id) ve detayları görebilelim
+        // 1. İlanı ve satan kişinin ID'sini veritabanından çekiyoruz
         const ilan = db.prepare(`SELECT * FROM ilanlar WHERE id = ?`).get(ilanId);
         if (!ilan) {
             return res.status(404).json({ basari: false, mesaj: "İlan bulunamadı veya zaten satın alınmış." });
         }
 
-        // 2. Satıcıyı veritabanından bul
-        const satici = db.prepare(`SELECT * FROM kullanicilar WHERE id = ?`).get(ilan.kullanici_id);
-        
-        if (satici) {
-            let saticiPortfoy = JSON.parse(satici.portfoy || '{}');
-            if (!saticiPortfoy.nakit) saticiPortfoy.nakit = 0;
+        // 2. Eğer bu ilan gerçek bir oyuncuya aitse (kullanici_id varsa)
+        if (ilan.kullanici_id) {
+            const satici = db.prepare(`SELECT * FROM kullanicilar WHERE id = ?`).get(ilan.kullanici_id);
             
-            // Satıcının kasasına parayı ekle
-            saticiPortfoy.nakit += ilan.fiyat;
+            if (satici) {
+                let saticiPortfoy = {};
+                try {
+                    saticiPortfoy = JSON.parse(satici.portfoy || '{}');
+                } catch (e) {
+                    saticiPortfoy = {};
+                }
 
-            // Satıcının varlıkları arasından satılan malı bul ve çıkar
-            if (saticiPortfoy.varliklar) {
-                let detaylar = JSON.parse(ilan.detaylar || '{}');
-                saticiPortfoy.varliklar = saticiPortfoy.varliklar.filter(v => v.id !== detaylar.varlikId);
+                // Satıcının nakit parasını güvenceye al ve satış bedelini ekle
+                if (typeof saticiPortfoy.nakit !== 'number') saticiPortfoy.nakit = 0;
+                saticiPortfoy.nakit += ilan.fiyat;
+
+                // İlanın detaylarından orijinal varlık ID'sini çöz
+                let detaylar = {};
+                try {
+                    detaylar = JSON.parse(ilan.detaylar || '{}');
+                } catch (e) {
+                    detaylar = {};
+                }
+
+                // Satan kişinin portföyündeki varlıklar listesinden bu malı tamamen uçur
+                if (saticiPortfoy.varliklar && Array.isArray(saticiPortfoy.varliklar)) {
+                    saticiPortfoy.varliklar = saticiPortfoy.varliklar.filter(v => {
+                        // Eğer varlık ID'si eşleşiyorsa veya isim ve durumdan yakalayabiliyorsak siliyoruz
+                        if (detaylar.varlikId && v.id == detaylar.varlikId) return false;
+                        if (v.isim === ilan.ilan_tipi && v.durum === 'ilan-aktif') {
+                            // Sadece bir tanesini silmek için bayrak koyabiliriz ama ID eşleşmesi en güvenlisidir
+                            return v.id != detaylar.varlikId;
+                        }
+                        return true;
+                    });
+                }
+
+                // Satıcının güncellenmiş portföyünü veritabanına yazıyoruz
+                db.prepare(`UPDATE kullanicilar SET portfoy = ? WHERE id = ?`).run(JSON.stringify(saticiPortfoy), satici.id);
             }
-
-            // Satıcının güncellenmiş portföyünü veritabanına kaydet
-            db.prepare(`UPDATE kullanicilar SET portfoy = ? WHERE id = ?`).run(JSON.stringify(saticiPortfoy), satici.id);
         }
 
-        // 3. İlanı tablodan tamamen sil
+        // 3. İlanı aktif ilanlar tablosundan siliyoruz ki ortadan kalksın
         db.prepare(`DELETE FROM ilanlar WHERE id = ?`).run(ilanId);
 
-        res.json({ basari: true, mesaj: "İlan başarıyla satın alındı ve transfer tamamlandı." });
+        res.json({ basari: true, mesaj: "İlan başarıyla satın alındı, satıcıya ödeme aktarıldı ve varlık transfer edildi." });
     } catch (err) {
+        console.error("İlan satın alma hatası:", err.message);
         res.status(500).json({ basari: false, mesaj: err.message });
     }
 });
