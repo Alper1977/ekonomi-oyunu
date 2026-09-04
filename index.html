@@ -3950,19 +3950,17 @@ function oyuncuIlaniSatinAlOnayla(ilanId, saticiAdi, varlikIsmi, fiyat) {
 }    
 
 async function oyuncuIlaniKesinSatinAl(isim, bedel, ilanId) {
-    // 1. Nakit kontrolü
     if (state.nakit < bedel) {
         alert("Yeterli nakit paranız yok!");
         return;
     }
 
     try {
-        // Sunucuya satın alma isteği gönder (credentials: 'include' EKLENDİ)
         let response = await fetch('/api/ilan-satin-al', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            credentials: 'include', // 🌟 OTURUM ÇEREZİNİN GİTMesini SAĞLAR
-            body: JSON.stringify({ ilanId: ilanId })
+            credentials: 'include', // 🌟 OTURUM ÇEREZİNİN GİTMESİNİ SAĞLAR
+            body: JSON.stringify({ ilanId: ilanId }) // 🌟 Backend'in beklediği parametre
         });
 
         let sonuc = await response.json();
@@ -3971,7 +3969,6 @@ async function oyuncuIlaniKesinSatinAl(isim, bedel, ilanId) {
             return;
         }
 
-        // 2. İşlem başarılıysa client state'ini güncelle
         state.nakit -= bedel;
 
         state.varliklar.push({
@@ -3982,17 +3979,13 @@ async function oyuncuIlaniKesinSatinAl(isim, bedel, ilanId) {
             krediID: null
         });
 
-        // 3. Modalı kapat
         let modalOverlay = document.getElementById('modal-overlay');
         if (modalOverlay) modalOverlay.style.display = 'none';
 
-        // 4. Verinin değiştiğini işaretle
         if (typeof veriDegisti !== 'undefined') {
             veriDegisti = true;
         }
 
-        // 5. Arayüzü güncelle (Eğer guncelle fonksiyonu yoksa hata vermemesi için kontrol eklendi)
-        if (typeof guncelle === 'function') guncelle();
         if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
         
         if (typeof portfoyuSunucuyaKaydet === 'function') {
