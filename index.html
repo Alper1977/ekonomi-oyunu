@@ -3562,8 +3562,8 @@ function onayPenceresi(isim, bedel, tip, ilanId) {
         gercekBedel = talepBul.bedel; 
     }
 
+    let onayFonksiyonu = ilanId ? `oyuncuIlaniSatinAlOnayla(${ilanId}, '${isim}', ${gercekBedel})` : `islemKesinOnayla('${isim}', ${gercekBedel}, '${tip}')`;
     
-    let onayFonksiyonu = ilanId ? `oyuncuIlaniKesinSatinAl('${isim}', ${gercekBedel}, ${ilanId})` : `islemKesinOnayla('${isim}', ${gercekBedel}, '${tip}')`;
     let butonlar = `
         <button class="btn-green" onclick="${onayFonksiyonu}">ONAYLA</button>
         <button onclick="document.getElementById('modal-overlay').style.display='none'" style="background-color: #d9534f; color: white; margin-left: 10px;">VAZGEÇ</button>
