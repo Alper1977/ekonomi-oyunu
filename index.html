@@ -3262,7 +3262,7 @@ async function ilanlariGuncelle() {
         kapsayici.appendChild(arsaIcerikDiv);
     }
 
-    function kartHtmlUret(baslikMetni, botIsmi, varlikIsmi, satisBedeli, uniqueId, inputId, vadeInputId, arsaMi, atananKonum, tipKyn) {
+   function kartHtmlUret(baslikMetni, botIsmi, varlikIsmi, satisBedeli, uniqueId, inputId, vadeInputId, arsaMi, atananKonum, tipKyn) {
         let goruntuleBtnHTML = arsaMi ? `<button onclick="arsaKonumGoster('${varlikIsmi}', '${atananKonum}')" style="background:#3498db; color:#fff; border:none; padding:4px 8px; border-radius:4px; font-weight:bold; font-size:10px; cursor:pointer; width:100%; margin-bottom:6px;">GÖRÜNTÜLE</button>` : '';
         
         let ortaAlanHTML = '';
@@ -3273,7 +3273,7 @@ async function ilanlariGuncelle() {
                     <button class="btn-red" onclick="vazgec(${uniqueId})" style="width: 100%;">Vazgeç</button>
                 </div>
             `;
-        } else if (tipKyn === 'kamu') {
+        } else if (tipKyn === 'bot') {
             ortaAlanHTML = `
                 <div class="kredi-group">
                     <input type="text" id="${inputId}" placeholder="Kredi Tutarı" oninput="parayiFormatlaMetin(this)" value="">
@@ -3285,8 +3285,24 @@ async function ilanlariGuncelle() {
                     </select>
                 </div>
                 <div class="button-row">
-                    <button class="btn-green" onclick="onayPenceresi('${varlikIsmi}', ${satisBedeli}, 'al')">NAKİT</button>
-                    <button class="btn-red" onclick="krediIslem('${inputId}', '${vadeInputId}', '${varlikIsmi}', ${satisBedeli}, 'ilan')">KREDİ</button>
+                    <button class="btn-green" onclick="baskasiSatinAlOnay(${uniqueId}, '${botIsmi}', ${satisBedeli})">NAKİT</button>
+                    <button class="btn-red" onclick="krediIslem('${inputId}', '${vadeInputId}', '${varlikIsmi}', ${satisBedeli}, 'ilan', ${uniqueId}, '${botIsmi}')">KREDİ</button>
+                </div>
+            `;
+        } else if (tipKyn === 'diger-oyuncu') {
+            ortaAlanHTML = `
+                <div class="kredi-group">
+                    <input type="text" id="${inputId}" placeholder="Kredi Tutarı" oninput="parayiFormatlaMetin(this)" value="">
+                    <select id="${vadeInputId}">
+                        <option value="12">12 Ay</option>
+                        <option value="24">24 Ay</option>
+                        <option value="36">36 Ay</option>
+                        <option value="48" selected>48 Ay</option>
+                    </select>
+                </div>
+                <div class="button-row">
+                    <button class="btn-green" onclick="onayPenceresi('${varlikIsmi}', ${satisBedeli}, 'al', ${uniqueId})">NAKİT</button>
+                    <button class="btn-red" onclick="krediIslem('${inputId}', '${vadeInputId}', '${varlikIsmi}', ${satisBedeli}, 'ilan', ${uniqueId})">KREDİ</button>
                 </div>
             `;
         } else {
@@ -3301,8 +3317,8 @@ async function ilanlariGuncelle() {
                     </select>
                 </div>
                 <div class="button-row">
-                    <button class="btn-green" onclick="ilanSatinAlOnay('${baslikMetni}', '${varlikIsmi}', ${satisBedeli}, ${uniqueId})">NAKİT</button>
-                    <button class="btn-red" onclick="krediIslem('${inputId}', '${vadeInputId}', '${varlikIsmi}', ${satisBedeli}, 'ilan', ${uniqueId})">KREDİ</button>
+                    <button class="btn-green" onclick="onayPenceresi('${varlikIsmi}', ${satisBedeli}, 'al')">NAKİT</button>
+                    <button class="btn-red" onclick="krediIslem('${inputId}', '${vadeInputId}', '${varlikIsmi}', ${satisBedeli}, 'ilan')">KREDİ</button>
                 </div>
             `;
         }
@@ -3323,6 +3339,39 @@ async function ilanlariGuncelle() {
         return itemBox;
     }
 
+    let botMulkListesi = [];
+    let botArsaListesi = [];
+
+    if (typeof botlar !== 'undefined' && Array.isArray(botlar)) {
+        botlar.forEach(bot => {
+            if (!bot.varliklar || !Array.isArray(bot.varliklar)) return;
+
+            bot.varliklar.forEach(varlik => {
+                if (varlik.durum !== 'ilan-aktif') return;
+
+                let satisBedeli = (typeof satisFiyatlari !== 'undefined' && satisFiyatlari && satisFiyatlari[varlik.isim]) ? satisFiyatlari[varlik.isim] : 2000000;
+                let uniqueId = varlik.id;
+                let inputId = `in-kredi-bot-${uniqueId}`;
+                let vadeInputId = `vade-kredi-bot-${uniqueId}`;
+
+                let haritalanabilirMulkler = ['arsası', 'otel', 'fabrika', 'hastane', 'okul', 'avm', 'hipermarket', 'konut'];
+                let arsaMi = haritalanabilirMulkler.some(tur => varlik.isim.toLowerCase().includes(tur));
+                
+                if (arsaMi && !varlik.atananKonum) {
+                    varlik.atananKonum = arsaKonumunuAl(varlik);
+                }
+
+                let veriObj = { bot, varlik, satisBedeli, uniqueId, inputId, vadeInputId, arsaMi };
+
+                if (varlik.isim.toLowerCase().includes('arsa')) {
+                    botArsaListesi.push(veriObj);
+                } else {
+                    botMulkListesi.push(veriObj);
+                }
+            });
+        });
+    }
+
     let oyuncuMulkListesi = [];
     let oyuncuArsaListesi = [];
 
@@ -3334,27 +3383,18 @@ async function ilanlariGuncelle() {
             data.ilanlar.forEach(ilan => {
                 let satisBedeli = ilan.fiyat;
                 let uniqueId = ilan.id;
-                let saticiAdi = ilan.satici_adsoyad || 'Bilinmiyor';
-                let benimIlanimMi = ilan.benim_mi; 
-                let botMu = ilan.satici_tipi === 'bot' || (typeof botlar !== 'undefined' && botlar.some(b => b.isim === saticiAdi));
-
-                let inputId = `in-kredi-ilan-${uniqueId}`;
-                let vadeInputId = `vade-kredi-ilan-${uniqueId}`;
+                let inputId = `in-kredi-oyuncu-${uniqueId}`;
+                let vadeInputId = `vade-kredi-oyuncu-${uniqueId}`;
 
                 let haritalanabilirMulkler = ['arsası', 'otel', 'fabrika', 'hastane', 'okul', 'avm', 'hipermarket', 'konut'];
                 let arsaMi = haritalanabilirMulkler.some(tur => ilan.ilan_tipi.toLowerCase().includes(tur));
                 let konum = ilan.detaylar?.atananKonum || '';
 
-                if (arsaMi && !konum && typeof arsaKonumunuAl === 'function') {
-                    konum = arsaKonumunuAl(ilan.ilan_tipi);
-                }
-
-                let baslikMetni = benimIlanimMi ? 'Ben' : saticiAdi;
-                let tipKyn = benimIlanimMi ? 'benim-ilanim' : (botMu ? 'bot' : 'diger-oyuncu');
+                let benimIlanimMi = ilan.benim_mi; 
 
                 let veriObj = { 
-                    baslikMetni, 
-                    botIsmi: saticiAdi, 
+                    baslikMetni: benimIlanimMi ? 'Ben' : (ilan.satici_adsoyad || 'Oyuncu'), 
+                    botIsmi: ilan.satici_adsoyad, 
                     varlikIsmi: ilan.ilan_tipi, 
                     satisBedeli, 
                     uniqueId, 
@@ -3362,7 +3402,7 @@ async function ilanlariGuncelle() {
                     vadeInputId, 
                     arsaMi, 
                     atananKonum: konum, 
-                    tipKyn 
+                    tipKyn: benimIlanimMi ? 'benim-ilanim' : 'diger-oyuncu' 
                 };
 
                 if (ilan.ilan_tipi.toLowerCase().includes('arsa')) {
@@ -3422,6 +3462,10 @@ async function ilanlariGuncelle() {
             let kutu = kartHtmlUret(item.baslikMetni, item.botIsmi, item.varlikIsmi, item.satisBedeli, item.uniqueId, item.inputId, item.vadeInputId, item.arsaMi, item.atananKonum, item.tipKyn);
             emlakIcerikDiv.appendChild(kutu);
         });
+        botMulkListesi.forEach(item => {
+            let kutu = kartHtmlUret(item.bot.isim, item.bot.isim, item.varlik.isim, item.satisBedeli, item.uniqueId, item.inputId, item.vadeInputId, item.arsaMi, item.varlik.atananKonum, 'bot');
+            emlakIcerikDiv.appendChild(kutu);
+        });
         kamuMulkListesi.forEach(item => {
             let kutu = kartHtmlUret('Kamu Satışı', '', item.urun.isim, item.satisBedeli, null, item.inputId, item.vadeInputId, item.arsaMi, item.kamuKonumu, 'kamu');
             emlakIcerikDiv.appendChild(kutu);
@@ -3433,6 +3477,10 @@ async function ilanlariGuncelle() {
         arsaIcerikDiv.innerHTML = '';
         oyuncuArsaListesi.forEach(item => {
             let kutu = kartHtmlUret(item.baslikMetni, item.botIsmi, item.varlikIsmi, item.satisBedeli, item.uniqueId, item.inputId, item.vadeInputId, item.arsaMi, item.atananKonum, item.tipKyn);
+            arsaIcerikDiv.appendChild(kutu);
+        });
+        botArsaListesi.forEach(item => {
+            let kutu = kartHtmlUret(item.bot.isim, item.bot.isim, item.varlik.isim, item.satisBedeli, item.uniqueId, item.inputId, item.vadeInputId, item.arsaMi, item.varlik.atananKonum, 'bot');
             arsaIcerikDiv.appendChild(kutu);
         });
         kamuArsaListesi.forEach(item => {
@@ -3717,139 +3765,105 @@ function baskasiSatinAlOnay(varlikId, botIsmi, fiyat) {
 }
 
 // 2. Onay verilince çalışan asıl işlem fonksiyonu
-async function botlarIlanlariSatinAl() {
-    if (typeof botlar === 'undefined' || !Array.isArray(botlar) || botlar.length === 0) return;
-
-    try {
-        let response = await fetch('/api/ilanlar');
-        let data = await response.json();
-        
-        if (!data.basari || !Array.isArray(data.ilanlar) || data.ilanlar.length === 0) return;
-
-        let simdi = Date.now();
-        // Global bekleme süresi (Örn: 3 gün = 3 * 24 * 60 * 60 * 1000 ms ya da sunucudan gelen süre)
-        // Eğer sunucu tarafında ilan nesnesinde 'olusturmaTarihi' veya 'beklemeSuresiBitis' tutuluyorsa onu baz alıyoruz:
-        
-        for (let ilan of data.ilanlar) {
-            // Kendi ilanını kendi botu almasın
-            let ilanYasiMs = simdi - (ilan.olusturmaZamani || simdi);
-            let globalBeklemeSuresiMs = (window.oyunAyar && window.oyunAyar.ilanBeklemeSuresiMs) ? window.oyunAyar.ilanBeklemeSuresiMs : (24 * 60 * 60 * 1000); // Varsayılan 24 saat veya ayarlanan süre
-
-            // Eğer global bekleme süresi henüz DOLMADIYSA botlar bu ilana dokunamaz! 
-            // (Ama gerçek oyuncular yukarıdaki butonlarla dilediği an alabilir).
-            if (ilanYasiMs < globalBeklemeSuresiMs) {
-                continue; 
-            }
-
-            // Süre doldu, bütçesi uygun olan rastgele bir bot bu ilanı satın almaya çalışsın
-            let uygunBotlar = botlar.filter(b => b.nakit >= ilan.fiyat && b.isim !== ilan.satici_adsoyad);
-            if (uygunBotlar.length === 0) continue;
-
-            // Rastgele bir bot seç
-            let satinAlanBot = uygunBotlar[Math.floor(Math.random() * uygunBotlar.length)];
-
-            // Sunucuya bot adına satın alma isteği at
-            let alimRes = await fetch('/api/ilan-satin-al', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    ilanId: ilan.id, 
-                    aliciAdi: satinAlanBot.isim, 
-                    fiyat: ilan.fiyat 
-                })
-            });
-            let alimData = await alimRes.json();
-
-            if (alimData.basari) {
-                // Botun kasasından parayı düş, mülkü ekle
-                satinAlanBot.nakit -= ilan.fiyat;
-                if (!satinAlanBot.varliklar) satinAlanBot.varliklar = [];
-                
-                satinAlanBot.varliklar.push({
-                    id: Date.now() + Math.random(),
-                    isim: ilan.ilan_tipi,
-                    durum: 'sahip',
-                    talepAktif: true,
-                    bloke: false,
-                    krediID: null,
-                    atananKonum: ilan.detaylar?.atananKonum || (typeof arsaKonumunuAl === 'function' ? arsaKonumunuAl(ilan.ilan_tipi) : "Merkezi Konum")
-                });
-
-                console.log(`[Bot Alımı] ${satinAlanBot.isim}, ${ilan.satici_adsoyad} kişisinin ${ilan.ilan_tipi} ilanını ${ilan.fiyat} TL'ye satın aldı.`);
-                
-                // Pazar ekranını tazele
-                if (typeof ilanlariGuncelle === 'function') {
-                    ilanlariGuncelle();
-                }
-                break; // Her döngüde bir bot alımı yeterli, sıradaki döngüde devam eder
-            }
-        }
-    } catch (err) {
-        console.error("Bot ilan alım döngüsünde hata:", err);
-    }
-}
-
-// Botların havuz kontrolünü her 10-15 saniyede bir çalıştırabilirsin:
-setInterval(botlarIlanlariSatinAl, 15000);
-// Ortak İlan Satın Alma Onay Penceresi
-function ilanSatinAlOnay(saticiAdi, varlikIsmi, fiyat, ilanId) {
-    let butonlar = `
-        <button class="btn-green" onclick="ilanKesinSatinAl('${saticiAdi}', '${varlikIsmi}', ${fiyat}, ${ilanId})">ONAYLA</button>
-        <button onclick="document.getElementById('modal-overlay').style.display='none'" style="background-color: #d9534f; color: white; margin-left: 10px;">VAZGEÇ</button>
-    `;
-    modalGoster(`${saticiAdi} kişisinden ${varlikIsmi} varlığını ${Number(fiyat).toLocaleString()} TL ödeyerek satın almak istiyor musunuz?`, butonlar);
-}
-
-// Ortak Kesin Satın Alma ve Sunucudan/Botlardan Düşme
-async function ilanKesinSatinAl(saticiAdi, varlikIsmi, fiyat, ilanId) {
+function baskasiSatinAl(varlikId, botIsmi, fiyat) {
     let modalOverlay = document.getElementById('modal-overlay');
     if (modalOverlay) {
         modalOverlay.style.display = 'none';
     }
 
     if (state.nakit < fiyat) {
-        modalGoster("Yetersiz nakit! Bu ilanı satın almak için yeterli paranız yok.");
+        modalGoster("Yetersiz Nakit! Bu ilanı satın almak için yeterli paranız yok.");
         return;
     }
 
-    // 1. Sunucuya satın alma isteği gönder (İlanı veritabanından ve aktif havuzdan düşer)
+    let hedefBot = botlar.find(b => b.isim === botIsmi);
+    if (!hedefBot) {
+        modalGoster("İlan sahibi bulunamadı!");
+        return;
+    }
+
+    let ilanVarligiIndex = hedefBot.varliklar.findIndex(v => v.id == varlikId);
+    if (ilanVarligiIndex === -1) {
+        modalGoster("Bu ilan artık geçerli değil veya satılmış!");
+        
+        if (typeof ilanlariGuncelle === 'function') {
+            ilanlariGuncelle();
+        }
+        if (typeof guncelle === 'function') {
+            guncelle();
+        }
+        return;
+    }
+
+    let satilanVarlik = hedefBot.varliklar[ilanVarligiIndex];
+
+    state.nakit -= fiyat;
+    hedefBot.nakit += fiyat;
+
+    hedefBot.varliklar.splice(ilanVarligiIndex, 1);
+    
+    // Tanımsız değişken patlamasını önlemek için bilgileri satilanVarlik'ten alıyoruz:
+    let dogruIsim = satilanVarlik.isim;
+    let dogruKonum = satilanVarlik.atananKonum || (typeof arsaKonumunuAl === 'function' ? arsaKonumunuAl(satilanVarlik) : "Merkezi Konum");
+
+    state.varliklar.push({
+        id: Date.now() + Math.random(),
+        isim: dogruIsim, 
+        durum: 'sahip',
+        talepAktif: true, 
+        bloke: false,
+        krediID: null,
+        atananKonum: dogruKonum 
+    });
+
+    modalGoster(`Tebrikler! ${botIsmi} kişisinden ${dogruIsim} varlığını ${fiyat.toLocaleString()} TL ödeyerek satın aldınız.`);
+    
+    guncelle();
+
+    if (typeof ilanlariGuncelle === 'function') {
+        ilanlariGuncelle();
+    }
+
+    if (typeof portfoyuSunucuyaKaydet === 'function') {
+        portfoyuSunucuyaKaydet(state);
+    }
+}
+// Gerçek Oyuncu İlanı İçin Onay Penceresi
+function oyuncuIlaniSatinAlOnayla(saticiAdi, varlikIsmi, fiyat, ilanId) {
+    let butonlar = `
+        <button class="btn-green" onclick="oyuncuIlaniKesinSatinAl('${saticiAdi}', '${varlikIsmi}', ${fiyat}, ${ilanId})">ONAYLA</button>
+        <button onclick="document.getElementById('modal-overlay').style.display='none'" style="background-color: #d9534f; color: white; margin-left: 10px;">VAZGEÇ</button>
+    `;
+    modalGoster(`${saticiAdi} kişisinden ${varlikIsmi} varlığını ${Number(fiyat).toLocaleString()} TL ödeyerek satın almak istiyor musunuz?`, butonlar);
+}
+
+// Gerçek Oyuncu İlanı Kesin Satın Alma ve Sunucudan Silme
+async function oyuncuIlaniKesinSatinAl(varlikIsmi, fiyat, ilanId) {
+    let modalOverlay = document.getElementById('modal-overlay');
+    if (modalOverlay) {
+        modalOverlay.style.display = 'none';
+    }
+
+    if (state.nakit < fiyat) {
+        modalGoster("Yetersiz nakit!");
+        return;
+    }
+    state.nakit -= fiyat;
+
     try {
         let response = await fetch('/api/ilan-satin-al', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ilanId: ilanId, aliciAdi: state.isim || 'ben', fiyat: fiyat })
+            body: JSON.stringify({ ilanId: ilanId })
         });
         let data = await response.json();
         if (!data.basari) {
-            modalGoster("İlan satın alınamadı: " + (data.mesaj || "Bilinmeyen hata"));
-            return;
+            console.error("İlan sunucudan silinemedi:", data.mesaj);
         }
     } catch (err) {
         console.error("İlan satın alma isteği başarısız:", err);
-        modalGoster("Sunucu bağlantı hatası oluştu.");
-        return;
     }
 
-    // 2. Parayı oyuncunun kasasından düş
-    state.nakit -= fiyat;
-
-    // 3. Eğer satan kişi yerel bot listesindeyse, onun varlıklar dizisinden de temizle ve parasını ekle
-    if (typeof botlar !== 'undefined' && botlar) {
-        let hedefBot = botlar.find(b => b.isim === saticiAdi);
-        if (hedefBot) {
-            if (!hedefBot.nakit) hedefBot.nakit = 0;
-            hedefBot.nakit += fiyat;
-
-            if (hedefBot.varliklar && Array.isArray(hedefBot.varliklar)) {
-                let index = hedefBot.varliklar.findIndex(v => v.id == ilanId || (v.durum === 'ilan-aktif' && v.isim === varlikIsmi));
-                if (index !== -1) {
-                    hedefBot.varliklar.splice(index, 1);
-                }
-            }
-        }
-    }
-
-    // 4. Varlığı satın alan oyuncunun portföyüne ekle
     if (!state.varliklar) state.varliklar = [];
     
     let gelenKonum = "Merkezi Konum";
@@ -3867,9 +3881,8 @@ async function ilanKesinSatinAl(saticiAdi, varlikIsmi, fiyat, ilanId) {
         atananKonum: gelenKonum 
     });
 
-    modalGoster(`Tebrikler! ${varlikIsmi} varlığını ${Number(fiyat).toLocaleString()} TL ödeyerek başarıyla satın aldınız.`);
+    modalGoster(`${varlikIsmi} varlığını ${Number(fiyat).toLocaleString()} TL ödeyerek başarıyla satın aldınız.`);
 
-    // 5. Arayüzü ve portföyü güncelle
     if (typeof guncelle === 'function') guncelle();
     if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
     if (typeof portfoyuSunucuyaKaydet === 'function') portfoyuSunucuyaKaydet(state);
@@ -3953,7 +3966,7 @@ function vazgec(id) {
         }
     })
     .catch(err => console.error("İlan silme hatası:", err));
-} 
+}
 async function siralamayiGuncelle() {
     let listeKapsayici = document.getElementById('siralama-listesi');
     if (!listeKapsayici) return;
@@ -4145,54 +4158,73 @@ function botIlaniniKrediliAl(varlikId, botIsmi, varlikIsmi, bedel) {
 function botlarIlanlariSatinAl() {
     if (typeof botlar === 'undefined' || !botlar) return;
 
-    fetch('/api/ilanlar')
-        .then(res => res.json())
-        .then(data => {
-            if (!data.basari || !data.ilanlar || data.ilanlar.length === 0) return;
-            let aktifIlanlar = data.ilanlar;
-
-            botlar.forEach(alanBot => {
-                if (Math.random() < 0.15 && aktifIlanlar.length > 0) {
-                    let randomIndex = Math.floor(Math.random() * aktifIlanlar.length);
-                    let ilan = aktifIlanlar[randomIndex];
-
-                    if (ilan.satici_adsoyad === alanBot.isim) return;
-
-                    let satisBedeli = ilan.fiyat;
-
-                    if (alanBot.nakit >= satisBedeli) {
-                        fetch('/api/ilan-satin-al', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ ilanId: ilan.id })
-                        })
-                        .then(res => res.json())
-                        .then(resData => {
-                            if (resData.basari) {
-                                if (!alanBot.varliklar) alanBot.varliklar = [];
-                                alanBot.nakit -= satisBedeli;
-
-                                alanBot.varliklar.push({
-                                    id: Date.now() + Math.random(),
-                                    isim: ilan.ilan_tipi,
-                                    durum: 'sahip',
-                                    bloke: false,
-                                    krediID: null,
-                                    atananKonum: ilan.detaylar && ilan.detaylar.atananKonum ? ilan.detaylar.atananKonum : "Merkezi Konum"
-                                });
-
-                                aktifIlanlar.splice(randomIndex, 1);
-
-                                if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
-                                if (typeof zenginlerListesiniGuncelle === 'function') zenginlerListesiniGuncelle();
-                            }
-                        })
-                        .catch(err => console.error("Bot ilan satın alma isteği başarısız:", err));
-                    }
+    // 1. Piyasadaki tüm aktif ilanları topla
+    let aktifIlanlar = [];
+    botlar.forEach(satanBot => {
+        if (satanBot.varliklar) {
+            satanBot.varliklar.forEach(varlik => {
+                if (varlik.durum === 'ilan-aktif') {
+                    aktifIlanlar.push({ bot: satanBot, varlik: varlik });
                 }
             });
-        })
-        .catch(err => console.error("Pazar ilanları çekilemedi:", err));
+        }
+    });
+
+    if (aktifIlanlar.length === 0) return;
+
+    // 2. Her bot için rastgele bir satın alma hamlesi simüle et
+    botlar.forEach(alanBot => {
+        // Her botun her döngüde %15 ihtimalle satın alma hamlesi yapma şansı olsun (oyunu çok hızlı tüketmemesi için)
+        if (Math.random() < 0.15 && aktifIlanlar.length > 0) {
+            
+            // Rastgele bir ilan seç
+            let randomIndex = Math.floor(Math.random() * aktifIlanlar.length);
+            let ilanData = aktifIlanlar[randomIndex];
+
+            let satanBot = ilanData.bot;
+            let varlik = ilanData.varlik;
+
+            // Bot kendi ilanını satın almaya çalışmasın!
+            if (satanBot.id === alanBot.id) return;
+
+            let satisBedeli = (satisFiyatlari && satisFiyatlari[varlik.isim]) ? satisFiyatlari[varlik.isim] : (varlik.bedel || 2000000);
+
+            // Alan botun nakiti bu ilanı almaya yetiyor mu?
+            if (alanBot.nakit >= satisBedeli) {
+                // Para transferi
+                alanBot.nakit -= satisBedeli;
+                satanBot.nakit += satisBedeli;
+
+                // Varlığı satan botun ilanlarından / envanterinden çıkar
+                let index = satanBot.varliklar.findIndex(v => v.id === varlik.id);
+                if (index !== -1) {
+                    satanBot.varliklar.splice(index, 1);
+
+                    // Varlığı alan botun envanterine 'sahip' olarak ekle
+                    alanBot.varliklar.push({
+                        id: Date.now() + Math.random(),
+                        isim: varlik.isim,
+                        durum: 'sahip',
+                        bloke: false,
+                        krediID: null
+                    });
+
+                    // Başarıyla satıldığı için havuzdan da çıkar ki aynı turda başka bot alamayınca hata olmasın
+                    aktifIlanlar.splice(randomIndex, 1);
+
+                    console.log(`🤖 ${alanBot.isim}, ${satanBot.isim} kişisinden ${varlik.isim} varlığını ${satisBedeli.toLocaleString()} TL'ye satın aldı!`);
+                }
+            }
+        }
+    });
+
+    // Pazar ekranını ve zenginler listesini güncel tut
+    if (typeof ilanlariGuncelle === 'function') {
+        ilanlariGuncelle();
+    }
+    if (typeof zenginlerListesiniGuncelle === 'function') {
+        zenginlerListesiniGuncelle();
+    }
 }
 
 
@@ -4206,10 +4238,12 @@ function botlarIlanlariKontrolEt() {
 
     let gercekVarliklar = Object.keys(satisFiyatlari); 
 
+    // 🌟 KESİN ÇÖZÜM: Her arsa türü için havuzdaki listeden tamamen rastgele ve benzersiz bir bölge seçer
     function tamKarmaliBolgeUret(arsaIsmi) {
         if (typeof arsaKonumHaritasi !== 'undefined' && arsaKonumHaritasi[arsaIsmi]) {
             let veri = arsaKonumHaritasi[arsaIsmi];
             if (veri && veri.liste && veri.liste.length > 0) {
+                // Listeyi kopyalayıp karıştırıyoruz ki aynı bölge üst üste gelmesin
                 let listeKopya = [...veri.liste];
                 listeKopya.sort(() => Math.random() - 0.5);
                 return listeKopya[Math.floor(Math.random() * listeKopya.length)];
@@ -4284,6 +4318,7 @@ function botlarIlanlariKontrolEt() {
                         secilenVarlik.ilanSahibi = bot.isim;
                         secilenVarlik.ilanVerilisZamani = simdiMs;
                         
+                        // İlana çıktığında hastane arsası vb. için tamamen yeni ve farklı bir bölge ata
                         if (secilenVarlik.isim.toLowerCase().includes('arsası')) {
                             secilenVarlik.atananKonum = tamKarmaliBolgeUret(secilenVarlik.isim);
                         }
@@ -4319,11 +4354,54 @@ function botlarIlanlariKontrolEt() {
         });
     }
 
-    // 4. Güncellemeler
+    // 4. Diğer botların ilanlarının arka planda kendi aralarında dönmesi ve temizlenmesi
+    botlar.forEach(bot => {
+        if (!bot.varliklar || !Array.isArray(bot.varliklar)) return;
+
+        bot.varliklar.forEach(varlik => {
+            if (varlik.durum === 'ilan-aktif') {
+                if (!varlik.ilanVerilisZamani) {
+                    varlik.ilanVerilisZamani = simdiMs;
+                    return;
+                }
+
+                if ((simdiMs - varlik.ilanVerilisZamani) < beklemeSuresiMs) return;
+
+                let satisBedeli = (satisFiyatlari && satisFiyatlari[varlik.isim]) ? satisFiyatlari[varlik.isim] : 2000000;
+                let alabilecekBotlar = botlar.filter(b => b.isim !== bot.isim && b.nakit >= satisBedeli);
+                let aliciBot = alabilecekBotlar.length > 0 ? 
+                            alabilecekBotlar[Math.floor(Math.random() * alabilecekBotlar.length)] : 
+                            botlar.filter(b => b.isim !== bot.isim)[Math.floor(Math.random() * (botlar.length - 1))];
+
+                if (aliciBot) {
+                    if (!alabilecekBotlar.length) aliciBot.nakit += satisBedeli + 5000000;
+
+                    aliciBot.nakit -= satisBedeli;
+                    bot.nakit += satisBedeli;
+
+                    varlik.durum = 'sahip';
+                    varlik.ilanSahibi = null;
+                    varlik.ilanVerilisZamani = null;
+                    
+                    if (varlik.isim.toLowerCase().includes('arsası')) {
+                        varlik.atananKonum = tamKarmaliBolgeUret(varlik.isim);
+                    }
+                }
+            }
+        });
+    });
+
+    botlar.forEach(bot => {
+        if (!bot.varliklar) return;
+        bot.varliklar = bot.varliklar.filter(v => !(v.durum === 'ilan-aktif' && v.ilanVerilisZamani && (simdiMs - v.ilanVerilisZamani >= beklemeSuresiMs)));
+    });
+
+    // 5. Güncellemeler
     guncelle();
     if (typeof ilanlariGuncelle === 'function') { ilanlariGuncelle(); }
     if (typeof portfoyuSunucuyaKaydet === 'function') { portfoyuSunucuyaKaydet(state); }
 }
+
 
 function changePage(p) {
     let hedefSayfa = document.getElementById(p);
