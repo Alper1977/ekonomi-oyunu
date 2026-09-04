@@ -3864,7 +3864,7 @@ function oyuncuIlaniSatinAlOnayla(saticiAdi, varlikIsmi, fiyat, ilanId, atananKo
     modalGoster(`${saticiAdi} kişisinden ${varlikIsmi} varlığını ${temizFiyat.toLocaleString()} TL ödeyerek satın almak istiyor musunuz?`, butonlar);
 }
 
-// Gerçek Oyuncu İlanı Kesin Satın Alma ve Sunucuya Bildirme
+// Alım Onaylandığında Çalışacak Kesin Fonksiyon
 async function oyuncuIlaniKesinSatinAl(saticiAdi, varlikIsmi, fiyat, ilanId, atananKonum) {
     let modalOverlay = document.getElementById('modal-overlay');
     if (modalOverlay) {
@@ -3877,30 +3877,33 @@ async function oyuncuIlaniKesinSatinAl(saticiAdi, varlikIsmi, fiyat, ilanId, ata
         modalGoster("Yetersiz nakit!");
         return;
     }
+    
+    // Alıcının parasından düş
     state.nakit -= gercekFiyat;
 
     try {
+        // Sunucuya bildir: Satıcının varlıklarından sil, parasını ver, ilanı kaldır
         let response = await fetch('/api/ilan-satin-al', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ilanId: ilanId })
         });
         let data = await response.json();
+        
         if (!data.basari) {
-            console.error("İlan sunucudan silinemedi:", data.mesaj);
-            state.nakit += gercekFiyat; // Hata durumunda parayı iade et
+            state.nakit += gercekFiyat; // Hata olursa parayı iade et
             modalGoster("Satın alma başarısız: " + data.mesaj);
             return;
         }
     } catch (err) {
-        console.error("İlan satın alma isteği başarısız:", err);
+        console.error("Satın alma isteği hatası:", err);
         state.nakit += gercekFiyat;
         return;
     }
 
     if (!state.varliklar) state.varliklar = [];
 
-    // Alıcının portföyüne mülkü ekliyoruz (Konum artık rastgele değil, satıcının belirlediği orijinal konum)
+    // Mülkü alıcının portföyüne ekle (Konum satıcınınkinden birebir aktarılır)
     state.varliklar.push({
         id: Date.now() + Math.random(),
         isim: varlikIsmi, 
