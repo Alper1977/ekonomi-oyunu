@@ -3949,7 +3949,6 @@ function oyuncuIlaniSatinAlOnayla(ilanId, saticiAdi, varlikIsmi, fiyat) {
     modalGoster(`${saticiAdi} kişisinden ${varlikIsmi} varlığını ${temizFiyat.toLocaleString()} TL ödeyerek satın almak istiyor musunuz?`, butonlar);
 }    
 
-// Alım Onaylandığında Çalışacak Kesin Fonksiyon
 async function oyuncuIlaniKesinSatinAl(isim, bedel, ilanId) {
     // 1. Nakit kontrolü
     if (state.nakit < bedel) {
@@ -3958,10 +3957,11 @@ async function oyuncuIlaniKesinSatinAl(isim, bedel, ilanId) {
     }
 
     try {
-        // Sunucuya satın alma isteği gönder
+        // Sunucuya satın alma isteği gönder (credentials: 'include' EKLENDİ)
         let response = await fetch('/api/ilan-satin-al', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include', // 🌟 OTURUM ÇEREZİNİN GİTMesini SAĞLAR
             body: JSON.stringify({ ilanId: ilanId })
         });
 
@@ -3973,11 +3973,6 @@ async function oyuncuIlaniKesinSatinAl(isim, bedel, ilanId) {
 
         // 2. İşlem başarılıysa client state'ini güncelle
         state.nakit -= bedel;
-
-        // DİKKAT: Alıcı, başkasının ilanını satın alıyor. 
-        // state.varliklar dizisinde kendi ilanını arayıp splice etmek mantık hatasıdır 
-        // ve kendi envanterindeki rastgele aktif bir mülkü silmesine yol açar.
-        // Satın alınan mülk, doğrudan alıcının envanterine 'sahip' olarak eklenmelidir:
 
         state.varliklar.push({
             id: Date.now() + Math.random(),
@@ -3996,7 +3991,7 @@ async function oyuncuIlaniKesinSatinAl(isim, bedel, ilanId) {
             veriDegisti = true;
         }
 
-        // 5. Arayüzü güncelle
+        // 5. Arayüzü güncelle (Eğer guncelle fonksiyonu yoksa hata vermemesi için kontrol eklendi)
         if (typeof guncelle === 'function') guncelle();
         if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
         
