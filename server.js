@@ -202,7 +202,128 @@ app.post('/api/ilan-guncelle', (req, res) => {
     }
 });
 
+app.post('/api/ilan-satin-al', (req, res) => {
+    if (!req.session || !req.session.kullanici) {
+        return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı!" });
+    }
 
+    const { ilanId } = req.body;
+    if (!ilanId) {
+        return res.status(400).json({ basari: false, mesaj: "İlan ID belirtilmedi!" });
+    }
+
+    const aliciId = req.session.kullanici.id || req.session.kullanici;
+
+    try {
+        const transaction = db.transaction(() => {
+            // 1. İlanı bul
+            const ilan = db.prepare(`SELECT * FROM ilanlar WHERE id = ?`).get(ilanId);
+            if (!ilan) {
+                throw new Error("İlan bulunamadı veya zaten satın alınmış.");
+            }
+
+            // Alıcıyı veritabanından çek
+            const alici = db.prepare(`SELECT * FROM kullanicilar WHERE id = ?`).get(aliciId);
+            if (!alici) {
+                throw new Error("Alıcı bilgisi bulunamadı!");
+            }
+
+            let aliciPortfoy = {};
+            try {
+                aliciPortfoy = JSON.parse(alici.portfoy || '{}');
+            } catch (e) {
+                aliciPortfoy = {};
+            }
+
+            let aliciNakit = typeof aliciPortfoy.nakit === 'number' ? aliciPortfoy.nakit : (aliciPortfoy.para || 0);
+            if (aliciNakit < ilan.fiyat) {
+                throw new Error("Yetersiz nakit!");
+            }
+
+            // 2. Alıcının parasını düş ve mülkü envanterine ekle
+            if (typeof aliciPortfoy.nakit === 'number') {
+                aliciPortfoy.nakit -= ilan.fiyat;
+            } else if (typeof aliciPortfoy.para === 'number') {
+                aliciPortfoy.para -= ilan.fiyat;
+            } else {
+                aliciPortfoy.nakit = -ilan.fiyat;
+            }
+
+            if (!aliciPortfoy.varliklar || !Array.isArray(aliciPortfoy.varliklar)) {
+                aliciPortfoy.varliklar = [];
+            }
+
+            let detaylar = {};
+            try {
+                detaylar = JSON.parse(ilan.detaylar || '{}');
+            } catch (e) {
+                detaylar = {};
+            }
+
+            aliciPortfoy.varliklar.push({
+                id: Date.now() + Math.random(),
+                isim: ilan.ilan_tipi,
+                durum: 'sahip',
+                bloke: false,
+                krediID: null,
+                atananKonum: detaylar.atananKonum || "Merkezi Konum"
+            });
+
+            db.prepare(`UPDATE kullanicilar SET portfoy = ? WHERE id = ?`).run(JSON.stringify(aliciPortfoy), alici.id);
+
+            // 3. Eğer ilanı açan bir kullanıcıysa, satıcının portföyünden mülkü sök ve parasını ekle
+            if (ilan.kullanici_id) {
+                const satici = db.prepare(`SELECT * FROM kullanicilar WHERE id = ?`).get(ilan.kullanici_id);
+                
+                if (satici) {
+                    let saticiPortfoy = {};
+                    try {
+                        saticiPortfoy = JSON.parse(satici.portfoy || '{}');
+                    } catch (e) {
+                        saticiPortfoy = {};
+                    }
+
+                    if (typeof saticiPortfoy.nakit === 'number') {
+                        saticiPortfoy.nakit += ilan.fiyat;
+                    } else if (typeof saticiPortfoy.para === 'number') {
+                        saticiPortfoy.para += ilan.fiyat;
+                    } else {
+                        saticiPortfoy.nakit = ilan.fiyat;
+                    }
+
+                    if (saticiPortfoy.varliklar && Array.isArray(saticiPortfoy.varliklar)) {
+                        let silindi = false;
+                        saticiPortfoy.varliklar = saticiPortfoy.varliklar.filter(v => {
+                            if (silindi) return true;
+
+                            if (detaylar.varlikId && String(v.id) === String(detaylar.varlikId)) {
+                                silindi = true;
+                                return false;
+                            }
+                            if (v.isim === ilan.ilan_tipi && v.durum === 'ilan-aktif') {
+                                silindi = true;
+                                return false;
+                            }
+                            return true;
+                        });
+                    }
+
+                    db.prepare(`UPDATE kullanicilar SET portfoy = ? WHERE id = ?`).run(JSON.stringify(saticiPortfoy), satici.id);
+                }
+            }
+
+            // 4. İlanı pazar tablosundan sil
+            db.prepare(`DELETE FROM ilanlar WHERE id = ?`).run(ilanId);
+        });
+
+        transaction();
+        res.json({ basari: true, mesaj: "Satın alma gerçekleşti, satıcının envanterinden mülk düşüldü." });
+
+    } catch (err) {
+        console.error("Satın alma işlem hatası:", err.message);
+        res.status(500).json({ basari: false, mesaj: err.message });
+    }
+});
 app.post('/api/admin/ayar-guncelle', (req, res) => {
     const { ayarlar, sureler } = req.body;
     if (!ayarlar) {
@@ -221,85 +342,7 @@ app.post('/api/admin/ayar-guncelle', (req, res) => {
         res.status(500).json({ basari: false, mesaj: err.message });
     }
 });
-app.post('/api/ilan-satin-al', (req, res) => {
-    if (!req.session || !req.session.kullanici) {
-        return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı!" });
-    }
 
-    const { ilanId } = req.body;
-    if (!ilanId) {
-        return res.status(400).json({ basari: false, mesaj: "İlan ID belirtilmedi!" });
-    }
-
-    try {
-        // 1. İlanı tablodan bul
-        const ilan = db.prepare(`SELECT * FROM ilanlar WHERE id = ?`).get(ilanId);
-        if (!ilan) {
-            return res.status(404).json({ basari: false, mesaj: "İlan bulunamadı veya zaten satın alınmış." });
-        }
-
-        // 2. Eğer ilanı açan bir kullanıcıysa, satıcının portföyündeki varlıklar dizisinden o mülkü söküp at
-        if (ilan.kullanici_id) {
-            const satici = db.prepare(`SELECT * FROM kullanicilar WHERE id = ?`).get(ilan.kullanici_id);
-            
-            if (satici) {
-                let saticiPortfoy = {};
-                try {
-                    saticiPortfoy = JSON.parse(satici.portfoy || '{}');
-                } catch (e) {
-                    saticiPortfoy = {};
-                }
-
-                // Satıcının nakit parasını artır
-                if (typeof saticiPortfoy.nakit === 'number') {
-                    saticiPortfoy.nakit += ilan.fiyat;
-                } else if (typeof saticiPortfoy.para === 'number') {
-                    saticiPortfoy.para += ilan.fiyat;
-                } else {
-                    saticiPortfoy.nakit = ilan.fiyat;
-                }
-
-                let detaylar = {};
-                try {
-                    detaylar = JSON.parse(ilan.detaylar || '{}');
-                } catch (e) {
-                    detaylar = {};
-                }
-
-                // Satıcının varlıklar dizisinden ilandaki mülkü filtreleyip tamamen uçur
-                if (saticiPortfoy.varliklar && Array.isArray(saticiPortfoy.varliklar)) {
-                    let silindi = false;
-                    saticiPortfoy.varliklar = saticiPortfoy.varliklar.filter(v => {
-                        if (silindi) return true;
-
-                        // İlanda orijinal varlikId tutuluyorsa
-                        if (detaylar.varlikId && String(v.id) === String(detaylar.varlikId)) {
-                            silindi = true;
-                            return false;
-                        }
-                        // Veya mülk ismi ve 'ilan-aktif' durumu eşleşiyorsa
-                        if (v.isim === ilan.ilan_tipi && v.durum === 'ilan-aktif') {
-                            silindi = true;
-                            return false;
-                        }
-                        return true;
-                    });
-                }
-
-                // Satıcının güncellenmiş portföyünü veritabanına kaydet
-                db.prepare(`UPDATE kullanicilar SET portfoy = ? WHERE id = ?`).run(JSON.stringify(saticiPortfoy), satici.id);
-            }
-        }
-
-        // 3. İlanı ilanlar tablosundan tamamen sil
-        db.prepare(`DELETE FROM ilanlar WHERE id = ?`).run(ilanId);
-
-        res.json({ basari: true, mesaj: "İlan başarıyla satın alındı ve satıcının envanterinden düşüldü." });
-    } catch (err) {
-        console.error("Gerçek ilan satın alma hatası:", err.message);
-        res.status(500).json({ basari: false, mesaj: err.message });
-    }
-});
 // YENİ ÜYE KAYIT ROTASI (Eksiksiz ve büyük/küçük harf duyarlı kontrolleriyle)
 app.post('/api/kayit', (req, res) => {
     const { kadi, email, sifre, adsoyad, portfoy } = req.body; 
