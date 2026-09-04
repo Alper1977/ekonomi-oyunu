@@ -207,19 +207,19 @@ app.post('/api/ilan-satin-al', (req, res) => {
         return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı!" });
     }
 
-    const { ilanId } = req.body; // Gönderilen ID (ilan ID veya varlık ID olabilir)
+    const { ilanId } = req.body;
     if (!ilanId) {
-        return res.status(400).json({ basari: false, mesaj: "İlan bilgisi belirtilmedi!" });
+        return res.status(400).json({ basari: false, mesaj: "İlan ID belirtilmedi!" });
     }
 
     try {
-        // 1. İlanı veritabanından bul
+        // 1. İlanı tablodan bul
         const ilan = db.prepare(`SELECT * FROM ilanlar WHERE id = ?`).get(ilanId);
         if (!ilan) {
             return res.status(404).json({ basari: false, mesaj: "İlan bulunamadı veya zaten satın alınmış." });
         }
 
-        // 2. Gerçek bir oyuncuya aitse, satıcının veritabanındaki portföyünden bu varlığı doğrudan varlıklar dizisinden söküp alacağız
+        // 2. Eğer gerçek bir oyuncuya aitse, botlardaki gibi satıcının portföy varlıklarından söküp alacağız
         if (ilan.kullanici_id) {
             const satici = db.prepare(`SELECT * FROM kullanicilar WHERE id = ?`).get(ilan.kullanici_id);
             
@@ -231,7 +231,7 @@ app.post('/api/ilan-satin-al', (req, res) => {
                     saticiPortfoy = {};
                 }
 
-                // Satıcının nakit/para kasasını artır
+                // Satıcının nakit parasını artır
                 if (typeof saticiPortfoy.nakit === 'number') {
                     saticiPortfoy.nakit += ilan.fiyat;
                 } else if (typeof saticiPortfoy.para === 'number') {
@@ -247,13 +247,22 @@ app.post('/api/ilan-satin-al', (req, res) => {
                     detaylar = {};
                 }
 
-                // Satıcının varlıklar dizisinden bu malı doğrudan siliyoruz (istediğin nokta tam olarak burası)
+                // 🔥 KESİN ÇÖZÜM (Bot mantığı): Satıcının varlıklar dizisinden bu mülkü bul ve splice ile (veya filter ile) tamamen uçur
                 if (saticiPortfoy.varliklar && Array.isArray(saticiPortfoy.varliklar)) {
+                    let silindi = false;
                     saticiPortfoy.varliklar = saticiPortfoy.varliklar.filter(v => {
-                        // Eğer detaylarda orijinal varlikId tutuluyorsa veya ID eşleşiyorsa veya isim ve ilan-aktif durumu tutuyorsa sil
-                        if (detaylar.varlikId && String(v.id) === String(detaylar.varlikId)) return false;
-                        if (String(v.id) === String(ilanId)) return false;
-                        if (v.isim === ilan.ilan_tipi && v.durum === 'ilan-aktif') return false;
+                        if (silindi) return true; // Zaten bir tane sildiysek çık
+
+                        // Eğer detaylarda orijinal varlık ID'si tutuluyorsa eşleştir
+                        if (detaylar.varlikId && String(v.id) === String(detaylar.varlikId)) {
+                            silindi = true;
+                            return false;
+                        }
+                        // Veya ilan ismi tutuyorsa ve durum ilan-aktif ise satıcının envanterinden sil
+                        if (v.isim === ilan.ilan_tipi && v.durum === 'ilan-aktif') {
+                            silindi = true;
+                            return false;
+                        }
                         return true;
                     });
                 }
@@ -263,7 +272,7 @@ app.post('/api/ilan-satin-al', (req, res) => {
             }
         }
 
-        // 3. İlan tablosundan ilanı tamamen kaldır
+        // 3. İlan tablosundan ilanı tamamen sil
         db.prepare(`DELETE FROM ilanlar WHERE id = ?`).run(ilanId);
 
         res.json({ basari: true, mesaj: "İlan başarıyla satın alındı ve satıcının envanterinden düşüldü." });
