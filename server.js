@@ -291,16 +291,19 @@ app.post('/api/ilan-satin-al', (req, res) => {
                         saticiPortfoy.nakit = ilan.fiyat;
                     }
 
-                    if (saticiPortfoy.varliklar && Array.isArray(saticiPortfoy.varliklar)) {
+                 if (saticiPortfoy.varliklar && Array.isArray(saticiPortfoy.varliklar)) {
                         let silindi = false;
                         saticiPortfoy.varliklar = saticiPortfoy.varliklar.filter(v => {
                             if (silindi) return true;
 
+                            // Eğer detaylarda varlikId varsa öncelikle ona bak
                             if (detaylar.varlikId && String(v.id) === String(detaylar.varlikId)) {
                                 silindi = true;
                                 return false;
                             }
-                            if (v.isim === ilan.ilan_tipi && v.durum === 'ilan-aktif') {
+                            
+                            // Duruma takılmadan, mülk adına (ilan_tipi) göre ilk eşleşeni envanterden uçur
+                            if (v.isim === ilan.ilan_tipi) {
                                 silindi = true;
                                 return false;
                             }
