@@ -3907,14 +3907,11 @@ async function oyuncuIlaniKesinSatinAl(isim, bedel, ilanId) {
         // 2. İşlem başarılıysa client state'ini güncelle
         state.nakit -= bedel;
 
-        // **BURAYA DİKKAT:** Kendi aktif ilanlarُından veya state.varliklar içinden bu ilana ait mülkü bulup 'satildi' yapıyoruz ya da siliyoruz:
-        let alinanVarlikIndex = state.varliklar.findIndex(v => v.id == ilanId || (v.durum === 'ilan-aktif' && v.isim === isim));
-        if (alinanVarlikIndex !== -1) {
-            // İstersen tamamen silebilirsin (splice) veya durumunu güncelleyebilirsin:
-            state.varliklar.splice(alinanVarlikIndex, 1);
-        }
+        // DİKKAT: Alıcı, başkasının ilanını satın alıyor. 
+        // state.varliklar dizisinde kendi ilanını arayıp splice etmek mantık hatasıdır 
+        // ve kendi envanterindeki rastgele aktif bir mülkü silmesine yol açar.
+        // Satın alınan mülk, doğrudan alıcının envanterine 'sahip' olarak eklenmelidir:
 
-        // Satın alınan mülkü kullanıcının envanterine 'sahip' olarak ekle
         state.varliklar.push({
             id: Date.now() + Math.random(),
             isim: isim,
