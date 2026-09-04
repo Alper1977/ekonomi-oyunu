@@ -1690,10 +1690,10 @@ async function zenginlerListesiniGuncelle() {
     }
 }
 
-// Arka planda satıcının (veya aktif oyuncunun) portföyünü sunucuyla senkronize eden döngü
+ // Arka planda satıcının (veya aktif oyuncunun) portföyünü sunucuyla senkronize eden döngü
 async function portfoyuSenkronizeEt() {
     try {
-        let response = await fetch('/api/aktif-kullanici');
+        let response = await fetch('/api/aktif-kullanici', { credentials: 'include' });
         if (response.ok) {
             let user = await response.json();
             if (user && user.portfoy) {
@@ -1702,7 +1702,59 @@ async function portfoyuSenkronizeEt() {
                 state.varliklar = user.portfoy.varliklar || [];
                 
                 // Arayüzü güncelliyoruz ki satılan mal ekrandan ansızın kaybolsun
-                if (typeof guncelle === 'function') guncelle();
+                if (typeof guncelle === 'function') {
+                    guncelle();
+                } else {
+                    // Eğer guncelle fonksiyonu yoksa doğrudan mülk listesini DOM üzerinden yenileyelim:
+                    let vList = document.getElementById('varliklar-listesi');
+                    if (vList) {
+                        vList.innerHTML = '';
+                        let aktifVarliklar = (state.varliklar || []).filter(v => 
+                            v && v.durum !== 'silinecek' && v.durum !== 'satildi' && v.durum !== 'satildi-bekliyor'
+                        );
+                        aktifVarliklar.forEach(v => {
+                            let blokeYazisi = v.bloke ? '<span style="color:#ff4444">(BLOKELİ)</span>' : '';
+                            let talepBul = typeof state.talepler !== 'undefined' ? state.talepler.find(t => t.tur === v.isim || t.isim === v.isim) : null;
+                            let bedel = v.bedel || (talepBul ? talepBul.bedel : (typeof kazancTablosu !== 'undefined' && kazancTablosu[v.isim] ? kazancTablosu[v.isim] : 0));
+                            let gunlukKar = bedel * 3;
+                            
+                            let haritalanabilirMulkler = ['arsası', 'otel', 'fabrika', 'hastane', 'okul', 'avm', 'hipermarket', 'konut'];
+                            let arsaMi = haritalanabilirMulkler.some(tur => v.isim.toLowerCase().includes(tur));
+                            if (arsaMi && !v.atananKonum && typeof arsaKonumunuAl === 'function') {
+                                v.atananKonum = arsaKonumunuAl(v);
+                            }
+                            
+                            let sagButonlarHTML = '';
+                            if (v.durum === 'sahip') {
+                                if (v.isim !== 'Bayi') {
+                                    sagButonlarHTML += `<button onclick="ilanaCikar(${v.id})" style="width: 100%; box-sizing: border-box;">SAT</button>`;
+                                }
+                            } else if (v.durum === 'inşaat') {
+                                let kalanMs = v.bitis - Date.now();
+                                let kalanGun = Math.max(0, Math.ceil(kalanMs / (1000 * 60 * 60 * 24)));
+                                sagButonlarHTML += `<span style="color:#ffcc00; font-size:11px;">İnşaat: ${kalanGun} gün</span>`;
+                            } else if (v.durum === 'ilan-aktif') {
+                                sagButonlarHTML += `<span style="color:#ff4444; font-size:13px; font-weight:bold;">SATIŞTA</span>
+                                                   <button onclick="vazgec(${v.id})" class="btn-red" style="margin-top: 4px; width: 100%; box-sizing: border-box;">Vazgeç</button>`;
+                            }
+
+                            let goruntuleBtnVarlik = arsaMi ? `<button onclick="arsaKonumGoster('${v.isim}', '${v.atananKonum}')" style="background:#3498db; color:#fff; border:none; border-radius:4px; font-weight:bold; cursor:pointer; width: 100%; margin-top: 4px; box-sizing: border-box;">Görüntüle</button>` : '';
+
+                            vList.innerHTML += `
+                                <div class="item-box-varlik">
+                                    <div>
+                                        <div style="font-weight: bold; color: #fff; font-size: 13px;">${v.isim} ${blokeYazisi}</div>
+                                        <div style="font-size: 11px; color: #ffcc00; margin-top: 3px;">Günlük Kar: ${gunlukKar.toLocaleString()} TL</div>
+                                    </div>
+                                    <div style="display: flex; flex-direction: column; align-items: flex-end; min-width: 90px;">
+                                        ${sagButonlarHTML}
+                                        ${goruntuleBtnVarlik}
+                                    </div>
+                                </div>
+                            `;
+                        });
+                    }
+                }
             }
         }
     } catch (err) {
@@ -1711,7 +1763,7 @@ async function portfoyuSenkronizeEt() {
 }
 
 // Oyuna girdiğinde bunu her 4 saniyede bir çalışacak şekilde başlatabilirsin:
-setInterval(portfoyuSenkronizeEt, 4000);    
+setInterval(portfoyuSenkronizeEt, 4000);  
 
 async function portfoyuSunucuyaKaydet(yeniPortfoy) {
 
