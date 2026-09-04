@@ -231,9 +231,14 @@ app.post('/api/ilan-satin-al', (req, res) => {
                     saticiPortfoy = {};
                 }
 
-                // Satıcının nakit parasını artır
-                if (typeof saticiPortfoy.nakit !== 'number') saticiPortfoy.nakit = 0;
-                saticiPortfoy.nakit += ilan.fiyat;
+                // Satıcının parasını artır (nakit veya para anahtar adını garantiye alıyoruz)
+                if (typeof saticiPortfoy.nakit === 'number') {
+                    saticiPortfoy.nakit += ilan.fiyat;
+                } else if (typeof saticiPortfoy.para === 'number') {
+                    saticiPortfoy.para += ilan.fiyat;
+                } else {
+                    saticiPortfoy.nakit = ilan.fiyat; // Hiçbiri yoksa nakit olarak başlat
+                }
 
                 let detaylar = {};
                 try {
@@ -242,18 +247,18 @@ app.post('/api/ilan-satin-al', (req, res) => {
                     detaylar = {};
                 }
 
-                // KESİN ÇÖZÜM: Varlığı hem ID ile hem de ilan tipi/ismi ile eşleştirip satıcının portföyünden siliyoruz
+                // Varlığı hem ID ile hem de isimle eşleştirip satıcının portföyünden siliyoruz
                 if (saticiPortfoy.varliklar && Array.isArray(saticiPortfoy.varliklar)) {
                     let silindi = false;
                     saticiPortfoy.varliklar = saticiPortfoy.varliklar.filter(v => {
-                        if (silindi) return true; // Zaten bir tane sildiysek devam et
+                        if (silindi) return true; 
 
-                        // Eğer detaylarda varlikId varsa ve eşleşiyorsa sil
+                        // Detaylardaki varlikId ile eşleşiyorsa sil
                         if (detaylar.varlikId && String(v.id) === String(detaylar.varlikId)) {
                             silindi = true;
                             return false;
                         }
-                        // Eğer ID tutmasa bile ismi eşleşiyorsa ve durumu ilan-aktif ise ilk bulduğunu sil
+                        // İsim eşleşiyorsa ve durum ilan-aktif ise sil
                         if (v.isim === ilan.ilan_tipi && v.durum === 'ilan-aktif') {
                             silindi = true;
                             return false;
@@ -276,6 +281,7 @@ app.post('/api/ilan-satin-al', (req, res) => {
         res.status(500).json({ basari: false, mesaj: err.message });
     }
 });
+
 app.post('/api/admin/ayar-guncelle', (req, res) => {
     const { ayarlar, sureler } = req.body;
     if (!ayarlar) {
