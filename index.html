@@ -3554,7 +3554,6 @@ function modalGoster(m, b = '<button onclick="document.getElementById(\'modal-ov
     document.getElementById('modal-overlay').style.display = 'flex';
 }
 
-// Güncellenmiş onayPenceresi (Gerçek oyuncu ilan ID'sini yakalayabilmesi için)
 function onayPenceresi(isim, bedel, tip, ilanId) {    
     let gercekBedel = bedel;
     if (isim === 'Fabrika' && tip === 'yap') gercekBedel = 150000000; 
@@ -3563,7 +3562,7 @@ function onayPenceresi(isim, bedel, tip, ilanId) {
         gercekBedel = talepBul.bedel; 
     }
 
-    let onayFonksiyonu = ilanId ? `oyuncuIlaniKesinSatinAl('${isim}', ${gercekBedel}, ${ilanId})` : `islemKesinOnayla('${isim}', ${gercekBedel}, '${tip}')`;
+    let onayFonksiyonu = ilanId ? `islemKesinOnayla('${isim}', ${gercekBedel}, '${tip}', ${ilanId})` : `islemKesinOnayla('${isim}', ${gercekBedel}, '${tip}')`;
 
     let butonlar = `
         <button class="btn-green" onclick="${onayFonksiyonu}">ONAYLA</button>
