@@ -2861,6 +2861,10 @@ if (typeof maksimumIlanSiniri === 'undefined') { var maksimumIlanSiniri = window
 
 async function guncelle() {
 
+if (Array.isArray(state.varliklar)) {
+        state.varliklar = state.varliklar.filter(v => v && typeof v.isim === 'string');
+    }    
+    
 // 🌟 KESİN ÇÖZÜM: Her güncelleme tetiklendiğinde kazançları tablodan eşitle
     if (typeof kazancTablosu !== 'undefined' && typeof state !== 'undefined' && state.talepler) {
         state.talepler.forEach(talep => {
