@@ -523,12 +523,13 @@ app.post('/api/giris', (req, res) => {
 
 app.get('/api/aktif-kullanici', (req, res) => {
     if (!req.session || !req.session.kullanici) {
-        return res.status(401).json({ basari: false, mesaj: "Oturum yok" });
+        return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı" });
     }
 
     try {
         const userId = req.session.kullanici.id;
-        // Oturuma güvenmiyoruz, doğrudan DB'den güncel kullanıcıyı ve portföyünü çekiyoruz
+        
+        // KRİTİK NOKTA: Session'ı bypass edip doğrudan DB'den güncel portföyü çekiyoruz
         const dbUser = db.prepare(`SELECT id, adsoyad, portfoy FROM kullanicilar WHERE id = ?`).get(userId);
         
         if (!dbUser) {
@@ -542,7 +543,7 @@ app.get('/api/aktif-kullanici', (req, res) => {
             portfoyObj = {};
         }
 
-        // Oturumu da güncelleyelim
+        // Oturumu da güncelleyelim ki sonraki isteklerde bayat kalmasın
         req.session.kullanici.portfoy = portfoyObj;
 
         res.json({
