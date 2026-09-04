@@ -153,17 +153,28 @@ app.post('/api/ilan-ekle', (req, res) => {
     }
 
     const { ilan_tipi, fiyat, detaylar } = req.body;
-    const kullanici = req.session.kullanici;
+    
+    // Oturum verisinin obje veya ham ID/string olma durumunu güvenli hale getiriyoruz
+    const sessionKullanici = req.session.kullanici;
+    const userId = typeof sessionKullanici === 'object' ? sessionKullanici.id : sessionKullanici;
+    
+    // Eğer ad soyad session içinde yoksa veritabanından çekelim veya varsayılan atayalım
+    let userAdSoyad = (typeof sessionKullanici === 'object' && sessionKullanici.adsoyad) ? sessionKullanici.adsoyad : null;
+    
+    if (!userAdSoyad && userId) {
+        const dbUser = db.prepare(`SELECT adsoyad FROM kullanicilar WHERE id = ?`).get(userId);
+        if (dbUser) userAdSoyad = dbUser.adsoyad;
+    }
+    userAdSoyad = userAdSoyad || "Satıcı";
 
     try {
         const stmt = db.prepare(`INSERT INTO ilanlar (kullanici_id, satici_adsoyad, ilan_tipi, fiyat, detaylar) VALUES (?, ?, ?, ?, ?)`);
-        const info = stmt.run(kullanici.id, kullanici.adsoyad, ilan_tipi, fiyat, JSON.stringify(detaylar || {}));
+        const info = stmt.run(userId, userAdSoyad, ilan_tipi, fiyat, JSON.stringify(detaylar || {}));
         res.json({ basari: true, id: info.lastInsertRowid, mesaj: "İlan başarıyla yayınlandı." });
     } catch (err) {
         res.status(500).json({ basari: false, mesaj: err.message });
     }
 });
-
 app.post('/api/ilan-sil', (req, res) => {
     if (!req.session || !req.session.kullanici) {
         return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı!" });
