@@ -531,7 +531,7 @@ app.get('/api/aktif-kullanici', (req, res) => {
 
 app.post('/api/portfoy-guncelle', (req, res) => {
     if (!req.session || !req.session.kullanici) {
-        return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı!" });
+        return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı!" }); 
     }
 
     const userId = req.session.kullanici.id;
