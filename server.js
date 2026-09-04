@@ -1,6 +1,6 @@
 const express = require('express');
 const session = require('express-session');
-const SQLiteStore = require('connect-sqlite3')(session);
+const SQLiteStore = require('connect-sqlite3')(session); 
 const Database = require('better-sqlite3');
 const fs = require('fs');
 
