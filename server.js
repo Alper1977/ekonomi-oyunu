@@ -213,32 +213,40 @@ app.post('/api/ilan-satin-al', (req, res) => {
     }
 
     try {
-        // İlanı veritabanından tamamen siliyoruz ki diğer tüm oyunculardan da anında kalksın
-        const info = db.prepare(`DELETE FROM ilanlar WHERE id = ?`).run(ilanId);
-
-        if (info.changes === 0) {
+        // 1. Önce ilanı bulalım ki satan kişinin kim olduğunu (kullanici_id) ve detayları görebilelim
+        const ilan = db.prepare(`SELECT * FROM ilanlar WHERE id = ?`).get(ilanId);
+        if (!ilan) {
             return res.status(404).json({ basari: false, mesaj: "İlan bulunamadı veya zaten satın alınmış." });
         }
 
-        res.json({ basari: true, mesaj: "İlan başarıyla satın alındı ve sistemden kaldırıldı." });
-    } catch (err) {
-        res.status(500).json({ basari: false, mesaj: err.message });
-    }
-});
+        // 2. Satıcıyı veritabanından bul
+        const satici = db.prepare(`SELECT * FROM kullanicilar WHERE id = ?`).get(ilan.kullanici_id);
+        
+        if (satici) {
+            let saticiPortfoy = JSON.parse(satici.portfoy || '{}');
+            if (!saticiPortfoy.nakit) saticiPortfoy.nakit = 0;
+            
+            // Satıcının kasasına parayı ekle
+            saticiPortfoy.nakit += ilan.fiyat;
 
-// 🌟 Ayar Okuma ve Güncelleme Rotaları
-app.get('/api/oyun-ayarlari', (req, res) => {
-    try {
-        const row = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
-        if (!row) {
-            return res.status(500).json({ basari: false, mesaj: "Ayarlar okunamadı" });
+            // Satıcının varlıkları arasından satılan malı bul ve çıkar
+            if (saticiPortfoy.varliklar) {
+                let detaylar = JSON.parse(ilan.detaylar || '{}');
+                saticiPortfoy.varliklar = saticiPortfoy.varliklar.filter(v => v.id !== detaylar.varlikId);
+            }
+
+            // Satıcının güncellenmiş portföyünü veritabanına kaydet
+            db.prepare(`UPDATE kullanicilar SET portfoy = ? WHERE id = ?`).run(JSON.stringify(saticiPortfoy), satici.id);
         }
-        res.json({ basari: true, ayarlar: JSON.parse(row.ayarlar) });
+
+        // 3. İlanı tablodan tamamen sil
+        db.prepare(`DELETE FROM ilanlar WHERE id = ?`).run(ilanId);
+
+        res.json({ basari: true, mesaj: "İlan başarıyla satın alındı ve transfer tamamlandı." });
     } catch (err) {
         res.status(500).json({ basari: false, mesaj: err.message });
     }
 });
-
 app.post('/api/admin/ayar-guncelle', (req, res) => {
     const { ayarlar, sureler } = req.body;
     if (!ayarlar) {
