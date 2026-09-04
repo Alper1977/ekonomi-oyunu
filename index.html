@@ -3318,21 +3318,21 @@ async function ilanlariGuncelle() {
                 </div>
             `;
      } else if (tipKyn === 'diger-oyuncu') {
-            ortaAlanHTML = `
-                <div class="kredi-group">
-                    <input type="text" id="${inputId}" placeholder="Kredi Tutarı" oninput="parayiFormatlaMetin(this)" value="">
-                    <select id="${vadeInputId}">
-                        <option value="12">12 Ay</option>
-                        <option value="24">24 Ay</option>
-                        <option value="36">36 Ay</option>
-                        <option value="48" selected>48 Ay</option>
-                    </select>
-                </div>
-                <div class="button-row">
-                    <button class="btn-green" onclick="oyuncuIlaniSatinAlOnayla(${uniqueId}, '${baslikMetni}', '${varlikIsmi}', ${satisBedeli})">NAKİT</button>
-                    <button class="btn-red" onclick="krediIslem('${inputId}', '${vadeInputId}', '${varlikIsmi}', ${satisBedeli}, 'ilan', ${uniqueId})">KREDİ</button>
-                </div>
-            `;
+        ortaAlanHTML = `
+            <div class="kredi-group">
+                <input type="text" id="${inputId}" placeholder="Kredi Tutarı" oninput="parayiFormatlaMetin(this)" value="">
+                <select id="${vadeInputId}">
+                    <option value="12">12 Ay</option>
+                    <option value="24">24 Ay</option>
+                    <option value="36">36 Ay</option>
+                    <option value="48" selected>48 Ay</option>
+                </select>
+            </div>
+            <div class="button-row">
+                <button class="btn-green" onclick="onayPenceresi('${varlikIsmi}', ${satisBedeli}, 'al', ${uniqueId})">NAKİT</button>
+                <button class="btn-red" onclick="krediIslem('${inputId}', '${vadeInputId}', '${varlikIsmi}', ${satisBedeli}, 'ilan', ${uniqueId})">KREDİ</button>
+            </div>
+        `;
         } else {
             ortaAlanHTML = `
                 <div class="kredi-group">
