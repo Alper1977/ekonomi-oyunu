@@ -202,6 +202,25 @@ app.post('/api/ilan-guncelle', (req, res) => {
     }
 });
 
+
+app.post('/api/admin/ayar-guncelle', (req, res) => {
+    const { ayarlar, sureler } = req.body;
+    if (!ayarlar) {
+        return res.status(400).json({ basari: false, mesaj: "Ayar verisi boş olamaz!" });
+    }
+
+    const kayitPaketi = {
+        ...ayarlar,
+        sureler: sureler || {}
+    };
+
+    try {
+        db.prepare(`INSERT OR REPLACE INTO oyun_ayarlari (id, ayarlar) VALUES (1, ?)`).run(JSON.stringify(kayitPaketi));
+        res.json({ basari: true, mesaj: "Ayarlar başarıyla güncellendi." });
+    } catch (err) {
+        res.status(500).json({ basari: false, mesaj: err.message });
+    }
+});
 app.post('/api/ilan-satin-al', (req, res) => {
     if (!req.session || !req.session.kullanici) {
         return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı!" });
@@ -219,7 +238,7 @@ app.post('/api/ilan-satin-al', (req, res) => {
             return res.status(404).json({ basari: false, mesaj: "İlan bulunamadı veya zaten satın alınmış." });
         }
 
-        // 2. Eğer gerçek bir oyuncuya aitse, botlardaki gibi satıcının portföy varlıklarından söküp alacağız
+        // 2. Eğer ilanı açan bir kullanıcıysa, satıcının portföyündeki varlıklar dizisinden o mülkü söküp at
         if (ilan.kullanici_id) {
             const satici = db.prepare(`SELECT * FROM kullanicilar WHERE id = ?`).get(ilan.kullanici_id);
             
@@ -247,18 +266,18 @@ app.post('/api/ilan-satin-al', (req, res) => {
                     detaylar = {};
                 }
 
-                // 🔥 KESİN ÇÖZÜM (Bot mantığı): Satıcının varlıklar dizisinden bu mülkü bul ve splice ile (veya filter ile) tamamen uçur
+                // Satıcının varlıklar dizisinden ilandaki mülkü filtreleyip tamamen uçur
                 if (saticiPortfoy.varliklar && Array.isArray(saticiPortfoy.varliklar)) {
                     let silindi = false;
                     saticiPortfoy.varliklar = saticiPortfoy.varliklar.filter(v => {
-                        if (silindi) return true; // Zaten bir tane sildiysek çık
+                        if (silindi) return true;
 
-                        // Eğer detaylarda orijinal varlık ID'si tutuluyorsa eşleştir
+                        // İlanda orijinal varlikId tutuluyorsa
                         if (detaylar.varlikId && String(v.id) === String(detaylar.varlikId)) {
                             silindi = true;
                             return false;
                         }
-                        // Veya ilan ismi tutuyorsa ve durum ilan-aktif ise satıcının envanterinden sil
+                        // Veya mülk ismi ve 'ilan-aktif' durumu eşleşiyorsa
                         if (v.isim === ilan.ilan_tipi && v.durum === 'ilan-aktif') {
                             silindi = true;
                             return false;
@@ -272,34 +291,15 @@ app.post('/api/ilan-satin-al', (req, res) => {
             }
         }
 
-        // 3. İlan tablosundan ilanı tamamen sil
+        // 3. İlanı ilanlar tablosundan tamamen sil
         db.prepare(`DELETE FROM ilanlar WHERE id = ?`).run(ilanId);
 
         res.json({ basari: true, mesaj: "İlan başarıyla satın alındı ve satıcının envanterinden düşüldü." });
     } catch (err) {
-        console.error("İlan satın alma hatası:", err.message);
+        console.error("Gerçek ilan satın alma hatası:", err.message);
         res.status(500).json({ basari: false, mesaj: err.message });
     }
 });
-app.post('/api/admin/ayar-guncelle', (req, res) => {
-    const { ayarlar, sureler } = req.body;
-    if (!ayarlar) {
-        return res.status(400).json({ basari: false, mesaj: "Ayar verisi boş olamaz!" });
-    }
-
-    const kayitPaketi = {
-        ...ayarlar,
-        sureler: sureler || {}
-    };
-
-    try {
-        db.prepare(`INSERT OR REPLACE INTO oyun_ayarlari (id, ayarlar) VALUES (1, ?)`).run(JSON.stringify(kayitPaketi));
-        res.json({ basari: true, mesaj: "Ayarlar başarıyla güncellendi." });
-    } catch (err) {
-        res.status(500).json({ basari: false, mesaj: err.message });
-    }
-});
-
 // YENİ ÜYE KAYIT ROTASI (Eksiksiz ve büyük/küçük harf duyarlı kontrolleriyle)
 app.post('/api/kayit', (req, res) => {
     const { kadi, email, sifre, adsoyad, portfoy } = req.body; 
