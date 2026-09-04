@@ -1697,61 +1697,24 @@ async function portfoyuSenkronizeEt() {
         if (response.ok) {
             let user = await response.json();
             if (user && user.portfoy) {
-                // Sunucudaki güncel portföyü yerel state'imize işliyoruz
+                // Sunucudan gelen taze nakit ve varlıkları alıyoruz
                 state.nakit = user.portfoy.nakit !== undefined ? user.portfoy.nakit : state.nakit;
                 state.varliklar = user.portfoy.varliklar || [];
                 
-                // Arayüzü güncelliyoruz ki satılan mal ekrandan ansızın kaybolsun
-                if (typeof guncelle === 'function') {
+                // DOM elementlerini anında güncelleyen render fonksiyonunu çağırıyoruz
+                if (typeof varliklariGoster === 'function') {
+                    varliklariGoster();
+                } else if (typeof guncelle === 'function') {
                     guncelle();
                 } else {
-                    // Eğer guncelle fonksiyonu yoksa doğrudan mülk listesini DOM üzerinden yenileyelim:
+                    // Eğer render fonksiyonu bulunamazsa, varlık listesini DOM'dan doğrudan siliyoruz
                     let vList = document.getElementById('varliklar-listesi');
                     if (vList) {
                         vList.innerHTML = '';
-                        let aktifVarliklar = (state.varliklar || []).filter(v => 
-                            v && v.durum !== 'silinecek' && v.durum !== 'satildi' && v.durum !== 'satildi-bekliyor'
-                        );
-                        aktifVarliklar.forEach(v => {
-                            let blokeYazisi = v.bloke ? '<span style="color:#ff4444">(BLOKELİ)</span>' : '';
-                            let talepBul = typeof state.talepler !== 'undefined' ? state.talepler.find(t => t.tur === v.isim || t.isim === v.isim) : null;
-                            let bedel = v.bedel || (talepBul ? talepBul.bedel : (typeof kazancTablosu !== 'undefined' && kazancTablosu[v.isim] ? kazancTablosu[v.isim] : 0));
-                            let gunlukKar = bedel * 3;
-                            
-                            let haritalanabilirMulkler = ['arsası', 'otel', 'fabrika', 'hastane', 'okul', 'avm', 'hipermarket', 'konut'];
-                            let arsaMi = haritalanabilirMulkler.some(tur => v.isim.toLowerCase().includes(tur));
-                            if (arsaMi && !v.atananKonum && typeof arsaKonumunuAl === 'function') {
-                                v.atananKonum = arsaKonumunuAl(v);
+                        state.varliklar.forEach(v => {
+                            if (v.durum !== 'satildi' && v.durum !== 'silinecek') {
+                                vList.innerHTML += `<div>${v.isim} - ${v.durum}</div>`;
                             }
-                            
-                            let sagButonlarHTML = '';
-                            if (v.durum === 'sahip') {
-                                if (v.isim !== 'Bayi') {
-                                    sagButonlarHTML += `<button onclick="ilanaCikar(${v.id})" style="width: 100%; box-sizing: border-box;">SAT</button>`;
-                                }
-                            } else if (v.durum === 'inşaat') {
-                                let kalanMs = v.bitis - Date.now();
-                                let kalanGun = Math.max(0, Math.ceil(kalanMs / (1000 * 60 * 60 * 24)));
-                                sagButonlarHTML += `<span style="color:#ffcc00; font-size:11px;">İnşaat: ${kalanGun} gün</span>`;
-                            } else if (v.durum === 'ilan-aktif') {
-                                sagButonlarHTML += `<span style="color:#ff4444; font-size:13px; font-weight:bold;">SATIŞTA</span>
-                                                   <button onclick="vazgec(${v.id})" class="btn-red" style="margin-top: 4px; width: 100%; box-sizing: border-box;">Vazgeç</button>`;
-                            }
-
-                            let goruntuleBtnVarlik = arsaMi ? `<button onclick="arsaKonumGoster('${v.isim}', '${v.atananKonum}')" style="background:#3498db; color:#fff; border:none; border-radius:4px; font-weight:bold; cursor:pointer; width: 100%; margin-top: 4px; box-sizing: border-box;">Görüntüle</button>` : '';
-
-                            vList.innerHTML += `
-                                <div class="item-box-varlik">
-                                    <div>
-                                        <div style="font-weight: bold; color: #fff; font-size: 13px;">${v.isim} ${blokeYazisi}</div>
-                                        <div style="font-size: 11px; color: #ffcc00; margin-top: 3px;">Günlük Kar: ${gunlukKar.toLocaleString()} TL</div>
-                                    </div>
-                                    <div style="display: flex; flex-direction: column; align-items: flex-end; min-width: 90px;">
-                                        ${sagButonlarHTML}
-                                        ${goruntuleBtnVarlik}
-                                    </div>
-                                </div>
-                            `;
                         });
                     }
                 }
