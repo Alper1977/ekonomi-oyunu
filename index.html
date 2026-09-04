@@ -4005,9 +4005,14 @@ async function oyuncuIlaniKesinSatinAl(isim, bedel, ilanId) {
     }
 }
     
-function ilanaCikar(id) { 
+function ilanaCikar(id) {  
     let v = state.varliklar.find(x => x.id == id);
     if (!v) return;
+    
+    // Zaten satışta veya ilanda olan bir mülk için tekrar ilan açılmasını engelle
+    if (v.durum === 'ilan-aktif' || v.durum === 'satildi' || v.durum === 'satildi-bekliyor') {
+        return;
+    }
      
     let satisFiyati = v.bedel || (typeof satisFiyatlari !== 'undefined' && satisFiyatlari[v.isim] ? satisFiyatlari[v.isim] : 2000000);
     let atananKonumVal = null;
@@ -4020,7 +4025,6 @@ function ilanaCikar(id) {
         atananKonumVal = v.atananKonum;
     }
 
-    // Aktif kullanıcı adını veya 'Ben' ifadesini sunucuya gönderiyoruz
     let saticiAdi = (typeof aktifKullaniciAdi !== 'undefined' && aktifKullaniciAdi) ? aktifKullaniciAdi : 'Ben';
 
     // Sunucuya ilanı gönderiyoruz
@@ -4030,7 +4034,7 @@ function ilanaCikar(id) {
         body: JSON.stringify({
             ilan_tipi: v.isim,
             fiyat: satisFiyati,
-            satici_adsoyad: saticiAdi, // İŞTE EKSİK OLAN PARÇA BURASIYDI
+            satici_adsoyad: saticiAdi,
             detaylar: { atananKonum: atananKonumVal, varlikId: v.id }
         })
     })
@@ -4042,7 +4046,14 @@ function ilanaCikar(id) {
             v.ilanZamanKaydi = Date.now();
             v.sunucuIlanId = data.id;
 
-            guncelle(); 
+            // Güvenli arayüz yenileme (Eğer guncelle fonksiyonu yoksa hata patlatmaz)
+            if (typeof guncelle === 'function') {
+                guncelle();
+            } else {
+                // Alternatif olarak listeyi kendi güncelleyen döngümüz tetiklensin
+                console.log("İlan başarıyla açıldı.");
+            }
+
             if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
             if (typeof portfoyuSunucuyaKaydet === 'function') portfoyuSunucuyaKaydet(state);
         } else {
@@ -4051,7 +4062,6 @@ function ilanaCikar(id) {
     })
     .catch(err => console.error("İlan ekleme hatası:", err));
 }
-
 function vazgec(id) {
     let v = state.varliklar.find(x => x.id == id);
     if (!v) return;
