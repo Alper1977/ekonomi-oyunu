@@ -1690,6 +1690,28 @@ async function zenginlerListesiniGuncelle() {
     }
 }
 
+// Arka planda satıcının (veya aktif oyuncunun) portföyünü sunucuyla senkronize eden döngü
+async function portfoyuSenkronizeEt() {
+    try {
+        let response = await fetch('/api/aktif-kullanici');
+        if (response.ok) {
+            let user = await response.json();
+            if (user && user.portfoy) {
+                // Sunucudaki güncel portföyü yerel state'imize işliyoruz
+                state.nakit = user.portfoy.nakit !== undefined ? user.portfoy.nakit : state.nakit;
+                state.varliklar = user.portfoy.varliklar || [];
+                
+                // Arayüzü güncelliyoruz ki satılan mal ekrandan ansızın kaybolsun
+                if (typeof guncelle === 'function') guncelle();
+            }
+        }
+    } catch (err) {
+        console.error("Portföy senkronizasyon hatası:", err);
+    }
+}
+
+// Oyuna girdiğinde bunu her 4 saniyede bir çalışacak şekilde başlatabilirsin:
+setInterval(portfoyuSenkronizeEt, 4000);    
 
 async function portfoyuSunucuyaKaydet(yeniPortfoy) {
 
