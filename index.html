@@ -2712,9 +2712,9 @@ if (typeof maksimumIlanSiniri === 'undefined') { var maksimumIlanSiniri = window
 
         sonBotIlanZamani = simdiMs;
     }
-   // 3. Senin İlanlarını Kontrol Eden Mekanizma (Süre Dolunca Otomatik Satış)
+   // 3. Senin İlanlarını Kontrol Eden Mekanizma (Garanti Satış)
     window.ilanZamanlari = window.ilanZamanlari || {};
-    let beklemeSuresiMs = (window.oyunAyar && window.oyunAyar.GLOBAL_BEKLEME_SURESI) ? window.oyunAyar.GLOBAL_BEKLEME_SURESI : 60000;
+    let beklemeSuresiMs = window.oyunAyar.GLOBAL_BEKLEME_SURESI;
 
     let satilikVarliklar = state.varliklar.filter(v => v.durum === 'ilan-aktif' && v.ilanSahibi === 'ben');
 
@@ -2755,22 +2755,22 @@ if (typeof maksimumIlanSiniri === 'undefined') { var maksimumIlanSiniri = window
                         state.kredi = 0;
                         state.taksit = 0;
                         state.krediler = [];
-                        state.varliklar.forEach(item => {
-                            item.bloke = false;
-                            item.krediID = null;
-                        });
+                        if (Array.isArray(state.varliklar)) {
+                            state.varliklar.forEach(item => {
+                                item.bloke = false;
+                                item.krediID = null;
+                            });
+                        }
                     } else {
-                        state.taksit = (state.kredi / 48) * (window.faizOranlari?.krediKatsayi || 1);
+                        let katsayi = (typeof faizOranlari !== 'undefined' && faizOranlari.krediKatsayi) ? faizOranlari.krediKatsayi : 1;
+                        state.taksit = (state.kredi / 48) * katsayi;
                     }
                 }
             }
-
             let netKazanc = satisBedeli - dusulenBorc;
 
             aliciBot.nakit -= satisBedeli;
             state.nakit += netKazanc;
-            
-            // Varlığı tamamen state'den silmek yerine 'silinecek' işaretliyoruz
             varlik.durum = 'silinecek';
 
             if (!aliciBot.varliklar) aliciBot.varliklar = [];
@@ -2780,7 +2780,7 @@ if (typeof maksimumIlanSiniri === 'undefined') { var maksimumIlanSiniri = window
                 durum: 'sahip'
             });
 
-            // Verinin değiştiğini ve sunucuya kaydedilmesi gerektiğini belirtiyoruz
+            // 🔥 KRİTİK: Verinin değiştiğini işaretliyoruz ki 5. adımda sunucuya kaydedilebilsin!
             if (typeof veriDegisti !== 'undefined') {
                 veriDegisti = true;
             }
@@ -2791,17 +2791,20 @@ if (typeof maksimumIlanSiniri === 'undefined') { var maksimumIlanSiniri = window
             } else {
                 mesaj += `\nKasanıza Eklenen Tutar: ${satisBedeli.toLocaleString()} TL`;
             }
-
+            
             if (typeof onayModalGoster === 'function') {
                 onayModalGoster(mesaj, varlik);
             } else if (typeof modalGoster === 'function') {
                 modalGoster(mesaj);
             }
         });
-
-        // Satılan mülkleri kullanıcının envanterinden tamamen uçur
+    
         state.varliklar = state.varliklar.filter(v => v.durum !== 'silinecek');
-        if (typeof veriDegisti !== 'undefined') veriDegisti = true;
+        
+        // 🔥 KRİTİK: Filtreleme yapıldıktan sonra da veri değişim bayrağını tetikliyoruz
+        if (typeof veriDegisti !== 'undefined') {
+            veriDegisti = true;
+        }
     }
     // 4. DİĞER BOTLARIN İLANLARININ SÜRESİ DOLUNCA BAŞKA BOTLAR TARAFINDAN ALINMASI VE TEMİZLENMESİ
 
