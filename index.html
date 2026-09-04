@@ -2294,20 +2294,17 @@ let sonKiraZamani = Date.now();
 
 
 setInterval(async () => {
-
-
     if (typeof state === 'undefined' || !state) {
         return;
     }
 
-try {
+    try {
         let res = await fetch('/api/portfoy-getir'); 
         let data = await res.json();
         if (data && data.varliklar) {
             state.varliklar = data.varliklar;
             if (data.nakit !== undefined) state.nakit = data.nakit;
             
-            // 🌟 İŞTE BU ŞART: Veri değiştiğinde arayüzü hemen yeniden çiz ki filtre çalışıp malı silsin!
             if (typeof guncelle === 'function') {
                 guncelle();
             }
@@ -2317,11 +2314,9 @@ try {
     }
     
     let simdiMs = Date.now();
-    let veriDegisti = false; // Veritabanına ne zaman kayıt atacağımızı takip etmek için
+    let veriDegisti = false;
 
-// 🌟 0. ADIM: Sunucudan gelen / güncellenen window.oyunAyar değerlerini
-    // döngünün kullandığı global değişkenlerle senkronize et!
- if (typeof window !== 'undefined' && window.oyunAyar) {
+    if (typeof window !== 'undefined' && window.oyunAyar) {
         if (window.oyunAyar.satisFiyatlari) satisFiyatlari = window.oyunAyar.satisFiyatlari;
         if (window.oyunAyar.faizOranlari) faizOranlari = window.oyunAyar.faizOranlari;
         if (window.oyunAyar.kurlar) kurlar = window.oyunAyar.kurlar;
