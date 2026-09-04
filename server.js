@@ -291,25 +291,34 @@ app.post('/api/ilan-satin-al', (req, res) => {
                         saticiPortfoy.nakit = ilan.fiyat;
                     }
 
-                 if (saticiPortfoy.varliklar && Array.isArray(saticiPortfoy.varliklar)) {
-                        let silindi = false;
-                        saticiPortfoy.varliklar = saticiPortfoy.varliklar.filter(v => {
-                            if (silindi) return true;
+                if (saticiPortfoy.varliklar && Array.isArray(saticiPortfoy.varliklar)) {
+     let silindi = false;
+     
+     // 1. Önce detaylarda varlikId varsa tam eşleşme ile silmeyi dene
+     if (detaylar.varlikId) {
+         saticiPortfoy.varliklar = saticiPortfoy.varliklar.filter(v => {
+             if (silindi) return true;
+             if (String(v.id) === String(detaylar.varlikId)) {
+                 silindi = true;
+                 return false; // Sil
+             }
+             return true;
+         });
+     }
 
-                            // Eğer detaylarda varlikId varsa öncelikle ona bak
-                            if (detaylar.varlikId && String(v.id) === String(detaylar.varlikId)) {
-                                silindi = true;
-                                return false;
-                            }
-                            
-                            // Duruma takılmadan, mülk adına (ilan_tipi) göre ilk eşleşeni envanterden uçur
-                            if (v.isim === ilan.ilan_tipi) {
-                                silindi = true;
-                                return false;
-                            }
-                            return true;
-                        });
-                    }
+     // 2. Eğer varlikId ile silinemediyse veya detaylarda yoksa, rezerve/ilan durumundaki veya ismi eşleşen ilk mülkü sil
+     if (!silindi) {
+         saticiPortfoy.varliklar = saticiPortfoy.varliklar.filter(v => {
+             if (silindi) return true;
+             // İsim eşleşiyorsa ve başka bir blokede değilse uçur
+             if (v.isim === ilan.ilan_tipi) {
+                 silindi = true;
+                 return false;
+             }
+             return true;
+         });
+     }
+ }
 
                     db.prepare(`UPDATE kullanicilar SET portfoy = ? WHERE id = ?`).run(JSON.stringify(saticiPortfoy), satici.id);
                 }
