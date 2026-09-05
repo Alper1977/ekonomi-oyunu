@@ -3995,7 +3995,7 @@ function oyuncuIlaniSatinAlOnayla(ilanId, saticiAdi, varlikIsmi, fiyat) {
 
 async function oyuncuIlaniKesinSatinAl(isim, bedel, ilanId) {
     if (state.nakit < bedel) {
-        alert("Yeterli nakit paranız yok!");
+        modalGoster("Yeterli nakit paranız yok!");
         return;
     }
 
@@ -4009,7 +4009,7 @@ async function oyuncuIlaniKesinSatinAl(isim, bedel, ilanId) {
 
         let sonuc = await response.json();
         if (!sonuc.basari) {
-            alert(sonuc.mesaj || "Satın alma işleminde bir hata oluştu!");
+            modalGoster(sonuc.mesaj || "Satın alma işleminde bir hata oluştu!");
             return;
         }
 
@@ -4047,7 +4047,7 @@ async function oyuncuIlaniKesinSatinAl(isim, bedel, ilanId) {
 
     } catch (err) {
         console.error("Satın alma hatası:", err);
-        alert("Bağlantı hatası oluştu.");
+        modalGoster("Bağlantı hatası oluştu.");
     }
 }
     
