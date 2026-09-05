@@ -1095,7 +1095,19 @@ async function oyunAyarlariniYukle() {
             } else if (data.sureler) {
                 window.oyunAyarlari = data.sureler;
             }
-            console.log("✅ Güncel oyun ayarları başarıyla yüklendi.");
+
+            // 🌟 İŞTE EKSİK OLAN KÖPRÜ: 
+            // Ayarlar sunucudan geldiği an state içerisindeki gelirleri de anında güncelliyoruz
+            if (typeof state !== 'undefined') {
+                if (data.ayarlar.gunlukGelir !== undefined) {
+                    state.gunlukGelir = Number(data.ayarlar.gunlukGelir);
+                }
+                if (data.ayarlar.konutKiraGeliri !== undefined) {
+                    state.konutKiraGeliri = Number(data.ayarlar.konutKiraGeliri);
+                }
+            }
+
+            console.log("✅ Güncel oyun ayarları başarıyla yüklendi ve state'e işlendi.");
         }
     } catch (err) {
         console.error("Oyun ayarları yüklenirken hata:", err);
