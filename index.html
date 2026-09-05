@@ -958,8 +958,6 @@ async function adminAyarlariniKaydet() {
             "AVM Arsası": Number(document.getElementById('adm-satis-AVMArsasi').value) || 0,
             "Hipermarket Arsası": Number(document.getElementById('adm-satis-HipermarketArsasi').value) || 0
         },
-
-// 👉 İŞTE BU KISMI BURAYA EKLIYORSUN:
         odemeProgrami: [
             { 
                 saat: Number(document.getElementById('adm-odeme-1-saat').value) || 0, 
@@ -974,8 +972,6 @@ async function adminAyarlariniKaydet() {
                 dakika: Number(document.getElementById('adm-odeme-3-dakika').value) || 0 
             }
         ],
-
-
         yatirimMaliyetleri: {
             "Bayi": Number(document.getElementById('adm-maliyet-Bayi').value) || 0,
             "Otel": Number(document.getElementById('adm-maliyet-Otel').value) || 0,
@@ -1042,14 +1038,13 @@ async function adminAyarlariniKaydet() {
         
         let sonuc = await response.json();
         if (sonuc.basari) {
-            // 🌟 1. Adım: Oyunun içinde kullanılan yerel/global değişkenleri anında güncelle
+            // 🌟 1. Adım: Yerel/global değişkenleri güncelle
             kazancTablosu = window.oyunAyar.kazancTablosu;
             kurlar = window.oyunAyar.kurlar;
             faizOranlari = window.oyunAyar.faizOranlari;
             satisFiyatlari = window.oyunAyar.satisFiyatlari;
             yatirimMaliyetleri = window.oyunAyar.yatirimMaliyetleri;
             
-            // Eğer varsa talepleri de anında güncelle
             if (typeof state !== 'undefined' && state.talepler) {
                 state.talepler = [
                     { tur: 'Bayi', isim: 'Bayi', bedel: window.oyunAyar.kazancTablosu['Bayi'] },
@@ -1062,15 +1057,23 @@ async function adminAyarlariniKaydet() {
                 ];
             }
 
-            // 🌟 2. Adım: Sunucudan en güncel hali garanti olsun diye tekrar çek
+            // 🌟 2. Adım: WebSocket üzerinden oyundaki HERKESİN ekranını eşzamanlı tetikle
+            if (typeof socket !== 'undefined' && socket) {
+                socket.emit('adminAyariGuncelle', {
+                    ayarlar: window.oyunAyar,
+                    sureler: window.oyunAyarlari
+                });
+            }
+
+            // 🌟 3. Adım: Sunucudan en güncel hali garanti olsun diye tekrar çek
             await oyunAyarlariniYukle();
 
-            // 🌟 3. Adım: Ekrandaki arayüzü anında yenilemek için varsa guncelle() fonksiyonunu çalıştır
+            // 🌟 4. Adım: Ekrandaki arayüzü anında yenile
             if (typeof guncelle === 'function') {
                 guncelle();
             }
 
-            modalGoster("✅ Ayarlar ve süreler başarıyla güncellendi ve kaydedildi!", 
+            modalGoster("✅ Ayarlar ve süreler başarıyla güncellendi, kaydedildi ve tüm oyunculara yansıtıldı!", 
                 '<button onclick="document.getElementById(\'modal-overlay\').style.display=\'none\'; changePage(\'page-mali\');">TAMAM</button>');
         } else {
             modalGoster("⚠️ Hata: " + (sonuc.mesaj || "Bilinmeyen bir hata oluştu"));
@@ -1080,6 +1083,9 @@ async function adminAyarlariniKaydet() {
         modalGoster("⚠️ Sunucuya bağlanılamadı!");
     }
 }
+
+
+    
 
 // Tek ve kusursuz oyun ayarlarını yükleme fonksiyonu
 async function oyunAyarlariniYukle() {
@@ -5247,6 +5253,38 @@ window.addEventListener('DOMContentLoaded', async () => {
                 if (typeof zenginlerListesiniGuncelle === 'function') {
                     zenginlerListesiniGuncelle();
                 }
+
+                // 🌟 BURASI: Oturum açıldıktan sonra socket dinleyicisini buraya ekliyoruz
+                if (typeof socket !== 'undefined' && socket) {
+                    socket.on('ayarlarDegisti', (gelenVeri) => {
+                        window.oyunAyar = gelenVeri.ayarlar;
+                        window.oyunAyarlari = gelenVeri.sureler;
+
+                        if (window.oyunAyar) {
+                            kazancTablosu = window.oyunAyar.kazancTablosu || kazancTablosu;
+                            kurlar = window.oyunAyar.kurlar || kurlar;
+                            faizOranlari = window.oyunAyar.faizOranlari || faizOranlari;
+                            satisFiyatlari = window.oyunAyar.satisFiyatlari || satisFiyatlari;
+                            yatirimMaliyetleri = window.oyunAyar.yatirimMaliyetleri || yatirimMaliyetleri;
+                            
+                            let yeniFaizYuzdesi = window.oyunAyar.faizOranlari?.yatirimKredisiYuzde;
+                            if (yeniFaizYuzdesi !== undefined) {
+                                let yatirimSpan = document.getElementById('yazi-yatirim-faiz');
+                                if (yatirimSpan) yatirimSpan.innerText = yeniFaizYuzdesi;
+
+                                let ilanSpan = document.getElementById('yazi-ilan-faiz');
+                                if (ilanSpan) ilanSpan.innerText = yeniFaizYuzdesi;
+                            }
+                        }
+
+                        if (typeof guncelle === 'function') {
+                            guncelle();
+                        }
+                        
+                        console.log("Sunucudan güncel oyun ayarları alındı ve arayüz tazelendi.");
+                    });
+                }
+
                 return;
             }
         }
