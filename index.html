@@ -5259,47 +5259,57 @@ window.addEventListener('DOMContentLoaded', async () => {
                         window.oyunAyarlari = gelenVeri.sureler;
 
                         if (window.oyunAyar) {
-    kazancTablosu = window.oyunAyar.kazancTablosu || kazancTablosu;
-    kurlar = window.oyunAyar.kurlar || kurlar;
-    faizOranlari = window.oyunAyar.faizOranlari || faizOranlari;
-    satisFiyatlari = window.oyunAyar.satisFiyatlari || satisFiyatlari;
-    yatirimMaliyetleri = window.oyunAyar.yatirimMaliyetleri || yatirimMaliyetleri;
-    
-    // 🌟 Günlük gelir ve kira gelirini state içinde de anlık güncelle
-    if (typeof state !== 'undefined') {
-        if (window.oyunAyar.gunlukGelir !== undefined) {
-            state.gunlukGelir = Number(window.oyunAyar.gunlukGelir);
-        }
-        if (window.oyunAyar.konutKiraGeliri !== undefined) {
-            state.konutKiraGeliri = Number(window.oyunAyar.konutKiraGeliri);
-        }
-    }
-    
-    let yeniFaizYuzdesi = window.oyunAyar.faizOranlari?.yatirimKredisiYuzde;
-    if (yeniFaizYuzdesi !== undefined) {
-        let yatirimSpan = document.getElementById('yazi-yatirim-faiz');
-        if (yatirimSpan) yatirimSpan.innerText = yeniFaizYuzdesi;
+                            kazancTablosu = window.oyunAyar.kazancTablosu || kazancTablosu;
+                            kurlar = window.oyunAyar.kurlar || kurlar;
+                            faizOranlari = window.oyunAyar.faizOranlari || faizOranlari;
+                            satisFiyatlari = window.oyunAyar.satisFiyatlari || satisFiyatlari;
+                            yatirimMaliyetleri = window.oyunAyar.yatirimMaliyetleri || yatirimMaliyetleri;
+                            
+                            // 🌟 1. Günlük gelir ve kira gelirini state içinde anlık güncelle
+                            if (typeof state !== 'undefined') {
+                                if (window.oyunAyar.gunlukGelir !== undefined) {
+                                    state.gunlukGelir = Number(window.oyunAyar.gunlukGelir);
+                                }
+                                if (window.oyunAyar.konutKiraGeliri !== undefined) {
+                                    state.konutKiraGeliri = Number(window.oyunAyar.konutKiraGeliri);
+                                }
+                            }
+                            
+                            // 🌟 2. Ekranda günlük gelir ve kira yazan elementleri doğrudan yakalayıp güncelle
+                            let gunlukGelirEl = document.getElementById('gunluk-gelir') || document.getElementById('yazi-gunluk-gelir');
+                            if (gunlukGelirEl && window.oyunAyar.gunlukGelir !== undefined) {
+                                gunlukGelirEl.innerText = Number(window.oyunAyar.gunlukGelir).toLocaleString() + " TL";
+                            }
 
-        let ilanSpan = document.getElementById('yazi-ilan-faiz');
-        if (ilanSpan) ilanSpan.innerText = yeniFaizYuzdesi;
-    }
-}
+                            let kiraGelirEl = document.getElementById('konut-kira-geliri') || document.getElementById('yazi-kira-geliri');
+                            if (kiraGelirEl && window.oyunAyar.konutKiraGeliri !== undefined) {
+                                kiraGelirEl.innerText = Number(window.oyunAyar.konutKiraGeliri).toLocaleString() + " TL";
+                            }
+                            
+                            let yeniFaizYuzdesi = window.oyunAyar.faizOranlari?.yatirimKredisiYuzde;
+                            if (yeniFaizYuzdesi !== undefined) {
+                                let yatirimSpan = document.getElementById('yazi-yatirim-faiz');
+                                if (yatirimSpan) yatirimSpan.innerText = yeniFaizYuzdesi;
+
+                                let ilanSpan = document.getElementById('yazi-ilan-faiz');
+                                if (ilanSpan) ilanSpan.innerText = yeniFaizYuzdesi;
+                            }
+                        }
 
                         if (typeof guncelle === 'function') {
                             guncelle();
                         }
 
-                        // 🌟 BURASI: Yatırımlar sayfasındaki maliyetleri anında ekrana yansıtmak için
+                        // 🌟 3. Yatırımlar sayfasını tetikle (Zaten yukarıda paylaştığın fonksiyon doğrudan bu çağrıyla yeniden çizilecek)
                         if (typeof yatirimlariGuncelle === 'function') {
-                            yatirimlariGuncelle(); // Projendeki yatırım sayfasını çizen fonksiyonun adı neyse
+                            yatirimlariGuncelle();
                         }
                         
-                        // Veya eğer admin panelinde açık olan inputları da anlık güncellemek istersen:
                         if (typeof adminPaneliniAc === 'function' && document.getElementById('page-admin')?.style.display !== 'none') {
                             adminPaneliniAc();
                         }
                         
-                        console.log("Sunucudan güncel oyun ayarları alındı ve arayüz tazelendi.");
+                        console.log("Sunucudan güncel oyun ayarları alındı, gelirler ve yatırımlar anında yenilendi.");
                     });
                 }
 
