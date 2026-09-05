@@ -2816,8 +2816,12 @@ if (typeof maksimumIlanSiniri === 'undefined') { var maksimumIlanSiniri = window
 });
 
 // Bot döngülerinin içinde varlıklar taranırken bu kontrolü ekle:
-if (varlik.durum === 'satildi-bekliyor' || varlik.durum === 'islemde' || varlik.durum === 'silinecek') {
-    return; // Bot bu varlığa kesinlikle müdahale etmez, kilit koyamaz!
+for (let i = 0; i < liste.length; i++) {
+    let varlik = liste[i]; // 🌟 İşte bu tanım eksik olduğu için hata veriyordu
+    
+    if (varlik.durum === 'satildi-bekliyor' || varlik.durum === 'islemde' || varlik.durum === 'silinecek') {
+        return; 
+    }
 }
     
     window.ilanZamanlari = window.ilanZamanlari || {};
