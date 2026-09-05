@@ -5338,6 +5338,18 @@ window.addEventListener('DOMContentLoaded', async () => {
                             }
                         }
 
+                        // Socket ile ayarlar değiştiğinde, güncellenen state'i sunucuya hemen kaydedelim ki kalıcı olsun
+if (typeof portfoyuKaydet === 'function') {
+    portfoyuKaydet(); 
+} else {
+    // Eğer portföyü kaydeden fonksiyonunun adı farklıysa (örneğin fetch ile kaydetme) buraya yazabilirsin
+    fetch('/api/portfoy-kaydet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(state)
+    });
+}
+
                         if (typeof guncelle === 'function') {
                             guncelle();
                         }
