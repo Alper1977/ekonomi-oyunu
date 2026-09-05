@@ -333,6 +333,22 @@ app.post('/api/ilan-satin-al', (req, res) => {
         res.status(400).json({ basari: false, mesaj: err.message });
     }
 });
+// 🌟 Üyelerin tarayıcıyı yenilediğinde güncel ayarları alabilmesi için rota
+app.get('/api/oyun-ayarlari', (req, res) => {
+    try {
+        const kayit = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
+        if (kayit && kayit.ayarlar) {
+            const parsedAyarlar = JSON.parse(kayit.ayarlar);
+            res.json({ basari: true, ayarlar: parsedAyarlar, sureler: parsedAyarlar.sureler || {} });
+        } else {
+            res.status(404).json({ basari: false, mesaj: "Ayarlar bulunamadı." });
+        }
+    } catch (err) {
+        res.status(500).json({ basari: false, mesaj: err.message });
+    }
+});
+
+// 🌟 Admin ayarları güncellediğinde hem veritabanına yazıp hem de herkese haber veren rota
 app.post('/api/admin/ayar-guncelle', (req, res) => {
     const { ayarlar, sureler } = req.body;
     if (!ayarlar) {
@@ -347,19 +363,18 @@ app.post('/api/admin/ayar-guncelle', (req, res) => {
     try {
         db.prepare(`INSERT OR REPLACE INTO oyun_ayarlari (id, ayarlar) VALUES (1, ?)`).run(JSON.stringify(kayitPaketi));
         
-        // 🌟 İşte eksik olan parça: Admin ayarları kaydettiği an bağlı olan TÜM tarayıcılara bildiriyoruz
-        if (typeof io !== 'undefined') {
-            io.emit('ayarlarDegisti', {
-                ayarlar: kayitPaketi,
-                sureler: kayitPaketi.sureler
-            });
-        }
+        // 🌟 Bağlı olan TÜM tarayıcılara anında sinyal gönderiyoruz
+        io.emit('ayarlarDegisti', {
+            ayarlar: kayitPaketi,
+            sureler: kayitPaketi.sureler
+        });
 
         res.json({ basari: true, mesaj: "Ayarlar başarıyla güncellendi." });
     } catch (err) {
         res.status(500).json({ basari: false, mesaj: err.message });
     }
 });
+
 // YENİ ÜYE KAYIT ROTASI (Eksiksiz ve büyük/küçük harf duyarlı kontrolleriyle)
 app.post('/api/kayit', (req, res) => {
     const { kadi, email, sifre, adsoyad, portfoy } = req.body; 
