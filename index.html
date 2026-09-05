@@ -5264,21 +5264,31 @@ window.addEventListener('DOMContentLoaded', async () => {
                         window.oyunAyarlari = gelenVeri.sureler;
 
                         if (window.oyunAyar) {
-                            kazancTablosu = window.oyunAyar.kazancTablosu || kazancTablosu;
-                            kurlar = window.oyunAyar.kurlar || kurlar;
-                            faizOranlari = window.oyunAyar.faizOranlari || faizOranlari;
-                            satisFiyatlari = window.oyunAyar.satisFiyatlari || satisFiyatlari;
-                            yatirimMaliyetleri = window.oyunAyar.yatirimMaliyetleri || yatirimMaliyetleri;
-                            
-                            let yeniFaizYuzdesi = window.oyunAyar.faizOranlari?.yatirimKredisiYuzde;
-                            if (yeniFaizYuzdesi !== undefined) {
-                                let yatirimSpan = document.getElementById('yazi-yatirim-faiz');
-                                if (yatirimSpan) yatirimSpan.innerText = yeniFaizYuzdesi;
+    kazancTablosu = window.oyunAyar.kazancTablosu || kazancTablosu;
+    kurlar = window.oyunAyar.kurlar || kurlar;
+    faizOranlari = window.oyunAyar.faizOranlari || faizOranlari;
+    satisFiyatlari = window.oyunAyar.satisFiyatlari || satisFiyatlari;
+    yatirimMaliyetleri = window.oyunAyar.yatirimMaliyetleri || yatirimMaliyetleri;
+    
+    // 🌟 Günlük gelir ve kira gelirini state içinde de anlık güncelle
+    if (typeof state !== 'undefined') {
+        if (window.oyunAyar.gunlukGelir !== undefined) {
+            state.gunlukGelir = Number(window.oyunAyar.gunlukGelir);
+        }
+        if (window.oyunAyar.konutKiraGeliri !== undefined) {
+            state.konutKiraGeliri = Number(window.oyunAyar.konutKiraGeliri);
+        }
+    }
+    
+    let yeniFaizYuzdesi = window.oyunAyar.faizOranlari?.yatirimKredisiYuzde;
+    if (yeniFaizYuzdesi !== undefined) {
+        let yatirimSpan = document.getElementById('yazi-yatirim-faiz');
+        if (yatirimSpan) yatirimSpan.innerText = yeniFaizYuzdesi;
 
-                                let ilanSpan = document.getElementById('yazi-ilan-faiz');
-                                if (ilanSpan) ilanSpan.innerText = yeniFaizYuzdesi;
-                            }
-                        }
+        let ilanSpan = document.getElementById('yazi-ilan-faiz');
+        if (ilanSpan) ilanSpan.innerText = yeniFaizYuzdesi;
+    }
+}
 
                         if (typeof guncelle === 'function') {
                             guncelle();
