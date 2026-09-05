@@ -342,12 +342,20 @@ app.post('/api/admin/ayar-guncelle', (req, res) => {
 
     try {
         db.prepare(`INSERT OR REPLACE INTO oyun_ayarlari (id, ayarlar) VALUES (1, ?)`).run(JSON.stringify(kayitPaketi));
+        
+        // 🌟 İşte eksik olan parça: Admin ayarları kaydettiği an bağlı olan TÜM tarayıcılara bildiriyoruz
+        if (typeof io !== 'undefined') {
+            io.emit('ayarlarDegisti', {
+                ayarlar: kayitPaketi,
+                sureler: kayitPaketi.sureler
+            });
+        }
+
         res.json({ basari: true, mesaj: "Ayarlar başarıyla güncellendi." });
     } catch (err) {
         res.status(500).json({ basari: false, mesaj: err.message });
     }
 });
-
 // YENİ ÜYE KAYIT ROTASI (Eksiksiz ve büyük/küçük harf duyarlı kontrolleriyle)
 app.post('/api/kayit', (req, res) => {
     const { kadi, email, sifre, adsoyad, portfoy } = req.body; 
