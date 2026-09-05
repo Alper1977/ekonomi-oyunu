@@ -1,10 +1,14 @@
 const express = require('express');
+const http = require('http'); // 🌟 HTTP modülü eklendi
+const { Server } = require('socket.io'); // 🌟 Socket.io eklendi
 const session = require('express-session');
 const SQLiteStore = require('connect-sqlite3')(session); 
 const Database = require('better-sqlite3');
 const fs = require('fs');
 
 const app = express();
+const server = http.createServer(app); // 🌟 HTTP sunucusu oluşturuldu
+const io = new Server(server); // 🌟 Socket.io sunucuya bağlandı
 
 app.use(express.json());
 app.use(express.static(__dirname));
