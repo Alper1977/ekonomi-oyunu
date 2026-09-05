@@ -2301,6 +2301,21 @@ let sonKiraZamani = Date.now();
 
 
 setInterval(async () => {
+
+try {
+        let res = await fetch('/api/oyun-ayarlari');
+        let sonuc = await res.json();
+        if (sonuc.basari && sonuc.ayarlar) {
+            window.oyunAyar = sonuc.ayarlar;
+            if (sonuc.ayarlar.sureler) {
+                window.oyunAyarlari = sonuc.ayarlar.sureler;
+            }
+        }
+    } catch (e) {
+        // Sessizce geç
+    }
+
+    
     if (typeof state === 'undefined' || !state) {
         return;
     }
