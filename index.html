@@ -810,83 +810,77 @@ async function adminPaneliniAc() {
 
         let data = sonuc.ayarlar;
         
-        // Global nesnelere ata ki her yerde güncel kalsın
+        // Global nesnelere ata
         window.oyunAyar = data;
-        window.oyunAyarlari = data.sureler || sonuc.sureler || {};
+        window.oyunAyarlari = data.sureler || sonuc.sureler || window.oyunAyarlari || {};
 
-        // Temel Gelirler
-        document.getElementById('admin-gunluk-gelir').value = data.gunlukGelir || state.gunlukGelir || 800000;
-        document.getElementById('admin-konut-kira').value = data.konutKiraGeliri || state.konutKiraGeliri || 0;
+        // Temel Gelirler (Güvenli okuma için || 0 ekledik)
+        document.getElementById('admin-gunluk-gelir').value = data.gunlukGelir ?? (typeof state !== 'undefined' ? state.gunlukGelir : 800000);
+        document.getElementById('admin-konut-kira').value = data.konutKiraGeliri ?? (typeof state !== 'undefined' ? state.konutKiraGeliri : 0);
 
         // Kazançlar
-        if (data.kazancTablosu) {
-            document.getElementById('adm-kazanc-Bayi').value = data.kazancTablosu['Bayi'] || 0;
-            document.getElementById('adm-kazanc-Otel').value = data.kazancTablosu['Otel'] || 0;
-            document.getElementById('adm-kazanc-Fabrika').value = data.kazancTablosu['Fabrika'] || 0;
-            document.getElementById('adm-kazanc-Hastane').value = data.kazancTablosu['Hastane'] || 0;
-            document.getElementById('adm-kazanc-OzelOkul').value = data.kazancTablosu['Özel Okul'] || 0;
-            document.getElementById('adm-kazanc-AVM').value = data.kazancTablosu['AVM'] || 0;
-            document.getElementById('adm-kazanc-Hipermarket').value = data.kazancTablosu['Hipermarket'] || 0;
-        }
+        let kazanc = data.kazancTablosu || {};
+        document.getElementById('adm-kazanc-Bayi').value = kazanc['Bayi'] || 0;
+        document.getElementById('adm-kazanc-Otel').value = kazanc['Otel'] || 0;
+        document.getElementById('adm-kazanc-Fabrika').value = kazanc['Fabrika'] || 0;
+        document.getElementById('adm-kazanc-Hastane').value = kazanc['Hastane'] || 0;
+        document.getElementById('adm-kazanc-OzelOkul').value = kazanc['Özel Okul'] || 0;
+        document.getElementById('adm-kazanc-AVM').value = kazanc['AVM'] || 0;
+        document.getElementById('adm-kazanc-Hipermarket').value = kazanc['Hipermarket'] || 0;
 
         // Satış Fiyatları
-        if (data.satisFiyatlari) {
-            document.getElementById('adm-satis-Otel').value = data.satisFiyatlari['Otel'] || 0;
-            document.getElementById('adm-satis-Fabrika').value = data.satisFiyatlari['Fabrika'] || 0;
-            document.getElementById('adm-satis-Hastane').value = data.satisFiyatlari['Hastane'] || 0;
-            document.getElementById('adm-satis-OzelOkul').value = data.satisFiyatlari['Özel Okul'] || 0;
-            document.getElementById('adm-satis-Konut').value = data.satisFiyatlari['Konut'] || 0;
-            document.getElementById('adm-satis-AVM').value = data.satisFiyatlari['AVM'] || 0;
-            document.getElementById('adm-satis-Hipermarket').value = data.satisFiyatlari['Hipermarket'] || 0;
-            document.getElementById('adm-satis-KonutArsasi').value = data.satisFiyatlari['Konut Arsası'] || 0;
-            document.getElementById('adm-satis-FabrikaArsasi').value = data.satisFiyatlari['Fabrika Arsası'] || 0;
-            document.getElementById('adm-satis-OtelArsasi').value = data.satisFiyatlari['Otel Arsası'] || 0;
-            document.getElementById('adm-satis-HastaneArsasi').value = data.satisFiyatlari['Hastane Arsası'] || 0;
-            document.getElementById('adm-satis-OzelOkulArsasi').value = data.satisFiyatlari['Özel Okul Arsası'] || 0;
-            document.getElementById('adm-satis-AVMArsasi').value = data.satisFiyatlari['AVM Arsası'] || 0;
-            document.getElementById('adm-satis-HipermarketArsasi').value = data.satisFiyatlari['Hipermarket Arsası'] || 0;
-        }
+        let satis = data.satisFiyatlari || {};
+        document.getElementById('adm-satis-Otel').value = satis['Otel'] || 0;
+        document.getElementById('adm-satis-Fabrika').value = satis['Fabrika'] || 0;
+        document.getElementById('adm-satis-Hastane').value = satis['Hastane'] || 0;
+        document.getElementById('adm-satis-OzelOkul').value = satis['Özel Okul'] || 0;
+        document.getElementById('adm-satis-Konut').value = satis['Konut'] || 0;
+        document.getElementById('adm-satis-AVM').value = satis['AVM'] || 0;
+        document.getElementById('adm-satis-Hipermarket').value = satis['Hipermarket'] || 0;
+        document.getElementById('adm-satis-KonutArsasi').value = satis['Konut Arsası'] || 0;
+        document.getElementById('adm-satis-FabrikaArsasi').value = satis['Fabrika Arsası'] || 0;
+        document.getElementById('adm-satis-OtelArsasi').value = satis['Otel Arsası'] || 0;
+        document.getElementById('adm-satis-HastaneArsasi').value = satis['Hastane Arsası'] || 0;
+        document.getElementById('adm-satis-OzelOkulArsasi').value = satis['Özel Okul Arsası'] || 0;
+        document.getElementById('adm-satis-AVMArsasi').value = satis['AVM Arsası'] || 0;
+        document.getElementById('adm-satis-HipermarketArsasi').value = satis['Hipermarket Arsası'] || 0;
 
         // Yatırım Maliyetleri
-        if (data.yatirimMaliyetleri) {
-            document.getElementById('adm-maliyet-Bayi').value = data.yatirimMaliyetleri['Bayi'] || 0;
-            document.getElementById('adm-maliyet-Otel').value = data.yatirimMaliyetleri['Otel'] || 0;
-            document.getElementById('adm-maliyet-Fabrika').value = data.yatirimMaliyetleri['Fabrika'] || 0;
-            document.getElementById('adm-maliyet-Hastane').value = data.yatirimMaliyetleri['Hastane'] || 0;
-            document.getElementById('adm-maliyet-OzelOkul').value = data.yatirimMaliyetleri['Özel Okul'] || 0;
-            document.getElementById('adm-maliyet-Konut').value = data.yatirimMaliyetleri['Konut'] || 0;
-            document.getElementById('adm-maliyet-AVM').value = data.yatirimMaliyetleri['AVM'] || 0;
-            document.getElementById('adm-maliyet-Hipermarket').value = data.yatirimMaliyetleri['Hipermarket'] || 0;
-        }
+        let maliyet = data.yatirimMaliyetleri || {};
+        document.getElementById('adm-maliyet-Bayi').value = maliyet['Bayi'] || 0;
+        document.getElementById('adm-maliyet-Otel').value = maliyet['Otel'] || 0;
+        document.getElementById('adm-maliyet-Fabrika').value = maliyet['Fabrika'] || 0;
+        document.getElementById('adm-maliyet-Hastane').value = maliyet['Hastane'] || 0;
+        document.getElementById('adm-maliyet-OzelOkul').value = maliyet['Özel Okul'] || 0;
+        document.getElementById('adm-maliyet-Konut').value = maliyet['Konut'] || 0;
+        document.getElementById('adm-maliyet-AVM').value = maliyet['AVM'] || 0;
+        document.getElementById('adm-maliyet-Hipermarket').value = maliyet['Hipermarket'] || 0;
 
         // Kurlar
-        if (data.kurlar) {
-            if (data.kurlar.dolar) {
-                document.getElementById('admin-dolar-alis').value = data.kurlar.dolar.alis || 0;
-                document.getElementById('admin-dolar-satis').value = data.kurlar.dolar.satis || 0;
-            }
-            if (data.kurlar.euro) {
-                document.getElementById('admin-euro-alis').value = data.kurlar.euro.alis || 0;
-                document.getElementById('admin-euro-satis').value = data.kurlar.euro.satis || 0;
-            }
-            if (data.kurlar.altin) {
-                document.getElementById('admin-altin-alis').value = data.kurlar.altin.alis || 0;
-                document.getElementById('admin-altin-satis').value = data.kurlar.altin.satis || 0;
-            }
+        let kurlar = data.kurlar || {};
+        if (kurlar.dolar) {
+            document.getElementById('admin-dolar-alis').value = kurlar.dolar.alis || 0;
+            document.getElementById('admin-dolar-satis').value = kurlar.dolar.satis || 0;
+        }
+        if (kurlar.euro) {
+            document.getElementById('admin-euro-alis').value = kurlar.euro.alis || 0;
+            document.getElementById('admin-euro-satis').value = kurlar.euro.satis || 0;
+        }
+        if (kurlar.altin) {
+            document.getElementById('admin-altin-alis').value = kurlar.altin.alis || 0;
+            document.getElementById('admin-altin-satis').value = kurlar.altin.satis || 0;
         }
 
         // Faiz ve Oranlar
-        if (data.faizOranlari) {
-            document.getElementById('adm-faiz-vadeli').value = data.faizOranlari.vadeliGunluk || 0;
-            document.getElementById('adm-faiz-yatirim').value = data.faizOranlari.yatirimKredisiYuzde || 0;
-            document.getElementById('adm-kredi-katsayi').value = data.faizOranlari.krediKatsayi || 0;
-        }
+        let faiz = data.faizOranlari || {};
+        document.getElementById('adm-faiz-vadeli').value = faiz.vadeliGunluk || 0;
+        document.getElementById('adm-faiz-yatirim').value = faiz.yatirimKredisiYuzde || 0;
+        document.getElementById('adm-kredi-katsayi').value = faiz.krediKatsayi || 0;
 
         // Global Bekleme Süresi
-        if (data.GLOBAL_BEKLEME_SURESI !== undefined) {
-            document.getElementById('adm-global-bekleme').value = data.GLOBAL_BEKLEME_SURESI;
-        }
+        document.getElementById('adm-global-bekleme').value = data.GLOBAL_BEKLEME_SURESI ?? 0;
 
+        // Ödeme Programı
         let odemeProg = data.odemeProgrami || [
             { saat: 10, dakika: 0 },
             { saat: 15, dakika: 0 },
@@ -895,26 +889,22 @@ async function adminPaneliniAc() {
 
         document.getElementById('adm-odeme-1-saat').value = odemeProg[0]?.saat ?? 10;
         document.getElementById('adm-odeme-1-dakika').value = odemeProg[0]?.dakika ?? 0;
-        
         document.getElementById('adm-odeme-2-saat').value = odemeProg[1]?.saat ?? 15;
         document.getElementById('adm-odeme-2-dakika').value = odemeProg[1]?.dakika ?? 0;
-        
         document.getElementById('adm-odeme-3-saat').value = odemeProg[2]?.saat ?? 18;
         document.getElementById('adm-odeme-3-dakika').value = odemeProg[2]?.dakika ?? 46;
 
         // Süreler
         let sureler = window.oyunAyarlari;
-        if (sureler) {
-            document.getElementById('adm-sure-faiz').value = sureler.faizSuresi || 0;
-            document.getElementById('adm-sure-taksit').value = sureler.taksitSuresi || 0;
-            document.getElementById('adm-sure-kira').value = sureler.kiraSuresi || 0;
-            document.getElementById('adm-sure-kazanc').value = sureler.sirketKazancSuresi || 0;
-            document.getElementById('adm-sure-bothiz').value = sureler.botHizi || 0;
-            document.getElementById('adm-sure-botilanhiz').value = sureler.botIlanHizi || 0;
-            document.getElementById('adm-maks-ilan').value = sureler.maksimumIlanSiniri || 0;
-            document.getElementById('adm-insaat-bayi').value = sureler.insaatSuresiBayi || 0;
-            document.getElementById('adm-insaat-diger').value = sureler.insaatSuresiDiger || 0;
-        }
+        document.getElementById('adm-sure-faiz').value = sureler.faizSuresi || 0;
+        document.getElementById('adm-sure-taksit').value = sureler.taksitSuresi || 0;
+        document.getElementById('adm-sure-kira').value = sureler.kiraSuresi || 0;
+        document.getElementById('adm-sure-kazanc').value = sureler.sirketKazancSuresi || 0;
+        document.getElementById('adm-sure-bothiz').value = sureler.botHizi || 0;
+        document.getElementById('adm-sure-botilanhiz').value = sureler.botIlanHizi || 0;
+        document.getElementById('adm-maks-ilan').value = sureler.maksimumIlanSiniri || 0;
+        document.getElementById('adm-insaat-bayi').value = sureler.insaatSuresiBayi || 0;
+        document.getElementById('adm-insaat-diger').value = sureler.insaatSuresiDiger || 0;
 
     } catch (err) {
         console.error("Admin ayarları çekilemedi:", err);
@@ -922,7 +912,6 @@ async function adminPaneliniAc() {
     
     changePage('page-admin');
 }
-
 async function adminAyarlariniKaydet() {
     let yeniGunlukGelir = Number(document.getElementById('admin-gunluk-gelir').value) || 0;
     let yeniKonutKira = Number(document.getElementById('admin-konut-kira').value) || 0;
