@@ -138,7 +138,7 @@ app.get('/api/ilanlar', (req, res) => {
         const duzenlenmisIlanlar = ilanlar.map(ilan => ({
             ...ilan,
             detaylar: JSON.parse(ilan.detaylar || '{}'),
-            benim_mi: aktifKullaniciId && ilan.kullanici_id === aktifKullaniciId
+            benim_mi: aktifKullaniciId && ilan.kullanici_id === aktifKullaniciId 
         }));
 
         res.json({ basari: true, ilanlar: duzenlenmisIlanlar });
