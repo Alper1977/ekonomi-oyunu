@@ -800,24 +800,29 @@ function maliGrafikGuncelle(yeniNetDeger) {
 
 async function adminPaneliniAc() {
     try {
-        let res = await fetch('/api/oyun-ayarlari');
-        let sonuc = await res.json();
-        
-        // Sunucudan gelen veri direkt obje mi yoksa { ayarlar: {...} } içinde mi? İkisini de yakala:
-        let data = sonuc.ayarlar || sonuc;
-        
-        if (!data || Object.keys(data).length === 0) {
-            console.error("Ayarlar sunucudan boş geldi veya alınamadı:", sonuc);
+        // Eğer global oyun ayarları henüz yüklenmemişse veya boşsa önce veriyi çekelim
+        if (!window.oyunAyar || Object.keys(window.oyunAyar).length === 0) {
+            let res = await fetch('/api/oyun-ayarlari');
+            let sonuc = await res.json();
+            
+            if (sonuc.basari && sonuc.ayarlar) {
+                window.oyunAyar = sonuc.ayarlar;
+                window.oyunAyarlari = sonuc.ayarlar.sureler || sonuc.sureler || {};
+            }
+        }
+
+        let data = window.oyunAyar;
+        if (!data) {
+            console.error("Ayar verisi bulunamadı.");
+            changePage('page-admin');
             return;
         }
 
-        // Global nesnelere ata
-        window.oyunAyar = data;
-        window.oyunAyarlari = data.sureler || sonuc.sureler || window.oyunAyarlari || {};
+        window.oyunAyarlari = data.sureler || window.oyunAyarlari || {};
 
         // Temel Gelirler
-        document.getElementById('admin-gunluk-gelir').value = data.gunlukGelir ?? (state?.gunlukGelir || 800000);
-        document.getElementById('admin-konut-kira').value = data.konutKiraGeliri ?? (state?.konutKiraGeliri || 0);
+        document.getElementById('admin-gunluk-gelir').value = data.gunlukGelir ?? 800000;
+        document.getElementById('admin-konut-kira').value = data.konutKiraGeliri ?? 0;
 
         // Kazançlar
         let kazanc = data.kazancTablosu || {};
@@ -882,12 +887,7 @@ async function adminPaneliniAc() {
         document.getElementById('adm-global-bekleme').value = data.GLOBAL_BEKLEME_SURESI ?? 0;
 
         // Ödeme Programı
-        let odemeProg = data.odemeProgrami || [
-            { saat: 10, dakika: 0 },
-            { saat: 15, dakika: 0 },
-            { saat: 18, dakika: 46 }
-        ];
-
+        let odemeProg = data.odemeProgrami || [];
         document.getElementById('adm-odeme-1-saat').value = odemeProg[0]?.saat ?? 10;
         document.getElementById('adm-odeme-1-dakika').value = odemeProg[0]?.dakika ?? 0;
         document.getElementById('adm-odeme-2-saat').value = odemeProg[1]?.saat ?? 15;
@@ -908,7 +908,7 @@ async function adminPaneliniAc() {
         document.getElementById('adm-insaat-diger').value = sureler.insaatSuresiDiger ?? 0;
 
     } catch (err) {
-        console.error("Admin ayarları çekilemedi:", err);
+        console.error("Admin paneli açılırken hata:", err);
     }
     
     changePage('page-admin');
