@@ -1350,8 +1350,8 @@ async function sistemeGirisYap() {
             state.faiz = Number(gelenPortfoy.faiz) || 0;
             state.kredi = Number(gelenPortfoy.kredi) || 0;
             state.taksit = Number(gelenPortfoy.taksit) || 0;
-            state.gunlukGelir = Number(gelenPortfoy.gunlukGelir) || (window.oyunAyar && window.oyunAyar.gunlukGelir) || 900000;
-            state.konutKiraGeliri = (window.oyunAyar && window.oyunAyar.konutKiraGeliri) || Number(gelenPortfoy.konutKiraGeliri) || 150000;
+            state.gunlukGelir = (window.oyunAyar && window.oyunAyar.gunlukGelir !== undefined) ? Number(window.oyunAyar.gunlukGelir) : (Number(gelenPortfoy.gunlukGelir) || 900000);
+            state.konutKiraGeliri = (window.oyunAyar && window.oyunAyar.konutKiraGeliri !== undefined) ? Number(window.oyunAyar.konutKiraGeliri) : (Number(gelenPortfoy.konutKiraGeliri) || 150000);
             
             state.varliklar = Array.isArray(gelenPortfoy.varliklar) && gelenPortfoy.varliklar.length > 0 
                 ? gelenPortfoy.varliklar 
