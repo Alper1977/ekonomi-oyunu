@@ -2796,13 +2796,16 @@ if (typeof maksimumIlanSiniri === 'undefined') { var maksimumIlanSiniri = window
     }
    // 3. Senin İlanlarını Kontrol Eden Mekanizma (Garanti Satış)
 
-    bot.varliklar.forEach(varlik => {
-    // 🔥 BOT ENGELİNİ KALDIRAN FİLTRE:
-    // Eğer varlık zaten satıldıysa, işlemdiyse veya rezerve edildiyse botlar bu süreye karışmaz!
-    if (varlik.durum !== 'ilan-aktif') return;
-    if (varlik.satinAlindi || varlik.islemde) return; 
+    botlar.forEach(bot => {
+    if (!bot.varliklar || !Array.isArray(bot.varliklar)) return;
 
-    // ... geri kalan 3 günlük bekleme süresi ve bot alım kodları burada devam eder ...
+    bot.varliklar.forEach(varlik => {
+        // 🔥 BOT ENGELİNİ KALDIRAN FİLTRE:
+        if (varlik.durum !== 'ilan-aktif') return;
+        if (varlik.satinAlindi || varlik.islemde) return; 
+
+        // ... geri kalan 3 günlük bekleme süresi ve bot alım kodları burada devam eder ...
+    });
 });
 
 // Bot döngülerinin içinde varlıklar taranırken bu kontrolü ekle:
