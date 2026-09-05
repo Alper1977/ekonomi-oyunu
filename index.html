@@ -5247,19 +5247,17 @@ window.addEventListener('DOMContentLoaded', async () => {
                     sirketBaslik.innerText = gorunenIsim.toUpperCase() + " A.Ş.";
                 }
 
-                // 🌟 Veritabanından gelen portföyü oyuna aktarıyoruz
                 if (data.portfoy) {
                     state = data.portfoy; 
                 }
 
                 changePage('page-mali');
-                guncelle(); // Ekrana yeni değerleri yansıt
+                guncelle(); 
 
                 if (typeof zenginlerListesiniGuncelle === 'function') {
                     zenginlerListesiniGuncelle();
                 }
 
-                // 🌟 BURASI: Oturum açıldıktan sonra socket dinleyicisini buraya ekliyoruz
                 if (typeof socket !== 'undefined' && socket) {
                     socket.on('ayarlarDegisti', (gelenVeri) => {
                         window.oyunAyar = gelenVeri.ayarlar;
@@ -5285,6 +5283,16 @@ window.addEventListener('DOMContentLoaded', async () => {
                         if (typeof guncelle === 'function') {
                             guncelle();
                         }
+
+                        // 🌟 BURASI: Yatırımlar sayfasındaki maliyetleri anında ekrana yansıtmak için
+                        if (typeof yatirimlariGuncelle === 'function') {
+                            yatirimlariGuncelle(); // Projendeki yatırım sayfasını çizen fonksiyonun adı neyse
+                        }
+                        
+                        // Veya eğer admin panelinde açık olan inputları da anlık güncellemek istersen:
+                        if (typeof adminPaneliniAc === 'function' && document.getElementById('page-admin')?.style.display !== 'none') {
+                            adminPaneliniAc();
+                        }
                         
                         console.log("Sunucudan güncel oyun ayarları alındı ve arayüz tazelendi.");
                     });
@@ -5293,14 +5301,12 @@ window.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
         }
-        // Oturum yoksa giriş sayfasına yönlendir
         changePage('page-giris-yap');
     } catch (e) {
         console.error("Kullanıcı bilgisi sunucudan alınamadı:", e);
         changePage('page-giris-yap');
     }
 });
-
 
 
 </script>
