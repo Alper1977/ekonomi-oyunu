@@ -5246,25 +5246,22 @@ window.addEventListener('DOMContentLoaded', async () => {
                     sirketBaslik.innerText = gorunenIsim.toUpperCase() + " A.Ş.";
                 }
 
-               if (data.portfoy) {
-    state = data.portfoy;
-    // Eğer veritabanındaki eski portföyde bu alanlar yoksa varsayılanı ata
-    if (state.gunlukGelir === undefined) state.gunlukGelir = window.oyunAyar?.gunlukGelir || 800000;
-    if (state.konutKiraGeliri === undefined) state.konutKiraGeliri = window.oyunAyar?.konutKiraGeliri || 0;
-}
-                // Aktif oturum bulunduktan sonra (state = data.portfoy; satırının hemen altına ekleyebilirsin):
-let ayarRes = await fetch('/api/oyun-ayarlari');
-let ayarSonuc = await ayarRes.json();
-if (ayarSonuc.basari && ayarSonuc.ayarlar) {
-    window.oyunAyar = ayarSonuc.ayarlar;
-    window.oyunAyarlari = ayarSonuc.ayarlar.sureler || ayarSonuc.sureler || {};
-    
-    // State içine de ilk yüklemede değerleri işle
-    if (typeof state !== 'undefined') {
-        if (window.oyunAyar.gunlukGelir !== undefined) state.gunlukGelir = Number(window.oyunAyar.gunlukGelir);
-        if (window.oyunAyar.konutKiraGeliri !== undefined) state.konutKiraGeliri = Number(window.oyunAyar.konutKiraGeliri);
-    }
-}
+                if (data.portfoy) {
+                    state = data.portfoy;
+                }
+
+                // 🌟 Önce sunucudan güncel oyun ayarlarını çekip hem window.oyunAyar'a hem de state'e işliyoruz
+                let ayarRes = await fetch('/api/oyun-ayarlari');
+                let ayarSonuc = await ayarRes.json();
+                if (ayarSonuc.basari && ayarSonuc.ayarlar) {
+                    window.oyunAyar = ayarSonuc.ayarlar;
+                    window.oyunAyarlari = ayarSonuc.ayarlar.sureler || ayarSonuc.sureler || {};
+                    
+                    if (typeof state !== 'undefined') {
+                        state.gunlukGelir = window.oyunAyar.gunlukGelir !== undefined ? Number(window.oyunAyar.gunlukGelir) : (state.gunlukGelir || 800000);
+                        state.konutKiraGeliri = window.oyunAyar.konutKiraGeliri !== undefined ? Number(window.oyunAyar.konutKiraGeliri) : (state.konutKiraGeliri || 0);
+                    }
+                }
 
                 changePage('page-mali');
                 guncelle(); 
@@ -5274,8 +5271,11 @@ if (ayarSonuc.basari && ayarSonuc.ayarlar) {
                 }
 
                 if (typeof socket !== 'undefined' && socket) {
+                    // Socket dinleyicisinin mükerrer (üst üste) eklenmesini önlemek için önce temizleyelim
+                    socket.off('ayarlarDegisti');
+                    
                     socket.on('ayarlarDegisti', (gelenVeri) => {
-                        console.log("🔥 SUNUCUDAN GELEN HAM AYARLAR:", gelenVeri); // Bunu ekle
+                        console.log("🔥 SUNUCUDAN GELEN HAM AYARLAR:", gelenVeri);
                         window.oyunAyar = gelenVeri.ayarlar;
                         window.oyunAyarlari = gelenVeri.sureler;
 
@@ -5286,7 +5286,7 @@ if (ayarSonuc.basari && ayarSonuc.ayarlar) {
                             satisFiyatlari = window.oyunAyar.satisFiyatlari || satisFiyatlari;
                             yatirimMaliyetleri = window.oyunAyar.yatirimMaliyetleri || yatirimMaliyetleri;
                             
-                            // 🌟 1. Günlük gelir ve kira gelirini state içinde anlık güncelle
+                            // 🌟 1. Günlük gelir ve kira gelirini state içinde anlık ve kesin olarak güncelle
                             if (typeof state !== 'undefined') {
                                 if (window.oyunAyar.gunlukGelir !== undefined) {
                                     state.gunlukGelir = Number(window.oyunAyar.gunlukGelir);
@@ -5321,7 +5321,6 @@ if (ayarSonuc.basari && ayarSonuc.ayarlar) {
                             guncelle();
                         }
 
-                        // 🌟 3. Yatırımlar sayfasını tetikle (Zaten yukarıda paylaştığın fonksiyon doğrudan bu çağrıyla yeniden çizilecek)
                         if (typeof yatirimlariGuncelle === 'function') {
                             yatirimlariGuncelle();
                         }
@@ -5343,7 +5342,6 @@ if (ayarSonuc.basari && ayarSonuc.ayarlar) {
         changePage('page-giris-yap');
     }
 });
-
 
 </script>
 </body>
