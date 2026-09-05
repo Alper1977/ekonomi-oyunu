@@ -2695,27 +2695,31 @@ if (simdiMs - sonTaksitZamani >= window.oyunAyarlari.taksitSuresi) {
     veriDegisti = true;
 }
 
-    // 5. Konut Kira Gelirleri
-
-    if (simdiMs - sonKiraZamani >= window.oyunAyarlari.kiraSuresi) {
-
-        let konutSayisi = state.varliklar.filter(v => v.isim === 'Konut' && v.durum === 'sahip').length;
-        let toplamKira = konutSayisi * state.konutKiraGeliri;
+// 5. Konut Kira Gelirleri
+if (simdiMs - sonKiraZamani >= window.oyunAyarlari.kiraSuresi) {
+    let konutSayisi = state.varliklar.filter(v => v.isim === 'Konut' && v.durum === 'sahip').length;
     
-        state.nakit += toplamKira;
-        sonKiraZamani = simdiMs;
-        guncelle();
-        veriDegisti = true;
-    }
+    // 🌟 state yerine doğrudan anlık global ayardan okuyoruz
+    let guncelKiraGeliri = window.oyunAyar?.konutKiraGeliri ?? state.konutKiraGeliri ?? 0;
+    let toplamKira = konutSayisi * guncelKiraGeliri;
 
-    // 6. Şirket Günlük Gelirleri
+    state.nakit += toplamKira;
+    sonKiraZamani = simdiMs;
+    guncelle();
+    veriDegisti = true;
+}
 
-    if (simdiMs - sonSirketKazanci >= window.oyunAyarlari.sirketKazancSuresi) {
-        state.nakit += state.gunlukGelir;
-        sonSirketKazanci = simdiMs;
-        guncelle();
-        veriDegisti = true;
-    }
+// 6. Şirket Günlük Gelirleri
+if (simdiMs - sonSirketKazanci >= window.oyunAyarlari.sirketKazancSuresi) {
+    
+    // 🌟 state yerine doğrudan anlık global ayardan okuyoruz
+    let guncelGunlukGelir = window.oyunAyar?.gunlukGelir ?? state.gunlukGelir ?? 800000;
+
+    state.nakit += guncelGunlukGelir;
+    sonSirketKazanci = simdiMs;
+    guncelle();
+    veriDegisti = true;
+}
 
     // 🌟 7. EN ÖNEMLİ HAMLE: Döngü içinde parada veya varlıkta bir değişiklik olduysa sunucuya kaydet!
 
