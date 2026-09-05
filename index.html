@@ -3981,19 +3981,20 @@ function baskasiSatinAl(varlikId, botIsmi, fiyat) {
     }
 }
 
-// Gerçek Oyuncu İlanı İçin Onay Penceresi
-function oyuncuIlaniSatinAlOnayla(ilanId, saticiAdi, varlikIsmi, fiyat) {
+// 1. Onay fonksiyonuna 'konum' parametresini de ekle
+function oyuncuIlaniSatinAlOnayla(ilanId, saticiAdi, varlikIsmi, fiyat, konum) {
     let temizFiyat = Number(fiyat) || 0;
     
     let butonlar = `
-        <button class="btn-green" onclick="oyuncuIlaniKesinSatinAl('${varlikIsmi}', ${temizFiyat}, ${ilanId})">ONAYLA</button>
+        <button class="btn-green" onclick="oyuncuIlaniKesinSatinAl('${varlikIsmi}', ${temizFiyat}, ${ilanId}, '${konum}')">ONAYLA</button>
         <button onclick="document.getElementById('modal-overlay').style.display='none'" style="background-color: #d9534f; color: white; margin-left: 10px;">VAZGEÇ</button>
     `;
     
-    modalGoster(`${saticiAdi} kişisinden ${varlikIsmi} varlığını ${temizFiyat.toLocaleString()} TL ödeyerek satın almak istiyor musunuz?`, butonlar);
-} 
+    modalGoster(`${saticiAdi} kişisinden ${varlikIsmi} varlığını (${konum}) ${temizFiyat.toLocaleString()} TL ödeyerek satın almak istiyor musunuz?`, butonlar);
+}  
 
-async function oyuncuIlaniKesinSatinAl(isim, bedel, ilanId) {
+// 2. Kesin alım fonksiyonuna 'gelenKonum' olarak al ve nesneye işle
+async function oyuncuIlaniKesinSatinAl(isim, bedel, ilanId, gelenKonum) {
     if (state.nakit < bedel) {
         modalGoster("Yeterli nakit paranız yok!");
         return;
@@ -4003,8 +4004,8 @@ async function oyuncuIlaniKesinSatinAl(isim, bedel, ilanId) {
         let response = await fetch('/api/ilan-satin-al', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            credentials: 'include', // 🌟 OTURUM ÇEREZİNİN GİTMESİNİ SAĞLAR
-            body: JSON.stringify({ ilanId: ilanId }) // 🌟 Backend'in beklediği parametre
+            credentials: 'include', 
+            body: JSON.stringify({ ilanId: ilanId }) 
         });
 
         let sonuc = await response.json();
@@ -4021,10 +4022,9 @@ async function oyuncuIlaniKesinSatinAl(isim, bedel, ilanId) {
             durum: 'sahip',
             bloke: false,
             krediID: null,
-            atananKonum: gelenKonum // İlandaki orijinal konum buraya kilitlenir!
+            atananKonum: gelenKonum // Artık hata vermeden doğru konumu kilitler!
         });
 
-        // Satın alma veya silme gerçekleştiğinde botların hafızasındaki çakışan ilanları temizle
         if (typeof botlar !== 'undefined' && Array.isArray(botlar)) {
             botlar.forEach(b => {
                 if (b.varliklar && Array.isArray(b.varliklar)) {
@@ -4046,6 +4046,8 @@ async function oyuncuIlaniKesinSatinAl(isim, bedel, ilanId) {
             portfoyuSunucuyaKaydet(state);
         }
 
+        modalGoster(`Tebrikler! ${isim} varlığını başarıyla satın aldınız.`);
+
     } catch (err) {
         console.error("Satın alma hatası:", err);
         modalGoster("Bağlantı hatası oluştu.");
@@ -4062,16 +4064,22 @@ function ilanaCikar(id) {
     }
      
     let satisFiyati = v.bedel || (typeof satisFiyatlari !== 'undefined' && satisFiyatlari[v.isim] ? satisFiyatlari[v.isim] : 2000000);
-    let atananKonumVal = null;
+    
+    // 🌟 1. KURAL: Konumu ASLA sıfırlama! Eğer daha önce atanmış bir konumu yoksa ilk kez ata, varsa aynen koru.
+    let haritalanabilirMulkler = ['arsası', 'otel', 'fabrika', 'hastane', 'okul', 'avm', 'hipermarket', 'konut'];
+    let haritadaGosterilir = haritalanabilirMulkler.some(tur => v.isim.toLowerCase().includes(tur));
 
-    if (v.isim && v.isim.toLowerCase().includes('arsası')) {
-        v.atananKonum = null;
-        if (typeof arsaKonumunuAl === 'function') {
-            v.atananKonum = arsaKonumunuAl(v);
+    if (haritadaGosterilir) {
+        if (!v.atananKonum) {
+            if (typeof arsaKonumunuAl === 'function') {
+                v.atananKonum = arsaKonumunuAl(v);
+            } else {
+                v.atananKonum = "Merkezi Konum";
+            }
         }
-        atananKonumVal = v.atananKonum;
     }
-
+    
+    let atananKonumVal = v.atananKonum || null;
     let saticiAdi = (typeof aktifKullaniciAdi !== 'undefined' && aktifKullaniciAdi) ? aktifKullaniciAdi : 'Ben';
 
     // Sunucuya ilanı gönderiyoruz
@@ -4093,18 +4101,16 @@ function ilanaCikar(id) {
             v.ilanZamanKaydi = Date.now();
             v.sunucuIlanId = data.id;
 
-            // Güvenli arayüz yenileme (Eğer guncelle fonksiyonu yoksa hata patlatmaz)
             if (typeof guncelle === 'function') {
                 guncelle();
             } else {
-                // Alternatif olarak listeyi kendi güncelleyen döngümüz tetiklensin
                 console.log("İlan başarıyla açıldı.");
             }
 
             if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
             if (typeof portfoyuSunucuyaKaydet === 'function') portfoyuSunucuyaKaydet(state);
         } else {
-            alert(data.mesaj || "İlan yayınlanamadı!");
+            modalGoster(data.mesaj || "İlan yayınlanamadı!");
         }
     })
     .catch(err => console.error("İlan ekleme hatası:", err));
