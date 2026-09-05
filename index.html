@@ -1028,6 +1028,11 @@ async function adminAyarlariniKaydet() {
         
         let sonuc = await response.json();
         if (sonuc.basari) {
+            if (typeof state !== 'undefined') {
+        state.gunlukGelir = window.oyunAyar.gunlukGelir;
+        state.konutKiraGeliri = window.oyunAyar.konutKiraGeliri;
+    }
+    
             // 🌟 1. Adım: Yerel/global değişkenleri güncelle
             kazancTablosu = window.oyunAyar.kazancTablosu;
             kurlar = window.oyunAyar.kurlar;
