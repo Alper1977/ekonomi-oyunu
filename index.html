@@ -2904,31 +2904,31 @@ if (varlik.durum === 'satildi-bekliyor' || varlik.durum === 'islemde' || varlik.
         }
     }
 // 4. DİĞER BOTLARIN İLANLARININ SÜRESİ DOLUNCA BAŞKA BOTLAR TARAFINDAN ALINMASI VE TEMİZLENMESİ
-    botlar.forEach(bot => {
-        if (!bot.varliklar || !Array.isArray(bot.varliklar)) return;
+    botlar.forEach(tekilBot => { // Burada bot yerine 'tekilBot' gibi net bir isim verelim
+        if (!tekilBot.varliklar || !Array.isArray(tekilBot.varliklar)) return;
 
-        bot.varliklar.forEach(varlik => {
-            // 🔥 BURASI DOĞRU YERİ: Bot bu özel durumlardaki varlıklara asla dokunamaz!
-            if (varlik.durum === 'satildi-bekliyor' || varlik.durum === 'islemde' || varlik.durum === 'silinecek' || varlik.durum !== 'ilan-aktif') {
-                return;
-            }
+        tekilBot.varliklar.forEach(varlik => {
+            // 🔥 BOT ENGELİNİ KALDIRAN FİLTRE (Doğru yeri burası):
+            if (varlik.durum !== 'ilan-aktif') return;
+            if (varlik.satinAlindi || varlik.islemde || varlik.durum === 'satildi-bekliyor' || varlik.durum === 'silinecek') return; 
 
+            // ... geri kalan 3 günlük bekleme süresi ve bot alım kodları burada devam eder ...
             if (!varlik.ilanVerilisZamani) {
                 varlik.ilanVerilisZamani = simdiMs;
                 return;
             }
-
+            
             let gecenSure = simdiMs - varlik.ilanVerilisZamani;
             if (gecenSure < beklemeSuresiMs) return;
 
             let satisBedeli = (satisFiyatlari && satisFiyatlari[varlik.isim]) ? satisFiyatlari[varlik.isim] : 2000000;
-            let alabilecekBotlar = botlar.filter(b => b.isim !== bot.isim && b.nakit >= satisBedeli);
+            let alabilecekBotlar = botlar.filter(b => b.isim !== tekilBot.isim && b.nakit >= satisBedeli);
             let aliciBot;
 
             if (alabilecekBotlar.length > 0) {
                 aliciBot = alabilecekBotlar[Math.floor(Math.random() * alabilecekBotlar.length)];
             } else {
-                let digerBotlar = botlar.filter(b => b.isim !== bot.isim);
+                let digerBotlar = botlar.filter(b => b.isim !== tekilBot.isim);
                 if (digerBotlar.length > 0) {
                     aliciBot = digerBotlar[Math.floor(Math.random() * digerBotlar.length)];
                     aliciBot.nakit += satisBedeli + 5000000;
@@ -2937,7 +2937,7 @@ if (varlik.durum === 'satildi-bekliyor' || varlik.durum === 'islemde' || varlik.
 
             if (aliciBot) {
                 aliciBot.nakit -= satisBedeli;
-                bot.nakit += satisBedeli;
+                tekilBot.nakit += satisBedeli;
                 varlik.durum = 'satildi_isaretle';
 
                 if (!aliciBot.varliklar) aliciBot.varliklar = [];
@@ -2949,9 +2949,8 @@ if (varlik.durum === 'satildi-bekliyor' || varlik.durum === 'islemde' || varlik.
             }
         });
 
-        bot.varliklar = bot.varliklar.filter(v => v.durum !== 'satildi_isaretle');
+        tekilBot.varliklar = tekilBot.varliklar.filter(v => v.durum !== 'satildi_isaretle');
     });
-
     // 5. Arayüz ve Sunucu Güncellemeleri
   guncelle();
 
