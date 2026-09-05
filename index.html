@@ -278,7 +278,7 @@
     </div>
 </div>
 
-    <!-- 2. KAYIT OL SAYFASI -->
+   <!-- 2. KAYIT OL SAYFASI -->
     <div id="page-giris" class="page" style="display:none;">
         <div class="splash-content" style="text-align: center; margin-top: 30px; padding: 10px;">
             <h2 style="color: #ffcc00; font-size: 18px; margin-bottom: 5px;">SİSTEM ÜYELİĞİ</h2>
@@ -306,13 +306,14 @@
                 <button type="button" class="btn-green" onclick="uyeligiTamamlaBasildi()" style="padding: 10px; width: 100%; box-sizing: border-box; margin-top: 5px; border-radius: 6px; font-weight: bold; cursor: pointer;">ÜYELİĞİ TAMAMLA</button>
                 
                 <!-- KOD ONAY ALANI -->
-                <div id="kod-onay-alani" style="display: none; flex-direction: column; gap: 8px; margin-top: 10px; border-top: 1px solid #444; padding-top: 10px;">
+                <div id="kod-onay-alani" style="display: none; flex-direction: column; gap: 8px; margin-top: 5px; border-top: 1px solid #444; padding-top: 10px;">
                     <p style="color: #00ffcc; font-size: 12px; margin: 0;">E-posta adresinize kod gönderildi.</p>
                     <p id="test-kod-gostergesi" style="color: #ffcc00; font-size: 11px; margin: 0;"></p>
                     <input type="text" id="girilen-kod" placeholder="6 Haneli Kod" style="width: 100%; box-sizing: border-box; padding: 10px; background: #222; color: #fff; border: 1px solid #444; border-radius: 6px; text-align: center; font-size: 13px;">
                     <button type="button" class="btn-green" onclick="uyeligiOlustur()" style="padding: 10px; width: 100%; box-sizing: border-box; border-radius: 6px; font-weight: bold; cursor: pointer;">ÜYELİĞİ OLUŞTUR</button>
                 </div>
 
+                <!-- Zaten üyeyim butonu artık en altta ve kod alanından bağımsız sabit kalıyor -->
                 <button type="button" onclick="changePage('page-giris-yap')" style="background: transparent; color: #00ffcc; border: none; margin-top: 8px; cursor: pointer; font-size: 12px; text-decoration: underline; width: 100%; text-align: center;">
                     Zaten üyeyim? Giriş Yap
                 </button>
@@ -320,7 +321,7 @@
         </div>
     </div>
 
-    <!-- MODAL PENCERE (Telefon çerçevesinin içinde kalacak şekilde konumlandırıldı) -->
+    <!-- MODAL PENCERE -->
     <div id="sozlesme-modal" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:999; justify-content:center; align-items:center; box-sizing:border-box; padding:10px;">
         <div style="background:#222; padding:15px; width:90%; max-width:250px; border-radius:8px; border:1px solid #444; max-height:85%; overflow-y:auto; color:#fff; box-sizing:border-box;">
             
@@ -331,10 +332,7 @@
 
             <button type="button" onclick="document.getElementById('sozlesme-modal').style.display='none'" style="background:#ff4444; color:#fff; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; width:100%; margin-top: 10px; font-size:11px; font-weight:bold;">Kapat</button>
         </div>
-    
-</div>
-
-
+    </div>
 
     <!-- 2. YÜKLENİYOR EKRANI -->
    <div id="page-splash" class="page">
