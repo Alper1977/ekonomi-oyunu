@@ -3398,7 +3398,8 @@ async function ilanlariGuncelle() {
         kapsayici.appendChild(arsaIcerikDiv);
     }
 
-   function kartHtmlUret(baslikMetni, botIsmi, varlikIsmi, satisBedeli, uniqueId, inputId, vadeInputId, arsaMi, atananKonum, tipKyn) {
+  // 1. Fonksiyonun parametrelerine 'atananKonum' eklendi
+    function kartHtmlUret(baslikMetni, botIsmi, varlikIsmi, satisBedeli, uniqueId, inputId, vadeInputId, arsaMi, atananKonum, tipKyn) {
         let goruntuleBtnHTML = arsaMi ? `<button onclick="arsaKonumGoster('${varlikIsmi}', '${atananKonum}')" style="background:#3498db; color:#fff; border:none; padding:4px 8px; border-radius:4px; font-weight:bold; font-size:10px; cursor:pointer; width:100%; margin-bottom:6px;">GÖRÜNTÜLE</button>` : '';
         
         let ortaAlanHTML = '';
@@ -3425,22 +3426,23 @@ async function ilanlariGuncelle() {
                     <button class="btn-red" onclick="krediIslem('${inputId}', '${vadeInputId}', '${varlikIsmi}', ${satisBedeli}, 'ilan', ${uniqueId}, '${botIsmi}')">KREDİ</button>
                 </div>
             `;
-     } else if (tipKyn === 'diger-oyuncu') {
-        ortaAlanHTML = `
-            <div class="kredi-group">
-                <input type="text" id="${inputId}" placeholder="Kredi Tutarı" oninput="parayiFormatlaMetin(this)" value="">
-                <select id="${vadeInputId}">
-                    <option value="12">12 Ay</option>
-                    <option value="24">24 Ay</option>
-                    <option value="36">36 Ay</option>
-                    <option value="48" selected>48 Ay</option>
-                </select>
-            </div>
-            <div class="button-row">
-                <button class="btn-green" onclick="oyuncuIlaniSatinAlOnayla(${uniqueId}, '${baslikMetni}', '${varlikIsmi}', ${satisBedeli})">NAKİT</button>
-                <button class="btn-red" onclick="krediIslem('${inputId}', '${vadeInputId}', '${varlikIsmi}', ${satisBedeli}, 'ilan', ${uniqueId})">KREDİ</button>
-            </div>
-        `;
+        } else if (tipKyn === 'diger-oyuncu') {
+            // 🌟 2. BURASI DÜZELTİLDİ: atananKonum parametresi onay fonksiyonuna aktarıldı
+            ortaAlanHTML = `
+                <div class="kredi-group">
+                    <input type="text" id="${inputId}" placeholder="Kredi Tutarı" oninput="parayiFormatlaMetin(this)" value="">
+                    <select id="${vadeInputId}">
+                        <option value="12">12 Ay</option>
+                        <option value="24">24 Ay</option>
+                        <option value="36">36 Ay</option>
+                        <option value="48" selected>48 Ay</option>
+                    </select>
+                </div>
+                <div class="button-row">
+                    <button class="btn-green" onclick="oyuncuIlaniSatinAlOnayla(${uniqueId}, '${baslikMetni}', '${varlikIsmi}', ${satisBedeli}, '${atananKonum}')">NAKİT</button>
+                    <button class="btn-red" onclick="krediIslem('${inputId}', '${vadeInputId}', '${varlikIsmi}', ${satisBedeli}, 'ilan', ${uniqueId})">KREDİ</button>
+                </div>
+            `;
         } else {
             ortaAlanHTML = `
                 <div class="kredi-group">
@@ -3474,7 +3476,6 @@ async function ilanlariGuncelle() {
         `;
         return itemBox;
     }
-
     let botMulkListesi = [];
     let botArsaListesi = [];
 
@@ -4024,6 +4025,8 @@ async function oyuncuIlaniKesinSatinAl(isim, bedel, ilanId, gelenKonum) {
             krediID: null,
             atananKonum: gelenKonum // Artık hata vermeden doğru konumu kilitler!
         });
+
+       
 
         if (typeof botlar !== 'undefined' && Array.isArray(botlar)) {
             botlar.forEach(b => {
