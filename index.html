@@ -2969,11 +2969,11 @@ if (satilikVarliklar.length > 0) {
 
 async function guncelle() {
 
-if (Array.isArray(state.varliklar)) {
+    if (Array.isArray(state.varliklar)) {
         state.varliklar = state.varliklar.filter(v => v && typeof v.isim === 'string');
-    }    
+    }   
     
-// 🌟 KESİN ÇÖZÜM: Her güncelleme tetiklendiğinde kazançları tablodan eşitle
+    // 🌟 KESİN ÇÖZÜM: Her güncelleme tetiklendiğinde kazançları tablodan eşitle
     if (typeof kazancTablosu !== 'undefined' && typeof state !== 'undefined' && state.talepler) {
         state.talepler.forEach(talep => {
             if (kazancTablosu[talep.tur] !== undefined) {
@@ -2999,15 +2999,25 @@ if (Array.isArray(state.varliklar)) {
         el.innerText = Math.floor(state.krediLimiti).toLocaleString() + " TL";
     }
 
+    // Akıllı gösterim fonksiyonu: Sayı 0 ise düz 0 yazar, para varsa kuruşlu gösterir
+    function akilliPara(deger, birim = " TL", baslangic = "") {
+        let sayi = Number(deger || 0);
+        if (sayi === 0) return "0" + birim;
+        return baslangic + sayi.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + birim;
+    }
 
-// Akıllı gösterim fonksiyonu: Sayı 0 ise düz 0 yazar, para varsa kuruşlu gösterir
-function akilliPara(deger, birim = " TL", baslangic = "") {
-    let sayi = Number(deger || 0);
-    if (sayi === 0) return "0" + birim;
-    return baslangic + sayi.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + birim;
-}
+    // 🌟 YENİ EKLENEN: Günlük gelir ve kira geliri yazı alanlarını ekrana anında yansıt
+    let gunlukGelirEl = document.getElementById('gunluk-gelir') || document.getElementById('yazi-gunluk-gelir');
+    if (gunlukGelirEl && state.gunlukGelir !== undefined) {
+        gunlukGelirEl.innerText = Number(state.gunlukGelir).toLocaleString() + " TL";
+    }
 
-document.getElementById('val-kredi').innerText = Number(state.kredi || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
+    let kiraGelirEl = document.getElementById('konut-kira-geliri') || document.getElementById('yazi-kira-geliri');
+    if (kiraGelirEl && state.konutKiraGeliri !== undefined) {
+        kiraGelirEl.innerText = Number(state.konutKiraGeliri).toLocaleString() + " TL";
+    }
+
+    document.getElementById('val-kredi').innerText = Number(state.kredi || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
     document.getElementById('val-taksit').innerText = Number(state.taksit || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
     document.getElementById('val-nakit').innerText = Number(state.nakit || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
     document.getElementById('val-dolar').innerText = "$" + Number(state.dolar || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -3055,7 +3065,7 @@ document.getElementById('val-kredi').innerText = Number(state.kredi || 0).toLoca
         }
     });
 
-let tahsilatButonlari = document.querySelectorAll('.nav-btn-tahsilat-cls');
+    let tahsilatButonlari = document.querySelectorAll('.nav-btn-tahsilat-cls');
     tahsilatButonlari.forEach(btn => {
         if (aktifTalepVar) {
             btn.classList.add('nav-btn-kirmizi');
@@ -3064,83 +3074,78 @@ let tahsilatButonlari = document.querySelectorAll('.nav-btn-tahsilat-cls');
         }
     });
 
-
-
-let vList = document.getElementById('varliklar-listesi');
-if (vList) {
-    vList.innerHTML = '';
-    
-    // Satılmış veya silinecek mülkleri filtreden tamamen eliyoruz ki listede görünmesinler
-    let aktifVarliklar = (state.varliklar || []).filter(v => 
-    v && 
-    v.durum !== 'silinecek' && 
-    v.durum !== 'satildi' && 
-    v.durum !== 'satildi-bekliyor'
-);
-    aktifVarliklar.forEach(v => {
-        let blokeYazisi = v.bloke ? '<span style="color:#ff4444">(BLOKELİ)</span>' : '';
+    let vList = document.getElementById('varliklar-listesi');
+    if (vList) {
+        vList.innerHTML = '';
         
-        let talepBul = typeof state.talepler !== 'undefined' ? state.talepler.find(t => t.tur === v.isim || t.isim === v.isim) : null;
-        let bedel = v.bedel || (talepBul ? talepBul.bedel : (typeof kazancTablosu !== 'undefined' && kazancTablosu[v.isim] ? kazancTablosu[v.isim] : 0));
-        let gunlukKar = bedel * 3;
-        
-        let haritalanabilirMulkler = ['arsası', 'otel', 'fabrika', 'hastane', 'okul', 'avm', 'hipermarket', 'konut'];
-        let arsaMi = haritalanabilirMulkler.some(tur => v.isim.toLowerCase().includes(tur));
-        
-        if (arsaMi && !v.atananKonum) {
-            v.atananKonum = arsaKonumunuAl(v);
-        }
-        
-        let sagButonlarHTML = '';
-
-        if (v.durum === 'sahip') {
-            if (v.isim !== 'Bayi') {
-                sagButonlarHTML += `<button onclick="ilanaCikar(${v.id})" style="width: 100%; box-sizing: border-box;">SAT</button>`;
+        // Satılmış veya silinecek mülkleri filtreden tamamen eliyoruz ki listede görünmesinler
+        let aktifVarliklarList = (state.varliklar || []).filter(v => 
+            v && 
+            v.durum !== 'silinecek' && 
+            v.durum !== 'satildi' && 
+            v.durum !== 'satildi-bekliyor'
+        );
+        aktifVarliklarList.forEach(v => {
+            let blokeYazisi = v.bloke ? '<span style="color:#ff4444">(BLOKELİ)</span>' : '';
+            
+            let talepBul = typeof state.talepler !== 'undefined' ? state.talepler.find(t => t.tur === v.isim || t.isim === v.isim) : null;
+            let bedel = v.bedel || (talepBul ? talepBul.bedel : (typeof kazancTablosu !== 'undefined' && kazancTablosu[v.isim] ? kazancTablosu[v.isim] : 0));
+            let gunlukKar = bedel * 3;
+            
+            let haritalanabilirMulkler = ['arsası', 'otel', 'fabrika', 'hastane', 'okul', 'avm', 'hipermarket', 'konut'];
+            let arsaMi = haritalanabilirMulkler.some(tur => v.isim.toLowerCase().includes(tur));
+            
+            if (arsaMi && !v.atananKonum) {
+                v.atananKonum = arsaKonumunuAl(v);
             }
-        } else if (v.durum === 'inşaat') {
-            let kalanMs = v.bitis - Date.now();
-            let kalanGun = Math.max(0, Math.ceil(kalanMs / (1000 * 60 * 60 * 24)));
-            sagButonlarHTML += `<span style="color:#ffcc00; font-size:11px;">İnşaat: ${kalanGun} gün</span>`;
-        } else if (v.durum === 'ilan-aktif') {
-            sagButonlarHTML += `<span style="color:#ff4444; font-size:13px; font-weight:bold;">SATIŞTA</span>
-                                 <button onclick="vazgec(${v.id})" class="btn-red" style="margin-top: 4px; width: 100%; box-sizing: border-box;">Vazgeç</button>`;
-        }
+            
+            let sagButonlarHTML = '';
 
-        let goruntuleBtnVarlik = arsaMi ? `<button onclick="arsaKonumGoster('${v.isim}', '${v.atananKonum}')" style="background:#3498db; color:#fff; border:none; border-radius:4px; font-weight:bold; cursor:pointer; width: 100%; margin-top: 4px; box-sizing: border-box;">Görüntüle</button>` : '';
+            if (v.durum === 'sahip') {
+                if (v.isim !== 'Bayi') {
+                    sagButonlarHTML += `<button onclick="ilanaCikar(${v.id})" style="width: 100%; box-sizing: border-box;">SAT</button>`;
+                }
+            } else if (v.durum === 'inşaat') {
+                let kalanMs = v.bitis - Date.now();
+                let kalanGun = Math.max(0, Math.ceil(kalanMs / (1000 * 60 * 60 * 24)));
+                sagButonlarHTML += `<span style="color:#ffcc00; font-size:11px;">İnşaat: ${kalanGun} gün</span>`;
+            } else if (v.durum === 'ilan-aktif') {
+                sagButonlarHTML += `<span style="color:#ff4444; font-size:13px; font-weight:bold;">SATIŞTA</span>
+                                     <button onclick="vazgec(${v.id})" class="btn-red" style="margin-top: 4px; width: 100%; box-sizing: border-box;">Vazgeç</button>`;
+            }
 
-        let html = `
-            <div class="item-box-varlik">
-                <div>
-                    <div style="font-weight: bold; color: #fff; font-size: 13px;">${v.isim} ${blokeYazisi}</div>
-                    <div style="font-size: 11px; color: #ffcc00; margin-top: 3px;">Günlük Kar: ${gunlukKar.toLocaleString()} TL</div>
+            let goruntuleBtnVarlik = arsaMi ? `<button onclick="arsaKonumGoster('${v.isim}', '${v.atananKonum}')" style="background:#3498db; color:#fff; border:none; border-radius:4px; font-weight:bold; cursor:pointer; width: 100%; margin-top: 4px; box-sizing: border-box;">Görüntüle</button>` : '';
+
+            let html = `
+                <div class="item-box-varlik">
+                    <div>
+                        <div style="font-weight: bold; color: #fff; font-size: 13px;">${v.isim} ${blokeYazisi}</div>
+                        <div style="font-size: 11px; color: #ffcc00; margin-top: 3px;">Günlük Kar: ${gunlukKar.toLocaleString()} TL</div>
+                    </div>
+                    <div style="display: flex; flex-direction: column; align-items: flex-end; min-width: 90px;">
+                        ${sagButonlarHTML}
+                        ${goruntuleBtnVarlik}
+                    </div>
                 </div>
-                <div style="display: flex; flex-direction: column; align-items: flex-end; min-width: 90px;">
-                    ${sagButonlarHTML}
-                    ${goruntuleBtnVarlik}
-                </div>
-            </div>
-        `;
-        vList.innerHTML += html; 
-    });
-}
+            `;
+            vList.innerHTML += html; 
+        });
+    }
 
-let tList = document.getElementById('musteri-talepleri-listesi');
+    let tList = document.getElementById('musteri-talepleri-listesi');
     if (tList) {
         tList.innerHTML = '';
         
-        // Sadece konut olmayan ve sahip olunan/ilan verilen varlıkları al
-       let aktifVarliklarTalepler = state.varliklar.filter(v => {
-    if (!v.durum || (v.durum !== 'sahip' && v.durum !== 'ilan-aktif') || !v.isim) return false;
-    let isimLower = v.isim.toLowerCase();
-    return isimLower !== 'konut' && !isimLower.includes('arsa');
-});
+        let aktifVarliklarTalepler = state.varliklar.filter(v => {
+            if (!v.durum || (v.durum !== 'sahip' && v.durum !== 'ilan-aktif') || !v.isim) return false;
+            let isimLower = v.isim.toLowerCase();
+            return isimLower !== 'konut' && !isimLower.includes('arsa');
+        });
         
         aktifVarliklarTalepler.forEach(v => {
-            // 1. Önce state.talepler içinde var mı diye bak, yoksa otomatik oluştur!
             let talep = state.talepler.find(t => t.tur === v.isim || t.isim === v.isim);
             
             if (!talep) {
-                // Eğer kullanıcının varlığı var ama taleplerde tanımlı değilse burada anında yaratıyoruz
                 let varsayilanBedel = (typeof kazancTablosu !== 'undefined' && kazancTablosu[v.isim]) ? kazancTablosu[v.isim] : 100000;
                 talep = { tur: v.isim, isim: v.isim, bedel: varsayilanBedel };
                 state.talepler.push(talep);
@@ -3196,14 +3201,13 @@ let tList = document.getElementById('musteri-talepleri-listesi');
         faizBaslikElementi.innerText = `Yatırım Kredisi (Faiz Oranı: %${yuzdeDegeri})`;
     }
 
-    ilanlariGuncelle();
-    await zenginlerListesiniGuncelle();
+    if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
+    if (typeof zenginlerListesiniGuncelle === 'function') await zenginlerListesiniGuncelle();
 
-   if (typeof portfoyuSunucuyaKaydet === 'function') {
+    if (typeof portfoyuSunucuyaKaydet === 'function') {
         portfoyuSunucuyaKaydet(state);
     }
 }
-
 
 
 function hesaplaServet(oyuncu) {
