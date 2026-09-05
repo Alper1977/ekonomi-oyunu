@@ -5249,6 +5249,19 @@ window.addEventListener('DOMContentLoaded', async () => {
                 if (data.portfoy) {
                     state = data.portfoy; 
                 }
+                // Aktif oturum bulunduktan sonra (state = data.portfoy; satırının hemen altına ekleyebilirsin):
+let ayarRes = await fetch('/api/oyun-ayarlari');
+let ayarSonuc = await ayarRes.json();
+if (ayarSonuc.basari && ayarSonuc.ayarlar) {
+    window.oyunAyar = ayarSonuc.ayarlar;
+    window.oyunAyarlari = ayarSonuc.ayarlar.sureler || ayarSonuc.sureler || {};
+    
+    // State içine de ilk yüklemede değerleri işle
+    if (typeof state !== 'undefined') {
+        if (window.oyunAyar.gunlukGelir !== undefined) state.gunlukGelir = Number(window.oyunAyar.gunlukGelir);
+        if (window.oyunAyar.konutKiraGeliri !== undefined) state.konutKiraGeliri = Number(window.oyunAyar.konutKiraGeliri);
+    }
+}
 
                 changePage('page-mali');
                 guncelle(); 
