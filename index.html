@@ -4020,7 +4020,8 @@ async function oyuncuIlaniKesinSatinAl(isim, bedel, ilanId) {
             isim: isim,
             durum: 'sahip',
             bloke: false,
-            krediID: null
+            krediID: null,
+            atananKonum: gelenKonum // İlandaki orijinal konum buraya kilitlenir!
         });
 
         // Satın alma veya silme gerçekleştiğinde botların hafızasındaki çakışan ilanları temizle
