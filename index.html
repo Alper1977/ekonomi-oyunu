@@ -1418,6 +1418,14 @@ async function sistemeGirisYap() {
             el.innerText = Math.floor(state.krediLimiti).toLocaleString() + " TL";
         }
 
+    let kiraElementiTekil = document.getElementById('val-kira');
+if (kiraElementiTekil) {
+    kiraElementiTekil.innerText = Number(state.konutKiraGeliri).toLocaleString('tr-TR', { 
+        minimumFractionDigits: 2, 
+        maximumFractionDigits: 2 
+    }) + ' TL';
+}
+
         if (typeof guncelle === 'function') {
             guncelle();
         }
