@@ -1,14 +1,14 @@
 const express = require('express');
-const http = require('http'); // 🌟 HTTP modülü eklendi
-const { Server } = require('socket.io'); // 🌟 Socket.io eklendi
+const http = require('http'); 
+const { Server } = require('socket.io'); 
 const session = require('express-session');
 const SQLiteStore = require('connect-sqlite3')(session); 
 const Database = require('better-sqlite3');
 const fs = require('fs');
 
 const app = express();
-const server = http.createServer(app); // 🌟 HTTP sunucusu oluşturuldu
-const io = new Server(server); // 🌟 Socket.io sunucuya bağlandı
+const server = http.createServer(app); 
+const io = new Server(server); 
 
 app.use(express.json());
 app.use(express.static(__dirname));
@@ -133,6 +133,47 @@ db.prepare(`CREATE TABLE IF NOT EXISTS ilanlar (
     detaylar TEXT,
     tarih DATETIME DEFAULT CURRENT_TIMESTAMP
 )`).run();
+
+// --- 🌟 ARKA PLAN OTOMATİK EKONOMİ MOTORU (HEADLESS GAME LOOP) ---
+// Admin kapalı olsa bile sunucu bu döngüyü işletir ve kazançları veritabanına yazar
+setInterval(() => {
+    try {
+        const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
+        if (!ayarKaydi) return;
+        const ayarlar = JSON.parse(ayarKaydi.ayarlar);
+        const kazancTablosu = ayarlar.kazancTablosu || {};
+
+        const kullanicilar = db.prepare(`SELECT id, portfoy FROM kullanicilar`).all();
+        
+        const transaction = db.transaction(() => {
+            kullanicilar.forEach(user => {
+                if (!user.portfoy) return;
+                let portfoy = JSON.parse(user.portfoy);
+                let degisiklikVar = false;
+
+                // Örnek Otomatik Döngü İşlemi: Sahip olunan varlıkların gelirlerini nakite yansıtma kontrolü
+                if (portfoy.varliklar && Array.isArray(portfoy.varliklar)) {
+                    portfoy.varliklar.forEach(v => {
+                        if (v.durum === 'sahip' && kazancTablosu[v.isim]) {
+                            // Burada zaman damgası kontrolü ile belirli aralıklarla kazanç eklenebilir
+                            // Örnek: portfoy.nakit += kazancTablosu[v.isim]; degisiklikVar = true;
+                        }
+                    });
+                }
+
+                if (degisiklikVar) {
+                    db.prepare(`UPDATE kullanicilar SET portfoy = ? WHERE id = ?`).run(JSON.stringify(portfoy), user.id);
+                }
+            });
+        });
+
+        transaction();
+    } catch (err) {
+        console.error("Arka plan oyun döngüsü hatası:", err.message);
+    }
+}, 60000); // Her 1 dakikada bir arka planda kontrol eder
+
+
 
 app.get('/api/ilanlar', (req, res) => {
     try {
