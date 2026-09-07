@@ -7,11 +7,12 @@ const Database = require('better-sqlite3');
 const fs = require('fs');
 
 const app = express();
-const server = http.createServer(app);  
+const server = http.createServer(app); 
 const io = new Server(server); 
 
 app.use(express.json());
 app.use(express.static(__dirname));
+
 console.log("Klasördeki dosyalar:", fs.readdirSync(__dirname));
 
 app.get('/', (req, res) => {
@@ -49,7 +50,7 @@ db.prepare(`CREATE TABLE IF NOT EXISTS kullanicilar (
 try {
     db.prepare(`ALTER TABLE kullanicilar ADD COLUMN son_guncelleme INTEGER`).run();
 } catch (e) {
-    // Sütun varsa yoksay
+    // Sütun zaten varsa hata verir, yoksayabiliriz
 }
 
 // --- 🌟 MERKEZİ AYARLAR TABLOSU ---
@@ -96,7 +97,7 @@ if (!mevcutAyarlar) {
             'Fabrika Arsası': 300000000,
             'Otel Arsası': 400000000,
             'Hastane Arsası': 150000000,
-            'Özel Okul Arsası': 50000050,
+            'Özel Okul Arsası': 50000000,
             'AVM Arsası': 450000000,
             'Hipermarket Arsası': 125000000
         },
@@ -141,7 +142,7 @@ db.prepare(`CREATE TABLE IF NOT EXISTS ilanlar (
     tarih DATETIME DEFAULT CURRENT_TIMESTAMP
 )`).run();
 
-// --- 🌟 KESİN ÇÖZÜM: GERÇEK ZAMANLI OFFLINE EKONOMİ MOTORU ---
+// --- 🌟 ÇEVRİMİÇİ / ÇEVRİMDIŞI AKILLI EKONOMİ MOTORU ---
 function kullaniciEkonomisiniIslet(userRow, ayarlar) {
     if (!userRow || !userRow.portfoy) return null;
 
@@ -153,341 +154,74 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar) {
     }
 
     const simdi = Date.now();
-    
-    let sonGuncelleme = (userRow.son_guncelleme && !isNaN(userRow.son_guncelleme)) ? Number(userRow.son_guncelleme) : simdi;
-    
-    if (!userRow.son_guncelleme) {
-        db.prepare(`UPDATE kullanicilar SET son_guncelleme = ? WHERE id = ?`).run(simdi, userRow.id);
-        return portfoy;
-    }
-
+    let sonGuncelleme = userRow.son_guncelleme || simdi;
     const gecenSure = simdi - sonGuncelleme;
-    if (gecenSure < 2000) return portfoy; 
+
+    if (gecenSure < 5000) return portfoy; 
 
     const sureler = ayarlar.sureler || {};
-    const kiraPeriyodu = sureler.kiraSuresi || 86400000; 
-    const faizPeriyodu = sureler.faizSuresi || 86400000;
-    const taksitPeriyodu = sureler.taksitSuresi || 86400000;
+    const kiraPeriyodu = sureler.kiraSuresi || 86400000; // Varsayılan 24 saat
     const kazancTablosu = ayarlar.kazancTablosu || {};
 
-    let degisiklikOldu = false;
+    const periyotSayisi = Math.floor(gecenSure / kiraPeriyodu);
 
-    // 1. KİRA / ŞİRKET GELİRLERİ
-    const kiraPeriyotSayisi = Math.floor(gecenSure / kiraPeriyodu);
-    if (kiraPeriyotSayisi > 0) {
+    if (periyotSayisi > 0) {
         let toplamEklenenGelir = 0;
 
         if (portfoy.varliklar && Array.isArray(portfoy.varliklar)) {
             portfoy.varliklar.forEach(v => {
-                if (v && v.durum === 'sahip' && kazancTablosu[v.isim]) {
-                    toplamEklenenGelir += (kazancTablosu[v.isim] * kiraPeriyotSayisi);
+                if (v.durum === 'sahip' && kazancTablosu[v.isim]) {
+                    toplamEklenenGelir += (kazancTablosu[v.isim] * periyotSayisi);
                 }
             });
         }
 
         if (ayarlar.konutKiraGeliri > 0 && portfoy.varliklar) {
             portfoy.varliklar.forEach(v => {
-                if (v && v.durum === 'sahip' && v.isim === 'Konut') {
-                    toplamEklenenGelir += (ayarlar.konutKiraGeliri * kiraPeriyotSayisi);
+                if (v.durum === 'sahip' && v.isim === 'Konut') {
+                    toplamEklenenGelir += (ayarlar.konutKiraGeliri * periyotSayisi);
                 }
             });
         }
 
         if (toplamEklenenGelir > 0) {
-            let mevcutNakit = portfoy.nakit !== undefined ? Number(portfoy.nakit) : (portfoy.para !== undefined ? Number(portfoy.para) : 0);
+            let mevcutNakit = portfoy.nakit !== undefined ? portfoy.nakit : (portfoy.para || 0);
             mevcutNakit += toplamEklenenGelir;
             portfoy.nakit = mevcutNakit;
-            portfoy.para = mevcutNakit;
-            degisiklikOldu = true;
-        }
-    }
-
-    // 2. VADELİ HESAP / FAİZ GELİRLERİ
-    const faizPeriyotSayisi = Math.floor(gecenSure / faizPeriyodu);
-    if (faizPeriyotSayisi > 0 && portfoy.vadeliHesap && Number(portfoy.vadeliHesap) > 0) {
-        const gunlukFaizOrani = (ayarlar.faizOranlari && ayarlar.faizOranlari.vadeliGunluk !== undefined) 
-            ? Number(ayarlar.faizOranlari.vadeliGunluk) 
-            : 0.02;
-
-        let toplamFaizGetirisi = 0;
-        let anapara = Number(portfoy.vadeliHesap);
-        
-        for (let i = 0; i < faizPeriyotSayisi; i++) {
-            toplamFaizGetirisi += (anapara * gunlukFaizOrani);
         }
 
-        if (toplamFaizGetirisi > 0) {
-            portfoy.vadeliHesap = anapara + toplamFaizGetirisi;
-            degisiklikOldu = true;
-        }
+        db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`).run(
+            JSON.stringify(portfoy),
+            sonGuncelleme + (periyotSayisi * kiraPeriyodu),
+            userRow.id
+        );
     }
-
-    // 3. KREDİ TAKSİTLERİ
-    const taksitPeriyotSayisi = Math.floor(gecenSure / taksitPeriyodu);
-    if (taksitPeriyotSayisi > 0 && portfoy.krediler && Array.isArray(portfoy.krediler) && portfoy.krediler.length > 0) {
-        let mevcutNakit = portfoy.nakit !== undefined ? Number(portfoy.nakit) : (portfoy.para !== undefined ? Number(portfoy.para) : 0);
-
-        portfoy.krediler.forEach(kredi => {
-            if (kredi && kredi.kalanTaksit > 0 && kredi.taksitTutari > 0) {
-                const odenecekAdet = Math.min(kredi.kalanTaksit, taksitPeriyotSayisi);
-                const toplamDusulecekTaksit = Number(kredi.taksitTutari) * odenecekAdet;
-
-                mevcutNakit -= toplamDusulecekTaksit;
-                kredi.kalanTaksit -= odenecekAdet;
-                degisiklikOldu = true;
-            }
-        });
-
-        portfoy.nakit = mevcutNakit;
-        portfoy.para = mevcutNakit;
-        portfoy.krediler = portfoy.krediler.filter(k => k && k.kalanTaksit > 0);
-    }
-
-    const tuketilenPeriyot = Math.max(kiraPeriyotSayisi, faizPeriyotSayisi, taksitPeriyotSayisi);
-    const bazSureMs = Math.min(kiraPeriyodu, faizPeriyodu, taksitPeriyodu);
-    
-    let yeniSonGuncelleme = sonGuncelleme;
-    if (tuketilenPeriyot > 0) {
-        yeniSonGuncelleme += (tuketilenPeriyot * bazSureMs);
-    } else {
-        yeniSonGuncelleme = simdi;
-    }
-
-    db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`).run(
-        JSON.stringify(portfoy),
-        yeniSonGuncelleme,
-        userRow.id
-    );
 
     return portfoy;
 }
 
-// Sunucu tarafında global oyun döngüsü (Örn: Her 3 veya 5 saniyede bir çalışır)
-setInterval(async () => {
+// Arka plan otomatik döngüsü
+setInterval(() => {
     try {
-        let simdiMs = Date.now();
+        const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
+        if (!ayarKaydi) return;
+        const ayarlar = JSON.parse(ayarKaydi.ayarlar);
 
-        // 1. Veritabanındaki aktif oyuncuları ve botları çek / belleğe al
-        // (Eğer botlar sunucu hafızasında bir array'de tutuluyorsa oradan güncellenir)
+        const kullanicilar = db.prepare(`SELECT id, portfoy, son_guncelleme FROM kullanicilar`).all();
         
-        // --- BOT İŞLEMLERİ ---
-        if (typeof global.botlar !== 'undefined' && global.botlar.length > 0) {
-            let satisFiyatlari = global.satisFiyatlari || {};
-            let gercekVarliklar = Object.keys(satisFiyatlari);
-            let maksimumIlanSiniri = global.oyunAyarlari?.maksimumIlanSiniri || 10;
-            let beklemeSuresiMs = global.oyunAyarlari?.GLOBAL_BEKLEME_SURESI || 86400000; // Örn: 1 gün veya ayarlı süre
-
-            // Botların para kazanması veya rastgele varlık alması
-            if (!global.sonBotZamani || simdiMs - global.sonBotZamani >= global.oyunAyarlari.botHizi) {
-                for (let i = 0; i < 5; i++) {
-                    let rastgeleBot = global.botlar[Math.floor(Math.random() * global.botlar.length)];
-                    if (!rastgeleBot.varliklar) rastgeleBot.varliklar = [];
-
-                    if (Math.random() < 0.30) {
-                        rastgeleBot.nakit += Math.floor(Math.random() * 200000000) + 50000000;
-                    } else if (gercekVarliklar.length > 0) {
-                        let secilenUrun = gercekVarliklar[Math.floor(Math.random() * gercekVarliklar.length)];
-                        let bedel = satisFiyatlari[secilenUrun] || 1000000;
-
-                        if (rastgeleBot.nakit >= bedel) {
-                            rastgeleBot.nakit -= bedel;
-                            rastgeleBot.varliklar.push({
-                                id: Date.now() + Math.random(),
-                                isim: secilenUrun,
-                                durum: 'sahip'
-                            });
-                        }
-                    }
-                }
-                global.sonBotZamani = simdiMs;
-            }
-
-            // Botların ilan açma döngüsü
-            if (!global.sonBotIlanZamani || simdiMs - global.sonBotIlanZamani >= global.oyunAyarlari.botIlanHizi) {
-                let aktifIlanSayilari = {};
-                global.botlar.forEach(b => {
-                    if (b.varliklar) {
-                        b.varliklar.forEach(v => {
-                            if (v.durum === 'ilan-aktif') {
-                                aktifIlanSayilari[v.isim] = (aktifIlanSayilari[v.isim] || 0) + 1;
-                            }
-                        });
-                    }
-                });
-
-                global.botlar.forEach(bot => {
-                    if (bot.varliklar && bot.varliklar.length > 0) {
-                        let sahipVarliklar = bot.varliklar.filter(v => v.durum === 'sahip');
-                        if (sahipVarliklar.length > 0 && Math.random() < 0.30) {
-                            let uygunVarliklar = sahipVarliklar.filter(v => {
-                                let mevcutSayi = aktifIlanSayilari[v.isim] || 0;
-                                return mevcutSayi < maksimumIlanSiniri;
-                            });
-
-                            if (uygunVarliklar.length > 0) {
-                                uygunVarliklar.sort(() => Math.random() - 0.5);
-                                let secilenVarlik = uygunVarliklar[0];
-                                secilenVarlik.durum = 'ilan-aktif';
-                                secilenVarlik.ilanSahibi = bot.isim;
-                                secilenVarlik.ilanVerilisZamani = simdiMs;
-                                aktifIlanSayilari[secilenVarlik.isim] = (aktifIlanSayilari[secilenVarlik.isim] || 0) + 1;
-                            }
-                        }
-                    }
-                });
-                global.sonBotIlanZamani = simdiMs;
-            }
-
-            // Botların ve Gerçek Oyuncuların İlan Süre Kontrolleri (Garanti Satış)
-            global.botlar.forEach(tekilBot => {
-                if (!tekilBot.varliklar || !Array.isArray(tekilBot.varliklar)) return;
-
-                tekilBot.varliklar.forEach(varlik => {
-                    if (varlik.durum !== 'ilan-aktif') return;
-                    if (varlik.satinAlindi || varlik.islemde || varlik.durum === 'satildi-bekliyor' || varlik.durum === 'silinecek') return;
-
-                    if (!varlik.ilanVerilisZamani) {
-                        varlik.ilanVerilisZamani = simdiMs;
-                        return;
-                    }
-
-                    let gecenSure = simdiMs - varlik.ilanVerilisZamani;
-                    if (gecenSure < beklemeSuresiMs) return;
-
-                    let satisBedeli = (satisFiyatlari && satisFiyatlari[varlik.isim]) ? satisFiyatlari[varlik.isim] : 2000000;
-                    let alabilecekBotlar = global.botlar.filter(b => b.isim !== tekilBot.isim && b.nakit >= satisBedeli);
-                    let aliciBot;
-
-                    if (alabilecekBotlar.length > 0) {
-                        aliciBot = alabilecekBotlar[Math.floor(Math.random() * alabilecekBotlar.length)];
-                    } else {
-                        let digerBotlar = global.botlar.filter(b => b.isim !== tekilBot.isim);
-                        if (digerBotlar.length > 0) {
-                            aliciBot = digerBotlar[Math.floor(Math.random() * digerBotlar.length)];
-                            aliciBot.nakit += satisBedeli + 5000000;
-                        }
-                    }
-
-                    if (aliciBot) {
-                        aliciBot.nakit -= satisBedeli;
-                        tekilBot.nakit += satisBedeli;
-                        varlik.durum = 'satildi_isaretle';
-
-                        if (!aliciBot.varliklar) aliciBot.varliklar = [];
-                        aliciBot.varliklar.push({
-                            id: Date.now() + Math.random(),
-                            isim: varlik.isim,
-                            durum: 'sahip'
-                        });
-                    }
-                });
-
-                tekilBot.varliklar = tekilBot.varliklar.filter(v => v.durum !== 'satildi_isaretle');
+        const transaction = db.transaction(() => {
+            kullanicilar.forEach(user => {
+                kullaniciEkonomisiniIslet(user, ayarlar);
             });
-        }
-
-        // --- GERÇEK OYUNCU İLAN / KREDİ / KİRA KONTROLÜ (Veritabanından çekilip işlenecek kısım) ---
-        // Oyuncu oyunda olmasa bile sunucu veritabanındaki aktif kullanıcılar için 
-        // kredi taksitlerini, kira ödemelerini ve oyuncunun ilan süresini burada hesaplayıp kaydedebilirsin.
-
-    } catch (hata) {
-        console.error("Sunucu arka plan döngüsü hatası:", hata);
-    }
-}, 3000); // 3 saniyede bir sunucuda çalışır
-
-// server.js içine ekleyeceğin fonksiyon (Yukarıda verdiğin kod)
-function oyuncuilanlariniKontrolEt(oyuncuState, botlar, oyunAyarlari, satisFiyatlari) {
-    let simdiMs = Date.now();
-    let beklemeSuresiMs = oyunAyarlari.GLOBAL_BEKLEME_SURESI;
-    let veriDegisti = false;
-
-    let satilikVarliklar = oyuncuState.varliklar.filter(v => v.durum === 'ilan-aktif');
-
-    satilikVarliklar.forEach(varlik => {
-        if (!varlik.ilanVerilisZamani) {
-            varlik.ilanVerilisZamani = simdiMs;
-            veriDegisti = true;
-            return;
-        }
-
-        let gecenSure = simdiMs - varlik.ilanVerilisZamani;
-        if (gecenSure < beklemeSuresiMs) return;
-
-        let satisBedeli = (satisFiyatlari && satisFiyatlari[varlik.isim]) ? satisFiyatlari[varlik.isim] : 2000000;
-        let alabilecekBotlar = botlar.filter(b => b.nakit >= satisBedeli);
-        let aliciBot;
-
-        if (alabilecekBotlar.length > 0) {
-            aliciBot = alabilecekBotlar[Math.floor(Math.random() * alabilecekBotlar.length)];
-        } else {
-            aliciBot = botlar[Math.floor(Math.random() * botlar.length)];
-            aliciBot.nakit += satisBedeli + 5000000;
-        }
-
-        let dusulenBorc = 0;
-
-        if (varlik.bloke && varlik.krediID && oyuncuState.krediler) {
-            let ilgiliKredi = oyuncuState.krediler.find(kr => kr.id === varlik.krediID);
-
-            if (ilgiliKredi) {
-                dusulenBorc = ilgiliKredi.kalanBorc;
-                oyuncuState.kredi = Math.max(0, oyuncuState.kredi - dusulenBorc);
-                ilgiliKredi.kalanBorc = 0;
-                oyuncuState.krediler = oyuncuState.krediler.filter(kr => kr.kalanBorc > 0);
-
-                if (oyuncuState.kredi <= 0) {
-                    oyuncuState.kredi = 0;
-                    oyuncuState.taksit = 0;
-                    oyuncuState.krediler = [];
-                    oyuncuState.varliklar.forEach(item => {
-                        item.bloke = false;
-                        item.krediID = null;
-                    });
-                } else {
-                    let katsayi = 1.25;
-                    oyuncuState.taksit = (oyuncuState.kredi / 48) * katsayi;
-                }
-            }
-        }
-
-        let netKazanc = satisBedeli - dusulenBorc;
-        aliciBot.nakit -= satisBedeli;
-        oyuncuState.nakit += netKazanc;
-        varlik.durum = 'silinecek';
-
-        if (!aliciBot.varliklar) aliciBot.varliklar = [];
-        aliciBot.varliklar.push({
-            id: Date.now() + Math.random(),
-            isim: varlik.isim,
-            durum: 'sahip'
         });
 
-        veriDegisti = true;
-    });
-
-    if (veriDegisti) {
-        oyuncuState.varliklar = oyuncuState.varliklar.filter(v => v.durum !== 'silinecek');
+        transaction();
+    } catch (err) {
+        console.error("Arka plan oyun döngüsü hatası:", err.message);
     }
+}, 30000);
 
-    return { oyuncuState, veriDegisti };
-}
-
-// 🔥 KULLANIM YERİ ÖRNEĞİ: Portföy getirme endpoint'i içinde çağırabilirsin
-app.get('/api/portfoy-getir', (req, res) => {
-    // 1. Oyuncunun o anki state'ini veritabanından veya hafızadan çek
-    let oyuncuState = oyuncuVerisiniGetir(); // (Kendi veri çekme fonksiyonun)
-    
-    // 2. Fonksiyonu çalıştırıp süresi dolan ilanları botlara sat
-    let sonuc = oyuncuilanlariniKontrolEt(oyuncuState, global.botlar, global.oyunAyarlari, global.satisFiyatlari);
-    
-    if (sonuc.veriDegisti) {
-        // Eğer bir mülk satıldıysa güncel hali veritabanına kaydet
-        oyuncuVerisiniKaydet(sonuc.oyuncuState);
-    }
-
-    // 3. Güncel portföyü tarayıcıya gönder
-    res.json(sonuc.oyuncuState);
-});
+// --- API Rotaları ---
 
 app.get('/api/ilanlar', (req, res) => {
     try {
@@ -524,12 +258,12 @@ app.post('/api/ilan-ekle', (req, res) => {
             const info = stmt.run(userId, userAdSoyad, ilan_tipi, fiyat, JSON.stringify(detaylar || {}));
 
             if (varlikId) {
-                const userRow = db.prepare(`SELECT portfoy, son_guncelleme FROM kullanicilar WHERE id = ?`).get(userId);
+                const userRow = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(userId);
                 if (userRow && userRow.portfoy) {
                     let portfoyObj = JSON.parse(userRow.portfoy);
                     if (portfoyObj && portfoyObj.varliklar) {
                         portfoyObj.varliklar.forEach(v => {
-                            if (v && v.id == varlikId) {
+                            if (v.id == varlikId) {
                                 v.durum = 'ilan-aktif';
                                 v.sunucuIlanId = info.lastInsertRowid;
                             }
@@ -618,11 +352,11 @@ app.post('/api/ilan-satin-al', (req, res) => {
             }
             const hedefVarlikId = detaylarObj.varlikId;
 
-            const aliciRow = db.prepare(`SELECT portfoy, son_guncelleme FROM kullanicilar WHERE id = ?`).get(aliciId);
+            const aliciRow = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(aliciId);
             if (!aliciRow) throw new Error("Alıcı bulunamadı.");
             
             let aliciPortfoy = JSON.parse(aliciRow.portfoy || '{}');
-            let aliciNakit = aliciPortfoy.nakit !== undefined ? Number(aliciPortfoy.nakit) : (aliciPortfoy.para !== undefined ? Number(aliciPortfoy.para) : 0);
+            let aliciNakit = aliciPortfoy.nakit !== undefined ? aliciPortfoy.nakit : (aliciPortfoy.para || 0);
 
             if (aliciNakit < ilanFiyat) {
                 throw new Error("Yeterli nakit paranız yok!");
@@ -630,7 +364,6 @@ app.post('/api/ilan-satin-al', (req, res) => {
 
             aliciNakit -= ilanFiyat;
             aliciPortfoy.nakit = aliciNakit;
-            aliciPortfoy.para = aliciNakit;
             if (!aliciPortfoy.varliklar) aliciPortfoy.varliklar = [];
 
             aliciPortfoy.varliklar.push({
@@ -644,13 +377,12 @@ app.post('/api/ilan-satin-al', (req, res) => {
 
             db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`).run(JSON.stringify(aliciPortfoy), Date.now(), aliciId);
 
-            const saticiRow = db.prepare(`SELECT portfoy, son_guncelleme FROM kullanicilar WHERE id = ?`).get(saticiId);
+            const saticiRow = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(saticiId);
             if (saticiRow && saticiRow.portfoy) {
                 let saticiPortfoy = JSON.parse(saticiRow.portfoy || '{}');
-                let saticiNakit = saticiPortfoy.nakit !== undefined ? Number(saticiPortfoy.nakit) : (saticiPortfoy.para !== undefined ? Number(saticiPortfoy.para) : 0);
+                let saticiNakit = saticiPortfoy.nakit !== undefined ? saticiPortfoy.nakit : (saticiPortfoy.para || 0);
                 saticiNakit += ilanFiyat;
                 saticiPortfoy.nakit = saticiNakit;
-                saticiPortfoy.para = saticiNakit;
 
                 if (saticiPortfoy.varliklar) {
                     saticiPortfoy.varliklar = saticiPortfoy.varliklar.filter(v => {
@@ -736,11 +468,11 @@ app.post('/api/kayit', (req, res) => {
     try {
         const mevcutAd = db.prepare(`SELECT id FROM kullanicilar WHERE LOWER(TRIM(adsoyad)) = LOWER(TRIM(?))`).get(temizAdSoyad);
         if (mevcutAd) {
-            return res.status(400).json({ basari: false, mesaj: 'Bu ad soyad (şirket ismi) daha önce alınmış!' });
+            return res.status(400).json({ basari: false, mesaj: 'Bu ad soyad (şirket ismi) daha önce alınmış! Lütfen başka bir tane seçin.' });
         }
 
         const varsayilanPortfoy = {
-            ...(portfoy || { para: 1000000, nakit: 1000000, hisseler: [] }) 
+            ...(portfoy || { para: 1000000, hisseler: [] }) 
         };
 
         const simdi = Date.now();
@@ -749,7 +481,18 @@ app.post('/api/kayit', (req, res) => {
         res.json({ basari: true, id: info.lastInsertRowid, mesaj: 'Kayıt başarılı!' });
     } catch (err) {
         console.error("Kayıt hatası:", err.message); 
-        return res.status(400).json({ basari: false, mesaj: 'Bu e-posta adresi veya kullanıcı adı zaten alınmış!' });
+        if (err.message.includes('UNIQUE constraint failed')) {
+            if (err.message.includes('adsoyad')) {
+                return res.status(400).json({ basari: false, mesaj: 'Bu ad soyad (şirket ismi) zaten kullanımda!' });
+            }
+            if (err.message.includes('email')) {
+                return res.status(400).json({ basari: false, mesaj: 'Bu e-posta adresi zaten alınmış!' });
+            }
+            if (err.message.includes('kadi')) {
+                return res.status(400).json({ basari: false, mesaj: 'Bu kullanıcı adı zaten alınmış!' });
+            }
+        }
+        return res.status(400).json({ basari: false, mesaj: 'Bu e-posta adresi zaten alınmış veya hata oluştu!' });
     }
 });
 
@@ -802,6 +545,37 @@ app.post('/api/profil-guncelle', (req, res) => {
     }
 });
 
+app.get('/api/portfoy-getir', (req, res) => {
+    if (!req.session || !req.session.kullanici) {
+        return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı!" });
+    }
+
+    try {
+        const userId = req.session.kullanici.id;
+        const user = db.prepare(`SELECT * FROM kullanicilar WHERE id = ?`).get(userId);
+        
+        if (!user) {
+            return res.status(404).json({ basari: false, mesaj: "Kullanıcı bulunamadı!" });
+        }
+
+        const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
+        const ayarlar = ayarKaydi ? JSON.parse(ayarKaydi.ayarlar) : {};
+
+        // 🌟 Çevrimdışı geçen süredeki gelirleri hesaba kat!
+        const guncelPortfoy = kullaniciEkonomisiniIslet(user, ayarlar) || JSON.parse(user.portfoy || '{}');
+
+        res.json({
+            basari: true,
+            nakit: guncelPortfoy.nakit !== undefined ? guncelPortfoy.nakit : (guncelPortfoy.para || 0),
+            varliklar: guncelPortfoy.varliklar || [],
+            gunlukGelir: guncelPortfoy.gunlukGelir || 0,
+            konutKiraGeliri: guncelPortfoy.konutKiraGeliri || 0 
+        });
+    } catch (err) {
+        console.error("Portföy getirme hatası:", err.message);
+        res.status(500).json({ basari: false, mesaj: err.message });
+    }
+});
 
 app.get('/api/cikis', (req, res) => {
     req.session.destroy((err) => {
@@ -824,7 +598,6 @@ app.post('/api/giris', (req, res) => {
 
                 const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
                 const ayarlar = ayarKaydi ? JSON.parse(ayarKaydi.ayarlar) : {};
-                
                 const portfoyObj = kullaniciEkonomisiniIslet(row, ayarlar) || JSON.parse(row.portfoy || '{}');
 
                 req.session.userId = row.id;
@@ -884,24 +657,17 @@ app.get('/api/aktif-kullanici', (req, res) => {
 
 app.post('/api/portfoy-guncelle', (req, res) => {
     if (!req.session || !req.session.kullanici) {
-        return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı!" });    
+        return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı!" }); 
     }
 
     const userId = req.session.kullanici.id;
     const yeniPortfoy = req.body.portfoy;
+    const portfoyStr = JSON.stringify(yeniPortfoy || {});
 
     try {
-        // Sunucu zamanını ve arka plan motoru senkronizasyonunu ezmemek için güncel damgayla kaydediyoruz
-        const portfoyStr = JSON.stringify(yeniPortfoy || {});
-        const simdi = Date.now();
-
-        db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`).run(portfoyStr, simdi, userId);
-        
-        if (req.session.kullanici) {
-            req.session.kullanici.portfoy = yeniPortfoy;
-        }
-
-        res.json({ basari: true, mesaj: "Portföy güvenle kaydedildi." });
+        db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`).run(portfoyStr, Date.now(), userId);
+        req.session.kullanici.portfoy = yeniPortfoy;
+        res.json({ basari: true, mesaj: "Portföy kaydedildi." });
     } catch (err) {
         console.error("Portföy güncelleme hatası:", err.message);
         return res.status(500).json({ basari: false, mesaj: err.message });
@@ -949,7 +715,7 @@ io.on('connection', (socket) => {
 });
 
 server.listen(3000, '0.0.0.0', () => {
-    console.log("Sunucumuz 3000 portunda ve çevrimdışı ekonomi motoru aktif şekilde çalışıyor.");
+    console.log("Sunucumuz 3000 portunda ve çevrimdışı motor aktif şekilde çalışıyor.");
 }).on('error', (err) => {
     console.error("SUNUCU AÇILAMADI HATA ŞU:", err);
 });
