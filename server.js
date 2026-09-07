@@ -42,10 +42,18 @@ db.prepare(`CREATE TABLE IF NOT EXISTS kullanicilar (
     sifre TEXT,
     adsoyad TEXT UNIQUE,
     portfoy TEXT,
+    son_guncelleme INTEGER,
     tarih DATETIME DEFAULT CURRENT_TIMESTAMP
 )`).run();
 
-// 🌟 Merkezi ayarlar tablosu
+// Sütun eksikse otomatik ekleme güvenliği
+try {
+    db.prepare(`ALTER TABLE kullanicilar ADD COLUMN son_guncelleme INTEGER`).run();
+} catch (e) {
+    // Sütun zaten varsa hata verir, yoksayabiliriz
+}
+
+// --- 🌟 MERKEZİ AYARLAR TABLOSU ---
 db.prepare(`CREATE TABLE IF NOT EXISTS oyun_ayarlari (
     id INTEGER PRIMARY KEY CHECK (id = 1),
     ayarlar TEXT
@@ -134,36 +142,76 @@ db.prepare(`CREATE TABLE IF NOT EXISTS ilanlar (
     tarih DATETIME DEFAULT CURRENT_TIMESTAMP
 )`).run();
 
-// --- 🌟 ARKA PLAN OTOMATİK EKONOMİ MOTORU (HEADLESS GAME LOOP) ---
-// Admin kapalı olsa bile sunucu bu döngüyü işletir ve kazançları veritabanına yazar
+// --- 🌟 ÇEVRİMİÇİ / ÇEVRİMDIŞI AKILLI EKONOMİ MOTORU ---
+function kullaniciEkonomisiniIslet(userRow, ayarlar) {
+    if (!userRow || !userRow.portfoy) return null;
+
+    let portfoy;
+    try {
+        portfoy = JSON.parse(userRow.portfoy);
+    } catch (e) {
+        return null;
+    }
+
+    const simdi = Date.now();
+    let sonGuncelleme = userRow.son_guncelleme || simdi;
+    const gecenSure = simdi - sonGuncelleme;
+
+    if (gecenSure < 5000) return portfoy; 
+
+    const sureler = ayarlar.sureler || {};
+    const kiraPeriyodu = sureler.kiraSuresi || 86400000; // Varsayılan 24 saat
+    const kazancTablosu = ayarlar.kazancTablosu || {};
+
+    const periyotSayisi = Math.floor(gecenSure / kiraPeriyodu);
+
+    if (periyotSayisi > 0) {
+        let toplamEklenenGelir = 0;
+
+        if (portfoy.varliklar && Array.isArray(portfoy.varliklar)) {
+            portfoy.varliklar.forEach(v => {
+                if (v.durum === 'sahip' && kazancTablosu[v.isim]) {
+                    toplamEklenenGelir += (kazancTablosu[v.isim] * periyotSayisi);
+                }
+            });
+        }
+
+        if (ayarlar.konutKiraGeliri > 0 && portfoy.varliklar) {
+            portfoy.varliklar.forEach(v => {
+                if (v.durum === 'sahip' && v.isim === 'Konut') {
+                    toplamEklenenGelir += (ayarlar.konutKiraGeliri * periyotSayisi);
+                }
+            });
+        }
+
+        if (toplamEklenenGelir > 0) {
+            let mevcutNakit = portfoy.nakit !== undefined ? portfoy.nakit : (portfoy.para || 0);
+            mevcutNakit += toplamEklenenGelir;
+            portfoy.nakit = mevcutNakit;
+        }
+
+        db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`).run(
+            JSON.stringify(portfoy),
+            sonGuncelleme + (periyotSayisi * kiraPeriyodu),
+            userRow.id
+        );
+    }
+
+    return portfoy;
+}
+
+// Arka plan otomatik döngüsü
 setInterval(() => {
     try {
         const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
         if (!ayarKaydi) return;
         const ayarlar = JSON.parse(ayarKaydi.ayarlar);
-        const kazancTablosu = ayarlar.kazancTablosu || {};
 
-        const kullanicilar = db.prepare(`SELECT id, portfoy FROM kullanicilar`).all();
+        const kullanicilar = db.prepare(`SELECT id, portfoy, son_guncelleme FROM kullanicilar`).all();
         
         const transaction = db.transaction(() => {
             kullanicilar.forEach(user => {
-                if (!user.portfoy) return;
-                let portfoy = JSON.parse(user.portfoy);
-                let degisiklikVar = false;
-
-                // Örnek Otomatik Döngü İşlemi: Sahip olunan varlıkların gelirlerini nakite yansıtma kontrolü
-                if (portfoy.varliklar && Array.isArray(portfoy.varliklar)) {
-                    portfoy.varliklar.forEach(v => {
-                        if (v.durum === 'sahip' && kazancTablosu[v.isim]) {
-                            // Burada zaman damgası kontrolü ile belirli aralıklarla kazanç eklenebilir
-                            // Örnek: portfoy.nakit += kazancTablosu[v.isim]; degisiklikVar = true;
-                        }
-                    });
-                }
-
-                if (degisiklikVar) {
-                    db.prepare(`UPDATE kullanicilar SET portfoy = ? WHERE id = ?`).run(JSON.stringify(portfoy), user.id);
-                }
+                kullaniciEkonomisiniIslet(user, ayarlar);
             });
         });
 
@@ -171,7 +219,7 @@ setInterval(() => {
     } catch (err) {
         console.error("Arka plan oyun döngüsü hatası:", err.message);
     }
-}, 60000); // Her 1 dakikada bir arka planda kontrol eder
+}, 30000);
 
 // --- API Rotaları ---
 
@@ -220,7 +268,7 @@ app.post('/api/ilan-ekle', (req, res) => {
                                 v.sunucuIlanId = info.lastInsertRowid;
                             }
                         });
-                        db.prepare(`UPDATE kullanicilar SET portfoy = ? WHERE id = ?`).run(JSON.stringify(portfoyObj), userId);
+                        db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`).run(JSON.stringify(portfoyObj), Date.now(), userId);
                         req.session.kullanici.portfoy = portfoyObj;
                     }
                 }
@@ -327,7 +375,7 @@ app.post('/api/ilan-satin-al', (req, res) => {
                 atananKonum: detaylarObj.atananKonum || null
             });
 
-            db.prepare(`UPDATE kullanicilar SET portfoy = ? WHERE id = ?`).run(JSON.stringify(aliciPortfoy), aliciId);
+            db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`).run(JSON.stringify(aliciPortfoy), Date.now(), aliciId);
 
             const saticiRow = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(saticiId);
             if (saticiRow && saticiRow.portfoy) {
@@ -349,7 +397,7 @@ app.post('/api/ilan-satin-al', (req, res) => {
                     });
                 }
 
-                db.prepare(`UPDATE kullanicilar SET portfoy = ? WHERE id = ?`).run(JSON.stringify(saticiPortfoy), saticiId);
+                db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`).run(JSON.stringify(saticiPortfoy), Date.now(), saticiId);
             }
 
             db.prepare(`DELETE FROM ilanlar WHERE id = ?`).run(ilanId);
@@ -427,8 +475,9 @@ app.post('/api/kayit', (req, res) => {
             ...(portfoy || { para: 1000000, hisseler: [] }) 
         };
 
-        const stmt = db.prepare(`INSERT INTO kullanicilar (kadi, email, sifre, adsoyad, portfoy) VALUES (?, ?, ?, ?, ?)`);
-        const info = stmt.run(kadi, email, sifre, temizAdSoyad, JSON.stringify(varsayilanPortfoy));
+        const simdi = Date.now();
+        const stmt = db.prepare(`INSERT INTO kullanicilar (kadi, email, sifre, adsoyad, portfoy, son_guncelleme) VALUES (?, ?, ?, ?, ?, ?)`);
+        const info = stmt.run(kadi, email, sifre, temizAdSoyad, JSON.stringify(varsayilanPortfoy), simdi);
         res.json({ basari: true, id: info.lastInsertRowid, mesaj: 'Kayıt başarılı!' });
     } catch (err) {
         console.error("Kayıt hatası:", err.message); 
@@ -503,25 +552,24 @@ app.get('/api/portfoy-getir', (req, res) => {
 
     try {
         const userId = req.session.kullanici.id;
-        const user = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(userId);
+        const user = db.prepare(`SELECT * FROM kullanicilar WHERE id = ?`).get(userId);
         
         if (!user) {
             return res.status(404).json({ basari: false, mesaj: "Kullanıcı bulunamadı!" });
         }
 
-        let portfoyObj = {};
-        try {
-            portfoyObj = JSON.parse(user.portfoy || '{}');
-        } catch (e) {
-            portfoyObj = {};
-        }
+        const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
+        const ayarlar = ayarKaydi ? JSON.parse(ayarKaydi.ayarlar) : {};
+
+        // 🌟 Çevrimdışı geçen süredeki gelirleri hesaba kat!
+        const guncelPortfoy = kullaniciEkonomisiniIslet(user, ayarlar) || JSON.parse(user.portfoy || '{}');
 
         res.json({
             basari: true,
-            nakit: portfoyObj.nakit !== undefined ? portfoyObj.nakit : (portfoyObj.para || 0),
-            varliklar: portfoyObj.varliklar || [],
-            gunlukGelir: portfoyObj.gunlukGelir || 0,
-            konutKiraGeliri: portfoyObj.konutKiraGeliri || 0 
+            nakit: guncelPortfoy.nakit !== undefined ? guncelPortfoy.nakit : (guncelPortfoy.para || 0),
+            varliklar: guncelPortfoy.varliklar || [],
+            gunlukGelir: guncelPortfoy.gunlukGelir || 0,
+            konutKiraGeliri: guncelPortfoy.konutKiraGeliri || 0 
         });
     } catch (err) {
         console.error("Portföy getirme hatası:", err.message);
@@ -548,12 +596,16 @@ app.post('/api/giris', (req, res) => {
             req.session.regenerate((err) => {
                 if (err) return res.status(500).json({ basari: false, mesaj: err.message });
 
+                const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
+                const ayarlar = ayarKaydi ? JSON.parse(ayarKaydi.ayarlar) : {};
+                const portfoyObj = kullaniciEkonomisiniIslet(row, ayarlar) || JSON.parse(row.portfoy || '{}');
+
                 req.session.userId = row.id;
                 req.session.kullanici = { 
                     id: row.id, 
                     kadi: row.kadi, 
                     adsoyad: row.adsoyad || '', 
-                    portfoy: JSON.parse(row.portfoy || '{}') 
+                    portfoy: portfoyObj 
                 };
 
                 req.session.save((saveErr) => {
@@ -581,19 +633,16 @@ app.get('/api/aktif-kullanici', (req, res) => {
 
     try {
         const userId = req.session.kullanici.id;
-        const dbUser = db.prepare(`SELECT id, adsoyad, portfoy FROM kullanicilar WHERE id = ?`).get(userId);
+        const dbUser = db.prepare(`SELECT * FROM kullanicilar WHERE id = ?`).get(userId);
         
         if (!dbUser) {
             return res.status(404).json({ basari: false, mesaj: "Kullanıcı bulunamadı" });
         }
 
-        let portfoyObj = {};
-        try {
-            portfoyObj = JSON.parse(dbUser.portfoy || '{}');
-        } catch (e) {
-            portfoyObj = {};
-        }
+        const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
+        const ayarlar = ayarKaydi ? JSON.parse(ayarKaydi.ayarlar) : {};
 
+        const portfoyObj = kullaniciEkonomisiniIslet(dbUser, ayarlar) || JSON.parse(dbUser.portfoy || '{}');
         req.session.kullanici.portfoy = portfoyObj;
 
         res.json({
@@ -616,7 +665,7 @@ app.post('/api/portfoy-guncelle', (req, res) => {
     const portfoyStr = JSON.stringify(yeniPortfoy || {});
 
     try {
-        db.prepare(`UPDATE kullanicilar SET portfoy = ? WHERE id = ?`).run(portfoyStr, userId);
+        db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`).run(portfoyStr, Date.now(), userId);
         req.session.kullanici.portfoy = yeniPortfoy;
         res.json({ basari: true, mesaj: "Portföy kaydedildi." });
     } catch (err) {
@@ -666,7 +715,7 @@ io.on('connection', (socket) => {
 });
 
 server.listen(3000, '0.0.0.0', () => {
-    console.log("Sunucumuz 3000 portunda başarıyla çalışıyor.");
+    console.log("Sunucumuz 3000 portunda ve çevrimdışı motor aktif şekilde çalışıyor.");
 }).on('error', (err) => {
     console.error("SUNUCU AÇILAMADI HATA ŞU:", err);
 });
