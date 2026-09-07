@@ -496,6 +496,8 @@ app.get('/api/portfoy-getir', (req, res) => {
             basari: true,
             nakit: portfoyObj.nakit !== undefined ? portfoyObj.nakit : (portfoyObj.para || 0),
             varliklar: portfoyObj.varliklar || []
+            gunlukGelir: portfoyObj.gunlukGelir || 0,
+            konutKiraGeliri: portfoyObj.konutKiraGeliri || 0
         });
     } catch (err) {
         console.error("Portföy getirme hatası:", err.message);
