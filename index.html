@@ -3077,14 +3077,14 @@ async function guncelle() {
         document.getElementById('yazi-ilan-faiz').textContent = faizOranlari.ilanKredisiYuzde;
     }
 
-    let konutSayisi = state.varliklar.filter(v => v.isim === 'Konut' && (v.durum === 'sahip' || v.durum === 'ilan-aktif')).length;
+let konutSayisi = state.varliklar.filter(v => v.isim === 'Konut' && (v.durum === 'sahip' || v.durum === 'ilan-aktif')).length;
     
-    // Hafızadaki eski state yerine doğrudan güncel window.oyunAyar değerini baz alıyoruz
     let guncelKiraBirim = (typeof window !== 'undefined' && window.oyunAyar && window.oyunAyar.konutKiraGeliri !== undefined) 
         ? window.oyunAyar.konutKiraGeliri 
         : state.konutKiraGeliri;
 
-    let toplamKiraBedeli = konutSayisi > 0 ? (konutSayisi * guncelKiraBirim) : guncelKiraBirim;
+    // 🌟 DÜZELTME BURADA: Eğer konut sayısı 0 ise sonuç direkt 0 olsun, konut varsa adetle çarpılsın
+    let toplamKiraBedeli = konutSayisi > 0 ? (konutSayisi * guncelKiraBirim) : 0;
     document.getElementById('val-kira').innerText = toplamKiraBedeli.toLocaleString() + " TL";
 
     // 🌟 KRİTİK KONTROL: Hangi sayfada olursan ol, aktif "TAHSİL ET" var mı global olarak denetleniyor
