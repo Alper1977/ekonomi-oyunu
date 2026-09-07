@@ -5352,6 +5352,11 @@ if (typeof portfoyuKaydet === 'function') {
         body: JSON.stringify(state)
     });
 }
+                        // Arayüzdeki o sabit kalan satırı anında güncelle
+let kiraKutu = document.getElementById('val-kira');
+if (kiraKutu) {
+    kiraKutu.innerText = Number(window.oyunAyar.konutKiraGeliri).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
+}
 
                         if (typeof guncelle === 'function') {
                             guncelle();
