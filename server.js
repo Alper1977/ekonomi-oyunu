@@ -9,7 +9,7 @@ const fs = require('fs');
 const app = express();
 const server = http.createServer(app); 
 const io = new Server(server); 
- 
+
 app.use(express.json());
 app.use(express.static(__dirname));
 
@@ -50,7 +50,7 @@ db.prepare(`CREATE TABLE IF NOT EXISTS kullanicilar (
 try {
     db.prepare(`ALTER TABLE kullanicilar ADD COLUMN son_guncelleme INTEGER`).run();
 } catch (e) {
-    // Sütun zaten varsa hata verir, yoksayabiliriz
+    // Sütun zaten varsa yoksay
 }
 
 // --- 🌟 MERKEZİ AYARLAR TABLOSU ---
@@ -142,7 +142,7 @@ db.prepare(`CREATE TABLE IF NOT EXISTS ilanlar (
     tarih DATETIME DEFAULT CURRENT_TIMESTAMP
 )`).run();
 
-// --- 🌟 DÜZELTİLMİŞ ÇEVRİMİÇİ / ÇEVRİMDIŞI EKONOMİ & FİNANS MOTORU ---
+// --- 🌟 KESİN ÇÖZÜM: GELİŞTİRİLMİŞ EKONOMİ VE ZAMAN MOTORU ---
 function kullaniciEkonomisiniIslet(userRow, ayarlar) {
     if (!userRow || !userRow.portfoy) return null;
 
@@ -154,11 +154,13 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar) {
     }
 
     const simdi = Date.now();
-    let sonGuncelleme = userRow.son_guncelleme || simdi;
+    
+    // Eğer kullanıcının son_guncelleme verisi yoksa veya bozuksa şimdiye eşitle
+    let sonGuncelleme = (userRow.son_guncelleme && !isNaN(userRow.son_guncelleme)) ? Number(userRow.son_guncelleme) : simdi;
     const gecenSure = simdi - sonGuncelleme;
 
-    // 5 saniyeden kısa süreleri yoksay
-    if (gecenSure < 5000) return portfoy; 
+    // 2 saniyeden kısa süreleri yoksay (Gereksiz döngü yükünü önlemek için)
+    if (gecenSure < 2000) return portfoy; 
 
     const sureler = ayarlar.sureler || {};
     const kiraPeriyodu = sureler.kiraSuresi || 86400000; 
@@ -168,14 +170,14 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar) {
 
     let degisiklikOldu = false;
 
-    // 1. KİRA / ŞİRKET GELİRLERİ
+    // 1. KİRA / ŞİRKET GELİRLERİ (Geçen süreye göre tam periyot hesabı)
     const kiraPeriyotSayisi = Math.floor(gecenSure / kiraPeriyodu);
     if (kiraPeriyotSayisi > 0) {
         let toplamEklenenGelir = 0;
 
         if (portfoy.varliklar && Array.isArray(portfoy.varliklar)) {
             portfoy.varliklar.forEach(v => {
-                if (v.durum === 'sahip' && kazancTablosu[v.isim]) {
+                if (v && v.durum === 'sahip' && kazancTablosu[v.isim]) {
                     toplamEklenenGelir += (kazancTablosu[v.isim] * kiraPeriyotSayisi);
                 }
             });
@@ -183,50 +185,50 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar) {
 
         if (ayarlar.konutKiraGeliri > 0 && portfoy.varliklar) {
             portfoy.varliklar.forEach(v => {
-                if (v.durum === 'sahip' && v.isim === 'Konut') {
+                if (v && v.durum === 'sahip' && v.isim === 'Konut') {
                     toplamEklenenGelir += (ayarlar.konutKiraGeliri * kiraPeriyotSayisi);
                 }
             });
         }
 
         if (toplamEklenenGelir > 0) {
-            let mevcutNakit = portfoy.nakit !== undefined ? portfoy.nakit : (portfoy.para || 0);
+            let mevcutNakit = portfoy.nakit !== undefined ? Number(portfoy.nakit) : (portfoy.para !== undefined ? Number(portfoy.para) : 0);
             mevcutNakit += toplamEklenenGelir;
             portfoy.nakit = mevcutNakit;
+            portfoy.para = mevcutNakit; // Çift yönlü uyumluluk
             degisiklikOldu = true;
         }
     }
 
-    // 2. 🌟 VADELİ HESAP / FAİZ GELİRLERİ (TAM TELAFİ DÜZELTMESİ)
+    // 2. VADELİ HESAP / FAİZ GELİRLERİ (Geçen gün sayısına göre işler)
     const faizPeriyotSayisi = Math.floor(gecenSure / faizPeriyodu);
-    if (faizPeriyotSayisi > 0 && portfoy.vadeliHesap && portfoy.vadeliHesap > 0) {
+    if (faizPeriyotSayisi > 0 && portfoy.vadeliHesap && Number(portfoy.vadeliHesap) > 0) {
         const gunlukFaizOrani = (ayarlar.faizOranlari && ayarlar.faizOranlari.vadeliGunluk !== undefined) 
-            ? ayarlar.faizOranlari.vadeliGunluk 
+            ? Number(ayarlar.faizOranlari.vadeliGunluk) 
             : 0.02;
 
         let toplamFaizGetirisi = 0;
-        let anapara = portfoy.vadeliHesap;
+        let anapara = Number(portfoy.vadeliHesap);
         
-        // Kapalı olunan her gün için bileşik ya da düz faiz telafisi
         for (let i = 0; i < faizPeriyotSayisi; i++) {
             toplamFaizGetirisi += (anapara * gunlukFaizOrani);
         }
 
         if (toplamFaizGetirisi > 0) {
-            portfoy.vadeliHesap += toplamFaizGetirisi;
+            portfoy.vadeliHesap = anapara + toplamFaizGetirisi;
             degisiklikOldu = true;
         }
     }
 
-    // 3. 🌟 KREDİ TAKSİTLERİ VE BORÇLAR (KAPALIDAYKEN DÜŞMeme SORUNU GİDERİLDİ)
+    // 3. KREDİ TAKSİTLERİ (KAPALIDAYKEN VEYA AÇIKKEN TEPKİ VEREN BORÇ DÜŞÜMÜ)
     const taksitPeriyotSayisi = Math.floor(gecenSure / taksitPeriyodu);
     if (taksitPeriyotSayisi > 0 && portfoy.krediler && Array.isArray(portfoy.krediler) && portfoy.krediler.length > 0) {
-        let mevcutNakit = portfoy.nakit !== undefined ? portfoy.nakit : (portfoy.para || 0);
+        let mevcutNakit = portfoy.nakit !== undefined ? Number(portfoy.nakit) : (portfoy.para !== undefined ? Number(portfoy.para) : 0);
 
         portfoy.krediler.forEach(kredi => {
             if (kredi && kredi.kalanTaksit > 0 && kredi.taksitTutari > 0) {
                 const odenecekAdet = Math.min(kredi.kalanTaksit, taksitPeriyotSayisi);
-                const toplamDusulecekTaksit = kredi.taksitTutari * odenecekAdet;
+                const toplamDusulecekTaksit = Number(kredi.taksitTutari) * odenecekAdet;
 
                 mevcutNakit -= toplamDusulecekTaksit;
                 kredi.kalanTaksit -= odenecekAdet;
@@ -235,28 +237,40 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar) {
         });
 
         portfoy.nakit = mevcutNakit;
-        // Tamamen biten kredileri temizle
-        portfoy.krediler = portfoy.krediler.filter(k => k.kalanTaksit > 0);
+        portfoy.para = mevcutNakit;
+        // Biten kredileri listeden temizle
+        portfoy.krediler = portfoy.krediler.filter(k => k && k.kalanTaksit > 0);
     }
 
-    // 🌟 EN ÖNEMLİ KISIM: Zaman damgasını tam periyotlar düşülmüş şekilde güncelliyoruz ki 
-    // bir sonraki açılışta süreler havada kalmasın, tam kaldığı periyottan ilerlesin.
-    const harcananZamanMs = Math.max(kiraPeriyotSayisi, faizPeriyotSayisi, taksitPeriyotSayisi) * Math.min(kiraPeriyodu, faizPeriyodu, taksitPeriyodu);
-    const yeniSonGuncelleme = harcananZamanMs > 0 ? (sonGuncelleme + harcananZamanMs) : simdi;
+    // 🌟 KRİTİK ZAMAN SENKRONİZASYONU: 
+    // Tüketilen tam periyot süresini son_guncelleme değerine ekliyoruz. 
+    // Böylece kalan artık süreler boşa gitmez, sonraki girişte birikir.
+    const kullanilanPeriyotSayisi = Math.max(kiraPeriyotSayisi, faizPeriyotSayisi, taksitPeriyotSayisi);
+    const temelPeriyotMs = Math.min(kiraPeriyodu, faizPeriyodu, taksitPeriyodu);
+    
+    let yeniSonGuncelleme = sonGuncelleme;
+    if (kullanilanPeriyotSayisi > 0) {
+        yeniSonGuncelleme += (kullanilanPeriyotSayisi * temelPeriyotMs);
+    } else {
+        yeniSonGuncelleme = simdi;
+    }
 
-    // Eğer simdiye çok yakınsa doğrudan simdi yap
-    const finalGuncelleme = (simdi - yeniSonGuncelleme < kiraPeriyodu) ? yeniSonGuncelleme : simdi;
+    // Eğer yeni hesaplanan güncelleme zamanı bugünden çok geride kaldıysa ya da gelecekteyse simdiye eşitle
+    if (simdi - yeniSonGuncelleme > (temelPeriyotMs * 10)) {
+        yeniSonGuncelleme = simdi - (gecenSure % temelPeriyotMs);
+    }
 
+    // Veritabanına anında güncelportfoy ve yeni zaman damgasını işliyoruz
     db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`).run(
         JSON.stringify(portfoy),
-        finalGuncelleme,
+        yeniSonGuncelleme,
         userRow.id
     );
 
     return portfoy;
 }
 
-// Arka plan otomatik döngüsü
+// Arka plan otomatik döngüsü (Admin kapalı olsa bile sunucu açıksa tüm üyelerin ekonomisini işletir)
 setInterval(() => {
     try {
         const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
@@ -275,7 +289,7 @@ setInterval(() => {
     } catch (err) {
         console.error("Arka plan oyun döngüsü hatası:", err.message);
     }
-}, 30000);
+}, 15000); // Her 15 saniyede bir arka planda kontrol eder
 
 // --- API Rotaları ---
 
@@ -319,7 +333,7 @@ app.post('/api/ilan-ekle', (req, res) => {
                     let portfoyObj = JSON.parse(userRow.portfoy);
                     if (portfoyObj && portfoyObj.varliklar) {
                         portfoyObj.varliklar.forEach(v => {
-                            if (v.id == varlikId) {
+                            if (v && v.id == varlikId) {
                                 v.durum = 'ilan-aktif';
                                 v.sunucuIlanId = info.lastInsertRowid;
                             }
@@ -412,7 +426,7 @@ app.post('/api/ilan-satin-al', (req, res) => {
             if (!aliciRow) throw new Error("Alıcı bulunamadı.");
             
             let aliciPortfoy = JSON.parse(aliciRow.portfoy || '{}');
-            let aliciNakit = aliciPortfoy.nakit !== undefined ? aliciPortfoy.nakit : (aliciPortfoy.para || 0);
+            let aliciNakit = aliciPortfoy.nakit !== undefined ? Number(aliciPortfoy.nakit) : (aliciPortfoy.para !== undefined ? Number(aliciPortfoy.para) : 0);
 
             if (aliciNakit < ilanFiyat) {
                 throw new Error("Yeterli nakit paranız yok!");
@@ -420,6 +434,7 @@ app.post('/api/ilan-satin-al', (req, res) => {
 
             aliciNakit -= ilanFiyat;
             aliciPortfoy.nakit = aliciNakit;
+            aliciPortfoy.para = aliciNakit;
             if (!aliciPortfoy.varliklar) aliciPortfoy.varliklar = [];
 
             aliciPortfoy.varliklar.push({
@@ -436,9 +451,10 @@ app.post('/api/ilan-satin-al', (req, res) => {
             const saticiRow = db.prepare(`SELECT portfoy, son_guncelleme FROM kullanicilar WHERE id = ?`).get(saticiId);
             if (saticiRow && saticiRow.portfoy) {
                 let saticiPortfoy = JSON.parse(saticiRow.portfoy || '{}');
-                let saticiNakit = saticiPortfoy.nakit !== undefined ? saticiPortfoy.nakit : (saticiPortfoy.para || 0);
+                let saticiNakit = saticiPortfoy.nakit !== undefined ? Number(saticiPortfoy.nakit) : (saticiPortfoy.para !== undefined ? Number(saticiPortfoy.para) : 0);
                 saticiNakit += ilanFiyat;
                 saticiPortfoy.nakit = saticiNakit;
+                saticiPortfoy.para = saticiNakit;
 
                 if (saticiPortfoy.varliklar) {
                     saticiPortfoy.varliklar = saticiPortfoy.varliklar.filter(v => {
@@ -524,11 +540,11 @@ app.post('/api/kayit', (req, res) => {
     try {
         const mevcutAd = db.prepare(`SELECT id FROM kullanicilar WHERE LOWER(TRIM(adsoyad)) = LOWER(TRIM(?))`).get(temizAdSoyad);
         if (mevcutAd) {
-            return res.status(400).json({ basari: false, mesaj: 'Bu ad soyad (şirket ismi) daha önce alınmış! Lütfen başka bir tane seçin.' });
+            return res.status(400).json({ basari: false, mesaj: 'Bu ad soyad (şirket ismi) daha önce alınmış!' });
         }
 
         const varsayilanPortfoy = {
-            ...(portfoy || { para: 1000000, hisseler: [] }) 
+            ...(portfoy || { para: 1000000, nakit: 1000000, hisseler: [] }) 
         };
 
         const simdi = Date.now();
@@ -537,18 +553,7 @@ app.post('/api/kayit', (req, res) => {
         res.json({ basari: true, id: info.lastInsertRowid, mesaj: 'Kayıt başarılı!' });
     } catch (err) {
         console.error("Kayıt hatası:", err.message); 
-        if (err.message.includes('UNIQUE constraint failed')) {
-            if (err.message.includes('adsoyad')) {
-                return res.status(400).json({ basari: false, mesaj: 'Bu ad soyad (şirket ismi) zaten kullanımda!' });
-            }
-            if (err.message.includes('email')) {
-                return res.status(400).json({ basari: false, mesaj: 'Bu e-posta adresi zaten alınmış!' });
-            }
-            if (err.message.includes('kadi')) {
-                return res.status(400).json({ basari: false, mesaj: 'Bu kullanıcı adı zaten alınmış!' });
-            }
-        }
-        return res.status(400).json({ basari: false, mesaj: 'Bu e-posta adresi zaten alınmış veya hata oluştu!' });
+        return res.status(400).json({ basari: false, mesaj: 'Bu e-posta adresi veya kullanıcı adı zaten alınmış!' });
     }
 });
 
@@ -617,7 +622,7 @@ app.get('/api/portfoy-getir', (req, res) => {
         const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
         const ayarlar = ayarKaydi ? JSON.parse(ayarKaydi.ayarlar) : {};
 
-        // 🌟 Çevrimdışı geçen süredeki gelirleri, faizleri ve kredi taksitlerini hesaba kat!
+        // 🌟 Üye sayfayı yenilediğinde veya portföy istediğinde kapalı kaldığı süre hemen hesaba katılır!
         const guncelPortfoy = kullaniciEkonomisiniIslet(user, ayarlar) || JSON.parse(user.portfoy || '{}');
 
         res.json({
@@ -654,6 +659,8 @@ app.post('/api/giris', (req, res) => {
 
                 const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
                 const ayarlar = ayarKaydi ? JSON.parse(ayarKaydi.ayarlar) : {};
+                
+                // 🌟 GİRİŞ ANINDA: Üye kapalıyken geçen sürede biriken tüm gelirler, faizler ve ödenen taksitler işlenir!
                 const portfoyObj = kullaniciEkonomisiniIslet(row, ayarlar) || JSON.parse(row.portfoy || '{}');
 
                 req.session.userId = row.id;
@@ -698,6 +705,7 @@ app.get('/api/aktif-kullanici', (req, res) => {
         const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
         const ayarlar = ayarKaydi ? JSON.parse(ayarKaydi.ayarlar) : {};
 
+        // 🌟 AKTİF KONTROL ANINDA: Arkaplanda geçen süre güncellenir
         const portfoyObj = kullaniciEkonomisiniIslet(dbUser, ayarlar) || JSON.parse(dbUser.portfoy || '{}');
         req.session.kullanici.portfoy = portfoyObj;
 
@@ -771,7 +779,7 @@ io.on('connection', (socket) => {
 });
 
 server.listen(3000, '0.0.0.0', () => {
-    console.log("Sunucumuz 3000 portunda ve çevrimdışı motor aktif şekilde çalışıyor.");
+    console.log("Sunucumuz 3000 portunda ve çevrimdışı ekonomi motoru aktif olarak çalışıyor.");
 }).on('error', (err) => {
     console.error("SUNUCU AÇILAMADI HATA ŞU:", err);
 });
