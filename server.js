@@ -173,7 +173,7 @@ setInterval(() => {
     }
 }, 60000); // Her 1 dakikada bir arka planda kontrol eder
 
-
+// --- API Rotaları ---
 
 app.get('/api/ilanlar', (req, res) => {
     try {
@@ -205,13 +205,10 @@ app.post('/api/ilan-ekle', (req, res) => {
     let userAdSoyad = (typeof sessionKullanici === 'object' && sessionKullanici.adsoyad) ? sessionKullanici.adsoyad : "Satıcı";
 
     try {
-        // Transaction ile hem ilanı ekleyelim hem de satıcının envanterindeki mülkün durumunu 'ilan-aktif' yapalım
         const transaction = db.transaction(() => {
-            // 1. İlanı ekle
             const stmt = db.prepare(`INSERT INTO ilanlar (kullanici_id, satici_adsoyad, ilan_tipi, fiyat, detaylar) VALUES (?, ?, ?, ?, ?)`);
             const info = stmt.run(userId, userAdSoyad, ilan_tipi, fiyat, JSON.stringify(detaylar || {}));
 
-            // 2. Kullanıcının portföyünü taze çekip ilgili mülkün durumunu güncelle
             if (varlikId) {
                 const userRow = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(userId);
                 if (userRow && userRow.portfoy) {
@@ -286,7 +283,6 @@ app.post('/api/ilan-satin-al', (req, res) => {
 
     try {
         const transaction = db.transaction(() => {
-            // 1. İlanı bul
             const ilan = db.prepare(`SELECT * FROM ilanlar WHERE id = ?`).get(ilanId);
             if (!ilan) {
                 throw new Error("İlan bulunamadı veya zaten satılmış.");
@@ -308,7 +304,6 @@ app.post('/api/ilan-satin-al', (req, res) => {
             }
             const hedefVarlikId = detaylarObj.varlikId;
 
-            // 2. Alıcının nakit kontrolü ve düşülmesi
             const aliciRow = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(aliciId);
             if (!aliciRow) throw new Error("Alıcı bulunamadı.");
             
@@ -323,7 +318,6 @@ app.post('/api/ilan-satin-al', (req, res) => {
             aliciPortfoy.nakit = aliciNakit;
             if (!aliciPortfoy.varliklar) aliciPortfoy.varliklar = [];
 
-            // Alıcının envanterine mülkü ekle
             aliciPortfoy.varliklar.push({
                 id: Date.now() + Math.random(),
                 isim: ilanTipi,
@@ -335,7 +329,6 @@ app.post('/api/ilan-satin-al', (req, res) => {
 
             db.prepare(`UPDATE kullanicilar SET portfoy = ? WHERE id = ?`).run(JSON.stringify(aliciPortfoy), aliciId);
 
-            // 3. Satıcının parasını ekle ve mülkünü envanterinden KESİN olarak sil
             const saticiRow = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(saticiId);
             if (saticiRow && saticiRow.portfoy) {
                 let saticiPortfoy = JSON.parse(saticiRow.portfoy || '{}');
@@ -344,15 +337,13 @@ app.post('/api/ilan-satin-al', (req, res) => {
                 saticiPortfoy.nakit = saticiNakit;
 
                 if (saticiPortfoy.varliklar) {
-                    // İKİ AŞAMALI FİLTRELEME: Önce varlikId ile, tutmazsa ilan_tipi ve ilan-aktif durumuyla temizle
                     saticiPortfoy.varliklar = saticiPortfoy.varliklar.filter(v => {
                         if (!v) return false;
                         if (hedefVarlikId && String(v.id) === String(hedefVarlikId)) {
-                            return false; // Bu mülkü sil
+                            return false; 
                         }
-                        // Fallback: ID eşleşmezse aynı isimdeki satışta olan mülkü düş
                         if (v.isim === ilanTipi && (v.durum === 'ilan-aktif' || v.durum === 'satildi')) {
-                            return false; // Bu mülkü sil
+                            return false; 
                         }
                         return true;
                     });
@@ -361,7 +352,6 @@ app.post('/api/ilan-satin-al', (req, res) => {
                 db.prepare(`UPDATE kullanicilar SET portfoy = ? WHERE id = ?`).run(JSON.stringify(saticiPortfoy), saticiId);
             }
 
-            // 4. İlanı pazar tablosundan tamamen kaldır
             db.prepare(`DELETE FROM ilanlar WHERE id = ?`).run(ilanId);
 
             return true;
@@ -374,7 +364,7 @@ app.post('/api/ilan-satin-al', (req, res) => {
         res.status(400).json({ basari: false, mesaj: err.message });
     }
 });
-// 🌟 Üyelerin tarayıcıyı yenilediğinde güncel ayarları alabilmesi için rota
+
 app.get('/api/oyun-ayarlari', (req, res) => {
     try {
         const kayit = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
@@ -389,7 +379,6 @@ app.get('/api/oyun-ayarlari', (req, res) => {
     }
 });
 
-// 🌟 Admin ayarları güncellediğinde hem veritabanına yazıp hem de herkese haber veren rota
 app.post('/api/admin/ayar-guncelle', (req, res) => {
     const { ayarlar, sureler } = req.body;
     if (!ayarlar) {
@@ -404,7 +393,6 @@ app.post('/api/admin/ayar-guncelle', (req, res) => {
     try {
         db.prepare(`INSERT OR REPLACE INTO oyun_ayarlari (id, ayarlar) VALUES (1, ?)`).run(JSON.stringify(kayitPaketi));
         
-        // 🌟 Bağlı olan TÜM tarayıcılara anında sinyal gönderiyoruz
         io.emit('ayarlarDegisti', {
             ayarlar: kayitPaketi,
             sureler: kayitPaketi.sureler
@@ -416,7 +404,6 @@ app.post('/api/admin/ayar-guncelle', (req, res) => {
     }
 });
 
-// YENİ ÜYE KAYIT ROTASI (Eksiksiz ve büyük/küçük harf duyarlı kontrolleriyle)
 app.post('/api/kayit', (req, res) => {
     const { kadi, email, sifre, adsoyad, portfoy } = req.body; 
     
@@ -431,7 +418,6 @@ app.post('/api/kayit', (req, res) => {
     const temizAdSoyad = adsoyad.trim();
 
     try {
-        // Büyük/küçük harf ve boşluk farkını yok sayarak ad soyad kontrolü
         const mevcutAd = db.prepare(`SELECT id FROM kullanicilar WHERE LOWER(TRIM(adsoyad)) = LOWER(TRIM(?))`).get(temizAdSoyad);
         if (mevcutAd) {
             return res.status(400).json({ basari: false, mesaj: 'Bu ad soyad (şirket ismi) daha önce alınmış! Lütfen başka bir tane seçin.' });
@@ -460,6 +446,7 @@ app.post('/api/kayit', (req, res) => {
         return res.status(400).json({ basari: false, mesaj: 'Bu e-posta adresi zaten alınmış veya hata oluştu!' });
     }
 });
+
 app.post('/api/sifre-sifirla', (req, res) => {
     const { email, yeniSifre } = req.body;
 
@@ -479,7 +466,6 @@ app.post('/api/sifre-sifirla', (req, res) => {
     }
 });
 
-// Profil Güncelleme Rotalama
 app.post('/api/profil-guncelle', (req, res) => {
     if (!req.session || !req.session.kullanici) {
         return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı, lütfen tekrar giriş yapın." });
@@ -495,7 +481,6 @@ app.post('/api/profil-guncelle', (req, res) => {
     const temizAd = yeniAdSoyad.trim();
 
     try {
-        // Kesin çözüm: Büyük/küçük harf ve boşlukları temizleyerek kontrol et
         const baskaKullaniciVarmi = db.prepare(`SELECT id FROM kullanicilar WHERE LOWER(TRIM(adsoyad)) = LOWER(TRIM(?)) AND id != ?`).get(temizAd, userId);
         
         if (baskaKullaniciVarmi) {
@@ -518,8 +503,6 @@ app.get('/api/portfoy-getir', (req, res) => {
 
     try {
         const userId = req.session.kullanici.id;
-        
-        // ÖNEMLİ: Session'a güvenmek yerine veritabanından anlık taze veriyi çekiyoruz
         const user = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(userId);
         
         if (!user) {
@@ -533,10 +516,10 @@ app.get('/api/portfoy-getir', (req, res) => {
             portfoyObj = {};
         }
 
-      res.json({
+        res.json({
             basari: true,
             nakit: portfoyObj.nakit !== undefined ? portfoyObj.nakit : (portfoyObj.para || 0),
-            varliklar: portfoyObj.varliklar || [], // <--- Buradaki virgül eksikti!
+            varliklar: portfoyObj.varliklar || [],
             gunlukGelir: portfoyObj.gunlukGelir || 0,
             konutKiraGeliri: portfoyObj.konutKiraGeliri || 0 
         });
@@ -545,7 +528,7 @@ app.get('/api/portfoy-getir', (req, res) => {
         res.status(500).json({ basari: false, mesaj: err.message });
     }
 });
-// ÇIKIŞ ROTASI
+
 app.get('/api/cikis', (req, res) => {
     req.session.destroy((err) => {
         if (err) {
@@ -598,8 +581,6 @@ app.get('/api/aktif-kullanici', (req, res) => {
 
     try {
         const userId = req.session.kullanici.id;
-        
-        // KRİTİK NOKTA: Session'ı bypass edip doğrudan DB'den güncel portföyü çekiyoruz
         const dbUser = db.prepare(`SELECT id, adsoyad, portfoy FROM kullanicilar WHERE id = ?`).get(userId);
         
         if (!dbUser) {
@@ -613,7 +594,6 @@ app.get('/api/aktif-kullanici', (req, res) => {
             portfoyObj = {};
         }
 
-        // Oturumu da güncelleyelim ki sonraki isteklerde bayat kalmasın
         req.session.kullanici.portfoy = portfoyObj;
 
         res.json({
@@ -672,13 +652,11 @@ app.get('/api/kullanicilar-liste', (req, res) => {
         return res.status(500).json({ basari: false, mesaj: err.message });
     }
 });
-// Socket.io bağlantı ve olay yönetimi
+
 io.on('connection', (socket) => {
     console.log('Bir kullanıcı socket üzerinden bağlandı:', socket.id);
 
-    // Admin panelinden veya başka bir yerden 'adminAyariGuncelle' sinyali gelirse
     socket.on('adminAyariGuncelle', (veri) => {
-        // Gelen güncel ayarları tüm istemcilere (bağlı olan herkese) yayınla
         io.emit('ayarlarDegisti', veri);
     });
 
@@ -686,6 +664,7 @@ io.on('connection', (socket) => {
         console.log('Bir kullanıcı socket bağlantısını kesti:', socket.id);
     });
 });
+
 server.listen(3000, '0.0.0.0', () => {
     console.log("Sunucumuz 3000 portunda başarıyla çalışıyor.");
 }).on('error', (err) => {
