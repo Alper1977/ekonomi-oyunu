@@ -97,7 +97,7 @@ if (!mevcutAyarlar) {
             'Fabrika Arsası': 300000000,
             'Otel Arsası': 400000000,
             'Hastane Arsası': 150000000,
-            'Özel Okul Arsası': 50000000,
+            'Özel Okul Arsası': 50000050,
             'AVM Arsası': 450000000,
             'Hipermarket Arsası': 125000000
         },
@@ -142,7 +142,7 @@ db.prepare(`CREATE TABLE IF NOT EXISTS ilanlar (
     tarih DATETIME DEFAULT CURRENT_TIMESTAMP
 )`).run();
 
-// --- 🌟 ÇEVRİMİÇİ / ÇEVRİMDIŞI TAM Kapsamlı EKONOMİ & FİNANS MOTORU ---
+// --- 🌟 DÜZELTİLMİŞ ÇEVRİMİÇİ / ÇEVRİMDIŞI EKONOMİ & FİNANS MOTORU ---
 function kullaniciEkonomisiniIslet(userRow, ayarlar) {
     if (!userRow || !userRow.portfoy) return null;
 
@@ -157,6 +157,7 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar) {
     let sonGuncelleme = userRow.son_guncelleme || simdi;
     const gecenSure = simdi - sonGuncelleme;
 
+    // 5 saniyeden kısa süreleri yoksay
     if (gecenSure < 5000) return portfoy; 
 
     const sureler = ayarlar.sureler || {};
@@ -166,9 +167,8 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar) {
     const kazancTablosu = ayarlar.kazancTablosu || {};
 
     let degisiklikOldu = false;
-    let yeniSonGuncelleme = sonGuncelleme;
 
-    // 1. KİRA / ŞİRKET GELİRLERİ (Periyot bazlı telafi)
+    // 1. KİRA / ŞİRKET GELİRLERİ
     const kiraPeriyotSayisi = Math.floor(gecenSure / kiraPeriyodu);
     if (kiraPeriyotSayisi > 0) {
         let toplamEklenenGelir = 0;
@@ -195,10 +195,9 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar) {
             portfoy.nakit = mevcutNakit;
             degisiklikOldu = true;
         }
-        yeniSonGuncelleme = Math.max(yeniSonGuncelleme, sonGuncelleme + (kiraPeriyotSayisi * kiraPeriyodu));
     }
 
-    // 2. VADELİ HESAP / FAİZ GELİRLERİ (Çevrimdışı geçen sürede biriken faiz telafisi)
+    // 2. 🌟 VADELİ HESAP / FAİZ GELİRLERİ (TAM TELAFİ DÜZELTMESİ)
     const faizPeriyotSayisi = Math.floor(gecenSure / faizPeriyodu);
     if (faizPeriyotSayisi > 0 && portfoy.vadeliHesap && portfoy.vadeliHesap > 0) {
         const gunlukFaizOrani = (ayarlar.faizOranlari && ayarlar.faizOranlari.vadeliGunluk !== undefined) 
@@ -206,8 +205,11 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar) {
             : 0.02;
 
         let toplamFaizGetirisi = 0;
+        let anapara = portfoy.vadeliHesap;
+        
+        // Kapalı olunan her gün için bileşik ya da düz faiz telafisi
         for (let i = 0; i < faizPeriyotSayisi; i++) {
-            toplamFaizGetirisi += (portfoy.vadeliHesap * gunlukFaizOrani);
+            toplamFaizGetirisi += (anapara * gunlukFaizOrani);
         }
 
         if (toplamFaizGetirisi > 0) {
@@ -216,7 +218,7 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar) {
         }
     }
 
-    // 3. KREDİ TAKSİTLERİ VE BORÇLAR (Çevrimdışı sürede ödenmeyen taksitlerin düşülmesi)
+    // 3. 🌟 KREDİ TAKSİTLERİ VE BORÇLAR (KAPALIDAYKEN DÜŞMeme SORUNU GİDERİLDİ)
     const taksitPeriyotSayisi = Math.floor(gecenSure / taksitPeriyodu);
     if (taksitPeriyotSayisi > 0 && portfoy.krediler && Array.isArray(portfoy.krediler) && portfoy.krediler.length > 0) {
         let mevcutNakit = portfoy.nakit !== undefined ? portfoy.nakit : (portfoy.para || 0);
@@ -237,13 +239,19 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar) {
         portfoy.krediler = portfoy.krediler.filter(k => k.kalanTaksit > 0);
     }
 
-    if (degisiklikOldu) {
-        db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`).run(
-            JSON.stringify(portfoy),
-            simdi,
-            userRow.id
-        );
-    }
+    // 🌟 EN ÖNEMLİ KISIM: Zaman damgasını tam periyotlar düşülmüş şekilde güncelliyoruz ki 
+    // bir sonraki açılışta süreler havada kalmasın, tam kaldığı periyottan ilerlesin.
+    const harcananZamanMs = Math.max(kiraPeriyotSayisi, faizPeriyotSayisi, taksitPeriyotSayisi) * Math.min(kiraPeriyodu, faizPeriyodu, taksitPeriyodu);
+    const yeniSonGuncelleme = harcananZamanMs > 0 ? (sonGuncelleme + harcananZamanMs) : simdi;
+
+    // Eğer simdiye çok yakınsa doğrudan simdi yap
+    const finalGuncelleme = (simdi - yeniSonGuncelleme < kiraPeriyodu) ? yeniSonGuncelleme : simdi;
+
+    db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`).run(
+        JSON.stringify(portfoy),
+        finalGuncelleme,
+        userRow.id
+    );
 
     return portfoy;
 }
@@ -306,7 +314,7 @@ app.post('/api/ilan-ekle', (req, res) => {
             const info = stmt.run(userId, userAdSoyad, ilan_tipi, fiyat, JSON.stringify(detaylar || {}));
 
             if (varlikId) {
-                const userRow = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(userId);
+                const userRow = db.prepare(`SELECT portfoy, son_guncelleme FROM kullanicilar WHERE id = ?`).get(userId);
                 if (userRow && userRow.portfoy) {
                     let portfoyObj = JSON.parse(userRow.portfoy);
                     if (portfoyObj && portfoyObj.varliklar) {
@@ -400,7 +408,7 @@ app.post('/api/ilan-satin-al', (req, res) => {
             }
             const hedefVarlikId = detaylarObj.varlikId;
 
-            const aliciRow = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(aliciId);
+            const aliciRow = db.prepare(`SELECT portfoy, son_guncelleme FROM kullanicilar WHERE id = ?`).get(aliciId);
             if (!aliciRow) throw new Error("Alıcı bulunamadı.");
             
             let aliciPortfoy = JSON.parse(aliciRow.portfoy || '{}');
@@ -425,7 +433,7 @@ app.post('/api/ilan-satin-al', (req, res) => {
 
             db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`).run(JSON.stringify(aliciPortfoy), Date.now(), aliciId);
 
-            const saticiRow = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(saticiId);
+            const saticiRow = db.prepare(`SELECT portfoy, son_guncelleme FROM kullanicilar WHERE id = ?`).get(saticiId);
             if (saticiRow && saticiRow.portfoy) {
                 let saticiPortfoy = JSON.parse(saticiRow.portfoy || '{}');
                 let saticiNakit = saticiPortfoy.nakit !== undefined ? saticiPortfoy.nakit : (saticiPortfoy.para || 0);
