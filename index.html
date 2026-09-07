@@ -5300,6 +5300,17 @@ window.addEventListener('DOMContentLoaded', async () => {
                         window.oyunAyar = gelenVeri.ayarlar;
                         window.oyunAyarlari = gelenVeri.sureler;
 
+                        // Socket ile yeni ayar geldiğinde val-kira ID'li elementi anında güncelle:
+if (window.oyunAyar && window.oyunAyar.konutKiraGeliri !== undefined) {
+    let kiraEl = document.getElementById('val-kira');
+    if (kiraEl) {
+        kiraEl.innerText = Number(window.oyunAyar.konutKiraGeliri).toLocaleString('tr-TR', { 
+            minimumFractionDigits: 2, 
+            maximumFractionDigits: 2 
+        }) + " TL";
+    }
+}
+
                         if (window.oyunAyar) {
                             kazancTablosu = window.oyunAyar.kazancTablosu || kazancTablosu;
                             kurlar = window.oyunAyar.kurlar || kurlar;
