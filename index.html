@@ -2324,17 +2324,19 @@ if (typeof sonSirketKazanci === 'undefined') { var sonSirketKazanci = Date.now()
 if (typeof sonFaizZamani === 'undefined') { var sonFaizZamani = Date.now(); }
 
 try {
-        let res = await fetch('/api/oyun-ayarlari');
-        let sonuc = await res.json();
-        if (sonuc.basari && sonuc.ayarlar) {
-            window.oyunAyar = sonuc.ayarlar;
-            if (sonuc.ayarlar.sureler) {
-                window.oyunAyarlari = sonuc.ayarlar.sureler;
-            }
-        }
-    } catch (e) {
-        // Sessizce geç
+    let res = await fetch('/api/portfoy-getir'); 
+    if (res.status === 401) {
+        window.location.href = '/'; // Sunucu restart attıysa veya oturum uçtuysa tertemiz başa at
+        return;
     }
+    let data = await res.json();
+    if (data && data.varliklar) {
+        state.varliklar = data.varliklar;
+        if (data.nakit !== undefined) state.nakit = data.nakit;
+    }
+} catch (e) {
+    // Ağ hatası
+}
 
     
     if (typeof state === 'undefined' || !state) {
