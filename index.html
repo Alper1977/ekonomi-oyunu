@@ -2319,6 +2319,10 @@ let sonKiraZamani = Date.now();
 
 setInterval(async () => {
 
+if (typeof sonKiraZamani === 'undefined') { var sonKiraZamani = Date.now(); }
+if (typeof sonSirketKazanci === 'undefined') { var sonSirketKazanci = Date.now(); }
+if (typeof sonFaizZamani === 'undefined') { var sonFaizZamani = Date.now(); }
+
 try {
         let res = await fetch('/api/oyun-ayarlari');
         let sonuc = await res.json();
