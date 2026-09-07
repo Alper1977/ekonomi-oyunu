@@ -395,6 +395,100 @@ setInterval(async () => {
     }
 }, 3000); // 3 saniyede bir sunucuda çalışır
 
+// server.js içine ekleyeceğin fonksiyon (Yukarıda verdiğin kod)
+function oyuncuilanlariniKontrolEt(oyuncuState, botlar, oyunAyarlari, satisFiyatlari) {
+    let simdiMs = Date.now();
+    let beklemeSuresiMs = oyunAyarlari.GLOBAL_BEKLEME_SURESI;
+    let veriDegisti = false;
+
+    let satilikVarliklar = oyuncuState.varliklar.filter(v => v.durum === 'ilan-aktif');
+
+    satilikVarliklar.forEach(varlik => {
+        if (!varlik.ilanVerilisZamani) {
+            varlik.ilanVerilisZamani = simdiMs;
+            veriDegisti = true;
+            return;
+        }
+
+        let gecenSure = simdiMs - varlik.ilanVerilisZamani;
+        if (gecenSure < beklemeSuresiMs) return;
+
+        let satisBedeli = (satisFiyatlari && satisFiyatlari[varlik.isim]) ? satisFiyatlari[varlik.isim] : 2000000;
+        let alabilecekBotlar = botlar.filter(b => b.nakit >= satisBedeli);
+        let aliciBot;
+
+        if (alabilecekBotlar.length > 0) {
+            aliciBot = alabilecekBotlar[Math.floor(Math.random() * alabilecekBotlar.length)];
+        } else {
+            aliciBot = botlar[Math.floor(Math.random() * botlar.length)];
+            aliciBot.nakit += satisBedeli + 5000000;
+        }
+
+        let dusulenBorc = 0;
+
+        if (varlik.bloke && varlik.krediID && oyuncuState.krediler) {
+            let ilgiliKredi = oyuncuState.krediler.find(kr => kr.id === varlik.krediID);
+
+            if (ilgiliKredi) {
+                dusulenBorc = ilgiliKredi.kalanBorc;
+                oyuncuState.kredi = Math.max(0, oyuncuState.kredi - dusulenBorc);
+                ilgiliKredi.kalanBorc = 0;
+                oyuncuState.krediler = oyuncuState.krediler.filter(kr => kr.kalanBorc > 0);
+
+                if (oyuncuState.kredi <= 0) {
+                    oyuncuState.kredi = 0;
+                    oyuncuState.taksit = 0;
+                    oyuncuState.krediler = [];
+                    oyuncuState.varliklar.forEach(item => {
+                        item.bloke = false;
+                        item.krediID = null;
+                    });
+                } else {
+                    let katsayi = 1.25;
+                    oyuncuState.taksit = (oyuncuState.kredi / 48) * katsayi;
+                }
+            }
+        }
+
+        let netKazanc = satisBedeli - dusulenBorc;
+        aliciBot.nakit -= satisBedeli;
+        oyuncuState.nakit += netKazanc;
+        varlik.durum = 'silinecek';
+
+        if (!aliciBot.varliklar) aliciBot.varliklar = [];
+        aliciBot.varliklar.push({
+            id: Date.now() + Math.random(),
+            isim: varlik.isim,
+            durum: 'sahip'
+        });
+
+        veriDegisti = true;
+    });
+
+    if (veriDegisti) {
+        oyuncuState.varliklar = oyuncuState.varliklar.filter(v => v.durum !== 'silinecek');
+    }
+
+    return { oyuncuState, veriDegisti };
+}
+
+// 🔥 KULLANIM YERİ ÖRNEĞİ: Portföy getirme endpoint'i içinde çağırabilirsin
+app.get('/api/portfoy-getir', (req, res) => {
+    // 1. Oyuncunun o anki state'ini veritabanından veya hafızadan çek
+    let oyuncuState = oyuncuVerisiniGetir(); // (Kendi veri çekme fonksiyonun)
+    
+    // 2. Fonksiyonu çalıştırıp süresi dolan ilanları botlara sat
+    let sonuc = oyuncuilanlariniKontrolEt(oyuncuState, global.botlar, global.oyunAyarlari, global.satisFiyatlari);
+    
+    if (sonuc.veriDegisti) {
+        // Eğer bir mülk satıldıysa güncel hali veritabanına kaydet
+        oyuncuVerisiniKaydet(sonuc.oyuncuState);
+    }
+
+    // 3. Güncel portföyü tarayıcıya gönder
+    res.json(sonuc.oyuncuState);
+});
+
 app.get('/api/ilanlar', (req, res) => {
     try {
         const ilanlar = db.prepare(`SELECT * FROM ilanlar`).all();
@@ -708,36 +802,6 @@ app.post('/api/profil-guncelle', (req, res) => {
     }
 });
 
-app.get('/api/portfoy-getir', (req, res) => {
-    if (!req.session || !req.session.kullanici) {
-        return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı!" });
-    }
-
-    try {
-        const userId = req.session.kullanici.id;
-        const user = db.prepare(`SELECT * FROM kullanicilar WHERE id = ?`).get(userId);
-        
-        if (!user) {
-            return res.status(404).json({ basari: false, mesaj: "Kullanıcı bulunamadı!" });
-        }
-
-        const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
-        const ayarlar = ayarKaydi ? JSON.parse(ayarKaydi.ayarlar) : {};
-
-        const guncelPortfoy = kullaniciEkonomisiniIslet(user, ayarlar) || JSON.parse(user.portfoy || '{}');
-
-        res.json({
-            basari: true,
-            nakit: guncelPortfoy.nakit !== undefined ? guncelPortfoy.nakit : (guncelPortfoy.para || 0),
-            varliklar: guncelPortfoy.varliklar || [],
-            gunlukGelir: guncelPortfoy.gunlukGelir || 0,
-            konutKiraGeliri: guncelPortfoy.konutKiraGeliri || 0 
-        });
-    } catch (err) {
-        console.error("Portföy getirme hatası:", err.message);
-        res.status(500).json({ basari: false, mesaj: err.message });
-    }
-});
 
 app.get('/api/cikis', (req, res) => {
     req.session.destroy((err) => {
