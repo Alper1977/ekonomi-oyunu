@@ -1065,6 +1065,14 @@ try {
             if (typeof guncelle === 'function') {
                 await guncelle();
             }
+            // 🌟 Bu bloğu if (sonuc.basari) içine, guncelle()'den hemen sonraya ekle:
+            let anlikKonutSayisi = (state.varliklar || []).filter(v => v.isim === 'Konut' && (v.durum === 'sahip' || v.durum === 'ilan-aktif')).length;
+            let yeniToplamKira = anlikKonutSayisi * window.oyunAyar.konutKiraGeliri;
+            
+            let kiraValEl = document.getElementById('val-kira');
+            if (kiraValEl) {
+                kiraValEl.innerText = yeniToplamKira.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
+            }
 
             modalGoster("✅ Ayarlar ve süreler başarıyla güncellendi, kaydedildi ve tüm oyunculara yansıtıldı!",  
                 '<button onclick="document.getElementById(\'modal-overlay\').style.display=\'none\'; changePage(\'page-mali\');">TAMAM</button>');
