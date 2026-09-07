@@ -1066,7 +1066,9 @@ if (kiraEl) {
             }
 
             // 🌟 3. Adım: Sunucudan en güncel hali garanti olsun diye tekrar çek
-            await oyunAyarlariniYukle();
+            if (typeof guncelle === 'function') {
+            guncelle();
+            }
 
             // 🌟 4. Adım: Ekrandaki arayüzü anında yenile
             if (typeof guncelle === 'function') {
