@@ -3029,6 +3029,7 @@ async function guncelle() {
 
     // 🌟 YENİ EKLENEN: Günlük gelir ve kira geliri yazı alanlarını ekrana anında yansıt
     let gunlukGelirEl = document.getElementById('gunluk-gelir') || document.getElementById('yazi-gunluk-gelir');
+    console.log("Bulunan günlük gelir elementi:", gunlukGelirEl, "Değer:", state.gunlukGelir);
     if (gunlukGelirEl && state.gunlukGelir !== undefined) {
         gunlukGelirEl.innerText = Number(state.gunlukGelir).toLocaleString() + " TL";
     }
