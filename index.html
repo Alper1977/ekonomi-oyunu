@@ -5291,79 +5291,89 @@ window.addEventListener('DOMContentLoaded', async () => {
                     zenginlerListesiniGuncelle();
                 }
 
-                if (typeof socket !== 'undefined' && socket) {
-                    // Socket dinleyicisinin mükerrer (üst üste) eklenmesini önlemek için önce temizleyelim
-                    socket.off('ayarlarDegisti');
-                    
-                    socket.on('ayarlarDegisti', (gelenVeri) => {
-                        console.log("🔥 SUNUCUDAN GELEN HAM AYARLAR:", gelenVeri);
-                        window.oyunAyar = gelenVeri.ayarlar;
-                        window.oyunAyarlari = gelenVeri.sureler;
+              // 🌟 1. Socket dinleyicisini global alana taşıyoruz ki sayfa açık olduğu sürece her an dinlemede kalabilsin
+if (typeof socket !== 'undefined' && socket) {
+    socket.off('ayarlarDegisti');
+    
+    socket.on('ayarlarDegisti', (gelenVeri) => {
+        console.log("🔥 SUNUCUDAN GELEN HAM AYARLAR:", gelenVeri);
+        window.oyunAyar = gelenVeri.ayarlar;
+        window.oyunAyarlari = gelenVeri.sureler;
 
-                        if (window.oyunAyar) {
-                            kazancTablosu = window.oyunAyar.kazancTablosu || kazancTablosu;
-                            kurlar = window.oyunAyar.kurlar || kurlar;
-                            faizOranlari = window.oyunAyar.faizOranlari || faizOranlari;
-                            satisFiyatlari = window.oyunAyar.satisFiyatlari || satisFiyatlari;
-                            yatirimMaliyetleri = window.oyunAyar.yatirimMaliyetleri || yatirimMaliyetleri;
-                            
-                            // 🌟 1. Günlük gelir ve kira gelirini state içinde anlık ve kesin olarak güncelle
-                            if (typeof state !== 'undefined') {
-                                if (window.oyunAyar.gunlukGelir !== undefined) {
-                                    state.gunlukGelir = Number(window.oyunAyar.gunlukGelir);
-                                }
-                                if (window.oyunAyar.konutKiraGeliri !== undefined) {
-                                    state.konutKiraGeliri = Number(window.oyunAyar.konutKiraGeliri);
-                                }
-                            }
-                            
-                            // 🌟 2. Ekranda günlük gelir ve kira yazan elementleri doğrudan yakalayıp güncelle
-                            let gunlukGelirEl = document.getElementById('gunluk-gelir') || document.getElementById('yazi-gunluk-gelir');
-                            if (gunlukGelirEl && window.oyunAyar.gunlukGelir !== undefined) {
-                                gunlukGelirEl.innerText = Number(window.oyunAyar.gunlukGelir).toLocaleString() + " TL";
-                            }
+        if (window.oyunAyar) {
+            kazancTablosu = window.oyunAyar.kazancTablosu || kazancTablosu;
+            kurlar = window.oyunAyar.kurlar || kurlar;
+            faizOranlari = window.oyunAyar.faizOranlari || faizOranlari;
+            satisFiyatlari = window.oyunAyar.satisFiyatlari || satisFiyatlari;
+            yatirimMaliyetleri = window.oyunAyar.yatirimMaliyetleri || yatirimMaliyetleri;
+            
+            if (typeof state !== 'undefined') {
+                if (window.oyunAyar.gunlukGelir !== undefined) {
+                    state.gunlukGelir = Number(window.oyunAyar.gunlukGelir);
+                }
+                if (window.oyunAyar.konutKiraGeliri !== undefined) {
+                    state.konutKiraGeliri = Number(window.oyunAyar.konutKiraGeliri);
+                }
+            }
+            
+            let gunlukGelirEl = document.getElementById('gunluk-gelir') || document.getElementById('yazi-gunluk-gelir');
+            if (gunlukGelirEl && window.oyunAyar.gunlukGelir !== undefined) {
+                gunlukGelirEl.innerText = Number(window.oyunAyar.gunlukGelir).toLocaleString() + " TL";
+            }
 
-                            let kiraGelirEl = document.getElementById('konut-kira-geliri') || document.getElementById('yazi-kira-geliri');
-                            if (kiraGelirEl && window.oyunAyar.konutKiraGeliri !== undefined) {
-                                kiraGelirEl.innerText = Number(window.oyunAyar.konutKiraGeliri).toLocaleString() + " TL";
-                            }
-                            
-                            let yeniFaizYuzdesi = window.oyunAyar.faizOranlari?.yatirimKredisiYuzde;
-                            if (yeniFaizYuzdesi !== undefined) {
-                                let yatirimSpan = document.getElementById('yazi-yatirim-faiz');
-                                if (yatirimSpan) yatirimSpan.innerText = yeniFaizYuzdesi;
+            let kiraGelirEl = document.getElementById('konut-kira-geliri') || document.getElementById('yazi-kira-geliri');
+            if (kiraGelirEl && window.oyunAyar.konutKiraGeliri !== undefined) {
+                kiraGelirEl.innerText = Number(window.oyunAyar.konutKiraGeliri).toLocaleString() + " TL";
+            }
+        }
 
-                                let ilanSpan = document.getElementById('yazi-ilan-faiz');
-                                if (ilanSpan) ilanSpan.innerText = yeniFaizYuzdesi;
-                            }
-                        }
+        if (typeof guncelle === 'function') {
+            guncelle();
+        }
 
-                        // Socket ile ayarlar değiştiğinde, güncellenen state'i sunucuya hemen kaydedelim ki kalıcı olsun
-if (typeof portfoyuKaydet === 'function') {
-    portfoyuKaydet(); 
-} else {
-    // Eğer portföyü kaydeden fonksiyonunun adı farklıysa (örneğin fetch ile kaydetme) buraya yazabilirsin
-    fetch('/api/portfoy-kaydet', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(state)
+        if (typeof yatirimlariGuncelle === 'function') {
+            yatirimlariGuncelle();
+        }
+        
+        console.log("Ayarlar socket üzerinden anlık olarak uygulandı!");
     });
 }
 
-                        if (typeof guncelle === 'function') {
-                            guncelle();
-                        }
+// 🌟 2. Sayfa açılış (DOMContentLoaded) kısmı
+window.addEventListener('DOMContentLoaded', async () => {
+    try {
+        let response = await fetch('/api/aktif-kullanici');
+        if (response.ok) {
+            let data = await response.json();
+            
+            if (data && (data.id || data.kadi)) {
+                let sirketBaslik = document.getElementById('sirket-adi-mali');
+                if (sirketBaslik) {
+                    let gorunenIsim = (data.adsoyad && data.adsoyad.trim() !== "") ? data.adsoyad : data.kadi;
+                    sirketBaslik.innerText = gorunenIsim.toUpperCase() + " A.Ş.";
+                }
 
-                        if (typeof yatirimlariGuncelle === 'function') {
-                            yatirimlariGuncelle();
-                        }
-                        
-                        if (typeof adminPaneliniAc === 'function' && document.getElementById('page-admin')?.style.display !== 'none') {
-                            adminPaneliniAc();
-                        }
-                        
-                        console.log("Sunucudan güncel oyun ayarları alındı, gelirler ve yatırımlar anında yenilendi.");
-                    });
+                if (data.portfoy) {
+                    state = data.portfoy;
+                }
+
+                let ayarRes = await fetch('/api/oyun-ayarlari');
+                let ayarSonuc = await ayarRes.json();
+                if (ayarSonuc.basari && ayarSonuc.ayarlar) {
+                    window.oyunAyar = ayarSonuc.ayarlar;
+                    window.oyunAyarlari = ayarSonuc.ayarlar.sureler || ayarSonuc.sureler || {};
+                    
+                    if (typeof state !== 'undefined') {
+                        state.gunlukGelir = window.oyunAyar.gunlukGelir !== undefined ? Number(window.oyunAyar.gunlukGelir) : (state.gunlukGelir || 800000);
+                        state.konutKiraGeliri = window.oyunAyar.konutKiraGeliri !== undefined ? Number(window.oyunAyar.konutKiraGeliri) : (state.konutKiraGeliri || 0);
+                    }
+                }
+
+                changePage('page-mali');
+                guncelle(); 
+
+                if (typeof zenginlerListesiniGuncelle === 'function') {
+                    zenginlerListesiniGuncelle();
                 }
 
                 return;
