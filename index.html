@@ -5291,7 +5291,7 @@ window.addEventListener('DOMContentLoaded', async () => {
                     zenginlerListesiniGuncelle();
                 }
 
-              // 🌟 1. Socket dinleyicisini global alana taşıyoruz ki sayfa açık olduğu sürece her an dinlemede kalabilsin
+// 1. Socket dinleyicisini doğrudan global alanda çalıştırıyoruz (DOMContentLoaded içine sokmuyoruz)
 if (typeof socket !== 'undefined' && socket) {
     socket.off('ayarlarDegisti');
     
@@ -5339,7 +5339,7 @@ if (typeof socket !== 'undefined' && socket) {
     });
 }
 
-// 🌟 2. Sayfa açılış (DOMContentLoaded) kısmı
+// 2. Sayfa açılış (DOMContentLoaded) kısmı - TEK ve EKSİKSİZ blok
 window.addEventListener('DOMContentLoaded', async () => {
     try {
         let response = await fetch('/api/aktif-kullanici');
@@ -5347,6 +5347,8 @@ window.addEventListener('DOMContentLoaded', async () => {
             let data = await response.json();
             
             if (data && (data.id || data.kadi)) {
+                console.log("Aktif oturum bulundu:", data);
+
                 let sirketBaslik = document.getElementById('sirket-adi-mali');
                 if (sirketBaslik) {
                     let gorunenIsim = (data.adsoyad && data.adsoyad.trim() !== "") ? data.adsoyad : data.kadi;
@@ -5385,7 +5387,6 @@ window.addEventListener('DOMContentLoaded', async () => {
         changePage('page-giris-yap');
     }
 });
-
 </script>
 </body>
 </html>
