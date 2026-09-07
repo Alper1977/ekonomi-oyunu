@@ -5369,6 +5369,14 @@ if (kiraKutu) {
                         if (typeof adminPaneliniAc === 'function' && document.getElementById('page-admin')?.style.display !== 'none') {
                             adminPaneliniAc();
                         }
+
+                        setTimeout(() => {
+        let kiraEl = document.getElementById('val-kira');
+        if (kiraEl && window.oyunAyar && window.oyunAyar.konutKiraGeliri !== undefined) {
+            let yeniDeger = Number(window.oyunAyar.konutKiraGeliri);
+            kiraEl.innerText = yeniDeger.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
+        }
+    }, 50);
                         
                         console.log("Sunucudan güncel oyun ayarları alındı, gelirler ve yatırımlar anında yenilendi.");
                     });
