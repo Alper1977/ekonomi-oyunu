@@ -492,10 +492,10 @@ app.get('/api/portfoy-getir', (req, res) => {
             portfoyObj = {};
         }
 
-        res.json({
+      res.json({
             basari: true,
             nakit: portfoyObj.nakit !== undefined ? portfoyObj.nakit : (portfoyObj.para || 0),
-            varliklar: portfoyObj.varliklar || []
+            varliklar: portfoyObj.varliklar || [], // <--- Buradaki virgül eksikti!
             gunlukGelir: portfoyObj.gunlukGelir || 0,
             konutKiraGeliri: portfoyObj.konutKiraGeliri || 0 
         });
