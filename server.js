@@ -262,28 +262,138 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar) {
     return portfoy;
 }
 
-// ARKA PLAN MOTORU
-setInterval(() => {
+// Sunucu tarafında global oyun döngüsü (Örn: Her 3 veya 5 saniyede bir çalışır)
+setInterval(async () => {
     try {
-        const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
-        if (!ayarKaydi) return;
-        const ayarlar = JSON.parse(ayarKaydi.ayarlar);
+        let simdiMs = Date.now();
 
-        const kullanicilar = db.prepare(`SELECT id, portfoy, son_guncelleme FROM kullanicilar`).all();
+        // 1. Veritabanındaki aktif oyuncuları ve botları çek / belleğe al
+        // (Eğer botlar sunucu hafızasında bir array'de tutuluyorsa oradan güncellenir)
         
-        const transaction = db.transaction(() => {
-            kullanicilar.forEach(user => {
-                kullaniciEkonomisiniIslet(user, ayarlar);
+        // --- BOT İŞLEMLERİ ---
+        if (typeof global.botlar !== 'undefined' && global.botlar.length > 0) {
+            let satisFiyatlari = global.satisFiyatlari || {};
+            let gercekVarliklar = Object.keys(satisFiyatlari);
+            let maksimumIlanSiniri = global.oyunAyarlari?.maksimumIlanSiniri || 10;
+            let beklemeSuresiMs = global.oyunAyarlari?.GLOBAL_BEKLEME_SURESI || 86400000; // Örn: 1 gün veya ayarlı süre
+
+            // Botların para kazanması veya rastgele varlık alması
+            if (!global.sonBotZamani || simdiMs - global.sonBotZamani >= global.oyunAyarlari.botHizi) {
+                for (let i = 0; i < 5; i++) {
+                    let rastgeleBot = global.botlar[Math.floor(Math.random() * global.botlar.length)];
+                    if (!rastgeleBot.varliklar) rastgeleBot.varliklar = [];
+
+                    if (Math.random() < 0.30) {
+                        rastgeleBot.nakit += Math.floor(Math.random() * 200000000) + 50000000;
+                    } else if (gercekVarliklar.length > 0) {
+                        let secilenUrun = gercekVarliklar[Math.floor(Math.random() * gercekVarliklar.length)];
+                        let bedel = satisFiyatlari[secilenUrun] || 1000000;
+
+                        if (rastgeleBot.nakit >= bedel) {
+                            rastgeleBot.nakit -= bedel;
+                            rastgeleBot.varliklar.push({
+                                id: Date.now() + Math.random(),
+                                isim: secilenUrun,
+                                durum: 'sahip'
+                            });
+                        }
+                    }
+                }
+                global.sonBotZamani = simdiMs;
+            }
+
+            // Botların ilan açma döngüsü
+            if (!global.sonBotIlanZamani || simdiMs - global.sonBotIlanZamani >= global.oyunAyarlari.botIlanHizi) {
+                let aktifIlanSayilari = {};
+                global.botlar.forEach(b => {
+                    if (b.varliklar) {
+                        b.varliklar.forEach(v => {
+                            if (v.durum === 'ilan-aktif') {
+                                aktifIlanSayilari[v.isim] = (aktifIlanSayilari[v.isim] || 0) + 1;
+                            }
+                        });
+                    }
+                });
+
+                global.botlar.forEach(bot => {
+                    if (bot.varliklar && bot.varliklar.length > 0) {
+                        let sahipVarliklar = bot.varliklar.filter(v => v.durum === 'sahip');
+                        if (sahipVarliklar.length > 0 && Math.random() < 0.30) {
+                            let uygunVarliklar = sahipVarliklar.filter(v => {
+                                let mevcutSayi = aktifIlanSayilari[v.isim] || 0;
+                                return mevcutSayi < maksimumIlanSiniri;
+                            });
+
+                            if (uygunVarliklar.length > 0) {
+                                uygunVarliklar.sort(() => Math.random() - 0.5);
+                                let secilenVarlik = uygunVarliklar[0];
+                                secilenVarlik.durum = 'ilan-aktif';
+                                secilenVarlik.ilanSahibi = bot.isim;
+                                secilenVarlik.ilanVerilisZamani = simdiMs;
+                                aktifIlanSayilari[secilenVarlik.isim] = (aktifIlanSayilari[secilenVarlik.isim] || 0) + 1;
+                            }
+                        }
+                    }
+                });
+                global.sonBotIlanZamani = simdiMs;
+            }
+
+            // Botların ve Gerçek Oyuncuların İlan Süre Kontrolleri (Garanti Satış)
+            global.botlar.forEach(tekilBot => {
+                if (!tekilBot.varliklar || !Array.isArray(tekilBot.varliklar)) return;
+
+                tekilBot.varliklar.forEach(varlik => {
+                    if (varlik.durum !== 'ilan-aktif') return;
+                    if (varlik.satinAlindi || varlik.islemde || varlik.durum === 'satildi-bekliyor' || varlik.durum === 'silinecek') return;
+
+                    if (!varlik.ilanVerilisZamani) {
+                        varlik.ilanVerilisZamani = simdiMs;
+                        return;
+                    }
+
+                    let gecenSure = simdiMs - varlik.ilanVerilisZamani;
+                    if (gecenSure < beklemeSuresiMs) return;
+
+                    let satisBedeli = (satisFiyatlari && satisFiyatlari[varlik.isim]) ? satisFiyatlari[varlik.isim] : 2000000;
+                    let alabilecekBotlar = global.botlar.filter(b => b.isim !== tekilBot.isim && b.nakit >= satisBedeli);
+                    let aliciBot;
+
+                    if (alabilecekBotlar.length > 0) {
+                        aliciBot = alabilecekBotlar[Math.floor(Math.random() * alabilecekBotlar.length)];
+                    } else {
+                        let digerBotlar = global.botlar.filter(b => b.isim !== tekilBot.isim);
+                        if (digerBotlar.length > 0) {
+                            aliciBot = digerBotlar[Math.floor(Math.random() * digerBotlar.length)];
+                            aliciBot.nakit += satisBedeli + 5000000;
+                        }
+                    }
+
+                    if (aliciBot) {
+                        aliciBot.nakit -= satisBedeli;
+                        tekilBot.nakit += satisBedeli;
+                        varlik.durum = 'satildi_isaretle';
+
+                        if (!aliciBot.varliklar) aliciBot.varliklar = [];
+                        aliciBot.varliklar.push({
+                            id: Date.now() + Math.random(),
+                            isim: varlik.isim,
+                            durum: 'sahip'
+                        });
+                    }
+                });
+
+                tekilBot.varliklar = tekilBot.varliklar.filter(v => v.durum !== 'satildi_isaretle');
             });
-        });
+        }
 
-        transaction();
-    } catch (err) {
-        console.error("Arka plan oyun döngüsü hatası:", err.message);
+        // --- GERÇEK OYUNCU İLAN / KREDİ / KİRA KONTROLÜ (Veritabanından çekilip işlenecek kısım) ---
+        // Oyuncu oyunda olmasa bile sunucu veritabanındaki aktif kullanıcılar için 
+        // kredi taksitlerini, kira ödemelerini ve oyuncunun ilan süresini burada hesaplayıp kaydedebilirsin.
+
+    } catch (hata) {
+        console.error("Sunucu arka plan döngüsü hatası:", hata);
     }
-}, 10000);
-
-// --- API Rotaları ---
+}, 3000); // 3 saniyede bir sunucuda çalışır
 
 app.get('/api/ilanlar', (req, res) => {
     try {
