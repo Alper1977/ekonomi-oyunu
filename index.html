@@ -5318,16 +5318,19 @@ window.addEventListener('DOMContentLoaded', async () => {
                             }
                             
                             // 🌟 2. Ekranda günlük gelir ve kira yazan elementleri doğrudan yakalayıp güncelle
-                            let gunlukGelirEl = document.getElementById('gunluk-gelir') || document.getElementById('yazi-gunluk-gelir');
-                            if (gunlukGelirEl && window.oyunAyar.gunlukGelir !== undefined) {
-                                gunlukGelirEl.innerText = Number(window.oyunAyar.gunlukGelir).toLocaleString() + " TL";
-                            }
+let gunlukGelirEl = document.getElementById('gunluk-gelir') || document.getElementById('yazi-gunluk-gelir');
+if (gunlukGelirEl && window.oyunAyar.gunlukGelir !== undefined) {
+    gunlukGelirEl.innerText = Number(window.oyunAyar.gunlukGelir).toLocaleString() + " TL";
+}
 
-                            let kiraGelirEl = document.getElementById('konut-kira-geliri') || document.getElementById('yazi-kira-geliri');
-                            if (kiraGelirEl && window.oyunAyar.konutKiraGeliri !== undefined) {
-                                kiraGelirEl.innerText = Number(window.oyunAyar.konutKiraGeliri).toLocaleString() + " TL";
-                            }
-                            
+// 🌟 Buraya val-kira ID'sini de ekliyoruz:
+let kiraGelirEl = document.getElementById('konut-kira-geliri') || document.getElementById('yazi-kira-geliri') || document.getElementById('val-kira');
+if (kiraGelirEl && window.oyunAyar.konutKiraGeliri !== undefined) {
+    kiraGelirEl.innerText = Number(window.oyunAyar.konutKiraGeliri).toLocaleString('tr-TR', { 
+        minimumFractionDigits: 2, 
+        maximumFractionDigits: 2 
+    }) + ' TL';
+}
                             let yeniFaizYuzdesi = window.oyunAyar.faizOranlari?.yatirimKredisiYuzde;
                             if (yeniFaizYuzdesi !== undefined) {
                                 let yatirimSpan = document.getElementById('yazi-yatirim-faiz');
