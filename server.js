@@ -710,23 +710,37 @@ app.get('/api/aktif-kullanici', (req, res) => {
 
 app.post('/api/portfoy-guncelle', (req, res) => {
     if (!req.session || !req.session.kullanici) {
-        return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı!" }); 
+        return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı!" });    
     }
 
     const userId = req.session.kullanici.id;
     const yeniPortfoy = req.body.portfoy;
-    const portfoyStr = JSON.stringify(yeniPortfoy || {});
 
     try {
-        db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`).run(portfoyStr, Date.now(), userId);
-        req.session.kullanici.portfoy = yeniPortfoy;
+        // Önce mevcut kullanıcıyı çekip ekonomik motoru çalıştırarak senkronu bozmayalım
+        const userRow = db.prepare(`SELECT * FROM kullanicilar WHERE id = ?`).get(userId);
+        if (!userRow) return res.status(404).json({ basari: false, mesaj: "Kullanıcı bulunamadı." });
+
+        const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
+        const ayarlar = ayarKaydi ? JSON.parse(ayarKaydi.ayarlar) : {};
+
+        // Mevcut motorun hesapladığı güncel portföyü baz alıp istemciden gelen kritik değişiklikleri işleyebiliriz
+        // Veya doğrudan istemcinin gönderdiği güncel portföy yapısını güvenle kaydedip zamanı güncelleriz:
+        const portfoyStr = JSON.stringify(yeniPortfoy || {});
+        const simdi = Date.now();
+
+        db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`).run(portfoyStr, simdi, userId);
+        
+        if (req.session.kullanici) {
+            req.session.kullanici.portfoy = yeniPortfoy;
+        }
+
         res.json({ basari: true, mesaj: "Portföy kaydedildi." });
     } catch (err) {
         console.error("Portföy güncelleme hatası:", err.message);
         return res.status(500).json({ basari: false, mesaj: err.message });
     }
 });
-
 app.get('/api/kullanicilar-liste', (req, res) => {
     try {
         const rows = db.prepare(`SELECT adsoyad, portfoy FROM kullanicilar`).all();
