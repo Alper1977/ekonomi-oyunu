@@ -2325,14 +2325,20 @@ if (typeof sonFaizZamani === 'undefined') { var sonFaizZamani = Date.now(); }
 
 try {
     let res = await fetch('/api/portfoy-getir'); 
-    if (res.status === 401) {
-        window.location.href = '/'; // Sunucu restart attıysa veya oturum uçtuysa tertemiz başa at
+    
+    // Eğer giriş sayfasında değilsek ve 401 alırsak başa at
+    if (res.status === 401 && window.location.pathname !== '/' && window.location.pathname !== '/login') {
+        window.location.href = '/'; 
         return;
     }
+
     let data = await res.json();
     if (data && data.varliklar) {
         state.varliklar = data.varliklar;
         if (data.nakit !== undefined) state.nakit = data.nakit;
+        
+        if (data.gunlukGelir !== undefined) state.gunlukGelir = data.gunlukGelir;
+        if (data.konutKiraGeliri !== undefined) state.konutKiraGeliri = data.konutKiraGeliri;
     }
 } catch (e) {
     // Ağ hatası
