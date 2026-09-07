@@ -5279,13 +5279,6 @@ if (typeof socket !== 'undefined' && socket) {
         if (kiraEl && yeniAyarlar.konutKiraGeliri !== undefined) {
             kiraEl.innerText = Number(yeniAyarlar.konutKiraGeliri).toLocaleString() + " TL";
         }
-        
-        // Varsa genel arayüzü de tazeleyelim
-        if (typeof guncelle === 'function') {
-            guncelle();
-        }
-    });
-}
 
         if (window.oyunAyar) {
             kazancTablosu = window.oyunAyar.kazancTablosu || kazancTablosu;
