@@ -717,15 +717,7 @@ app.post('/api/portfoy-guncelle', (req, res) => {
     const yeniPortfoy = req.body.portfoy;
 
     try {
-        // Önce mevcut kullanıcıyı çekip ekonomik motoru çalıştırarak senkronu bozmayalım
-        const userRow = db.prepare(`SELECT * FROM kullanicilar WHERE id = ?`).get(userId);
-        if (!userRow) return res.status(404).json({ basari: false, mesaj: "Kullanıcı bulunamadı." });
-
-        const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
-        const ayarlar = ayarKaydi ? JSON.parse(ayarKaydi.ayarlar) : {};
-
-        // Mevcut motorun hesapladığı güncel portföyü baz alıp istemciden gelen kritik değişiklikleri işleyebiliriz
-        // Veya doğrudan istemcinin gönderdiği güncel portföy yapısını güvenle kaydedip zamanı güncelleriz:
+        // Sunucu zamanını ve arka plan motoru senkronizasyonunu ezmemek için güncel damgayla kaydediyoruz
         const portfoyStr = JSON.stringify(yeniPortfoy || {});
         const simdi = Date.now();
 
@@ -735,12 +727,13 @@ app.post('/api/portfoy-guncelle', (req, res) => {
             req.session.kullanici.portfoy = yeniPortfoy;
         }
 
-        res.json({ basari: true, mesaj: "Portföy kaydedildi." });
+        res.json({ basari: true, mesaj: "Portföy güvenle kaydedildi." });
     } catch (err) {
         console.error("Portföy güncelleme hatası:", err.message);
         return res.status(500).json({ basari: false, mesaj: err.message });
     }
 });
+
 app.get('/api/kullanicilar-liste', (req, res) => {
     try {
         const rows = db.prepare(`SELECT adsoyad, portfoy FROM kullanicilar`).all();
