@@ -50,7 +50,7 @@ db.prepare(`CREATE TABLE IF NOT EXISTS kullanicilar (
 try {
     db.prepare(`ALTER TABLE kullanicilar ADD COLUMN son_guncelleme INTEGER`).run();
 } catch (e) {
-    // Sütun zaten varsa yoksay
+    // Sütun varsa yoksay
 }
 
 // --- 🌟 MERKEZİ AYARLAR TABLOSU ---
@@ -142,7 +142,7 @@ db.prepare(`CREATE TABLE IF NOT EXISTS ilanlar (
     tarih DATETIME DEFAULT CURRENT_TIMESTAMP
 )`).run();
 
-// --- 🌟 KESİN ÇÖZÜM: GELİŞTİRİLMİŞ EKONOMİ VE ZAMAN MOTORU ---
+// --- 🌟 KESİN ÇÖZÜM: GERÇEK ZAMANLI OFFLINE EKONOMİ MOTORU ---
 function kullaniciEkonomisiniIslet(userRow, ayarlar) {
     if (!userRow || !userRow.portfoy) return null;
 
@@ -155,11 +155,17 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar) {
 
     const simdi = Date.now();
     
-    // Eğer kullanıcının son_guncelleme verisi yoksa veya bozuksa şimdiye eşitle
+    // Eğer veritabanında son_guncelleme yoksa şimdiye eşitle ve kaydet
     let sonGuncelleme = (userRow.son_guncelleme && !isNaN(userRow.son_guncelleme)) ? Number(userRow.son_guncelleme) : simdi;
+    
+    if (!userRow.son_guncelleme) {
+        db.prepare(`UPDATE kullanicilar SET son_guncelleme = ? WHERE id = ?`).run(simdi, userRow.id);
+        return portfoy;
+    }
+
     const gecenSure = simdi - sonGuncelleme;
 
-    // 2 saniyeden kısa süreleri yoksay (Gereksiz döngü yükünü önlemek için)
+    // 2 saniyeden kısa süreleri yoksay
     if (gecenSure < 2000) return portfoy; 
 
     const sureler = ayarlar.sureler || {};
@@ -195,12 +201,12 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar) {
             let mevcutNakit = portfoy.nakit !== undefined ? Number(portfoy.nakit) : (portfoy.para !== undefined ? Number(portfoy.para) : 0);
             mevcutNakit += toplamEklenenGelir;
             portfoy.nakit = mevcutNakit;
-            portfoy.para = mevcutNakit; // Çift yönlü uyumluluk
+            portfoy.para = mevcutNakit;
             degisiklikOldu = true;
         }
     }
 
-    // 2. VADELİ HESAP / FAİZ GELİRLERİ (Geçen gün sayısına göre işler)
+    // 2. VADELİ HESAP / FAİZ GELİRLERİ
     const faizPeriyotSayisi = Math.floor(gecenSure / faizPeriyodu);
     if (faizPeriyotSayisi > 0 && portfoy.vadeliHesap && Number(portfoy.vadeliHesap) > 0) {
         const gunlukFaizOrani = (ayarlar.faizOranlari && ayarlar.faizOranlari.vadeliGunluk !== undefined) 
@@ -220,7 +226,7 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar) {
         }
     }
 
-    // 3. KREDİ TAKSİTLERİ (KAPALIDAYKEN VEYA AÇIKKEN TEPKİ VEREN BORÇ DÜŞÜMÜ)
+    // 3. KREDİ TAKSİTLERİ (KAPALIDAYKEN BORÇ DÜŞÜMÜ)
     const taksitPeriyotSayisi = Math.floor(gecenSure / taksitPeriyodu);
     if (taksitPeriyotSayisi > 0 && portfoy.krediler && Array.isArray(portfoy.krediler) && portfoy.krediler.length > 0) {
         let mevcutNakit = portfoy.nakit !== undefined ? Number(portfoy.nakit) : (portfoy.para !== undefined ? Number(portfoy.para) : 0);
@@ -238,29 +244,21 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar) {
 
         portfoy.nakit = mevcutNakit;
         portfoy.para = mevcutNakit;
-        // Biten kredileri listeden temizle
         portfoy.krediler = portfoy.krediler.filter(k => k && k.kalanTaksit > 0);
     }
 
-    // 🌟 KRİTİK ZAMAN SENKRONİZASYONU: 
-    // Tüketilen tam periyot süresini son_guncelleme değerine ekliyoruz. 
-    // Böylece kalan artık süreler boşa gitmez, sonraki girişte birikir.
-    const kullanilanPeriyotSayisi = Math.max(kiraPeriyotSayisi, faizPeriyotSayisi, taksitPeriyotSayisi);
-    const temelPeriyotMs = Math.min(kiraPeriyodu, faizPeriyodu, taksitPeriyodu);
+    // Tüketilen periyot kadar zamanı son_guncelleme üzerine ekle ki kalan artık süreler boşa gitmesin
+    const tuketilenPeriyot = Math.max(kiraPeriyotSayisi, faizPeriyotSayisi, taksitPeriyotSayisi);
+    const bazSureMs = Math.min(kiraPeriyodu, faizPeriyodu, taksitPeriyodu);
     
     let yeniSonGuncelleme = sonGuncelleme;
-    if (kullanilanPeriyotSayisi > 0) {
-        yeniSonGuncelleme += (kullanilanPeriyotSayisi * temelPeriyotMs);
+    if (tuketilenPeriyot > 0) {
+        yeniSonGuncelleme += (tuketilenPeriyot * bazSureMs);
     } else {
         yeniSonGuncelleme = simdi;
     }
 
-    // Eğer yeni hesaplanan güncelleme zamanı bugünden çok geride kaldıysa ya da gelecekteyse simdiye eşitle
-    if (simdi - yeniSonGuncelleme > (temelPeriyotMs * 10)) {
-        yeniSonGuncelleme = simdi - (gecenSure % temelPeriyotMs);
-    }
-
-    // Veritabanına anında güncelportfoy ve yeni zaman damgasını işliyoruz
+    // Veritabanına kalıcı olarak işliyoruz (Üye kapalı olsa bile arka plan döngüsü burayı çalıştırıp kaydedecek)
     db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`).run(
         JSON.stringify(portfoy),
         yeniSonGuncelleme,
@@ -270,7 +268,7 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar) {
     return portfoy;
 }
 
-// Arka plan otomatik döngüsü (Admin kapalı olsa bile sunucu açıksa tüm üyelerin ekonomisini işletir)
+// 🌟 ARKA PLAN MOTORU: Admin veya üye kapalı olsa bile sunucu çalıştığı sürece tüm üyelerin ekonomisini saniyede hesaplar ve veritabanına kaydeder!
 setInterval(() => {
     try {
         const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
@@ -289,7 +287,7 @@ setInterval(() => {
     } catch (err) {
         console.error("Arka plan oyun döngüsü hatası:", err.message);
     }
-}, 15000); // Her 15 saniyede bir arka planda kontrol eder
+}, 10000); // Her 10 saniyede bir arka planda tüm veritabanını günceller
 
 // --- API Rotaları ---
 
@@ -622,7 +620,6 @@ app.get('/api/portfoy-getir', (req, res) => {
         const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
         const ayarlar = ayarKaydi ? JSON.parse(ayarKaydi.ayarlar) : {};
 
-        // 🌟 Üye sayfayı yenilediğinde veya portföy istediğinde kapalı kaldığı süre hemen hesaba katılır!
         const guncelPortfoy = kullaniciEkonomisiniIslet(user, ayarlar) || JSON.parse(user.portfoy || '{}');
 
         res.json({
@@ -660,7 +657,7 @@ app.post('/api/giris', (req, res) => {
                 const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
                 const ayarlar = ayarKaydi ? JSON.parse(ayarKaydi.ayarlar) : {};
                 
-                // 🌟 GİRİŞ ANINDA: Üye kapalıyken geçen sürede biriken tüm gelirler, faizler ve ödenen taksitler işlenir!
+                // 🌟 GİRİŞ ANINDA: Üye kapalıyken geçen sürede arka planda işlenen veya işlenmeyi bekleyen tüm gelirler işlenir!
                 const portfoyObj = kullaniciEkonomisiniIslet(row, ayarlar) || JSON.parse(row.portfoy || '{}');
 
                 req.session.userId = row.id;
@@ -705,7 +702,6 @@ app.get('/api/aktif-kullanici', (req, res) => {
         const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
         const ayarlar = ayarKaydi ? JSON.parse(ayarKaydi.ayarlar) : {};
 
-        // 🌟 AKTİF KONTROL ANINDA: Arkaplanda geçen süre güncellenir
         const portfoyObj = kullaniciEkonomisiniIslet(dbUser, ayarlar) || JSON.parse(dbUser.portfoy || '{}');
         req.session.kullanici.portfoy = portfoyObj;
 
@@ -779,7 +775,7 @@ io.on('connection', (socket) => {
 });
 
 server.listen(3000, '0.0.0.0', () => {
-    console.log("Sunucumuz 3000 portunda ve çevrimdışı ekonomi motoru aktif olarak çalışıyor.");
+    console.log("Sunucumuz 3000 portunda ve çevrimdışı ekonomi motoru aktif şekilde çalışıyor.");
 }).on('error', (err) => {
     console.error("SUNUCU AÇILAMADI HATA ŞU:", err);
 });
