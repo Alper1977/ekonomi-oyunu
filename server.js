@@ -630,7 +630,7 @@ app.get('/api/kullanicilar-liste', (req, res) => {
     }
 });
 
-app.listen(3000, '0.0.0.0', () => {
+server.listen(3000, '0.0.0.0', () => {
     console.log("Sunucumuz 3000 portunda başarıyla çalışıyor.");
 }).on('error', (err) => {
     console.error("SUNUCU AÇILAMADI HATA ŞU:", err);
