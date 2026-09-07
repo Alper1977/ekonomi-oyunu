@@ -1016,29 +1016,25 @@ async function adminAyarlariniKaydet() {
     let ilanSpan = document.getElementById('yazi-ilan-faiz');
     if (ilanSpan) ilanSpan.innerText = yeniFaizYuzdesi;
 
-    try {
+try {
         let response = await fetch('/api/admin/ayar-guncelle', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                ayarlar: window.oyunAyar, 
-                sureler: window.oyunAyarlari 
+            body: JSON.stringify({  
+                ayarlar: window.oyunAyar,  
+                sureler: window.oyunAyarlari  
             })
         });
 
-    let kiraEl = document.getElementById('val-kira');
-if (kiraEl) {
-    kiraEl.innerText = Number(yeniKonutKira).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
-}
-        
         let sonuc = await response.json();
+        
         if (sonuc.basari) {
             if (typeof state !== 'undefined') {
-        state.gunlukGelir = window.oyunAyar.gunlukGelir;
-        state.konutKiraGeliri = window.oyunAyar.konutKiraGeliri;
-    }
+                state.gunlukGelir = window.oyunAyar.gunlukGelir;
+                state.konutKiraGeliri = window.oyunAyar.konutKiraGeliri;
+            }
     
-            // 🌟 1. Adım: Yerel/global değişkenleri güncelle
+            // Yerel/global değişkenleri güncelle
             kazancTablosu = window.oyunAyar.kazancTablosu;
             kurlar = window.oyunAyar.kurlar;
             faizOranlari = window.oyunAyar.faizOranlari;
@@ -1049,15 +1045,15 @@ if (kiraEl) {
                 state.talepler = [
                     { tur: 'Bayi', isim: 'Bayi', bedel: window.oyunAyar.kazancTablosu['Bayi'] },
                     { tur: 'Otel', isim: 'Otel', bedel: window.oyunAyar.kazancTablosu['Otel'] },
-                    { tur: 'Fabrika', isim: 'Fabrika', bedel: window.oyunAyar.kazancTablosu['Fabrika'] }, 
-                    { tur: 'Hastane', isim: 'Hastane', bedel: window.oyunAyar.kazancTablosu['Hastane'] }, 
+                    { tur: 'Fabrika', isim: 'Fabrika', bedel: window.oyunAyar.kazancTablosu['Fabrika'] },  
+                    { tur: 'Hastane', isim: 'Hastane', bedel: window.oyunAyar.kazancTablosu['Hastane'] },  
                     { tur: 'Özel Okul', isim: 'Özel Okul', bedel: window.oyunAyar.kazancTablosu['Özel Okul'] },
                     { tur: 'AVM', isim: 'AVM', bedel: window.oyunAyar.kazancTablosu['AVM'] },
                     { tur: 'Hipermarket', isim: 'Hipermarket', bedel: window.oyunAyar.kazancTablosu['Hipermarket'] }
                 ];
             }
 
-            // 🌟 2. Adım: WebSocket üzerinden oyundaki HERKESİN ekranını eşzamanlı tetikle
+            // WebSocket üzerinden diğer oyunculara bildir
             if (typeof socket !== 'undefined' && socket) {
                 socket.emit('adminAyariGuncelle', {
                     ayarlar: window.oyunAyar,
@@ -1065,17 +1061,12 @@ if (kiraEl) {
                 });
             }
 
-            // 🌟 3. Adım: Sunucudan en güncel hali garanti olsun diye tekrar çek
+            // Arayüzü güncelle (Gerekli hesaplamaları ve DOM yenilemesini yapar)
             if (typeof guncelle === 'function') {
-            guncelle();
+                await guncelle();
             }
 
-            // 🌟 4. Adım: Ekrandaki arayüzü anında yenile
-            if (typeof guncelle === 'function') {
-                guncelle();
-            }
-
-            modalGoster("✅ Ayarlar ve süreler başarıyla güncellendi, kaydedildi ve tüm oyunculara yansıtıldı!", 
+            modalGoster("✅ Ayarlar ve süreler başarıyla güncellendi, kaydedildi ve tüm oyunculara yansıtıldı!",  
                 '<button onclick="document.getElementById(\'modal-overlay\').style.display=\'none\'; changePage(\'page-mali\');">TAMAM</button>');
         } else {
             modalGoster("⚠️ Hata: " + (sonuc.mesaj || "Bilinmeyen bir hata oluştu"));
@@ -1084,7 +1075,6 @@ if (kiraEl) {
         console.error("Admin ayar güncelleme hatası:", err);
         modalGoster("⚠️ Sunucuya bağlanılamadı!");
     }
-}
 
 
     
