@@ -142,7 +142,7 @@ db.prepare(`CREATE TABLE IF NOT EXISTS ilanlar (
     tarih DATETIME DEFAULT CURRENT_TIMESTAMP
 )`).run();
 
-// --- 🌟 ÇEVRİMİÇİ / ÇEVRİMDIŞI AKILLI EKONOMİ MOTORU ---
+// --- 🌟 ÇEVRİMİÇİ / ÇEVRİMDIŞI TAM Kapsamlı EKONOMİ & FİNANS MOTORU ---
 function kullaniciEkonomisiniIslet(userRow, ayarlar) {
     if (!userRow || !userRow.portfoy) return null;
 
@@ -160,18 +160,23 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar) {
     if (gecenSure < 5000) return portfoy; 
 
     const sureler = ayarlar.sureler || {};
-    const kiraPeriyodu = sureler.kiraSuresi || 86400000; // Varsayılan 24 saat
+    const kiraPeriyodu = sureler.kiraSuresi || 86400000; 
+    const faizPeriyodu = sureler.faizSuresi || 86400000;
+    const taksitPeriyodu = sureler.taksitSuresi || 86400000;
     const kazancTablosu = ayarlar.kazancTablosu || {};
 
-    const periyotSayisi = Math.floor(gecenSure / kiraPeriyodu);
+    let degisiklikOldu = false;
+    let yeniSonGuncelleme = sonGuncelleme;
 
-    if (periyotSayisi > 0) {
+    // 1. KİRA / ŞİRKET GELİRLERİ (Periyot bazlı telafi)
+    const kiraPeriyotSayisi = Math.floor(gecenSure / kiraPeriyodu);
+    if (kiraPeriyotSayisi > 0) {
         let toplamEklenenGelir = 0;
 
         if (portfoy.varliklar && Array.isArray(portfoy.varliklar)) {
             portfoy.varliklar.forEach(v => {
                 if (v.durum === 'sahip' && kazancTablosu[v.isim]) {
-                    toplamEklenenGelir += (kazancTablosu[v.isim] * periyotSayisi);
+                    toplamEklenenGelir += (kazancTablosu[v.isim] * kiraPeriyotSayisi);
                 }
             });
         }
@@ -179,7 +184,7 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar) {
         if (ayarlar.konutKiraGeliri > 0 && portfoy.varliklar) {
             portfoy.varliklar.forEach(v => {
                 if (v.durum === 'sahip' && v.isim === 'Konut') {
-                    toplamEklenenGelir += (ayarlar.konutKiraGeliri * periyotSayisi);
+                    toplamEklenenGelir += (ayarlar.konutKiraGeliri * kiraPeriyotSayisi);
                 }
             });
         }
@@ -188,11 +193,54 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar) {
             let mevcutNakit = portfoy.nakit !== undefined ? portfoy.nakit : (portfoy.para || 0);
             mevcutNakit += toplamEklenenGelir;
             portfoy.nakit = mevcutNakit;
+            degisiklikOldu = true;
+        }
+        yeniSonGuncelleme = Math.max(yeniSonGuncelleme, sonGuncelleme + (kiraPeriyotSayisi * kiraPeriyodu));
+    }
+
+    // 2. VADELİ HESAP / FAİZ GELİRLERİ (Çevrimdışı geçen sürede biriken faiz telafisi)
+    const faizPeriyotSayisi = Math.floor(gecenSure / faizPeriyodu);
+    if (faizPeriyotSayisi > 0 && portfoy.vadeliHesap && portfoy.vadeliHesap > 0) {
+        const gunlukFaizOrani = (ayarlar.faizOranlari && ayarlar.faizOranlari.vadeliGunluk !== undefined) 
+            ? ayarlar.faizOranlari.vadeliGunluk 
+            : 0.02;
+
+        let toplamFaizGetirisi = 0;
+        for (let i = 0; i < faizPeriyotSayisi; i++) {
+            toplamFaizGetirisi += (portfoy.vadeliHesap * gunlukFaizOrani);
         }
 
+        if (toplamFaizGetirisi > 0) {
+            portfoy.vadeliHesap += toplamFaizGetirisi;
+            degisiklikOldu = true;
+        }
+    }
+
+    // 3. KREDİ TAKSİTLERİ VE BORÇLAR (Çevrimdışı sürede ödenmeyen taksitlerin düşülmesi)
+    const taksitPeriyotSayisi = Math.floor(gecenSure / taksitPeriyodu);
+    if (taksitPeriyotSayisi > 0 && portfoy.krediler && Array.isArray(portfoy.krediler) && portfoy.krediler.length > 0) {
+        let mevcutNakit = portfoy.nakit !== undefined ? portfoy.nakit : (portfoy.para || 0);
+
+        portfoy.krediler.forEach(kredi => {
+            if (kredi && kredi.kalanTaksit > 0 && kredi.taksitTutari > 0) {
+                const odenecekAdet = Math.min(kredi.kalanTaksit, taksitPeriyotSayisi);
+                const toplamDusulecekTaksit = kredi.taksitTutari * odenecekAdet;
+
+                mevcutNakit -= toplamDusulecekTaksit;
+                kredi.kalanTaksit -= odenecekAdet;
+                degisiklikOldu = true;
+            }
+        });
+
+        portfoy.nakit = mevcutNakit;
+        // Tamamen biten kredileri temizle
+        portfoy.krediler = portfoy.krediler.filter(k => k.kalanTaksit > 0);
+    }
+
+    if (degisiklikOldu) {
         db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`).run(
             JSON.stringify(portfoy),
-            sonGuncelleme + (periyotSayisi * kiraPeriyodu),
+            simdi,
             userRow.id
         );
     }
@@ -561,7 +609,7 @@ app.get('/api/portfoy-getir', (req, res) => {
         const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
         const ayarlar = ayarKaydi ? JSON.parse(ayarKaydi.ayarlar) : {};
 
-        // 🌟 Çevrimdışı geçen süredeki gelirleri hesaba kat!
+        // 🌟 Çevrimdışı geçen süredeki gelirleri, faizleri ve kredi taksitlerini hesaba kat!
         const guncelPortfoy = kullaniciEkonomisiniIslet(user, ayarlar) || JSON.parse(user.portfoy || '{}');
 
         res.json({
