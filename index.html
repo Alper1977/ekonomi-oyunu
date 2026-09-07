@@ -5263,6 +5263,9 @@ if (typeof socket !== 'undefined' && socket) {
         window.oyunAyar = gelenVeri.ayarlar;
         window.oyunAyarlari = gelenVeri.sureler;
 
+        document.getElementById('gunluk-gelir-gosterge').innerText = veri.ayarlar.gunlukGelir;
+document.getElementById('kira-geliri-gosterge').innerText = veri.ayarlar.konutKiraGeliri;
+
         if (window.oyunAyar) {
             kazancTablosu = window.oyunAyar.kazancTablosu || kazancTablosu;
             kurlar = window.oyunAyar.kurlar || kurlar;
