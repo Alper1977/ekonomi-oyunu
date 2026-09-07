@@ -5260,11 +5260,32 @@ if (typeof socket !== 'undefined' && socket) {
     
     socket.on('ayarlarDegisti', (gelenVeri) => {
         console.log("🔥 SUNUCUDAN GELEN HAM AYARLAR:", gelenVeri);
-        window.oyunAyar = gelenVeri.ayarlar;
-        window.oyunAyarlari = gelenVeri.sureler;
+        
+        // Gelen verinin yapısına göre ayarları güncelliyoruz
+        let yeniAyarlar = gelenVeri.ayarlar || gelenVeri;
+        
+        window.oyunAyar = yeniAyarlar;
+        if (yeniAyarlar.sureler) {
+            window.oyunAyarlari = yeniAyarlar.sureler;
+        }
 
-        document.getElementById('gunluk-gelir-gosterge').innerText = veri.ayarlar.gunlukGelir;
-document.getElementById('kira-geliri-gosterge').innerText = veri.ayarlar.konutKiraGeliri;
+        // DOM elementleri sayfada varsa günceller, hata vermez
+        let gunlukEl = document.getElementById('gunluk-gelir-gosterge');
+        if (gunlukEl && yeniAyarlar.gunlukGelir !== undefined) {
+            gunlukEl.innerText = Number(yeniAyarlar.gunlukGelir).toLocaleString() + " TL";
+        }
+
+        let kiraEl = document.getElementById('kira-geliri-gosterge');
+        if (kiraEl && yeniAyarlar.konutKiraGeliri !== undefined) {
+            kiraEl.innerText = Number(yeniAyarlar.konutKiraGeliri).toLocaleString() + " TL";
+        }
+        
+        // Varsa genel arayüzü de tazeleyelim
+        if (typeof guncelle === 'function') {
+            guncelle();
+        }
+    });
+}
 
         if (window.oyunAyar) {
             kazancTablosu = window.oyunAyar.kazancTablosu || kazancTablosu;
