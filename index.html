@@ -3078,7 +3078,14 @@ async function guncelle() {
     }
 
     let konutSayisi = state.varliklar.filter(v => v.isim === 'Konut' && (v.durum === 'sahip' || v.durum === 'ilan-aktif')).length;
-    document.getElementById('val-kira').innerText = (konutSayisi * state.konutKiraGeliri).toLocaleString() + " TL";
+    
+    // Hafızadaki eski state yerine doğrudan güncel window.oyunAyar değerini baz alıyoruz
+    let guncelKiraBirim = (typeof window !== 'undefined' && window.oyunAyar && window.oyunAyar.konutKiraGeliri !== undefined) 
+        ? window.oyunAyar.konutKiraGeliri 
+        : state.konutKiraGeliri;
+
+    let toplamKiraBedeli = konutSayisi > 0 ? (konutSayisi * guncelKiraBirim) : guncelKiraBirim;
+    document.getElementById('val-kira').innerText = toplamKiraBedeli.toLocaleString() + " TL";
 
     // 🌟 KRİTİK KONTROL: Hangi sayfada olursan ol, aktif "TAHSİL ET" var mı global olarak denetleniyor
     let aktifTalepVar = false;
