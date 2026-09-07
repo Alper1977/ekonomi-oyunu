@@ -12,7 +12,6 @@ const io = new Server(server);
 
 app.use(express.json());
 app.use(express.static(__dirname));
-
 console.log("Klasördeki dosyalar:", fs.readdirSync(__dirname));
 
 app.get('/', (req, res) => {
@@ -155,7 +154,6 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar) {
 
     const simdi = Date.now();
     
-    // Eğer veritabanında son_guncelleme yoksa şimdiye eşitle ve kaydet
     let sonGuncelleme = (userRow.son_guncelleme && !isNaN(userRow.son_guncelleme)) ? Number(userRow.son_guncelleme) : simdi;
     
     if (!userRow.son_guncelleme) {
@@ -164,8 +162,6 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar) {
     }
 
     const gecenSure = simdi - sonGuncelleme;
-
-    // 2 saniyeden kısa süreleri yoksay
     if (gecenSure < 2000) return portfoy; 
 
     const sureler = ayarlar.sureler || {};
@@ -176,7 +172,7 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar) {
 
     let degisiklikOldu = false;
 
-    // 1. KİRA / ŞİRKET GELİRLERİ (Geçen süreye göre tam periyot hesabı)
+    // 1. KİRA / ŞİRKET GELİRLERİ
     const kiraPeriyotSayisi = Math.floor(gecenSure / kiraPeriyodu);
     if (kiraPeriyotSayisi > 0) {
         let toplamEklenenGelir = 0;
@@ -226,7 +222,7 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar) {
         }
     }
 
-    // 3. KREDİ TAKSİTLERİ (KAPALIDAYKEN BORÇ DÜŞÜMÜ)
+    // 3. KREDİ TAKSİTLERİ
     const taksitPeriyotSayisi = Math.floor(gecenSure / taksitPeriyodu);
     if (taksitPeriyotSayisi > 0 && portfoy.krediler && Array.isArray(portfoy.krediler) && portfoy.krediler.length > 0) {
         let mevcutNakit = portfoy.nakit !== undefined ? Number(portfoy.nakit) : (portfoy.para !== undefined ? Number(portfoy.para) : 0);
@@ -247,7 +243,6 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar) {
         portfoy.krediler = portfoy.krediler.filter(k => k && k.kalanTaksit > 0);
     }
 
-    // Tüketilen periyot kadar zamanı son_guncelleme üzerine ekle ki kalan artık süreler boşa gitmesin
     const tuketilenPeriyot = Math.max(kiraPeriyotSayisi, faizPeriyotSayisi, taksitPeriyotSayisi);
     const bazSureMs = Math.min(kiraPeriyodu, faizPeriyodu, taksitPeriyodu);
     
@@ -258,7 +253,6 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar) {
         yeniSonGuncelleme = simdi;
     }
 
-    // Veritabanına kalıcı olarak işliyoruz (Üye kapalı olsa bile arka plan döngüsü burayı çalıştırıp kaydedecek)
     db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`).run(
         JSON.stringify(portfoy),
         yeniSonGuncelleme,
@@ -268,7 +262,7 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar) {
     return portfoy;
 }
 
-// 🌟 ARKA PLAN MOTORU: Admin veya üye kapalı olsa bile sunucu çalıştığı sürece tüm üyelerin ekonomisini saniyede hesaplar ve veritabanına kaydeder!
+// ARKA PLAN MOTORU
 setInterval(() => {
     try {
         const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
@@ -287,7 +281,7 @@ setInterval(() => {
     } catch (err) {
         console.error("Arka plan oyun döngüsü hatası:", err.message);
     }
-}, 10000); // Her 10 saniyede bir arka planda tüm veritabanını günceller
+}, 10000);
 
 // --- API Rotaları ---
 
@@ -657,7 +651,6 @@ app.post('/api/giris', (req, res) => {
                 const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
                 const ayarlar = ayarKaydi ? JSON.parse(ayarKaydi.ayarlar) : {};
                 
-                // 🌟 GİRİŞ ANINDA: Üye kapalıyken geçen sürede arka planda işlenen veya işlenmeyi bekleyen tüm gelirler işlenir!
                 const portfoyObj = kullaniciEkonomisiniIslet(row, ayarlar) || JSON.parse(row.portfoy || '{}');
 
                 req.session.userId = row.id;
