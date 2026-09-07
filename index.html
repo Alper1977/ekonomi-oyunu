@@ -1025,6 +1025,11 @@ async function adminAyarlariniKaydet() {
                 sureler: window.oyunAyarlari 
             })
         });
+
+    let kiraEl = document.getElementById('val-kira');
+if (kiraEl) {
+    kiraEl.innerText = Number(yeniKonutKira).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
+}
         
         let sonuc = await response.json();
         if (sonuc.basari) {
