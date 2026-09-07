@@ -629,7 +629,20 @@ app.get('/api/kullanicilar-liste', (req, res) => {
         return res.status(500).json({ basari: false, mesaj: err.message });
     }
 });
+// Socket.io bağlantı ve olay yönetimi
+io.on('connection', (socket) => {
+    console.log('Bir kullanıcı socket üzerinden bağlandı:', socket.id);
 
+    // Admin panelinden veya başka bir yerden 'adminAyariGuncelle' sinyali gelirse
+    socket.on('adminAyariGuncelle', (veri) => {
+        // Gelen güncel ayarları tüm istemcilere (bağlı olan herkese) yayınla
+        io.emit('ayarlarDegisti', veri);
+    });
+
+    socket.on('disconnect', () => {
+        console.log('Bir kullanıcı socket bağlantısını kesti:', socket.id);
+    });
+});
 server.listen(3000, '0.0.0.0', () => {
     console.log("Sunucumuz 3000 portunda başarıyla çalışıyor.");
 }).on('error', (err) => {
