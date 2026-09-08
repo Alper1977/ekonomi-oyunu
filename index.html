@@ -2342,13 +2342,25 @@ try {
         return;
     }
 
-    // 1. Sunucudan güncel portföyü çek
+  // 1. Sunucudan güncel portföyü çek
     try {
         let res = await fetch('/api/portfoy-getir'); 
         let data = await res.json();
-        if (data && data.varliklar) {
-            state.varliklar = data.varliklar;
-            if (data.nakit !== undefined) state.nakit = data.nakit;
+        if (data) {
+            if (data.varliklar) state.varliklar = data.varliklar;
+            if (data.nakit !== undefined) {
+                state.nakit = data.nakit;
+                state.para = data.nakit;
+            }
+            // Kredi ve finansal alanları da mutlaka state'e aktar:
+            if (data.krediler) state.krediler = data.krediler;
+            if (data.kredi !== undefined) state.kredi = data.kredi;
+            if (data.taksit !== undefined) state.taksit = data.taksit;
+            if (data.vadeli !== undefined) state.vadeli = data.vadeli;
+            if (data.vadeliHesap !== undefined) state.vadeliHesap = data.vadeliHesap;
+            if (data.dolar !== undefined) state.dolar = data.dolar;
+            if (data.euro !== undefined) state.euro = data.euro;
+            if (data.altin !== undefined) state.altin = data.altin;
         }
     } catch (e) {
         // Ağ hatası
