@@ -2342,17 +2342,19 @@ try {
         return;
     }
 
-  // 1. Sunucudan güncel portföyü çek
-    try {
+  try {
         let res = await fetch('/api/portfoy-getir'); 
-        let data = await res.json();
-        if (data) {
+        let responseData = await res.json();
+        
+        // Sunucu { basari: true, portfoy: { ... } } dönüyorsa portföyü yakala
+        let data = responseData.portfoy || responseData;
+
+        if (data && typeof data === 'object') {
             if (data.varliklar) state.varliklar = data.varliklar;
             if (data.nakit !== undefined) {
                 state.nakit = data.nakit;
                 state.para = data.nakit;
             }
-            // Kredi ve finansal alanları da mutlaka state'e aktar:
             if (data.krediler) state.krediler = data.krediler;
             if (data.kredi !== undefined) state.kredi = data.kredi;
             if (data.taksit !== undefined) state.taksit = data.taksit;
@@ -2361,11 +2363,16 @@ try {
             if (data.dolar !== undefined) state.dolar = data.dolar;
             if (data.euro !== undefined) state.euro = data.euro;
             if (data.altin !== undefined) state.altin = data.altin;
+
+            // 🌟 EN ÖNEMLİ KISIM: Ekrana yansıtması için arayüz güncelleme fonksiyonunu çağır!
+            if (typeof arayuzuGuncelle === 'function') {
+                arayuzuGuncelle();
+            }
         }
     } catch (e) {
-        // Ağ hatası
+        console.error("Portföy çekme hatası:", e);
     }
-
+    
     // 2. Mülk listesini ekranda anında yeniden çiz (Fonksiyona gerek kalmadan direkt burada çalışır)
     let vList = document.getElementById('varliklar-listesi');
     if (vList) {
