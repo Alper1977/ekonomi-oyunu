@@ -142,8 +142,8 @@ db.prepare(`CREATE TABLE IF NOT EXISTS ilanlar (
     tarih DATETIME DEFAULT CURRENT_TIMESTAMP
 )`).run();
 
-// --- 🌟 ÇEVRİMİÇİ / ÇEVRİMDIŞI AKILLI EKONOMİ MOTORU ---
-function kullaniciEkonomisiniIslet(userRow, ayarlar) {
+// --- 🌟 ÇEVRİMİÇİ / ÇEVRİMDIŞI AKILLI EKONOMİ MOTORU (TAM KAPSAMLI) ---
+function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
     if (!userRow || !userRow.portfoy) return null;
 
     let portfoy;
@@ -162,17 +162,19 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar) {
     }
 
     const gecenSure = simdi - sonGuncelleme;
-    if (gecenSure < 5000) return portfoy; 
+    if (gecenSure < 5000) return portfoy; // 5 saniyeden kısa süreleri pas geç
 
     const sureler = ayarlar.sureler || {};
-    const kiraPeriyodu = sureler.kiraSuresi || 86400000;  // 24 Saat
-    const faizPeriyodu = sureler.faizSuresi || 86400000;  // 24 Saat
-    const taksitPeriyodu = sureler.taksitSuresi || 86400000; // 24 Saat
+    const kiraPeriyodu = sureler.kiraSuresi || 86400000;    // 24 Saat (veya ayarlanan)
+    const faizPeriyodu = sureler.faizSuresi || 86400000;    // Vadeli faiz periyodu
+    const taksitPeriyodu = sureler.taksitSuresi || 86400000; // Kredi taksit periyodu
     const kazancTablosu = ayarlar.kazancTablosu || {};
+    const faizOranlari = ayarlar.faizOranlari || { vadeliGunluk: 0.02, krediKatsayi: 1.25 };
+    const satisFiyatlari = ayarlar.satisFiyatlari || {};
 
     let degisiklikOldu = false;
 
-    // 1. KİRA / ŞİRKET GELİRLERİ
+    // --- 1. KİRA / ŞİRKET GELİRLERİ ---
     const kiraPeriyotSayisi = Math.floor(gecenSure / kiraPeriyodu);
     if (kiraPeriyotSayisi > 0) {
         let toplamEklenenGelir = 0;
@@ -202,48 +204,166 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar) {
         }
     }
 
-    // 2. VADELİ HESAP / FAİZ GELİRLERİ (Eksik olan kısım eklendi)
+    // --- 2. VADELİ HESAP / FAİZ GELİRLERİ ---
     const faizPeriyotSayisi = Math.floor(gecenSure / faizPeriyodu);
-    if (faizPeriyotSayisi > 0 && portfoy.vadeliHesap && Number(portfoy.vadeliHesap) > 0) {
-        const gunlukFaizOrani = (ayarlar.faizOranlari && ayarlar.faizOranlari.vadeliGunluk !== undefined) 
-            ? Number(ayarlar.faizOranlari.vadeliGunluk) 
-            : 0.02;
-
+    let vadeliDeger = portfoy.vadeli !== undefined ? Number(portfoy.vadeli) : (portfoy.vadeliHesap !== undefined ? Number(portfoy.vadeliHesap) : 0);
+    
+    if (faizPeriyotSayisi > 0 && vadeliDeger > 0) {
+        let gunlukFaizOrani = faizOranlari.vadeliGunluk !== undefined ? Number(faizOranlari.vadeliGunluk) : 0.02;
         let toplamFaizGetirisi = 0;
-        let anapara = Number(portfoy.vadeliHesap);
+        let anapara = vadeliDeger;
         
         for (let i = 0; i < faizPeriyotSayisi; i++) {
             toplamFaizGetirisi += (anapara * gunlukFaizOrani);
         }
 
         if (toplamFaizGetirisi > 0) {
-            portfoy.vadeliHesap = anapara + toplamFaizGetirisi;
+            let yeniVadeli = anapara + toplamFaizGetirisi;
+            portfoy.vadeli = yeniVadeli;
+            portfoy.vadeliHesap = yeniVadeli;
             degisiklikOldu = true;
         }
     }
 
-    // 3. KREDİ TAKSİTLERİ (Eksik olan kısım eklendi)
+    // --- 3. KREDİ TAKSİTLERİ VE OTOMATİK TAHSİLAT (DÖVİZ/ALTIN/VADELİ BOZMA & İCRA) ---
     const taksitPeriyotSayisi = Math.floor(gecenSure / taksitPeriyodu);
     if (taksitPeriyotSayisi > 0 && portfoy.krediler && Array.isArray(portfoy.krediler) && portfoy.krediler.length > 0) {
-        let mevcutNakit = portfoy.nakit !== undefined ? Number(portfoy.nakit) : (portfoy.para !== undefined ? Number(portfoy.para) : 0);
+        
+        for (let adim = 0; adim < taksitPeriyotSayisi; adim++) {
+            portfoy.krediler.forEach(kr => {
+                if (!kr || kr.kalanBorc <= 0) return;
 
-        portfoy.krediler.forEach(kredi => {
-            if (kredi && kredi.kalanTaksit > 0 && kredi.taksitTutari > 0) {
-                const odenecekAdet = Math.min(kredi.kalanTaksit, taksitPeriyotSayisi);
-                const toplamDusulecekTaksit = Number(kredi.taksitTutari) * odenecekAdet;
+                if (!kr.taksitTutu) {
+                    kr.taksitTutu = (kr.kalanBorc / 48) * (faizOranlari.krediKatsayi || 1.25);
+                }
+                if (typeof kr.ustUsteOdenmeyen !== 'number') {
+                    kr.ustUsteOdenmeyen = 0;
+                }
 
-                mevcutNakit -= toplamDusulecekTaksit;
-                kredi.kalanTaksit -= odenecekAdet;
+                let taksitMiktari = kr.taksitTutu;
+                let mevcutNakit = portfoy.nakit !== undefined ? Number(portfoy.nakit) : (portfoy.para !== undefined ? Number(portfoy.para) : 0);
+
+                // Nakit yetmiyorsa alternatif hesapları (Dolar, Euro, Altın, Vadeli) sırayla bozdur
+                if (mevcutNakit < taksitMiktari) {
+                    let eksikTutar = taksitMiktari - mevcutNakit;
+
+                    // 1. Dolar Bozdur
+                    if (eksikTutar > 0 && portfoy.dolar > 0) {
+                        let dolarSatis = (kurlar && kurlar.dolar) ? kurlar.dolar.satis : 49;
+                        let dolarTl = portfoy.dolar * dolarSatis;
+                        if (dolarTl >= eksikTutar) {
+                            portfoy.dolar -= (eksikTutar / dolarSatis);
+                            mevcutNakit += eksikTutar;
+                            eksikTutar = 0;
+                        } else {
+                            mevcutNakit += dolarTl;
+                            eksikTutar -= dolarTl;
+                            portfoy.dolar = 0;
+                        }
+                    }
+
+                    // 2. Euro Bozdur
+                    if (eksikTutar > 0 && portfoy.euro > 0) {
+                        let euroSatis = (kurlar && kurlar.euro) ? kurlar.euro.satis : 54;
+                        let euroTl = portfoy.euro * euroSatis;
+                        if (euroTl >= eksikTutar) {
+                            portfoy.euro -= (eksikTutar / euroSatis);
+                            mevcutNakit += eksikTutar;
+                            eksikTutar = 0;
+                        } else {
+                            mevcutNakit += euroTl;
+                            eksikTutar -= euroTl;
+                            portfoy.euro = 0;
+                        }
+                    }
+
+                    // 3. Altın Bozdur
+                    if (eksikTutar > 0 && portfoy.altin > 0) {
+                        let altinSatis = (kurlar && kurlar.altin) ? kurlar.altin.satis : 6000;
+                        let altinTl = portfoy.altin * altinSatis;
+                        if (altinTl >= eksikTutar) {
+                            portfoy.altin -= (eksikTutar / altinSatis);
+                            mevcutNakit += eksikTutar;
+                            eksikTutar = 0;
+                        } else {
+                            mevcutNakit += altinTl;
+                            eksikTutar -= altinTl;
+                            portfoy.altin = 0;
+                        }
+                    }
+
+                    // 4. Vadeli Hesaptan Çek
+                    let guncelVadeli = portfoy.vadeli !== undefined ? Number(portfoy.vadeli) : (portfoy.vadeliHesap !== undefined ? Number(portfoy.vadeliHesap) : 0);
+                    if (eksikTutar > 0 && guncelVadeli > 0) {
+                        let cekilecek = Math.min(eksikTutar, guncelVadeli);
+                        guncelVadeli -= cekilecek;
+                        mevcutNakit += cekilecek;
+                        eksikTutar -= cekilecek;
+                        
+                        portfoy.vadeli = guncelVadeli;
+                        portfoy.vadeliHesap = guncelVadeli;
+                    }
+
+                    portfoy.nakit = mevcutNakit;
+                    portfoy.para = mevcutNakit;
+                }
+
+                // Nihai Nakit Kontrolü: Taksit ödenebiliyor mu?
+                if (portfoy.nakit >= taksitMiktari) {
+                    portfoy.nakit -= taksitMiktari;
+                    portfoy.para = portfoy.nakit;
+                    kr.kalanBorc -= taksitMiktari;
+                    if (kr.kalanBorc < 0) kr.kalanBorc = 0;
+                    kr.ustUsteOdenmeyen = 0;
+
+                    // Borç bittiyse blokesini kaldır
+                    if (kr.kalanBorc === 0 && portfoy.varliklar) {
+                        let ilgiliVarlik = portfoy.varliklar.find(v => v && v.krediID === kr.id);
+                        if (ilgiliVarlik) {
+                            ilgiliVarlik.bloke = false;
+                            ilgiliVarlik.krediID = null;
+                        }
+                    }
+                } else {
+                    // Nakit yetmedi, ödenmedi sayılır
+                    kr.ustUsteOdenmeyen++;
+
+                    // 3 Dönem üst üste ödenmediyse İCRA (Varlığa el koyma)
+                    if (kr.ustUsteOdenmeyen >= 3 && portfoy.varliklar) {
+                        let ilgiliVarlik = portfoy.varliklar.find(v => v && v.krediID === kr.id && v.bloke === true);
+                        if (ilgiliVarlik) {
+                            let satisFiyati = (satisFiyatlari && satisFiyatlari[ilgiliVarlik.isim]) ? satisFiyatlari[ilgiliVarlik.isim] : 10000000;
+                            
+                            // Varlığı portföyden sil
+                            portfoy.varliklar = portfoy.varliklar.filter(v => v && v.id !== ilgiliVarlik.id);
+
+                            let artisFarki = satisFiyati - kr.kalanBorc;
+                            if (artisFarki > 0) {
+                                portfoy.nakit += artisFarki;
+                                portfoy.para = portfoy.nakit;
+                            }
+                        }
+                        kr.silinecek = true;
+                    }
+                }
                 degisiklikOldu = true;
-            }
-        });
+            });
 
-        portfoy.nakit = mevcutNakit;
-        portfoy.para = mevcutNakit;
-        portfoy.krediler = portfoy.krediler.filter(k => k && k.kalanTaksit > 0);
+            // Silinecek veya borcu biten kredileri temizle
+            portfoy.krediler = portfoy.krediler.filter(kr => kr && kr.kalanBorc > 0 && !kr.silinecek);
+        }
+
+        // Genel borç ve taksit özet alanlarını güncelle
+        portfoy.kredi = portfoy.krediler.reduce((toplam, kr) => toplam + (kr.kalanBorc || 0), 0);
+        portfoy.taksit = portfoy.krediler.reduce((toplam, kr) => toplam + (kr.taksitTutu || 0), 0);
+        if (portfoy.kredi <= 0) {
+            portfoy.kredi = 0;
+            portfoy.taksit = 0;
+            portfoy.krediler = [];
+        }
     }
 
-    // Hangi periyot en çok tükendiyse zamana o kadar eklenir
+    // Yeni son güncelleme zamanını hesaplanan periyotlar üzerinden ileri taşı
     const tuketilenPeriyot = Math.max(kiraPeriyotSayisi, faizPeriyotSayisi, taksitPeriyotSayisi);
     const bazSureMs = Math.min(kiraPeriyodu, faizPeriyodu, taksitPeriyodu);
     
@@ -262,6 +382,31 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar) {
 
     return portfoy;
 }
+
+// --- ARKA PLAN OTOMATİK DÖNGÜSÜ (30 saniyede bir tüm kullanıcıları işler) ---
+setInterval(() => {
+    try {
+        const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
+        if (!ayarKaydi) return;
+        const ayarlar = JSON.parse(ayarKaydi.ayarlari);
+
+        // Canlı kurları da veritabanından veya global yapıdan çekiyoruz
+        const kurlarKaydi = db.prepare(`SELECT kurlar FROM oyun_kurlari WHERE id = 1`).get(); // Varsa tablonuz
+        const kurlar = kurlarKaydi ? JSON.parse(kurlarKaydi.kurlar) : { dolar: {satis: 49}, euro: {satis: 54}, altin: {satis: 6000} };
+
+        const kullanicilar = db.prepare(`SELECT id, portfoy, son_guncelleme FROM kullanicilar`).all();
+        
+        const transaction = db.transaction(() => {
+            kullanicilar.forEach(user => {
+                kullaniciEkonomisiniIslet(user, ayarlar, kurlar);
+            });
+        });
+
+        transaction();
+    } catch (err) {
+        console.error("Arka plan oyun döngüsü hatası:", err.message);
+    }
+}, 30000);
 
 // Arka plan otomatik döngüsü
 setInterval(() => {
