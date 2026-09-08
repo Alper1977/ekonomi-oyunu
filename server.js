@@ -390,8 +390,8 @@ setInterval(() => {
         if (!ayarKaydi) return;
         const ayarlar = JSON.parse(ayarKaydi.ayarlari);
 
-        // Canlı kurları da veritabanından veya global yapıdan çekiyoruz
-        const kurlarKaydi = db.prepare(`SELECT kurlar FROM oyun_kurlari WHERE id = 1`).get(); // Varsa tablonuz
+        // Canlı kurları veritabanından çekiyoruz
+        const kurlarKaydi = db.prepare(`SELECT kurlar FROM oyun_kurlari WHERE id = 1`).get();
         const kurlar = kurlarKaydi ? JSON.parse(kurlarKaydi.kurlar) : { dolar: {satis: 49}, euro: {satis: 54}, altin: {satis: 6000} };
 
         const kullanicilar = db.prepare(`SELECT id, portfoy, son_guncelleme FROM kullanicilar`).all();
@@ -399,27 +399,6 @@ setInterval(() => {
         const transaction = db.transaction(() => {
             kullanicilar.forEach(user => {
                 kullaniciEkonomisiniIslet(user, ayarlar, kurlar);
-            });
-        });
-
-        transaction();
-    } catch (err) {
-        console.error("Arka plan oyun döngüsü hatası:", err.message);
-    }
-}, 30000);
-
-// Arka plan otomatik döngüsü
-setInterval(() => {
-    try {
-        const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
-        if (!ayarKaydi) return;
-        const ayarlar = JSON.parse(ayarKaydi.ayarlar);
-
-        const kullanicilar = db.prepare(`SELECT id, portfoy, son_guncelleme FROM kullanicilar`).all();
-        
-        const transaction = db.transaction(() => {
-            kullanicilar.forEach(user => {
-                kullaniciEkonomisiniIslet(user, ayarlar);
             });
         });
 
