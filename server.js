@@ -165,7 +165,7 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
     if (gecenSure < 5000) return portfoy; // 5 saniyeden kısa süreleri pas geç
 
     const sureler = ayarlar.sureler || {};
-    const kiraPeriyodu = sureler.kiraSuresi || 86400000;    // 24 Saat (veya ayarlanan)
+    const kiraPeriyodu = sureler.kiraSuresi || 86400000;    // 24 Saat
     const faizPeriyodu = sureler.faizSuresi || 86400000;    // Vadeli faiz periyodu
     const taksitPeriyodu = sureler.taksitSuresi || 86400000; // Kredi taksit periyodu
     const kazancTablosu = ayarlar.kazancTablosu || {};
@@ -225,7 +225,7 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
         }
     }
 
-    // --- 3. KREDİ TAKSİTLERİ VE OTOMATİK TAHSİLAT (DÖVİZ/ALTIN/VADELİ BOZMA & İCRA) ---
+    // --- 3. KREDİ TAKSİTLERİ VE OTOMATİK TAHSİLAT ---
     const taksitPeriyotSayisi = Math.floor(gecenSure / taksitPeriyodu);
     if (taksitPeriyotSayisi > 0 && portfoy.krediler && Array.isArray(portfoy.krediler) && portfoy.krediler.length > 0) {
         
@@ -243,7 +243,7 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
                 let taksitMiktari = kr.taksitTutu;
                 let mevcutNakit = portfoy.nakit !== undefined ? Number(portfoy.nakit) : (portfoy.para !== undefined ? Number(portfoy.para) : 0);
 
-                // Nakit yetmiyorsa alternatif hesapları (Dolar, Euro, Altın, Vadeli) sırayla bozdur
+                // Nakit yetmiyorsa sırasıyla Dolar, Euro, Altın, Vadeli bozdur
                 if (mevcutNakit < taksitMiktari) {
                     let eksikTutar = taksitMiktari - mevcutNakit;
 
@@ -308,7 +308,7 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
                     portfoy.para = mevcutNakit;
                 }
 
-                // Nihai Nakit Kontrolü: Taksit ödenebiliyor mu?
+                // Taksit Ödeme Kontrolü
                 if (portfoy.nakit >= taksitMiktari) {
                     portfoy.nakit -= taksitMiktari;
                     portfoy.para = portfoy.nakit;
@@ -316,7 +316,6 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
                     if (kr.kalanBorc < 0) kr.kalanBorc = 0;
                     kr.ustUsteOdenmeyen = 0;
 
-                    // Borç bittiyse blokesini kaldır
                     if (kr.kalanBorc === 0 && portfoy.varliklar) {
                         let ilgiliVarlik = portfoy.varliklar.find(v => v && v.krediID === kr.id);
                         if (ilgiliVarlik) {
@@ -325,16 +324,14 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
                         }
                     }
                 } else {
-                    // Nakit yetmedi, ödenmedi sayılır
                     kr.ustUsteOdenmeyen++;
 
-                    // 3 Dönem üst üste ödenmediyse İCRA (Varlığa el koyma)
+                    // 3 Dönem üst üste ödenmediyse İCRA
                     if (kr.ustUsteOdenmeyen >= 3 && portfoy.varliklar) {
                         let ilgiliVarlik = portfoy.varliklar.find(v => v && v.krediID === kr.id && v.bloke === true);
                         if (ilgiliVarlik) {
                             let satisFiyati = (satisFiyatlari && satisFiyatlari[ilgiliVarlik.isim]) ? satisFiyatlari[ilgiliVarlik.isim] : 10000000;
                             
-                            // Varlığı portföyden sil
                             portfoy.varliklar = portfoy.varliklar.filter(v => v && v.id !== ilgiliVarlik.id);
 
                             let artisFarki = satisFiyati - kr.kalanBorc;
@@ -349,11 +346,9 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
                 degisiklikOldu = true;
             });
 
-            // Silinecek veya borcu biten kredileri temizle
             portfoy.krediler = portfoy.krediler.filter(kr => kr && kr.kalanBorc > 0 && !kr.silinecek);
         }
 
-        // Genel borç ve taksit özet alanlarını güncelle
         portfoy.kredi = portfoy.krediler.reduce((toplam, kr) => toplam + (kr.kalanBorc || 0), 0);
         portfoy.taksit = portfoy.krediler.reduce((toplam, kr) => toplam + (kr.taksitTutu || 0), 0);
         if (portfoy.kredi <= 0) {
@@ -363,16 +358,19 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
         }
     }
 
-    // Yeni son güncelleme zamanını hesaplanan periyotlar üzerinden ileri taşı
-    const tuketilenPeriyot = Math.max(kiraPeriyotSayisi, faizPeriyotSayisi, taksitPeriyotSayisi);
-    const bazSureMs = Math.min(kiraPeriyodu, faizPeriyodu, taksitPeriyodu);
-    
+    // Son güncelleme zamanını tüketilen periyotlar kadar ileri taşı
     let yeniSonGuncelleme = sonGuncelleme;
-    if (tuketilenPeriyot > 0) {
-        yeniSonGuncelleme += (tuketilenPeriyot * bazSureMs);
+    if (kiraPeriyotSayisi > 0 || faizPeriyotSayisi > 0 || taksitPeriyotSayisi > 0) {
+        // Hangi periyotlar işleme girdiyse, onların zaman katına göre son güncellemeyi ilerletelim
+        let ilerlemeMiktari = 0;
+        if (kiraPeriyotSayisi > 0) ilerlemeMiktari = Math.max(ilerlemeMiktari, kiraPeriyotSayisi * kiraPeriyodu);
+        if (faizPeriyotSayisi > 0) ilerlemeMiktari = Math.max(ilerlemeMiktari, faizPeriyotSayisi * faizPeriyodu);
+        if (taksitPeriyotSayisi > 0) ilerlemeMiktari = Math.max(ilerlemeMiktari, taksitPeriyotSayisi * taksitPeriyodu);
+
+        yeniSonGuncelleme += ilerlemeMiktari;
     }
 
-    if (degisiklikOldu || tuketilenPeriyot > 0) {
+    if (degisiklikOldu) {
         db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`).run(
             JSON.stringify(portfoy),
             yeniSonGuncelleme,
@@ -388,38 +386,24 @@ setInterval(() => {
     try {
         const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
         if (!ayarKaydi) return;
-        const ayarlar = JSON.parse(ayarKaydi.ayarlari);
+        const ayarlar = JSON.parse(ayarKaydi.ayarlari || ayarKaydi.ayar);
 
-        // Canlı kurları da veritabanından veya global yapıdan çekiyoruz
-        const kurlarKaydi = db.prepare(`SELECT kurlar FROM oyun_kurlari WHERE id = 1`).get(); // Varsa tablonuz
-        const kurlar = kurlarKaydi ? JSON.parse(kurlarKaydi.kurlar) : { dolar: {satis: 49}, euro: {satis: 54}, altin: {satis: 6000} };
+        // Kurları güvenli bir şekilde çekelim (Tablon yoksa varsayılanı kullanır)
+        let kurlar = { dolar: {satis: 49}, euro: {satis: 54}, altin: {satis: 6000} };
+        try {
+            const kurlarKaydi = db.prepare(`SELECT kurlar FROM oyun_kurlari WHERE id = 1`).get();
+            if (kurlarKaydi && kurlarKaydi.kurlar) {
+                kurlar = JSON.parse(kurlarKaydi.kurlar);
+            }
+        } catch (e) {
+            // Tablo yoksa varsayılan kurlarla devam eder
+        }
 
         const kullanicilar = db.prepare(`SELECT id, portfoy, son_guncelleme FROM kullanicilar`).all();
         
         const transaction = db.transaction(() => {
             kullanicilar.forEach(user => {
                 kullaniciEkonomisiniIslet(user, ayarlar, kurlar);
-            });
-        });
-
-        transaction();
-    } catch (err) {
-        console.error("Arka plan oyun döngüsü hatası:", err.message);
-    }
-}, 30000);
-
-// Arka plan otomatik döngüsü
-setInterval(() => {
-    try {
-        const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
-        if (!ayarKaydi) return;
-        const ayarlar = JSON.parse(ayarKaydi.ayarlar);
-
-        const kullanicilar = db.prepare(`SELECT id, portfoy, son_guncelleme FROM kullanicilar`).all();
-        
-        const transaction = db.transaction(() => {
-            kullanicilar.forEach(user => {
-                kullaniciEkonomisiniIslet(user, ayarlar);
             });
         });
 
