@@ -154,45 +154,108 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar) {
     }
 
     const simdi = Date.now();
-    let sonGuncelleme = userRow.son_guncelleme || simdi;
-    const gecenSure = simdi - sonGuncelleme;
+    let sonGuncelleme = (userRow.son_guncelleme && !isNaN(userRow.son_guncelleme)) ? Number(userRow.son_guncelleme) : simdi;
+    
+    if (!userRow.son_guncelleme) {
+        db.prepare(`UPDATE kullanicilar SET son_guncelleme = ? WHERE id = ?`).run(simdi, userRow.id);
+        return portfoy;
+    }
 
+    const gecenSure = simdi - sonGuncelleme;
     if (gecenSure < 5000) return portfoy; 
 
     const sureler = ayarlar.sureler || {};
-    const kiraPeriyodu = sureler.kiraSuresi || 86400000; // Varsayılan 24 saat
+    const kiraPeriyodu = sureler.kiraSuresi || 86400000;  // 24 Saat
+    const faizPeriyodu = sureler.faizSuresi || 86400000;  // 24 Saat
+    const taksitPeriyodu = sureler.taksitSuresi || 86400000; // 24 Saat
     const kazancTablosu = ayarlar.kazancTablosu || {};
 
-    const periyotSayisi = Math.floor(gecenSure / kiraPeriyodu);
+    let degisiklikOldu = false;
 
-    if (periyotSayisi > 0) {
+    // 1. KİRA / ŞİRKET GELİRLERİ
+    const kiraPeriyotSayisi = Math.floor(gecenSure / kiraPeriyodu);
+    if (kiraPeriyotSayisi > 0) {
         let toplamEklenenGelir = 0;
 
         if (portfoy.varliklar && Array.isArray(portfoy.varliklar)) {
             portfoy.varliklar.forEach(v => {
-                if (v.durum === 'sahip' && kazancTablosu[v.isim]) {
-                    toplamEklenenGelir += (kazancTablosu[v.isim] * periyotSayisi);
+                if (v && v.durum === 'sahip' && kazancTablosu[v.isim]) {
+                    toplamEklenenGelir += (kazancTablosu[v.isim] * kiraPeriyotSayisi);
                 }
             });
         }
 
         if (ayarlar.konutKiraGeliri > 0 && portfoy.varliklar) {
             portfoy.varliklar.forEach(v => {
-                if (v.durum === 'sahip' && v.isim === 'Konut') {
-                    toplamEklenenGelir += (ayarlar.konutKiraGeliri * periyotSayisi);
+                if (v && v.durum === 'sahip' && v.isim === 'Konut') {
+                    toplamEklenenGelir += (ayarlar.konutKiraGeliri * kiraPeriyotSayisi);
                 }
             });
         }
 
         if (toplamEklenenGelir > 0) {
-            let mevcutNakit = portfoy.nakit !== undefined ? portfoy.nakit : (portfoy.para || 0);
+            let mevcutNakit = portfoy.nakit !== undefined ? Number(portfoy.nakit) : (portfoy.para !== undefined ? Number(portfoy.para) : 0);
             mevcutNakit += toplamEklenenGelir;
             portfoy.nakit = mevcutNakit;
+            portfoy.para = mevcutNakit;
+            degisiklikOldu = true;
+        }
+    }
+
+    // 2. VADELİ HESAP / FAİZ GELİRLERİ (Eksik olan kısım eklendi)
+    const faizPeriyotSayisi = Math.floor(gecenSure / faizPeriyodu);
+    if (faizPeriyotSayisi > 0 && portfoy.vadeliHesap && Number(portfoy.vadeliHesap) > 0) {
+        const gunlukFaizOrani = (ayarlar.faizOranlari && ayarlar.faizOranlari.vadeliGunluk !== undefined) 
+            ? Number(ayarlar.faizOranlari.vadeliGunluk) 
+            : 0.02;
+
+        let toplamFaizGetirisi = 0;
+        let anapara = Number(portfoy.vadeliHesap);
+        
+        for (let i = 0; i < faizPeriyotSayisi; i++) {
+            toplamFaizGetirisi += (anapara * gunlukFaizOrani);
         }
 
+        if (toplamFaizGetirisi > 0) {
+            portfoy.vadeliHesap = anapara + toplamFaizGetirisi;
+            degisiklikOldu = true;
+        }
+    }
+
+    // 3. KREDİ TAKSİTLERİ (Eksik olan kısım eklendi)
+    const taksitPeriyotSayisi = Math.floor(gecenSure / taksitPeriyodu);
+    if (taksitPeriyotSayisi > 0 && portfoy.krediler && Array.isArray(portfoy.krediler) && portfoy.krediler.length > 0) {
+        let mevcutNakit = portfoy.nakit !== undefined ? Number(portfoy.nakit) : (portfoy.para !== undefined ? Number(portfoy.para) : 0);
+
+        portfoy.krediler.forEach(kredi => {
+            if (kredi && kredi.kalanTaksit > 0 && kredi.taksitTutari > 0) {
+                const odenecekAdet = Math.min(kredi.kalanTaksit, taksitPeriyotSayisi);
+                const toplamDusulecekTaksit = Number(kredi.taksitTutari) * odenecekAdet;
+
+                mevcutNakit -= toplamDusulecekTaksit;
+                kredi.kalanTaksit -= odenecekAdet;
+                degisiklikOldu = true;
+            }
+        });
+
+        portfoy.nakit = mevcutNakit;
+        portfoy.para = mevcutNakit;
+        portfoy.krediler = portfoy.krediler.filter(k => k && k.kalanTaksit > 0);
+    }
+
+    // Hangi periyot en çok tükendiyse zamana o kadar eklenir
+    const tuketilenPeriyot = Math.max(kiraPeriyotSayisi, faizPeriyotSayisi, taksitPeriyotSayisi);
+    const bazSureMs = Math.min(kiraPeriyodu, faizPeriyodu, taksitPeriyodu);
+    
+    let yeniSonGuncelleme = sonGuncelleme;
+    if (tuketilenPeriyot > 0) {
+        yeniSonGuncelleme += (tuketilenPeriyot * bazSureMs);
+    }
+
+    if (degisiklikOldu || tuketilenPeriyot > 0) {
         db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`).run(
             JSON.stringify(portfoy),
-            sonGuncelleme + (periyotSayisi * kiraPeriyodu),
+            yeniSonGuncelleme,
             userRow.id
         );
     }
