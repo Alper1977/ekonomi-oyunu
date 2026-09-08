@@ -5070,7 +5070,13 @@ function krediOde() {
 
 
 function taksitleriOdeVeyaKontrolEt() {
-    let toplamAylikTaksit = state.taksit || 0;
+    let toplamAylikTaksit = 0;
+    if (state.krediler && Array.isArray(state.krediler) && state.krediler.length > 0) {
+        toplamAylikTaksit = state.krediler.reduce((toplam, kr) => toplam + (kr.taksitTutu || kr.aylikTaksit || 0), 0);
+    } else {
+        toplamAylikTaksit = state.taksit || 0;
+    }
+
     if (toplamAylikTaksit <= 0) return;
 
     if (state.nakit < toplamAylikTaksit) {
@@ -5132,6 +5138,19 @@ function taksitleriOdeVeyaKontrolEt() {
     if (state.nakit >= toplamAylikTaksit) {
         state.nakit -= toplamAylikTaksit;
         state.ustUsteOdenmeyenTaksit = 0;
+        
+        // Kredilerin kendi içindeki kalan borçlarını da düşür ki döngü tıkır tıkır işlesin
+        if (state.krediler && Array.isArray(state.krediler)) {
+            state.krediler.forEach(kr => {
+                let taksitMiktari = kr.taksitTutu || kr.aylikTaksit || 0;
+                if (kr.kalanBorc > 0) {
+                    kr.kalanBorc = Math.max(0, kr.kalanBorc - taksitMiktari);
+                }
+            });
+            // Toplam kredi ana parasını da güncelle
+            state.kredi = state.krediler.reduce((toplam, kr) => toplam + (kr.kalanBorc || 0), 0);
+        }
+
         console.log("Taksit başarıyla ödendi.");
     } else {
         state.ustUsteOdenmeyenTaksit = (state.ustUsteOdenmeyenTaksit || 0) + 1;
@@ -5145,12 +5164,14 @@ function taksitleriOdeVeyaKontrolEt() {
         }
     }
 
+    // Güncel taksit toplamını state'e de sabitleyelim ki başka yerler bozulmasın
+    state.taksit = toplamAylikTaksit;
+
     guncelle();
     if (typeof portfoyuSunucuyaKaydet === 'function') {
         portfoyuSunucuyaKaydet(state);
     }
 }
-
 function zorunluVarlikSatisiAndKapatma() {
     let satilacakVarliklar = state.varliklar.filter(v => v.bloke === true);
 
