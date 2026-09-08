@@ -158,7 +158,7 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
     
     if (!userRow.son_guncelleme) {
         db.prepare(`UPDATE kullanicilar SET son_guncelleme = ? WHERE id = ?`).run(simdi, userRow.id);
-        return portfoy;
+        sonGuncelleme = simdi;
     }
 
     const gecenSure = simdi - sonGuncelleme;
@@ -857,7 +857,7 @@ app.post('/api/portfoy-guncelle', (req, res) => {
     const portfoyStr = JSON.stringify(yeniPortfoy || {});
 
     try {
-        db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`).run(portfoyStr, Date.now(), userId);
+        db.prepare(`UPDATE kullanicilar SET portfoy = ? WHERE id = ?`).run(portfoyStr, userId);
         req.session.kullanici.portfoy = yeniPortfoy;
         res.json({ basari: true, mesaj: "Portföy kaydedildi." });
     } catch (err) {
