@@ -2323,8 +2323,7 @@ let sonKiraZamani = Date.now();
 
 
 setInterval(async () => {
-
-try {
+    try {
         let res = await fetch('/api/oyun-ayarlari');
         let sonuc = await res.json();
         if (sonuc.basari && sonuc.ayarlar) {
@@ -2337,7 +2336,6 @@ try {
         // Sessizce geç
     }
 
-    
     if (typeof state === 'undefined' || !state) {
         return;
     }
@@ -2346,14 +2344,30 @@ try {
     try {
         let res = await fetch('/api/portfoy-getir'); 
         let data = await res.json();
-        if (data && data.varliklar) {
-            state.varliklar = data.varliklar;
-            if (data.nakit !== undefined) state.nakit = data.nakit;
+        let portfoyVerisi = data.portfoy || data;
+
+        if (portfoyVerisi) {
+            if (portfoyVerisi.varliklar) state.varliklar = portfoyVerisi.varliklar;
+            if (portfoyVerisi.nakit !== undefined) {
+                state.nakit = portfoyVerisi.nakit;
+                state.para = portfoyVerisi.nakit;
+            }
+            if (portfoyVerisi.krediler) state.krediler = portfoyVerisi.krediler;
+            if (portfoyVerisi.kredi !== undefined) state.kredi = portfoyVerisi.kredi;
+            if (portfoyVerisi.taksit !== undefined) state.taksit = portfoyVerisi.taksit;
+
+            if (typeof arayuzuGuncelle === 'function') {
+                arayuzuGuncelle();
+            }
+            
+            if (typeof finansalDonguyuCalistir === 'function') {
+                finansalDonguyuCalistir();
+            }
         }
     } catch (e) {
         // Ağ hatası
     }
-
+    
     // 2. Mülk listesini ekranda anında yeniden çiz (Fonksiyona gerek kalmadan direkt burada çalışır)
     let vList = document.getElementById('varliklar-listesi');
     if (vList) {
