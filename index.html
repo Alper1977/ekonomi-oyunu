@@ -5035,9 +5035,12 @@ function krediOde() {
     // Eğer hala borç kaldıysa taksiti 0 yapma, kalan toplam borca göre yeniden orantıla!
     if (state.kredi > 0) {
         state.taksit = state.krediler.reduce((toplam, kr) => {
-            // Eğer bireysel taksit tutarları duruyorsa onları topla, yoksa orantısal hesapla
-            let tTutari = kr.taksitTutu || ((kr.kalanBorc / 48) * (typeof faizOranlari !== 'undefined' ? faizOranlari.krediKatsayi : 1.25));
-            return toplam + tTutari;
+            // Kalan borç oranına göre bireysel taksit tutarlarını da güncelleyelim ki döngü bozulmasın
+            let kalanVade = kr.vade || 48;
+            let katsayi = (typeof faizOranlari !== 'undefined' && faizOranlari.krediKatsayi) ? faizOranlari.krediKatsayi : 1.25;
+            kr.taksitTutu = (kr.kalanBorc / kalanVade) * katsayi;
+            
+            return toplam + kr.taksitTutu;
         }, 0);
     } else {
         state.kredi = 0;
