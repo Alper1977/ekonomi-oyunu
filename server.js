@@ -158,9 +158,8 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
     
     if (!userRow.son_guncelleme) {
         db.prepare(`UPDATE kullanicilar SET son_guncelleme = ? WHERE id = ?`).run(simdi, userRow.id);
-        sonGuncelleme = simdi;
+        sonGuncelleme = simdi; // Hemen çıkmak yerine değişkeni güncelle, alta akmaya devam etsin
     }
-
     const gecenSure = simdi - sonGuncelleme;
     if (gecenSure < 5000) return portfoy; // 5 saniyeden kısa süreleri pas geç
 
