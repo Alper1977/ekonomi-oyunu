@@ -2532,13 +2532,11 @@ if (eslesenOdeme) {
         guncelle();
     }
 
-
-  if (typeof sonTaksitZamani === 'undefined') { sonTaksitZamani = Date.now(); }
+if (typeof sonTaksitZamani === 'undefined') { sonTaksitZamani = simdiMs; }
 
 console.log("Geçen süre (sn):", Math.floor((simdiMs - sonTaksitZamani) / 1000));
 
 // Süre dolduysa ve aktif krediler varsa
-
 if (simdiMs - sonTaksitZamani >= window.oyunAyarlari.taksitSuresi) {
 
     console.log("1 dakika doldu, kredi bazlı taksit kontrolü yapılıyor...");
