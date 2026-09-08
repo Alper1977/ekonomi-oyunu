@@ -5405,6 +5405,19 @@ window.addEventListener('DOMContentLoaded', async () => {
                 if (typeof zenginlerListesiniGuncelle === 'function') {
                     zenginlerListesiniGuncelle();
                 }
+                if (typeof zenginlerListesiniGuncelle === 'function') {
+                    zenginlerListesiniGuncelle();
+                }
+
+                // 🌟 İŞTE EKSİK OLAN VE KREDİYİ UYANDIRACAK TETİKLEYİCİ BURASI:
+                // Sayfa yüklenip portföy çekildikten sonra arka plan zaman döngülerini (faiz, kredi, taksit) zorla başlat:
+                if (typeof finansalDonguyuBaslat === 'function') {
+                    finansalDonguyuBaslat();
+                } else if (typeof donguyuBaslat === 'function') {
+                    donguyuBaslat();
+                } else if (typeof krediDongusuBaslat === 'function') {
+                    krediDongusuBaslat();
+                }
 
                 return;
             }
