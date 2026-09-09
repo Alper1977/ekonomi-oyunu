@@ -383,7 +383,6 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
     return portfoy;
 }
 
-// --- ARKA PLAN OTOMATİK DÖNGÜSÜ (30 saniyede bir tüm kullanıcıları işler) ---
 setInterval(() => {
     try {
         const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
@@ -396,15 +395,21 @@ setInterval(() => {
 
         const kullanicilar = db.prepare(`SELECT id, portfoy, son_guncelleme FROM kullanicilar`).all();
         
-        const transaction = db.transaction(() => {
-            kullanicilar.forEach(user => {
-                kullaniciEkonomisiniIslet(user, ayarlar, kurlar);
-            });
+        // Her kullanıcıyı kendi bağımsız transaction ve try-catch bloğuna alıyoruz
+        kullanicilar.forEach(user => {
+            try {
+                const userTransaction = db.transaction(() => {
+                    kullaniciEkonomisiniIslet(user, ayarlar, kurlar);
+                });
+                userTransaction();
+            } catch (userErr) {
+                console.error(`Kullanıcı ID ${user.id} ekonomi işletilirken hata oluştu:`, userErr.message);
+                // Bu kullanıcı patlasa bile diğer kullanıcıların parası, dövizi, kredisi etkilenmez
+            }
         });
 
-        transaction();
     } catch (err) {
-        console.error("Arka plan oyun döngüsü hatası:", err.message);
+        console.error("Arka plan oyun döngüsü genel hata:", err.message);
     }
 }, 30000);
 
