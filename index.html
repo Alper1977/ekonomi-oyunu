@@ -4739,23 +4739,30 @@ function krediIslem(inputId, vadeInputId, isim, bedel, kapsam) {
     }
 
     // Ödeme gücü kontrolü (Gelirin %60'ı)
-    // Ekranda kullanılan formülle birebir aynı gelir mantığı
+   // 1. Ekrandaki limit hesaplamasıyla birebir aynı gelir kapasitesi
     let gGelir = (typeof state !== 'undefined' && state.gunlukGelir) ? state.gunlukGelir : 0;
     let kGelir = (typeof kiraGeliri !== 'undefined') ? kiraGeliri : 0;
     let tGelir = (typeof aktifTalepGeliri !== 'undefined') ? aktifTalepGeliri : 0;
     let mevcutTaksit = (typeof state !== 'undefined' && state.taksit) ? state.taksit : 0;
 
-    // guncelle() fonksiyonundaki formülün aynısı:
     let aylikTaksitKapasitesi = (gGelir + kGelir + (tGelir * 3) - mevcutTaksit) * 0.60;
-    let maxMusaitTaksit = aylikTaksitKapasitesi;
 
-    // Seçilen vadeye göre o anki maksimum çekilebilecek anapara (Ters Anüite)
+    // 2. Katsayıyı faiz oranından dinamik ve hatasız türetme
     let i = aylikFaizOrani;
-    let n = vade;
-    let secilenVadeMaxAnapara = maxMusaitTaksit * (Math.pow(1 + i, n) - 1) / (i * Math.pow(1 + i, n));
+    let n = vade; // Kullanıcının seçtiği vade (örn: 48)
 
-    if (miktar > secilenVadeMaxAnapara) {
-        modalGoster(`Seçtiğiniz ${vade} ay vade ile bu miktarı ödeyecek gelir kapasiteniz yetersiz! Bu vade için maksimum çekebileceğiniz kredi: ${Math.floor(secilenVadeMaxAnapara).toLocaleString()} TL.`);
+    // Standart Anüite Katsayısı (Kredi Katsayısı)
+    let krediKatsayi = (i === 0) ? (1 / n) : (i * Math.pow(1 + i, n)) / (Math.pow(1 + i, n) - 1);
+
+    // 3. Brüt ödeme tavanı üzerinden o vadeye ait net limit hesabı
+    let toplamBrutOdeme = aylikTaksitKapasitesi * n;
+    let secilenVadeMaxAnapara = toplamBrutOdeme / (i === 0 ? 1 : (krediKatsayi * n)); 
+    // Daha sade ve doğrudan PV formülüyle max limit:
+    let netLimitVadeyeGore = (i === 0) ? (aylikTaksitKapasitesi * n) : aylikTaksitKapasitesi * (Math.pow(1 + i, n) - 1) / (i * Math.pow(1 + i, n));
+
+    // 4. Kesin Doğrulama: Girilen miktar, o anki vadeye göre hesaplanan net limiti aşamaz!
+    if (miktar > netLimitVadeyeGore) {
+        modalGoster(`Seçtiğiniz ${vade} ay vade için maksimum çekebileceğiniz limit: ${Math.floor(netLimitVadeyeGore).toLocaleString()} TL.`);
         return;
     }
 
