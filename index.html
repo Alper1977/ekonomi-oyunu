@@ -3043,11 +3043,11 @@ async function guncelle() {
     });
     
 
-    let aylikTaksitKapasitesi = (state.gunlukGelir + kiraGeliri + (aktifTalepGeliri * 3) - state.taksit) * 0.60;
+let aylikTaksitKapasitesi = (state.gunlukGelir + kiraGeliri + (aktifTalepGeliri * 3) - state.taksit) * 0.60;
 let toplamBrutOdeme = aylikTaksitKapasitesi * 48;
-let toplamFaiz = toplamBrutOdeme - (toplamBrutOdeme / faizOranlari.krediKatsayi);
 
-state.krediLimiti = Math.floor(toplamBrutOdeme - toplamFaiz);
+// Net limit direkt brüt tutarın katsayıya bölünmüş halidir (faiz düşülmüş ana para)
+state.krediLimiti = Math.floor(toplamBrutOdeme / faizOranlari.krediKatsayi);
 
 let limitElementleri = document.getElementsByClassName('val-limit');
 for (let el of limitElementleri) {
@@ -3257,18 +3257,17 @@ let konutSayisi = state.varliklar.filter(v => v.isim === 'Konut' && (v.durum ===
         });
     }
 
-    let faizBaslikElementi = document.getElementById('faiz-baslik-orani');
-    if (faizBaslikElementi) {
-        let yuzdeDegeri = Math.round((faizOranlari.krediKatsayi - 1) * 100);
-        faizBaslikElementi.innerText = `Yatırım Kredisi (Faiz Oranı: %${yuzdeDegeri})`;
-    }
+let faizBaslikElementi = document.getElementById('faiz-baslik-orani');
+if (faizBaslikElementi) {
+    let yuzdeDegeri = Math.round((faizOranlari.krediKatsayi - 1) * 100);
+    faizBaslikElementi.innerText = `Yatırım Kredisi (Faiz Oranı: %${yuzdeDegeri})`;
+}
 
-    if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
-    if (typeof zenginlerListesiniGuncelle === 'function') await zenginlerListesiniGuncelle();
+if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
+if (typeof zenginlerListesiniGuncelle === 'function') await zenginlerListesiniGuncelle();
 
-    if (typeof portfoyuSunucuyaKaydet === 'function') {
-        portfoyuSunucuyaKaydet(state);
-    }
+if (typeof portfoyuSunucuyaKaydet === 'function') {
+    portfoyuSunucuyaKaydet(state);
 }
 
 
