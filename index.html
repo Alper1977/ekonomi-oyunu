@@ -3046,23 +3046,26 @@ async function guncelle() {
 let gGelir = (typeof state !== 'undefined' && state.gunlukGelir) ? state.gunlukGelir : 0;
     let kGelir = (typeof kiraGeliri !== 'undefined') ? kiraGeliri : 0;
     let tGelir = (typeof aktifTalepGeliri !== 'undefined') ? aktifTalepGeliri : 0;
-    let mevcutGunlukTaksit = (typeof state !== 'undefined' && state.taksit) ? state.taksit : 0; // Artık günlük taksit
+    let mevcutTaksit = (typeof state !== 'undefined' && state.taksit) ? state.taksit : 0;
 
-    // Günlük net gelir üzerinden %60 taksit kapasitesi
-    let gunlukTaksitKapasitesi = (gGelir + kGelir + (tGelir * 3) - mevcutGunlukTaksit) * 0.60;
+    // 1. Adım: Aylık net taksit kapasitesi (%60)
+    let aylikTaksitKapasitesi = (gGelir + kGelir + (tGelir * 3) - mevcutTaksit) * 0.60;
     
-    // 48 ay = 1440 gün üzerinden toplam brüt ödeme
-    let toplamGun = 48 * 30; 
-    let toplamBrutOdeme = gunlukTaksitKapasitesi * toplamGun;
+    // 2. Adım: 48 aylık ham brüt ödeme tavanı (~181 Milyon olan kısım)
+    let toplamBrutOdeme = aylikTaksitKapasitesi * 48;
 
-    // Katsayı ile faiz arındırılarak net kredi limiti bulunur
-    state.krediLimiti = Math.floor(toplamBrutOdeme / faizOranlari.krediKatsayi);
+    // 3. KESİN ÇÖZÜM: state.krediLimiti KESİNLİKLE net ana para (87 Milyon) olmalıdır!
+    // Brüt ödemeyi katsayıya bölerek içindeki faizi söküp atıyoruz ve net limiti buluyoruz.
+    let netKrediLimiti = toplamBrutOdeme / faizOranlari.krediKatsayi;
+    
+    state.krediLimiti = Math.floor(netKrediLimiti);
 
+    // Ekrana yazdırırken de doğrudan net limit yazdırılır
     let limitElementleri = document.getElementsByClassName('val-limit');
     for (let el of limitElementleri) {
         el.innerText = state.krediLimiti.toLocaleString() + " TL";
     }
-
+    
 let faizBaslikElementi = document.getElementById('faiz-baslik-orani');
 if (faizBaslikElementi) {
     let yuzdeDegeri = Math.round((faizOranlari.krediKatsayi - 1) * 100);
