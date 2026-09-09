@@ -3043,24 +3043,19 @@ async function guncelle() {
     });
     
 
-let gGelir = (typeof state !== 'undefined' && state.gunlukGelir) ? state.gunlukGelir : 0;
-    let kGelir = (typeof kiraGeliri !== 'undefined') ? kiraGeliri : 0;
-    let tGelir = (typeof aktifTalepGeliri !== 'undefined') ? aktifTalepGeliri : 0;
-    let mevcutTaksit = (typeof state !== 'undefined' && state.taksit) ? state.taksit : 0;
+let aylikTaksitKapasitesi = (state.gunlukGelir + kiraGeliri + (aktifTalepGeliri * 3) - state.taksit) * 0.60;
+let toplamBrutOdeme = aylikTaksitKapasitesi * 48;
 
-    let aylikTaksitKapasitesi = (gGelir + kGelir + (tGelir * 3) - mevcutTaksit) * 0.60;
-    let toplamBrutOdeme = aylikTaksitKapasitesi * 48;
+// Sabit veya değişken faiz yükünü (örneğin %5 üzerinden 48 aylık maliyeti) doğrudan düşerek net ana parayı bulalım
+// Katsayı yerine doğrudan güvenli bir netleştirme oranı kullanalım (veya faiz oranını baz alalım)
+let netKrediLimiti = toplamBrutOdeme / 2.08; // 48 ay için standart faiz katsayısı çarpanı
 
-    // GÜVENLİK KİLİDİ: Katsayı bozulursa (0 veya tanımsızsa) varsayılan olarak 2.5 alalım ki trilyon olmasın
-    let gecerliKatsayi = (typeof faizOranlari !== 'undefined' && faizOranlari.krediKatsayi > 1) ? faizOranlari.krediKatsayi : 2.5;
+state.krediLimiti = Math.floor(netKrediLimiti);
 
-    let netKrediLimiti = toplamBrutOdeme / gecerliKatsayi;
-    state.krediLimiti = Math.floor(netKrediLimiti);
-
-    let limitElementleri = document.getElementsByClassName('val-limit');
-    for (let el of limitElementleri) {
-        el.innerText = state.krediLimiti.toLocaleString() + " TL";
-    }
+let limitElementleri = document.getElementsByClassName('val-limit');
+for (let el of limitElementleri) {
+    el.innerText = state.krediLimiti.toLocaleString() + " TL";
+}
     
 let faizBaslikElementi = document.getElementById('faiz-baslik-orani');
 if (faizBaslikElementi) {
