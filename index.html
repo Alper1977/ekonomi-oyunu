@@ -4739,21 +4739,23 @@ function krediIslem(inputId, vadeInputId, isim, bedel, kapsam) {
     }
 
     // Ödeme gücü kontrolü (Gelirin %60'ı)
+    // Ekranda kullanılan formülle birebir aynı gelir mantığı
     let gGelir = (typeof state !== 'undefined' && state.gunlukGelir) ? state.gunlukGelir : 0;
     let kGelir = (typeof kiraGeliri !== 'undefined') ? kiraGeliri : 0;
     let tGelir = (typeof aktifTalepGeliri !== 'undefined') ? aktifTalepGeliri : 0;
     let mevcutTaksit = (typeof state !== 'undefined' && state.taksit) ? state.taksit : 0;
 
-    let netAylikGelir = (gGelir * 30) + kGelir + (tGelir * 3) - mevcutTaksit;
-    let maxMusaitTaksit = netAylikGelir * 0.60;
+    // guncelle() fonksiyonundaki formülün aynısı:
+    let aylikTaksitKapasitesi = (gGelir + kGelir + (tGelir * 3) - mevcutTaksit) * 0.60;
+    let maxMusaitTaksit = aylikTaksitKapasitesi;
 
-    // Seçilen vadeye göre o anki maksimum çekilebilecek anapara (Ters Anüite Formülü)
+    // Seçilen vadeye göre o anki maksimum çekilebilecek anapara (Ters Anüite)
     let i = aylikFaizOrani;
     let n = vade;
     let secilenVadeMaxAnapara = maxMusaitTaksit * (Math.pow(1 + i, n) - 1) / (i * Math.pow(1 + i, n));
 
     if (miktar > secilenVadeMaxAnapara) {
-        modalGoster(`Seçtiğiniz ${vade} ay vade ile bu miktarı ödeyecek gelir kapasiteniz yetersiz! Bu vade için maksimum çekebileceğiniz kredi: ${Math.floor(secilenVadeMaxAnapara).toLocaleString()} TL. Vadeyi uzatmayı deneyin.`);
+        modalGoster(`Seçtiğiniz ${vade} ay vade ile bu miktarı ödeyecek gelir kapasiteniz yetersiz! Bu vade için maksimum çekebileceğiniz kredi: ${Math.floor(secilenVadeMaxAnapara).toLocaleString()} TL.`);
         return;
     }
 
