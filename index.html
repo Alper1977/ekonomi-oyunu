@@ -3043,12 +3043,16 @@ async function guncelle() {
     });
     
 
-    state.krediLimiti = Math.floor(((state.gunlukGelir + kiraGeliri + (aktifTalepGeliri * 3) - state.taksit) * 0.60) * 48 / faizOranlari.krediKatsayi);
+    let aylikTaksitKapasitesi = (state.gunlukGelir + kiraGeliri + (aktifTalepGeliri * 3) - state.taksit) * 0.60;
+let toplamBrutOdeme = aylikTaksitKapasitesi * 48;
+let toplamFaiz = toplamBrutOdeme - (toplamBrutOdeme / faizOranlari.krediKatsayi);
 
-    let limitElementleri = document.getElementsByClassName('val-limit');
-    for (let el of limitElementleri) {
-        el.innerText = Math.floor(state.krediLimiti).toLocaleString() + " TL";
-    }
+state.krediLimiti = Math.floor(toplamBrutOdeme - toplamFaiz);
+
+let limitElementleri = document.getElementsByClassName('val-limit');
+for (let el of limitElementleri) {
+    el.innerText = state.krediLimiti.toLocaleString() + " TL";
+}
 
     // Akıllı gösterim fonksiyonu: Sayı 0 ise düz 0 yazar, para varsa kuruşlu gösterir
     function akilliPara(deger, birim = " TL", baslangic = "") {
