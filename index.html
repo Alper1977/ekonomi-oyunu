@@ -3042,12 +3042,30 @@ async function guncelle() {
         if (talep) aktifTalepGeliri += talep.bedel;
     });
     
-    state.krediLimiti = Math.floor(((state.gunlukGelir + kiraGeliri + (aktifTalepGeliri * 3) - state.taksit) * 0.60) * 48 / faizOranlari.krediKatsayi);
+   // Sabit olarak 48 ay üzerinden tavan kredi limitini hesaplıyoruz
+let sabitVade = 48;
 
-    let limitElementleri = document.getElementsByClassName('val-limit');
-    for (let el of limitElementleri) {
-        el.innerText = Math.floor(state.krediLimiti).toLocaleString() + " TL";
-    }
+let netAylikGelir = (state.gunlukGelir * 30) + kiraGeliri + (aktifTalepGeliri * 3) - state.taksit; 
+let maxAylikTaksit = netAylikGelir * 0.60;
+let aylikFaizOrani = (typeof faizOranlari !== 'undefined' && faizOranlari.aylikFaiz) ? faizOranlari.aylikFaiz : 0.05;
+
+// Anüite formülünün tersi ile 48 aya göre maksimum anapara (tavan limit) hesabı:
+if (maxAylikTaksit <= 0) {
+    state.krediLimiti = 0;
+} else if (aylikFaizOrani === 0) {
+    state.krediLimiti = Math.floor(maxAylikTaksit * sabitVade);
+} else {
+    let i = aylikFaizOrani;
+    let n = sabitVade;
+    let maksAnapara = maxAylikTaksit * (Math.pow(1 + i, n) - 1) / (i * Math.pow(1 + i, n));
+    state.krediLimiti = Math.floor(maksAnapara);
+}
+
+// Ekranda (val-limit yazan yerde) 48 aya göre hesaplanan bu tavan limit görünür
+let limitElementleri = document.getElementsByClassName('val-limit');
+for (let el of limitElementleri) {
+    el.innerText = state.krediLimiti.toLocaleString() + " TL";
+}
 
     // Akıllı gösterim fonksiyonu: Sayı 0 ise düz 0 yazar, para varsa kuruşlu gösterir
     function akilliPara(deger, birim = " TL", baslangic = "") {
@@ -4686,10 +4704,8 @@ function krediIslem(inputId, vadeInputId, isim, bedel, kapsam) {
     let miktarInput = document.getElementById(inputId);
     let vadeSelect = document.getElementById(vadeInputId);
 
-    // Noktaları temizleyerek doğru sayısal değeri alıyoruz (örn: 1.000.000 -> 1000000)
     let hamTutar = miktarInput ? miktarInput.value.replace(/\./g, '') : '';
     let miktar = parseFloat(hamTutar) || 0;
-    
     let vade = vadeSelect ? parseInt(vadeSelect.value) || 12 : 12;
 
     if (miktar <= 0) {
@@ -4698,22 +4714,33 @@ function krediIslem(inputId, vadeInputId, isim, bedel, kapsam) {
         return;
     }
 
-    // Aylık faiz oranını alıyoruz (Örn: faizOranlari.aylikFaiz %5 ise 0.05, yoksa varsayılan 0.05)
+    // Tavan limiti aşıyor mu kontrolü
+    if (miktar > state.krediLimiti) {
+        modalGoster("Bu tutar 48 aya göre hesaplanan maksimum kredi limitinizi aşıyor!");
+        return;
+    }
+
     let aylikFaizOrani = (typeof faizOranlari !== 'undefined' && faizOranlari.aylikFaiz) ? faizOranlari.aylikFaiz : 0.05;
-    
     let toplamGeriOdeme, aylikTaksit;
 
     if (aylikFaizOrani === 0) {
-        // Faizsiz durum
         toplamGeriOdeme = miktar;
         aylikTaksit = miktar / vade;
     } else {
-        // Anüite (Bileşik Faiz) Formülü
+        // Seçilen vadeye (n) göre gerçek anüite taksit hesabı
         let i = aylikFaizOrani;
         let n = vade;
-        
         aylikTaksit = miktar * (i * Math.pow(1 + i, n)) / (Math.pow(1 + i, n) - 1);
         toplamGeriOdeme = aylikTaksit * n;
+    }
+
+    // Ödeme gücü kontrolü (Seçilen vadeye göre taksit, net gelirin %60'ından büyükse reddet)
+    let netAylikGelir = (state.gunlukGelir * 30) + kiraGeliri + (aktifTalepGeliri * 3) - state.taksit;
+    let maxMusaitTaksit = netAylikGelir * 0.60;
+
+    if (aylikTaksit > maxMusaitTaksit) {
+        modalGoster(`Seçtiğiniz ${vade} ay vade ile bu aylık taksiti ödeyecek yeterli ödeme gücünüz (geliriniz) yok! Vadeyi uzatmayı deneyin.`);
+        return;
     }
 
     tempIslem = {
@@ -4735,7 +4762,6 @@ function krediIslem(inputId, vadeInputId, isim, bedel, kapsam) {
 
     modalGoster(`Kredi Tutarı: ${miktar.toLocaleString()} TL\nAylık Taksit: ${Math.round(aylikTaksit).toLocaleString()} TL\nToplam Geri Ödeme: ${Math.round(toplamGeriOdeme).toLocaleString()} TL\nVade: ${vade} Ay\n\nOnaylıyor musunuz?`, onayHTML);
 }
-
 let tempIslem = null;
 
 function islemiIptalEt() {
