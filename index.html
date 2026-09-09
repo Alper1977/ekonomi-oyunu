@@ -4803,7 +4803,7 @@ function krediyiKesinOnayla() {
     }
 
     // 🌟 3. KONTROL: Dinamik Peşinat ve %30 Minimum Peşinat Kuralı
-    let gerekenPesinat = bedel - miktar; // Kullanıcının girdiği krediye göre kalan gerçek peşinat
+    let gerekenPesinat = bedel - miktar; 
     let verilenPesinatYuzdesi = (gerekenPesinat / bedel) * 100;
 
     if (verilenPesinatYuzdesi < 30) {
@@ -4831,15 +4831,6 @@ function krediyiKesinOnayla() {
         return;
     }
 
-    let maksimumAylikKapasite = (state.krediLimiti / 48) * faizOranlari.krediKatsayi;
-    if (aylikTaksit > maksimumAylikKapasite) {
-        if (miktarInput) miktarInput.value = '';
-        if (vadeSelect) vadeSelect.value = "48";
-        tempIslem = null;
-        modalGoster("Bu vadede ödeme gücünüz yetersiz! Seçtiğiniz " + vade + " ay vade ile aylık taksitiniz (" + Math.floor(aylikTaksit).toLocaleString() + " TL) gelir/limit kapasitenizi aşıyor. Lütfen vadenizi uzatın veya kredi miktarını düşürün.");
-        return;
-    }
-
     if (kapsam !== 'ilan' && isim !== 'Bayi') {
         let arsaIsmi = (isim === 'Konut') ? "Konut Arsası" : isim + " Arsası";
         let arsa = state.varliklar.find(v => v.isim === arsaIsmi && v.durum === 'sahip');
@@ -4856,7 +4847,7 @@ function krediyiKesinOnayla() {
 
     state.kredi += toplamGeriOdeme; 
     state.taksit += aylikTaksit;
-    state.nakit -= gerekenPesinat; // Kullanıcının ödediği dinamik peşinat kasadan düşülür
+    state.nakit -= gerekenPesinat; 
 
     if (!state.krediler) state.krediler = [];
     let yeniKrediID = Date.now() + Math.random(); 
