@@ -3043,34 +3043,31 @@ async function guncelle() {
     });
     
 
-let gGelir = (typeof state !== 'undefined' && state.gunlukGelir) ? state.gunlukGelir : 0;
-    let kGelir = (typeof kiraGeliri !== 'undefined') ? kiraGeliri : 0;
-    let tGelir = (typeof aktifTalepGeliri !== 'undefined') ? aktifTalepGeliri : 0;
-    let mevcutTaksit = (typeof state !== 'undefined' && state.taksit) ? state.taksit : 0;
-    
-    let katsayi = (typeof faizOranlari !== 'undefined' && faizOranlari.krediKatsayi) ? faizOranlari.krediKatsayi : 1;
+    state.krediLimiti = Math.floor(((state.gunlukGelir + kiraGeliri + (aktifTalepGeliri * 3) - state.taksit) * 0.60) * 48 / faizOranlari.krediKatsayi);
 
-    let toplamGelir = gGelir + kGelir + (tGelir * 3);
-    let netFark = toplamGelir - mevcutTaksit;
-
-    console.log("Gelirler -> Günlük:", gGelir, "Kira:", kGelir, "Talep:", tGelir, "Mevcut Taksit:", mevcutTaksit, "Net Fark:", netFark);
-
-    if (netFark <= 0) {
-        state.krediLimiti = 0;
-    } else {
-        let hamLimit = (netFark * 0.60) * 48 / katsayi;
-        state.krediLimiti = Math.floor(hamLimit);
-    }
-
-    if (isNaN(state.krediLimiti) || state.krediLimiti < 0) {
-        state.krediLimiti = 0;
-    }
-
-    // Arayüze yazdır
     let limitElementleri = document.getElementsByClassName('val-limit');
     for (let el of limitElementleri) {
-        el.innerText = state.krediLimiti.toLocaleString() + " TL";
+        el.innerText = Math.floor(state.krediLimiti).toLocaleString() + " TL";
     }
+
+    // Akıllı gösterim fonksiyonu: Sayı 0 ise düz 0 yazar, para varsa kuruşlu gösterir
+    function akilliPara(deger, birim = " TL", baslangic = "") {
+        let sayi = Number(deger || 0);
+        if (sayi === 0) return "0" + birim;
+        return baslangic + sayi.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + birim;
+    }
+
+    // 🌟 YENİ EKLENEN: Günlük gelir ve kira geliri yazı alanlarını ekrana anında yansıt
+    let gunlukGelirEl = document.getElementById('gunluk-gelir') || document.getElementById('yazi-gunluk-gelir');
+    if (gunlukGelirEl && state.gunlukGelir !== undefined) {
+        gunlukGelirEl.innerText = Number(state.gunlukGelir).toLocaleString() + " TL";
+    }
+
+    let kiraGelirEl = document.getElementById('konut-kira-geliri') || document.getElementById('yazi-kira-geliri');
+    if (kiraGelirEl && state.konutKiraGeliri !== undefined) {
+        kiraGelirEl.innerText = Number(state.konutKiraGeliri).toLocaleString() + " TL";
+    }
+
     document.getElementById('val-kredi').innerText = Number(state.kredi || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
     document.getElementById('val-taksit').innerText = Number(state.taksit || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
     document.getElementById('val-nakit').innerText = Number(state.nakit || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
