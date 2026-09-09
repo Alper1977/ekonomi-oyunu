@@ -4698,9 +4698,23 @@ function krediIslem(inputId, vadeInputId, isim, bedel, kapsam) {
         return;
     }
 
-    let katsayi = (typeof faizOranlari !== 'undefined' && faizOranlari.krediKatsayi) ? faizOranlari.krediKatsayi : 1.2;
-    let toplamGeriOdeme = miktar * katsayi; 
-    let aylikTaksit = toplamGeriOdeme / vade;
+    // Aylık faiz oranını alıyoruz (Örn: faizOranlari.aylikFaiz %5 ise 0.05, yoksa varsayılan 0.05)
+    let aylikFaizOrani = (typeof faizOranlari !== 'undefined' && faizOranlari.aylikFaiz) ? faizOranlari.aylikFaiz : 0.05;
+    
+    let toplamGeriOdeme, aylikTaksit;
+
+    if (aylikFaizOrani === 0) {
+        // Faizsiz durum
+        toplamGeriOdeme = miktar;
+        aylikTaksit = miktar / vade;
+    } else {
+        // Anüite (Bileşik Faiz) Formülü
+        let i = aylikFaizOrani;
+        let n = vade;
+        
+        aylikTaksit = miktar * (i * Math.pow(1 + i, n)) / (Math.pow(1 + i, n) - 1);
+        toplamGeriOdeme = aylikTaksit * n;
+    }
 
     tempIslem = {
         inputId: inputId,
@@ -4719,9 +4733,8 @@ function krediIslem(inputId, vadeInputId, isim, bedel, kapsam) {
         <button onclick="islemiIptalEt()" style="background-color: #d9534f; color: white; margin-left: 10px;">VAZGEÇ</button>
     `;
 
-    modalGoster(`Kredi Tutarı: ${miktar.toLocaleString()} TL\nToplam Geri Ödeme: ${toplamGeriOdeme.toLocaleString()} TL\nVade: ${vade} Ay\n\nOnaylıyor musunuz?`, onayHTML);
+    modalGoster(`Kredi Tutarı: ${miktar.toLocaleString()} TL\nAylık Taksit: ${Math.round(aylikTaksit).toLocaleString()} TL\nToplam Geri Ödeme: ${Math.round(toplamGeriOdeme).toLocaleString()} TL\nVade: ${vade} Ay\n\nOnaylıyor musunuz?`, onayHTML);
 }
-
 
 let tempIslem = null;
 
