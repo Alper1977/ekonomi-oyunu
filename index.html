@@ -3042,24 +3042,28 @@ async function guncelle() {
         if (talep) aktifTalepGeliri += talep.bedel;
     });
     
-let sabitVade = 48;
-    let gGelir = (typeof state !== 'undefined' && state.gunlukGelir) ? state.gunlukGelir : 0;
+
+   let gGelir = (typeof state !== 'undefined' && state.gunlukGelir) ? state.gunlukGelir : 0;
     let kGelir = (typeof kiraGeliri !== 'undefined') ? kiraGeliri : 0;
     let tGelir = (typeof aktifTalepGeliri !== 'undefined') ? aktifTalepGeliri : 0;
-    let mevcutTaksit = (typeof state !== 'undefined' && state.taksit) ? state.taksit : 0;
-
-    // Senin kurduğun mantık: Günlük geliri 30 ile çarpıp aylığa çeviriyoruz
-    let aylikToplamGelir = (gGelir * 30) + kGelir + tGelir; 
-    let netAylikGelir = aylikToplamGelir - mevcutTaksit;
+    let m Taksit = (typeof state !== 'undefined' && state.taksit) ? state.taksit : 0;
     
-    // Ödeme gücünün %60'ı ve 48 ay ile çarpımı
-    let maxAylikTaksit = netAylikGelir * 0.60;
-    state.krediLimiti = Math.floor(maxAylikTaksit * sabitVade);
+    // Güvenli katsayı kontrolü (tanımsızsa varsayılan 1 alalım ki NaN patlaması olmasın)
+    let katsayi = (typeof faizOranlari !== 'undefined' && faizOranlari.krediKatsayi) ? faizOranlari.krediKatsayi : 1;
+
+    let hamLimit = ((gGelir + kGelir + (tGelir * 3) - state.taksit) * 0.60) * 48 / katsayi;
+    
+    state.krediLimiti = Math.floor(hamLimit);
 
     if (isNaN(state.krediLimiti) || state.krediLimiti < 0) {
         state.krediLimiti = 0;
     }
 
+    // Arayüze yazdır
+    let limitElementleri = document.getElementsByClassName('val-limit');
+    for (let el of limitElementleri) {
+        el.innerText = state.krediLimiti.toLocaleString() + " TL";
+    }
     // Arayüze yazdır
     let limitElementleri = document.getElementsByClassName('val-limit');
     for (let el of limitElementleri) {
@@ -4696,47 +4700,6 @@ function changePage(p) {
     if (typeof guncelle === 'function') guncelle();
 }
 
-function krediLimitiniHesaplaVeGoster() {
-    let sabitVade = 48; // Kesinlikle 48 sabit vade
-    
-    let gGelir = (typeof state !== 'undefined' && state.gunlukGelir) ? state.gunlukGelir : 0;
-    let kGelir = (typeof kiraGeliri !== 'undefined') ? kiraGeliri : 0;
-    let tGelir = (typeof aktifTalepGeliri !== 'undefined') ? aktifTalepGeliri : 0;
-    let mevcutTaksit = (typeof state !== 'undefined' && state.taksit) ? state.taksit : 0;
-
-    let netAylikGelir = (gGelir * 30) + kGelir + (tGelir * 3) - mevcutTaksit;
-    let maxAylikTaksit = netAylikGelir * 0.60; 
-
-    // Önce DOM'daki güncel admin inputundan doğrudan oku, yoksa window.oyunAyar'a bak
-    let faizInput = document.getElementById('adm-faiz-yatirim');
-    let hammaddeFaiz = 5;
-
-    if (faizInput && !isNaN(faizInput.value) && faizInput.value !== "") {
-        hammaddeFaiz = Number(faizInput.value);
-    } else if (typeof window.oyunAyar !== 'undefined' && window.oyunAyar.faizOranlari && window.oyunAyar.faizOranlari.yatirimKredisiYuzde) {
-        hammaddeFaiz = window.oyunAyar.faizOranlari.yatirimKredisiYuzde;
-    }
-
-    let aylikFaizOrani = hammaddeFaiz > 1 ? hammaddeFaiz / 100 : hammaddeFaiz;
-
-    if (maxAylikTaksit <= 0) {
-        state.krediLimiti = 0;
-    } else {
-        let i = aylikFaizOrani;
-        let n = sabitVade; 
-        let maksAnapara = maxAylikTaksit * (Math.pow(1 + i, n) - 1) / (i * Math.pow(1 + i, n));
-        state.krediLimiti = Math.floor(maksAnapara);
-    }
-
-    if (isNaN(state.krediLimiti) || state.krediLimiti < 0) {
-        state.krediLimiti = 0;
-    }
-
-    let limitElementleri = document.getElementsByClassName('val-limit');
-    for (let el of limitElementleri) {
-        el.innerText = state.krediLimiti.toLocaleString() + " TL";
-    }
-}
 
 function krediIslem(inputId, vadeInputId, isim, bedel, kapsam) {
     let miktarInput = document.getElementById(inputId);
