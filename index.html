@@ -4684,10 +4684,11 @@ function krediLimitiniHesaplaVeGoster() {
     let netAylikGelir = (gGelir * 30) + kGelir + (tGelir * 3) - mevcutTaksit;
     let maxAylikTaksit = netAylikGelir * 0.60; // 6.600.000 gelirin %60'ı = 3.960.000 TL
 
-    // Admin panelinden gelen faiz oranını güvenli al (%5 girildiyse 0.05 yapar)
+    // Admin panelinden window.oyunAyar.faizOranlari altındaki yatirimKredisiYuzde'yi al
     let aylikFaizOrani = 0.05; 
-    if (typeof faizOranlari !== 'undefined' && faizOranlari.aylikFaiz) {
-        aylikFaizOrani = faizOranlari.aylikFaiz > 1 ? faizOranlari.aylikFaiz / 100 : faizOranlari.aylikFaiz;
+    if (typeof window.oyunAyar !== 'undefined' && window.oyunAyar.faizOranlari && window.oyunAyar.faizOranlari.yatirimKredisiYuzde) {
+        let hammaddeFaiz = window.oyunAyar.faizOranlari.yatirimKredisiYuzde;
+        aylikFaizOrani = hammaddeFaiz > 1 ? hammaddeFaiz / 100 : hammaddeFaiz;
     }
 
     if (maxAylikTaksit <= 0) {
@@ -4710,7 +4711,6 @@ function krediLimitiniHesaplaVeGoster() {
         el.innerText = state.krediLimiti.toLocaleString() + " TL";
     }
 }
-
 
 function krediIslem(inputId, vadeInputId, isim, bedel, kapsam) {
     let miktarInput = document.getElementById(inputId);
