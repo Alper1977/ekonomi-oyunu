@@ -3043,15 +3043,14 @@ async function guncelle() {
     });
     
 
-   let gGelir = (typeof state !== 'undefined' && state.gunlukGelir) ? state.gunlukGelir : 0;
+let gGelir = (typeof state !== 'undefined' && state.gunlukGelir) ? state.gunlukGelir : 0;
     let kGelir = (typeof kiraGeliri !== 'undefined') ? kiraGeliri : 0;
     let tGelir = (typeof aktifTalepGeliri !== 'undefined') ? aktifTalepGeliri : 0;
-    let m Taksit = (typeof state !== 'undefined' && state.taksit) ? state.taksit : 0;
+    let mevcutTaksit = (typeof state !== 'undefined' && state.taksit) ? state.taksit : 0;
     
-    // Güvenli katsayı kontrolü (tanımsızsa varsayılan 1 alalım ki NaN patlaması olmasın)
-    let katsayi = (typeof faizOranlari !== 'undefined' && faizOranlari.krediKatsayi) ? faizOranlari.krediKatsayi : 1;
+    let katsayi = (typeof faizOranlari !== 'undefined' && faizOranlari.krediKatsayi) ? faizOranlari.katsayi : 1;
 
-    let hamLimit = ((gGelir + kGelir + (tGelir * 3) - state.taksit) * 0.60) * 48 / katsayi;
+    let hamLimit = ((gGelir + kGelir + (tGelir * 3) - mevcutTaksit) * 0.60) * 48 / katsayi;
     
     state.krediLimiti = Math.floor(hamLimit);
 
@@ -3059,11 +3058,6 @@ async function guncelle() {
         state.krediLimiti = 0;
     }
 
-    // Arayüze yazdır
-    let limitElementleri = document.getElementsByClassName('val-limit');
-    for (let el of limitElementleri) {
-        el.innerText = state.krediLimiti.toLocaleString() + " TL";
-    }
     // Arayüze yazdır
     let limitElementleri = document.getElementsByClassName('val-limit');
     for (let el of limitElementleri) {
