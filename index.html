@@ -4674,7 +4674,7 @@ function changePage(p) {
 }
 
 function krediLimitiniHesaplaVeGoster() {
-    let sabitVade = 48; // Limit her zaman 48 aya göre tavan olarak hesaplanacak
+    let sabitVade = 48; // Kesinlikle 48 sabit vade
     
     let gGelir = (typeof state !== 'undefined' && state.gunlukGelir) ? state.gunlukGelir : 0;
     let kGelir = (typeof kiraGeliri !== 'undefined') ? kiraGeliri : 0;
@@ -4682,10 +4682,10 @@ function krediLimitiniHesaplaVeGoster() {
     let mevcutTaksit = (typeof state !== 'undefined' && state.taksit) ? state.taksit : 0;
 
     let netAylikGelir = (gGelir * 30) + kGelir + (tGelir * 3) - mevcutTaksit;
-    let maxAylikTaksit = netAylikGelir * 0.60; // Gelirin %60'ı ödeme gücü tavanı
+    let maxAylikTaksit = netAylikGelir * 0.60; // 6.600.000 gelirin %60'ı = 3.960.000 TL
 
-    // Faiz oranını güvenli al (Yüzde veya ondalık karışıklığını önle)
-    let aylikFaizOrani = 0.03; 
+    // Admin panelinden gelen faiz oranını güvenli al (%5 girildiyse 0.05 yapar)
+    let aylikFaizOrani = 0.05; 
     if (typeof faizOranlari !== 'undefined' && faizOranlari.aylikFaiz) {
         aylikFaizOrani = faizOranlari.aylikFaiz > 1 ? faizOranlari.aylikFaiz / 100 : faizOranlari.aylikFaiz;
     }
@@ -4693,14 +4693,13 @@ function krediLimitiniHesaplaVeGoster() {
     if (maxAylikTaksit <= 0) {
         state.krediLimiti = 0;
     } else {
-        // Doğru Anüite Tavan Limit Formülü (Present Value of Annuity)
+        // Doğru Anüite Formülü (Present Value of Annuity)
         let i = aylikFaizOrani;
-        let n = sabitVade; // Kesinlikle 48 sabit
+        let n = sabitVade; 
         let maksAnapara = maxAylikTaksit * (Math.pow(1 + i, n) - 1) / (i * Math.pow(1 + i, n));
         state.krediLimiti = Math.floor(maksAnapara);
     }
 
-    // Negatif veya hatalı çıkma ihtimaline karşı güvenlik kilidi
     if (isNaN(state.krediLimiti) || state.krediLimiti < 0) {
         state.krediLimiti = 0;
     }
