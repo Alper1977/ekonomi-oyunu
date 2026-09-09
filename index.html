@@ -3046,12 +3046,25 @@ async function guncelle() {
 let aylikTaksitKapasitesi = (state.gunlukGelir + kiraGeliri + (aktifTalepGeliri * 3) - state.taksit) * 0.60;
 let toplamBrutOdeme = aylikTaksitKapasitesi * 48;
 
-// Net limit direkt brüt tutarın katsayıya bölünmüş halidir (faiz düşülmüş ana para)
+// Faiz düşülmüş net kredi limiti (Katsayıya bölünerek net ana para bulunur)
 state.krediLimiti = Math.floor(toplamBrutOdeme / faizOranlari.krediKatsayi);
 
 let limitElementleri = document.getElementsByClassName('val-limit');
 for (let el of limitElementleri) {
     el.innerText = state.krediLimiti.toLocaleString() + " TL";
+}
+
+let faizBaslikElementi = document.getElementById('faiz-baslik-orani');
+if (faizBaslikElementi) {
+    let yuzdeDegeri = Math.round((faizOranlari.krediKatsayi - 1) * 100);
+    faizBaslikElementi.innerText = `Yatırım Kredisi (Faiz Oranı: %${yuzdeDegeri})`;
+}
+
+if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
+if (typeof zenginlerListesiniGuncelle === 'function') await zenginlerListesiniGuncelle();
+
+if (typeof portfoyuSunucuyaKaydet === 'function') {
+    portfoyuSunucuyaKaydet(state);
 }
 
     // Akıllı gösterim fonksiyonu: Sayı 0 ise düz 0 yazar, para varsa kuruşlu gösterir
@@ -3257,18 +3270,7 @@ let konutSayisi = state.varliklar.filter(v => v.isim === 'Konut' && (v.durum ===
         });
     }
 
-let faizBaslikElementi = document.getElementById('faiz-baslik-orani');
-if (faizBaslikElementi) {
-    let yuzdeDegeri = Math.round((faizOranlari.krediKatsayi - 1) * 100);
-    faizBaslikElementi.innerText = `Yatırım Kredisi (Faiz Oranı: %${yuzdeDegeri})`;
-}
 
-if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
-if (typeof zenginlerListesiniGuncelle === 'function') await zenginlerListesiniGuncelle();
-
-if (typeof portfoyuSunucuyaKaydet === 'function') {
-    portfoyuSunucuyaKaydet(state);
-}
 
 
 function hesaplaServet(oyuncu) {
