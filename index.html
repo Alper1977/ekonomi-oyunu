@@ -3042,7 +3042,7 @@ async function guncelle() {
         if (talep) aktifTalepGeliri += talep.bedel;
     });
     
-    let sabitVade = 48;
+let sabitVade = 48;
     let gGelir = (typeof state !== 'undefined' && state.gunlukGelir) ? state.gunlukGelir : 0;
     let kGelir = (typeof kiraGeliri !== 'undefined') ? kiraGeliri : 0;
     let tGelir = (typeof aktifTalepGeliri !== 'undefined') ? aktifTalepGeliri : 0;
@@ -3051,25 +3051,8 @@ async function guncelle() {
     let netAylikGelir = (gGelir * 30) + kGelir + (tGelir * 3) - mevcutTaksit;
     let maxAylikTaksit = netAylikGelir * 0.60;
 
-    // Admin panelinden canlı faiz oranını oku
-    let aylikFaizOrani = 0.05;
-    let faizInput = document.getElementById('adm-faiz-yatirim');
-    if (faizInput && !isNaN(faizInput.value) && faizInput.value !== "") {
-        let f = Number(faizInput.value);
-        aylikFaizOrani = f > 1 ? f / 100 : f;
-    } else if (typeof window.oyunAyar !== 'undefined' && window.oyunAyar.faizOranlari && window.oyunAyar.faizOranlari.yatirimKredisiYuzde) {
-        let f = window.oyunAyar.faizOranlari.yatirimKredisiYuzde;
-        aylikFaizOrani = f > 1 ? f / 100 : f;
-    }
-
-    if (maxAylikTaksit <= 0) {
-        state.krediLimiti = 0;
-    } else {
-        let i = aylikFaizOrani;
-        let n = sabitVade;
-        let maksAnapara = maxAylikTaksit * (Math.pow(1 + i, n) - 1) / (i * Math.pow(1 + i, n));
-        state.krediLimiti = Math.floor(maksAnapara);
-    }
+    // Doğrudan anapara tavanı hesabı (Faiz limiti uçurmasın diye düz çarpım)
+    state.krediLimiti = Math.floor(maxAylikTaksit * sabitVade);
 
     if (isNaN(state.krediLimiti) || state.krediLimiti < 0) {
         state.krediLimiti = 0;
