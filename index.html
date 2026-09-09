@@ -3046,10 +3046,10 @@ async function guncelle() {
 let aylikTaksitKapasitesi = (state.gunlukGelir + kiraGeliri + (aktifTalepGeliri * 3) - state.taksit) * 0.60;
 let toplamBrutOdeme = aylikTaksitKapasitesi * 48;
 
-// Sabit veya değişken faiz yükünü (örneğin %5 üzerinden 48 aylık maliyeti) doğrudan düşerek net ana parayı bulalım
-// Katsayı yerine doğrudan güvenli bir netleştirme oranı kullanalım (veya faiz oranını baz alalım)
-let netKrediLimiti = toplamBrutOdeme / 2.08; // 48 ay için standart faiz katsayısı çarpanı
+// Sabit oran yerine orijinal ve dinamik olan kredi katsayısını kullanıyoruz
+let aktifKatsayi = (typeof faizOranlari !== 'undefined' && faizOranlari.krediKatsayi) ? faizOranlari.krediKatsayi : 2.08;
 
+let netKrediLimiti = toplamBrutOdeme / aktifKatsayi;
 state.krediLimiti = Math.floor(netKrediLimiti);
 
 let limitElementleri = document.getElementsByClassName('val-limit');
