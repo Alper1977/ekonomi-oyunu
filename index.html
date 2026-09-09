@@ -3042,34 +3042,13 @@ async function guncelle() {
         if (talep) aktifTalepGeliri += talep.bedel;
     });
     
+    state.krediLimiti = Math.floor(((state.gunlukGelir + kiraGeliri + (aktifTalepGeliri * 3) - state.taksit) * 0.60) * 48 / faizOranlari.krediKatsayi);
 
-let aylikTaksitKapasitesi = (state.gunlukGelir + kiraGeliri + (aktifTalepGeliri * 3) - state.taksit) * 0.60;
-let toplamBrutOdeme = aylikTaksitKapasitesi * 48;
+    let limitElementleri = document.getElementsByClassName('val-limit');
+    for (let el of limitElementleri) {
+        el.innerText = Math.floor(state.krediLimiti).toLocaleString() + " TL";
+    }
 
-// Sabit oran yerine orijinal ve dinamik olan kredi katsayısını kullanıyoruz
-let aktifKatsayi = (typeof faizOranlari !== 'undefined' && faizOranlari.krediKatsayi) ? faizOranlari.krediKatsayi : 2.08;
-
-let netKrediLimiti = toplamBrutOdeme / aktifKatsayi;
-state.krediLimiti = Math.floor(netKrediLimiti);
-
-let limitElementleri = document.getElementsByClassName('val-limit');
-for (let el of limitElementleri) {
-    el.innerText = state.krediLimiti.toLocaleString() + " TL";
-}
-    
-let faizBaslikElementi = document.getElementById('faiz-baslik-orani');
-if (faizBaslikElementi) {
-    let yuzdeDegeri = Math.round((faizOranlari.krediKatsayi - 1) * 100);
-    faizBaslikElementi.innerText = `Yatırım Kredisi (Faiz Oranı: %${yuzdeDegeri})`;
-}
-
-if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
-if (typeof zenginlerListesiniGuncelle === 'function') await zenginlerListesiniGuncelle();
-
-if (typeof portfoyuSunucuyaKaydet === 'function') {
-    portfoyuSunucuyaKaydet(state);
-}
-}
     // Akıllı gösterim fonksiyonu: Sayı 0 ise düz 0 yazar, para varsa kuruşlu gösterir
     function akilliPara(deger, birim = " TL", baslangic = "") {
         let sayi = Number(deger || 0);
@@ -3273,7 +3252,19 @@ let konutSayisi = state.varliklar.filter(v => v.isim === 'Konut' && (v.durum ===
         });
     }
 
+    let faizBaslikElementi = document.getElementById('faiz-baslik-orani');
+    if (faizBaslikElementi) {
+        let yuzdeDegeri = Math.round((faizOranlari.krediKatsayi - 1) * 100);
+        faizBaslikElementi.innerText = `Yatırım Kredisi (Faiz Oranı: %${yuzdeDegeri})`;
+    }
 
+    if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
+    if (typeof zenginlerListesiniGuncelle === 'function') await zenginlerListesiniGuncelle();
+
+    if (typeof portfoyuSunucuyaKaydet === 'function') {
+        portfoyuSunucuyaKaydet(state);
+    }
+}
 
 
 function hesaplaServet(oyuncu) {
@@ -4693,10 +4684,10 @@ function krediIslem(inputId, vadeInputId, isim, bedel, kapsam) {
     let miktarInput = document.getElementById(inputId);
     let vadeSelect = document.getElementById(vadeInputId);
 
+    // Noktaları temizleyerek doğru sayısal değeri alıyoruz (örn: 1.000.000 -> 1000000)
     let hamTutar = miktarInput ? miktarInput.value.replace(/\./g, '') : '';
     let miktar = parseFloat(hamTutar) || 0;
     
-    // Vadeyi HTML select elemanından net olarak okuyoruz (12, 24, 36, 48 vb.)
     let vade = vadeSelect ? parseInt(vadeSelect.value) || 12 : 12;
 
     if (miktar <= 0) {
@@ -4705,53 +4696,9 @@ function krediIslem(inputId, vadeInputId, isim, bedel, kapsam) {
         return;
     }
 
-    // Tavan limit kontrolü
-    let mevcutLimit = (typeof state !== 'undefined' && state.krediLimiti) ? state.krediLimiti : 0;
-    if (miktar > mevcutLimit) {
-        modalGoster("Bu tutar 48 aya göre hesaplanan maksimum kredi limitinizi aşıyor!");
-        return;
-    }
-
-    // Admin panelinden veya oyunAyar objesinden güncel yatırım kredisi faiz oranını dinamik çekme
-    let aylikFaizOrani = 0.05; 
-    let faizInput = document.getElementById('adm-faiz-yatirim');
-    if (faizInput && !isNaN(faizInput.value) && faizInput.value !== "") {
-        let f = Number(faizInput.value);
-        aylikFaizOrani = f > 1 ? f / 100 : f;
-    } else if (typeof window.oyunAyar !== 'undefined' && window.oyunAyar.faizOranlari && window.oyunAyar.faizOranlari.yatirimKredisiYuzde) {
-        let f = window.oyunAyar.faizOranlari.yatirimKredisiYuzde;
-        aylikFaizOrani = f > 1 ? f / 100 : f;
-    } else if (typeof faizOranlari !== 'undefined' && faizOranlari.yatirimKredisiYuzde) {
-        let f = faizOranlari.yatirimKredisiYuzde;
-        aylikFaizOrani = f > 1 ? f / 100 : f;
-    }
-
-    let toplamGeriOdeme, aylikTaksit;
-
-    if (aylikFaizOrani === 0) {
-        toplamGeriOdeme = miktar;
-        aylikTaksit = miktar / vade;
-    } else {
-        // Seçilen vadeye (n) göre anüite taksit hesabı
-        let i = aylikFaizOrani;
-        let n = vade; 
-        aylikTaksit = miktar * (i * Math.pow(1 + i, n)) / (Math.pow(1 + i, n) - 1);
-        toplamGeriOdeme = aylikTaksit * n;
-    }
-
-    // Ödeme gücü kontrolü (Seçilen vadeye göre taksit, net gelirin %60'ından büyükse reddet)
-    let gGelir = (typeof state !== 'undefined' && state.gunlukGelir) ? state.gunlukGelir : 0;
-    let kGelir = (typeof kiraGeliri !== 'undefined') ? kiraGeliri : 0;
-    let tGelir = (typeof aktifTalepGeliri !== 'undefined') ? aktifTalepGeliri : 0;
-    let mevcutTaksit = (typeof state !== 'undefined' && state.taksit) ? state.taksit : 0;
-
-    let netAylikGelir = (gGelir * 30) + kGelir + (tGelir * 3) - mevcutTaksit;
-    let maxMusaitTaksit = netAylikGelir * 0.60;
-
-    if (aylikTaksit > maxMusaitTaksit) {
-        modalGoster(`Seçtiğiniz ${vade} ay vade ile bu aylık taksiti ödeyecek yeterli ödeme gücünüz yok! Taksit tutarı (${Math.round(aylikTaksit).toLocaleString()} TL) gelir kapasitenizi aşıyor. Vadeyi 48 aya çıkarmayı deneyin.`);
-        return;
-    }
+    let katsayi = (typeof faizOranlari !== 'undefined' && faizOranlari.krediKatsayi) ? faizOranlari.krediKatsayi : 1.2;
+    let toplamGeriOdeme = miktar * katsayi; 
+    let aylikTaksit = toplamGeriOdeme / vade;
 
     tempIslem = {
         inputId: inputId,
@@ -4770,9 +4717,10 @@ function krediIslem(inputId, vadeInputId, isim, bedel, kapsam) {
         <button onclick="islemiIptalEt()" style="background-color: #d9534f; color: white; margin-left: 10px;">VAZGEÇ</button>
     `;
 
-    modalGoster(`Kredi Tutarı: ${miktar.toLocaleString()} TL\nAylık Taksit: ${Math.round(aylikTaksit).toLocaleString()} TL\nToplam Geri Ödeme: ${Math.round(toplamGeriOdeme).toLocaleString()} TL\nVade: ${vade} Ay\n\nOnaylıyor musunuz?`, onayHTML);
+    modalGoster(`Kredi Tutarı: ${miktar.toLocaleString()} TL\nToplam Geri Ödeme: ${toplamGeriOdeme.toLocaleString()} TL\nVade: ${vade} Ay\n\nOnaylıyor musunuz?`, onayHTML);
 }
-    
+
+
 let tempIslem = null;
 
 function islemiIptalEt() {
@@ -4851,20 +4799,12 @@ function krediyiKesinOnayla() {
         return;
     }
 
-    // Doğru aylık taksit kapasitesi (Gelirinin %60'ı)
-    let gGelir = (typeof state !== 'undefined' && state.gunlukGelir) ? state.gunlukGelir : 0;
-    let kGelir = (typeof kiraGeliri !== 'undefined') ? kiraGeliri : 0;
-    let tGelir = (typeof aktifTalepGeliri !== 'undefined') ? aktifTalepGeliri : 0;
-    let mevcutTaksit = (typeof state !== 'undefined' && state.taksit) ? state.taksit : 0;
-
-    let netAylikGelir = (gGelir * 30) + kGelir + (tGelir * 3) - mevcutTaksit;
-    let maksimumAylikKapasite = netAylikGelir * 0.60; 
-
+    let maksimumAylikKapasite = (state.krediLimiti / 48) * faizOranlari.krediKatsayi;
     if (aylikTaksit > maksimumAylikKapasite) {
         if (miktarInput) miktarInput.value = '';
         if (vadeSelect) vadeSelect.value = "48";
         tempIslem = null;
-        modalGoster("Bu vadede ödeme gücünüz yetersiz! Seçtiğiniz " + vade + " ay vade ile aylık taksitiniz (" + Math.floor(aylikTaksit).toLocaleString() + " TL) gelir kapasitenizi aşıyor.");
+        modalGoster("Bu vadede ödeme gücünüz yetersiz! Seçtiğiniz " + vade + " ay vade ile aylık taksitiniz (" + Math.floor(aylikTaksit).toLocaleString() + " TL) gelir/limit kapasitenizi aşıyor. Lütfen vadenizi uzatın veya kredi miktarını düşürün.");
         return;
     }
 
@@ -4944,10 +4884,10 @@ function krediyiKesinOnayla() {
         portfoyuSunucuyaKaydet(state);
     }
 }
-    
+
 function krediyiOnaylaVeUygula(inputId, vadeInputId, isim, bedel, kapsam, miktar, vade) {
     
-    // 🌟 Gecikmiş kredi kontrolü
+    // 🌟 YENİ EKLEDİĞİMİZ KONTROL: Gecikmiş kredi varsa bu yolla da krediyi engelle
     let gecikmedeKrediVar = state.krediler && state.krediler.find(kr => kr.ustUsteOdenmeyen > 0);
     if (gecikmedeKrediVar) {
         let miktarInput = document.getElementById(inputId);
@@ -4956,44 +4896,7 @@ function krediyiOnaylaVeUygula(inputId, vadeInputId, isim, bedel, kapsam, miktar
         modalGoster(`⚠️ <b>KREDİ UYARISI</b><br><br>Kredi taksit ödemeleriniz düzenli değil! Gecikmiş ödemeleriniz bulunduğu için <b>kredi borcunuzu kapatmadan</b> yeni kredi kullanamazsınız.`);
         return;
     }
-
-    let miktarInput = document.getElementById(inputId);
-    let vadeSelect = document.getElementById(vadeInputId);
-
-    // 🌟 1. KONTROL: Ürün bedelinden fazla kredi çekilemez
-    if (miktar > bedel) {
-        if (miktarInput) miktarInput.value = '';
-        if (vadeSelect) vadeSelect.value = "48";
-        modalGoster("Fazla kredi talep ettiniz! Çekebileceğiniz kredi miktarı ürün bedelinden fazla olamaz.");
-        return;
-    }
-
-    // 🌟 2. KONTROL: Maksimum %70 kredi (En az %30 peşinat) sınırı
-    let maksimumKrediLimiti = bedel * 0.70;
-    if (miktar > maksimumKrediLimiti) {
-        if (miktarInput) miktarInput.value = '';
-        if (vadeSelect) vadeSelect.value = "48";
-        modalGoster(`⚠️ <b>Kredi Sınırı Aşıldı!</b><br><br>Bir varlık için en fazla <b>%70</b> oranında kredi kullanabilirsiniz (Max Kredi: ${maksimumKrediLimiti.toLocaleString()} TL). En az %30 peşinat ödemelisiniz.`);
-        return;
-    }
-
-    let gerekenPesinat = bedel - miktar;
-    let verilenPesinatYuzdesi = (gerekenPesinat / bedel) * 100;
-
-    if (verilenPesinatYuzdesi < 30) {
-        if (miktarInput) miktarInput.value = '';
-        if (vadeSelect) vadeSelect.value = "48";
-        modalGoster(`⚠️ <b>Yetersiz Peşinat Oranı!</b><br><br>Vereceğiniz peşinat oranı (%${verilenPesinatYuzdesi.toFixed(1)}) <b>en az %30</b> olmalıdır.`);
-        return;
-    }
-
-    // 🌟 3. KONTROL: Kasada yeterli nakit (peşinat) var mı?
-    if (state.nakit < gerekenPesinat) {
-        if (miktarInput) miktarInput.value = '';
-        if (vadeSelect) vadeSelect.value = "48";
-        modalGoster(`⚠️ <b>Yetersiz Nakit (Peşinat)!</b><br><br>Bu varlığı alabilmek için gereken <b>peşinat (${gerekenPesinat.toLocaleString()} TL)</b> kasanızda bulunmamaktadır.`);
-        return;
-    }
+    // -----------------------------------------------------------------
 
     let islemTipi = (kapsam === 'ilan' ? 'al' : 'yap');
     
@@ -5001,86 +4904,45 @@ function krediyiOnaylaVeUygula(inputId, vadeInputId, isim, bedel, kapsam, miktar
         let arsaIsmi = (isim === 'Konut') ? "Konut Arsası" : isim + " Arsası";
         let arsa = state.varliklar.find(v => v.isim === arsaIsmi && v.durum === 'sahip');
         if (!arsa) {
-            if (miktarInput) miktarInput.value = '';
-            if (vadeSelect) vadeSelect.value = "48";
             modalGoster(arsaIsmi + " bulunmamaktadır!");
             return; 
         }
     }
 
-    // 🌟 Admin panelinden ve ayarlardan güncel aylık faiz oranını canlı alma
-    let aylikFaizOrani = 0.05; 
-    let faizInput = document.getElementById('adm-faiz-yatirim');
-    if (faizInput && !isNaN(faizInput.value) && faizInput.value !== "") {
-        let f = Number(faizInput.value);
-        aylikFaizOrani = f > 1 ? f / 100 : f;
-    } else if (typeof window.oyunAyar !== 'undefined' && window.oyunAyar.faizOranlari && window.oyunAyar.faizOranlari.yatirimKredisiYuzde) {
-        let f = window.oyunAyar.faizOranlari.yatirimKredisiYuzde;
-        aylikFaizOrani = f > 1 ? f / 100 : f;
-    } else if (typeof faizOranlari !== 'undefined' && faizOranlari.yatirimKredisiYuzde) {
-        let f = faizOranlari.yatirimKredisiYuzde;
-        aylikFaizOrani = f > 1 ? f / 100 : f;
-    }
+    let miktarInput = document.getElementById(inputId);
+    let vadeSelect = document.getElementById(vadeInputId);
 
-    // 🌟 Anüite formülüyle gerçek aylık taksit ve toplam geri ödeme hesaplaması
-    let i = aylikFaizOrani;
-    let n = vade; 
-    let aylikTaksit = miktar * (i * Math.pow(1 + i, n)) / (Math.pow(1 + i, n) - 1);
-    let toplamGeriOdeme = aylikTaksit * vade;
+let katsayi = (typeof faizOranlari !== 'undefined' && faizOranlari.krediKatsayi) ? faizOranlari.krediKatsayi : 1.2;
+let toplamGeriOdeme = miktar * katsayi;
+let aylikTaksit = toplamGeriOdeme / vade;
 
-    // 🌟 Genel Kredi Limit Kontrolü
-    if (miktar > state.krediLimiti) {
-        if (miktarInput) miktarInput.value = '';
-        if (vadeSelect) vadeSelect.value = "48";
-        modalGoster("Kredi limitiniz yetersiz!");
-        return;
-    }
+state.kredi += toplamGeriOdeme;
+state.taksit += aylikTaksit;
+state.nakit -= (bedel - miktar);
 
-    // 🌟 Gelir / Kapasite kontrolü (%60 tavan sınırı)
-    let gGelir = (typeof state !== 'undefined' && state.gunlukGelir) ? state.gunlukGelir : 0;
-    let kGelir = (typeof kiraGeliri !== 'undefined') ? kiraGeliri : 0;
-    let tGelir = (typeof aktifTalepGeliri !== 'undefined') ? aktifTalepGeliri : 0;
-    let mevcutTaksit = (typeof state !== 'undefined' && state.taksit) ? state.taksit : 0;
+if (!state.krediler) state.krediler = [];
+let yeniKrediID = Date.now() + Math.random(); 
 
-    let netAylikGelir = (gGelir * 30) + kGelir + (tGelir * 3) - mevcutTaksit;
-    let maksimumAylikKapasite = netAylikGelir * 0.60; 
-
-    if (aylikTaksit > maksimumAylikKapasite) {
-        if (miktarInput) miktarInput.value = '';
-        if (vadeSelect) vadeSelect.value = "48";
-        modalGoster("Bu vadede ödeme gücünüz yetersiz! Seçtiğiniz " + vade + " ay vade ile aylık taksitiniz (" + Math.floor(aylikTaksit).toLocaleString() + " TL) gelir kapasitenizi aşıyor.");
-        return;
-    }
-
-    state.kredi += toplamGeriOdeme; 
-    state.taksit += aylikTaksit;
-    state.nakit -= gerekenPesinat;
-
-    if (!state.krediler) state.krediler = [];
-    let yeniKrediID = Date.now() + Math.random(); 
-
-    state.krediler.push({
-        id: yeniKrediID,
-        isim: isim,
-        kalanBorc: toplamGeriOdeme,
-        taksit: aylikTaksit
-    });
+state.krediler.push({
+    id: yeniKrediID,
+    isim: isim,
+    kalanBorc: toplamGeriOdeme, // Doğrusu bu olmalı
+    taksit: aylikTaksit
+});
 
     if (typeof islemGerceklessin === 'function') {
         islemGerceklessin(isim, bedel, islemTipi, true, yeniKrediID);
     }
     
     if (miktarInput) miktarInput.value = '';
-    if (vadeSelect) vadeSelect.value = "48";
-    
     guncelle();
-    modalGoster("Kredi onaylandı! Varlığınız bloke edildi.\n\nKasanızdan peşinat için " + gerekenPesinat.toLocaleString() + " TL nakit tahsil edilmiştir.");
+    modalGoster("Kredi onaylandı! Varlığınız bloke edildi.");
 
     if (typeof portfoyuSunucuyaKaydet === 'function') {
         portfoyuSunucuyaKaydet(state);
     }
 }
-    
+
 function krediOde() {
     let input = document.getElementById('in-kredi-ode');
     if (!input) return;
@@ -5216,6 +5078,7 @@ function krediOde() {
         portfoyuSunucuyaKaydet(state);
     }
 }
+
 
 
 function taksitleriOdeVeyaKontrolEt() {
