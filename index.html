@@ -1880,25 +1880,30 @@ function sozlesmeAc(tur) {
         if (tur === 'sozlesme') {
             modalIcerik.innerHTML = `
                 <h3 style="color:#ffcc00; margin-top:0;">Kullanıcı ve Üyelik Sözleşmesi</h3>
-                <p style="font-size:12px; color:#ccc;"><strong>1. Taraflar ve Konu:</strong> Bu sözleşme, oyun içerisindeki sanal varlıkların, pazar yerinin ve finansal simülasyon mekanizmalarının kullanım koşullarını belirler. Oyuna kayıt olan her kullanıcı bu şartları peşinen kabul etmiş sayılır.</p>
-    
-                <p style="font-size:12px; color:#ccc;"><strong>2. Sanal Varlıklar ve Para Birimleri:</strong> Oyunda geçen tüm paralar, varlıklar, gayrimenkuller ve dövizler tamamen **sanal ve kurgusaldır**. Hiçbir gerçek maddi karşılığı yoktur, nakde çevrilemez ve gerçek dünya parasıyla alınıp satılamaz.</p>
-    
-                <p style="font-size:12px; color:#ccc;"><strong>3. Hesap Güvenliği ve Sorumluluk:</strong> Oyuncu, hesap bilgilerinin (kullanıcı adı ve şifre) güvenliğinden bizzat sorumludur. Hesabın üçüncü şahıslar tarafından ele geçirilmesinden doğacak kayıplardan geliştirici sorumlu tutulamaz.</p>
-    
-                <p style="font-size:12px; color:#ccc;"><strong>4. Oyun Kuralları ve Hile Politikası:</strong> Oyunda hile yapmak, açık (bug) arayıp kötüye kullanmak, makro/bot yazılımlar kullanmak veya diğer oyuncuları dolandırmak kesinlikle yasaktır. Tespit edilen hesaplar uyarı verilmeksizin sıfırlanır veya kalıcı olarak kapatılır.</p>
-    
-                <p style="font-size:12px; color:#ccc;"><strong>5. Teknik Kesintiler ve Veri Kaybı:</strong> Geliştirici; sunucu güncellemeleri, altyapı değişiklikleri veya beklenmeyen teknik aksaklıklar nedeniyle yaşanabilecek veri kayıplarından, kur sıfırlanmalarından veya kesintilerden sorumlu tutulamaz. Gerekli görüldüğü durumlarda oyun ekonomisinde ve kurallarında değişiklik yapılabilir.</p>
-    
-                <p style="font-size:12px; color:#ccc;"><strong>6. İletişim ve Destek:</strong> Oyun içi sorunlar ve destek talepleri için belirlenen resmi iletişim kanalları kullanılır.</p>
+                <div style="max-height: 250px; overflow-y: auto; padding-right: 5px; text-align: left;">
+                    <p style="font-size:12px; color:#ccc;"><strong>1. Taraflar ve Konu:</strong> Bu sözleşme, oyun içerisindeki sanal varlıkların, pazar yerinin ve finansal simülasyon mekanizmalarının kullanım koşullarını belirler. Oyuna kayıt olan her kullanıcı bu şartları peşinen kabul etmiş sayılır.</p>
+        
+                    <p style="font-size:12px; color:#ccc;"><strong>2. Sanal Varlıklar ve Para Birimleri:</strong> Oyunda geçen tüm paralar, varlıklar, gayrimenkuller ve dövizler tamamen <strong>sanal ve kurgusaldır</strong>. Hiçbir gerçek maddi karşılığı yoktur, nakde çevrilemez ve gerçek dünya parasıyla alınıp satılamaz.</p>
+        
+                    <p style="font-size:12px; color:#ccc;"><strong>3. Hesap Güvenliği ve Sorumluluk:</strong> Oyuncu, hesap bilgilerinin (kullanıcı adı ve şifre) güvenliğinden bizzat sorumludur. Hesabın üçüncü şahıslar tarafından ele geçirilmesinden doğacak kayıplardan geliştirici sorumlu tutulamaz.</p>
+        
+                    <p style="font-size:12px; color:#ccc;"><strong>4. Oyun Kuralları ve Hile Politikası:</strong> Oyunda hile yapmak, açık (bug) arayıp kötüye kullanmak, makro/bot yazılımlar kullanmak veya diğer oyuncuları dolandırmak kesinlikle yasaktır. Tespit edilen hesaplar uyarı verilmeksizin sıfırlanır veya kalıcı olarak kapatılır.</p>
+        
+                    <p style="font-size:12px; color:#ccc;"><strong>5. Teknik Kesintiler ve Veri Kaybı:</strong> Geliştirici; sunucu güncellemeleri, altyapı değişiklikleri veya beklenmeyen teknik aksaklıklar nedeniyle yaşanabilecek veri kayıplarından, kur sıfırlanmalarından veya kesintilerden sorumlu tutulamaz. Gerekli görüldüğü durumlarda oyun ekonomisinde ve kurallarında değişiklik yapılabilir.</p>
+        
+                    <p style="font-size:12px; color:#ccc;"><strong>6. İletişim ve Destek:</strong> Oyun içi sorunlar ve destek talepleri için belirlenen resmi iletişim kanalları kullanılır.</p>
+                </div>
             `;
         } else if (tur === 'gizlilik') {
             modalIcerik.innerHTML = `
                 <h3 style="color:#ffcc00; margin-top:0;">Gizlilik Politikası</h3>
-                <p style="font-size:12px; color:#ccc;"><strong>1. Veri Toplama:</strong> Sistemimiz yalnızca hesap oluşturmanız ve oyun içi işlemlerinizi yürütebilmeniz için gereken kullanıcı adı, şifre ve oyun verilerini saklar.</p>
-                <p style="font-size:12px; color:#ccc;"><strong>2. Güvenlik:</strong> Verileriniz üçüncü şahıslarla kesinlikle paylaşılmaz ve güvenli sunucularda saklanır.</p>
-                <p style="font-size:12px; color:#ccc;"><strong>3. Çerezler ve Oturum:</strong> Oturum güvenliğiniz, tercihlerinizin hatırlanması ve oyun deneyiminizin kesintisiz sürmesi için tarayıcı depolama alanları ve çerezler kullanılabilir.</p>
-                <p style="font-size:12px; color:#ccc;"><strong>4. Haklar ve Silme:</strong> Kullanıcılar istedikleri zaman hesaplarının ve buna bağlı verilerinin tamamen silinmesini talep etme hakkına sahiptir.</p>
+                <div style="max-height: 250px; overflow-y: auto; padding-right: 5px; text-align: left;">
+                    <p style="font-size:12px; color:#ccc;"><strong>1. Veri Toplama:</strong> Sistemimiz yalnızca hesap oluşturmanız ve oyun içi işlemlerinizi yürütebilmeniz için gereken kullanıcı adı, şifre ve oyun verilerini saklar.</p>
+                    <p style="font-size:12px; color:#ccc;"><strong>2. Güvenlik:</strong> Verileriniz üçüncü şahıslarla kesinlikle paylaşılmaz ve güvenli sunucularda saklanır.</p>
+                    <p style="font-size:12px; color:#ccc;"><strong>3. Çerezler ve Oturum:</strong> Oturum güvenliğiniz, tercihlerinizin hatırlanması ve oyun deneyiminizin kesintisiz sürmesi için tarayıcı depolama alanları ve çerezler kullanılabilir.</p>
+                    <p style="font-size:12px; color:#ccc;"><strong>4. Haklar ve Silme:</strong> Kullanıcılar istedikleri zaman hesaplarının ve buna bağlı verilerinin tamamen silinmesini talep etme hakkına sahiptir.</p>
+                </div>
+            `;
         }
     }
     
