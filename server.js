@@ -59,8 +59,9 @@ db.prepare(`CREATE TABLE IF NOT EXISTS oyun_ayarlari (
     ayarlar TEXT
 )`).run();
 
-const mevcutAyarlar = db.prepare(`SELECT * FROM oyun_ayarlari WHERE id = 1`).get();
-if (!mevcutAyarlar) {
+// Sadece tablo tamamen boşsa varsayılanları ekle, asla mevcut verinin üzerine yazma
+const ayarSayisi = db.prepare(`SELECT COUNT(*) as sayi FROM oyun_ayarlari`).get();
+if (ayarSayisi.sayi === 0) {
     const varsayilanAyarlar = {
         gunlukGelir: 800000,
         konutKiraGeliri: 0,
@@ -129,7 +130,8 @@ if (!mevcutAyarlar) {
             insaatSuresiDiger: 12 * 86400000
         }
     };
-    db.prepare(`INSERT OR REPLACE INTO oyun_ayarlari (id, ayarlar) VALUES (1, ?)`).run(JSON.stringify(varsayilanAyarlar));
+    // INSERT OR IGNORE kullanarak mevcut verinin ezilmesini kesin olarak önlüyoruz
+    db.prepare(`INSERT OR IGNORE INTO oyun_ayarlari (id, ayarlar) VALUES (1, ?)`).run(JSON.stringify(varsayilanAyarlar));
 }
 
 db.prepare(`CREATE TABLE IF NOT EXISTS ilanlar (
