@@ -4747,24 +4747,7 @@ function krediIslem(inputId, vadeInputId, isim, bedel, kapsam) {
         toplamGeriOdeme = aylikTaksit * n;
     }
 
-    // 5. Günlük/Aylık Gelir ve Ödeme Kapasitesi Kontrolü (%60 Sınırı)
-    let gGelir = (typeof state !== 'undefined' && state.gunlukGelir) ? state.gunlukGelir : 0;
-    let kGelir = (typeof kiraGeliri !== 'undefined') ? kiraGeliri : 0;
-    let tGelir = (typeof aktifTalepGeliri !== 'undefined') ? aktifTalepGeliri : 0;
-    let mevcutTaksit = (typeof state !== 'undefined' && state.taksit) ? state.taksit : 0;
-
-    let aylikTaksitKapasitesi = (gGelir + kGelir + (tGelir * 3) - mevcutTaksit) * 0.60;
-
-    // Kuruş hassasiyetiyle float kaymalarını önleyen güvenlik toleransı
-    let yuvarlanmisTaksit = Math.round(aylikTaksit * 100) / 100;
-    let yuvarlanmisKapasite = Math.round(aylikTaksitKapasitesi * 100) / 100;
-
-    if (yuvarlanmisTaksit > yuvarlanmisKapasite) {
-        modalGoster(`Seçtiğiniz ${vade} ay vade ile aylık taksitiniz gelir kapasitenizi aşıyor! (Gerekli: ${Math.round(aylikTaksit).toLocaleString()} TL)`);
-        return;
-    }
-
-    // 6. Geçici İşlem Objesini Oluşturma ve Onay Modali
+    // 5. Geçici İşlem Objesini Oluşturma ve Onay Modali
     tempIslem = {
         inputId: inputId,
         vadeInputId: vadeInputId,
