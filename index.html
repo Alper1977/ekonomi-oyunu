@@ -3042,14 +3042,25 @@ async function guncelle() {
         if (talep) aktifTalepGeliri += talep.bedel;
     });
     
-   // Sabit olarak 48 ay üzerinden tavan kredi limitini hesaplıyoruz
-let sabitVade = 48;
+ // Güvenli aylık faiz oranı (Örn: %3 veya %5 gibi mantıklı bir ondalık olmalı)
+let aylikFaizOrani = 0.03; // Varsayılan %3 aylık faiz
+if (typeof faizOranlari !== 'undefined' && faizOranlari.aylikFaiz) {
+    // Eğer faiz oranı yüzde olarak girildiyse (örn: 3 veya 5) veya ondalıkedildiyse güvenli alalım
+    aylikFaizOrani = faizOranlari.aylikFaiz > 1 ? faizOranlari.aylikFaiz / 100 : faizOranlari.aylikFaiz;
+}
 
-let netAylikGelir = (state.gunlukGelir * 30) + kiraGeliri + (aktifTalepGeliri * 3) - state.taksit; 
+let sabitVade = 48; // 48 aya göre tavan limit
+
+// Net gelir ve taksit kapasitesi
+let gGelir = (typeof state !== 'undefined' && state.gunlukGelir) ? state.gunlukGelir : 0;
+let kGelir = (typeof kiraGeliri !== 'undefined') ? kiraGeliri : 0;
+let tGelir = (typeof aktifTalepGeliri !== 'undefined') ? aktifTalepGeliri : 0;
+let mevcutTaksit = (typeof state !== 'undefined' && state.taksit) ? state.taksit : 0;
+
+let netAylikGelir = (gGelir * 30) + kGelir + (tGelir * 3) - mevcutTaksit;
 let maxAylikTaksit = netAylikGelir * 0.60;
-let aylikFaizOrani = (typeof faizOranlari !== 'undefined' && faizOranlari.aylikFaiz) ? faizOranlari.aylikFaiz : 0.05;
 
-// Anüite formülünün tersi ile 48 aya göre maksimum anapara (tavan limit) hesabı:
+// Anüite bazlı güvenli tavan limit hesabı
 if (maxAylikTaksit <= 0) {
     state.krediLimiti = 0;
 } else if (aylikFaizOrani === 0) {
@@ -3061,12 +3072,16 @@ if (maxAylikTaksit <= 0) {
     state.krediLimiti = Math.floor(maksAnapara);
 }
 
-// Ekranda (val-limit yazan yerde) 48 aya göre hesaplanan bu tavan limit görünür
+// Eğer hesaplanan limit yine de mantıksız şekilde çok yüksek çıkarsa tavan koyalım (Güvenlik kilidi)
+if (state.krediLimiti < 0 || isNaN(state.krediLimiti)) {
+    state.krediLimiti = 0;
+}
+
+// Arayüzü güncelle
 let limitElementleri = document.getElementsByClassName('val-limit');
 for (let el of limitElementleri) {
     el.innerText = state.krediLimiti.toLocaleString() + " TL";
 }
-
     // Akıllı gösterim fonksiyonu: Sayı 0 ise düz 0 yazar, para varsa kuruşlu gösterir
     function akilliPara(deger, birim = " TL", baslangic = "") {
         let sayi = Number(deger || 0);
