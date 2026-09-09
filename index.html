@@ -3051,8 +3051,17 @@ let sabitVade = 48;
     let netAylikGelir = (gGelir * 30) + kGelir + (tGelir * 3) - mevcutTaksit;
     let maxAylikTaksit = netAylikGelir * 0.60;
 
-    // Doğrudan anapara tavanı hesabı (Faiz limiti uçurmasın diye düz çarpım)
-    state.krediLimiti = Math.floor(maxAylikTaksit * sabitVade);
+    // 1. Adım: Düz tavan ana para (190.080.000 TL)
+    let hamLimit = maxAylikTaksit * sabitVade;
+
+    // 2. Adım: Faiz yükünü (veya maliyetini) bu limitten düşme
+    // %5 aylık faizle 48 ayda binen toplam maliyet/iskonto faktörünü buradan arındırıyoruz
+    let aylikFaizOrani = 0.05;
+    let faizIndirimFaktoru = 1 + (aylikFaizOrani * (sabitVade / 2)); // Ortalama vade maliyeti indirimi
+    
+    let netKrediLimiti = hamLimit / faizIndirimFaktoru;
+
+    state.krediLimiti = Math.floor(netKrediLimiti);
 
     if (isNaN(state.krediLimiti) || state.krediLimiti < 0) {
         state.krediLimiti = 0;
