@@ -4941,9 +4941,32 @@ function krediyiKesinOnayla() {
 
     if (miktarInput) miktarInput.value = '';
     if (vadeSelect) vadeSelect.value = "48";
-    
+
+    // 🌟 1. Önce sunucuya ilan satın alındığını bildiriyoruz (Nakit alımlarda kullanılan endpoint ile birebir)
+    if (kapsam === 'ilan' && ilanId) {
+        fetch('/api/ilan-satin-al', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ilanId: ilanId })
+        })
+        .then(res => res.json())
+        .then(sonuc => {
+            if (!sonuc.basari) {
+                console.error("Kredili alımda satıcının envanterinden düşerken hata:", sonuc.mesaj);
+            }
+            // Sunucu yanıt verdiğinde portföyü ve ilan listesini güncelliyoruz
+            if (typeof portfoyuSenkronizeEt === 'function') portfoyuSenkronizeEt();
+            if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
+        })
+        .catch(err => console.error("Kredili alım sunucu bağlantı hatası:", err));
+    }
+
+    // 🌟 2. Yerel arayüzü ve kayıt işlemlerini tetikliyoruz
     guncelle();
-    tempIslem = null;
+    
+    if (typeof portfoyuSunucuyaKaydet === 'function') {
+        portfoyuSunucuyaKaydet(state);
+    }
 
     if (typeof ilanlariGuncelle === 'function') {
         ilanlariGuncelle();
@@ -4959,28 +4982,7 @@ function krediyiKesinOnayla() {
     basariMesaji += "\n\nKasanızdan peşinat için " + gerekenPesinat.toLocaleString() + " TL nakit tahsil edilmiştir.";
 
     modalGoster(basariMesaji);
-
-    // 🌟 İlan üzerinden alındıysa satıcının envanterinden silmek için sunucuya bildiriyoruz
-    if (kapsam === 'ilan' && ilanId) {
-        fetch('/api/ilan-satin-al', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ilanId: ilanId })
-        })
-        .then(res => res.json())
-        .then(sonuc => {
-            if (!sonuc.basari) {
-                console.error("Kredili alımda satıcının envanterinden düşerken hata:", sonuc.mesaj);
-            } else {
-                if (typeof portfoyuSenkronizeEt === 'function') portfoyuSenkronizeEt();
-            }
-        })
-        .catch(err => console.error("Kredili alım sunucu bağlantı hatası:", err));
-    }
-
-    if (typeof portfoyuSunucuyaKaydet === 'function') {
-        portfoyuSunucuyaKaydet(state);
-    }
+    tempIslem = null;
 }
     
 function krediyiOnaylaVeUygula(inputId, vadeInputId, isim, bedel, kapsam, miktar, vade) {
