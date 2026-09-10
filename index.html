@@ -1706,33 +1706,41 @@ async function zenginlerListesiniGuncelle() {
     }
 }
 
- // Arka planda satıcının (veya aktif oyuncunun) portföyünü sunucuyla senkronize eden döngü
 async function portfoyuSenkronizeEt() {
     try {
         let response = await fetch('/api/aktif-kullanici', { credentials: 'include' });
         if (response.ok) {
             let user = await response.json();
             if (user && user.portfoy) {
-                // Sunucudan gelen taze nakit ve varlıkları alıyoruz
+                // Nakiti güncelle
                 state.nakit = user.portfoy.nakit !== undefined ? user.portfoy.nakit : state.nakit;
-                state.varliklar = user.portfoy.varliklar || [];
                 
-                // DOM elementlerini anında güncelleyen render fonksiyonunu çağırıyoruz
+                let sunucuVarliklar = user.portfoy.varliklar || [];
+
+                // İşlemde olan (lokal olarak güncellenmiş) varlıklarımızı koruyalım
+                let islemdekiVarliklar = state.varliklar.filter(v => v._islemde);
+
+                // Sunucudan gelen listede olup işlemde olanları koruyarak state'i güncelleyelim
+                state.varliklar = sunucuVarliklar.map(sunucuV => {
+                    let lokalV = islemdekiVarliklar.find(iv => iv.id == sunucuV.id || iv.id == sunucuV.varlikId);
+                    if (lokalV) {
+                        return lokalV; // Sunucu henüz haberdar değilse lokaldeki işlem halindeki halini tut
+                    }
+                    return sunucuV;
+                });
+
+                // Sunucu listesinde olmayan ama lokalde yeni işlemde kalmış olanları da kaybetmeyelim
+                islemdekiVarliklar.forEach(iv => {
+                    if (!state.varliklar.some(v => v.id == iv.id)) {
+                        state.varliklar.push(iv);
+                    }
+                });
+                
+                // DOM elementlerini güncelle
                 if (typeof varliklariGoster === 'function') {
                     varliklariGoster();
                 } else if (typeof guncelle === 'function') {
                     guncelle();
-                } else {
-                    // Eğer render fonksiyonu bulunamazsa, varlık listesini DOM'dan doğrudan siliyoruz
-                    let vList = document.getElementById('varliklar-listesi');
-                    if (vList) {
-                        vList.innerHTML = '';
-                        state.varliklar.forEach(v => {
-                            if (v.durum !== 'satildi' && v.durum !== 'silinecek') {
-                                vList.innerHTML += `<div>${v.isim} - ${v.durum}</div>`;
-                            }
-                        });
-                    }
                 }
             }
         }
@@ -1740,9 +1748,6 @@ async function portfoyuSenkronizeEt() {
         console.error("Portföy senkronizasyon hatası:", err);
     }
 }
-
-// Oyuna girdiğinde bunu her 4 saniyede bir çalışacak şekilde başlatabilirsin:
-setInterval(portfoyuSenkronizeEt, 4000);  
 
 async function portfoyuSunucuyaKaydet(yeniPortfoy) {
 
@@ -4177,7 +4182,8 @@ function ilanaCikar(id, btnElement) {
     }
 
     // 🌟 2. Mülkü hemen lokalde 'ilan-aktif' yapıp arayüzü yeniliyoruz
-    v.durum = 'ilan-aktif';
+   v.durum = 'ilan-aktif';
+    v._islemde = true; // 🌟 İşlem başladığı an bayrağı true yapıyoruz ki senkronizasyon ezmesin!
     if (typeof guncelle === 'function') {
         guncelle();
     }
@@ -4200,7 +4206,7 @@ function ilanaCikar(id, btnElement) {
     let saticiAdi = (typeof aktifKullaniciAdi !== 'undefined' && aktifKullaniciAdi) ? aktifKullaniciAdi : 'Ben';
 
     // Sunucuya ilanı gönderiyoruz
-    fetch('/api/ilan-ekle', {
+fetch('/api/ilan-ekle', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -4216,6 +4222,7 @@ function ilanaCikar(id, btnElement) {
             v.ilanSahibi = 'ben';  
             v.ilanZamanKaydi = Date.now();
             v.sunucuIlanId = data.id;
+            v._islemde = false; // İşlem bitti, bayrağı kaldır
 
             if (typeof guncelle === 'function') {
                 guncelle();
@@ -4224,8 +4231,8 @@ function ilanaCikar(id, btnElement) {
             if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
             if (typeof portfoyuSunucuyaKaydet === 'function') portfoyuSunucuyaKaydet(state);
         } else {
-            // Hata olursa durumu ve butonu geri al
             v.durum = 'sahip';
+            v._islemde = false; // Hata durumunda bayrağı kaldır
             if (btnElement) {
                 btnElement.disabled = false;
                 btnElement.innerText = "Sat";
@@ -4238,6 +4245,7 @@ function ilanaCikar(id, btnElement) {
     .catch(err => {
         console.error("İlan ekleme hatası:", err);
         v.durum = 'sahip';
+        v._islemde = false; // Hata durumunda bayrağı kaldır
         if (btnElement) {
             btnElement.disabled = false;
             btnElement.innerText = "Sat";
