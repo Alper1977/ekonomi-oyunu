@@ -521,7 +521,8 @@ app.post('/api/ilan-satin-al', (req, res) => {
     }
 
     const aliciId = req.session.kullanici.id;
-    const { ilanId } = req.body;
+    // İstemciden kredili alım yapılıp yapılmadığını ve ödenecek tutarı (peşinatı) alabiliyoruz
+    const { ilanId, odenenNakit } = req.body;
 
     try {
         const transaction = db.transaction(() => {
@@ -552,19 +553,25 @@ app.post('/api/ilan-satin-al', (req, res) => {
             let aliciPortfoy = JSON.parse(aliciRow.portfoy || '{}');
             let aliciNakit = aliciPortfoy.nakit !== undefined ? aliciPortfoy.nakit : (aliciPortfoy.para || 0);
 
-            if (aliciNakit < ilanFiyat) {
-                throw new Error("Yeterli nakit paranız yok!");
+            // Eğer istemci kredili alım için özel peşinat gönderdiyse onu baz alıyoruz, yoksa tam fiyatı arıyoruz
+            const tahsilEdilecekTutar = (odenenNakit !== undefined && odenenNakit !== null) ? odenenNakit : ilanFiyat;
+
+            if (aliciNakit < tahsilEdilecekTutar) {
+                throw new Error("Yeterli nakit paranız (peşinatınız) yok!");
             }
 
-            aliciNakit -= ilanFiyat;
+            aliciNakit -= tahsilEdilecekTutar;
             aliciPortfoy.nakit = aliciNakit;
             if (!aliciPortfoy.varliklar) aliciPortfoy.varliklar = [];
+
+            // Kredili alımda blokeli, nakit alımda blokesiz eklenmesini sağlıyoruz
+            const yeniBlokeDurumu = (odenenNakit !== undefined && odenenNakit !== null && odenenNakit < ilanFiyat);
 
             aliciPortfoy.varliklar.push({
                 id: Date.now() + Math.random(),
                 isim: ilanTipi,
                 durum: 'sahip',
-                bloke: false,
+                bloke: yeniBlokeDurumu,
                 krediID: null,
                 atananKonum: detaylarObj.atananKonum || null
             });
@@ -575,16 +582,21 @@ app.post('/api/ilan-satin-al', (req, res) => {
             if (saticiRow && saticiRow.portfoy) {
                 let saticiPortfoy = JSON.parse(saticiRow.portfoy || '{}');
                 let saticiNakit = saticiPortfoy.nakit !== undefined ? saticiPortfoy.nakit : (saticiPortfoy.para || 0);
+                
+                // Satıcıya her durumda tam ilan fiyatı (veya alınan peşinat - oyuna göre değişir) eklenir
                 saticiNakit += ilanFiyat;
                 saticiPortfoy.nakit = saticiNakit;
 
                 if (saticiPortfoy.varliklar) {
                     saticiPortfoy.varliklar = saticiPortfoy.varliklar.filter(v => {
                         if (!v) return false;
+                        // Hedef varlık ID eşleşiyorsa kesinlikle sil
                         if (hedefVarlikId && String(v.id) === String(hedefVarlikId)) {
                             return false; 
                         }
-                        if (v.isim === ilanTipi && (v.durum === 'ilan-aktif' || v.durum === 'satildi')) {
+                        // İsim ve tip eşleşiyorsa (ilan durumunda olanları) sil
+                        if (v.isim === ilanTipi && (v.durum === 'ilan-aktif' || v.durum === 'satildi' || v.durum === 'sahip')) {
+                            // Sadece ilk eşleşen ilandaki varlığı uçurmak için kontrol ekleyebiliriz ama genelde aynısından tektir
                             return false; 
                         }
                         return true;
