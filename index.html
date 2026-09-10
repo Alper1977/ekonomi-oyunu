@@ -4003,8 +4003,12 @@ async function islemKesinOnayla(isim, bedel, tip, ilanId) {
         await portfoyuSenkronizeEt();
     }
 
-    // 9. Tebrikler Mesajı
-    modalGoster(`Tebrikler! ${isim} varlığını ${sayisalBedel.toLocaleString()} TL ödeyerek başarıyla satın aldınız.`);
+// 9. Tebrikler Mesajı (GÜNCELLENDİ)
+    if (tip === 'yap') {
+        modalGoster(`Tebrikler! ${sayisalBedel.toLocaleString()} TL yatırılarak ${isim} için inşaat ve yatırım süreciniz başarıyla başladı.`);
+    } else {
+        modalGoster(`Tebrikler! ${isim} varlığını ${sayisalBedel.toLocaleString()} TL ödeyerek başarıyla satın aldınız.`);
+    }
 }
 function baskasiSatinAlOnay(varlikId, botIsmi, fiyat) {
     let butonlar = `
