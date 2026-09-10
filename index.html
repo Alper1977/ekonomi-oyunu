@@ -4158,7 +4158,7 @@ async function oyuncuIlaniKesinSatinAl(isim, bedel, ilanId, gelenKonum) {
     }
 }
     
-function ilanaCikar(id) {  
+function ilanaCikar(id, btnElement) {  
     let v = state.varliklar.find(x => x.id == id);
     if (!v) return;
     
@@ -4169,13 +4169,20 @@ function ilanaCikar(id) {
      
     let satisFiyati = v.bedel || (typeof satisFiyatlari !== 'undefined' && satisFiyatlari[v.isim] ? satisFiyatlari[v.isim] : 2000000);
     
-    // 🌟 KİLİT NOKTA: Sunucu cevabını beklemeden, tıklar tıklamaz durumu 'ilan-aktif' yapıyoruz ki anında ekranda satsın ve ikinci kez tıklanamasın!
+    // 🌟 1. ANINDA GÖRSEL KİLİT: Butona tıklandığı an disable yapıp yazısını değiştiriyoruz
+    if (btnElement) {
+        btnElement.disabled = true;
+        btnElement.innerText = "İlana Çıkarılıyor...";
+        btnElement.style.opacity = "0.6";
+    }
+
+    // 🌟 2. Mülkü hemen lokalde 'ilan-aktif' yapıp arayüzü yeniliyoruz
     v.durum = 'ilan-aktif';
     if (typeof guncelle === 'function') {
         guncelle();
     }
     
-    // 🌟 1. KURAL: Konumu ASLA sıfırlama! Eğer daha önce atanmış bir konumu yoksa ilk kez ata, varsa aynen koru.
+    // 🌟 3. Kural: Konumu ASLA sıfırlama!
     let haritalanabilirMulkler = ['arsası', 'otel', 'fabrika', 'hastane', 'okul', 'avm', 'hipermarket', 'konut'];
     let haritadaGosterilir = haritalanabilirMulkler.some(tur => v.isim.toLowerCase().includes(tur));
 
@@ -4212,23 +4219,30 @@ function ilanaCikar(id) {
 
             if (typeof guncelle === 'function') {
                 guncelle();
-            } else {
-                console.log("İlan başarıyla açıldı.");
             }
 
             if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
             if (typeof portfoyuSunucuyaKaydet === 'function') portfoyuSunucuyaKaydet(state);
         } else {
-            // Hata olursa durumu geri al
+            // Hata olursa durumu ve butonu geri al
             v.durum = 'sahip';
+            if (btnElement) {
+                btnElement.disabled = false;
+                btnElement.innerText = "Sat";
+                btnElement.style.opacity = "1";
+            }
             if (typeof guncelle === 'function') guncelle();
             modalGoster(data.mesaj || "İlan yayınlanamadı!");
         }
     })
     .catch(err => {
         console.error("İlan ekleme hatası:", err);
-        // Hata durumunda da kilidi kaldır ve sahibine döndür
         v.durum = 'sahip';
+        if (btnElement) {
+            btnElement.disabled = false;
+            btnElement.innerText = "Sat";
+            btnElement.style.opacity = "1";
+        }
         if (typeof guncelle === 'function') guncelle();
     });
 }
