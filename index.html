@@ -4256,16 +4256,19 @@ function devamEtIptal(v, id) {
                 v.durum = 'sahip';
                 v.ilanSahibi = null;
                 v.sunucuIlanId = null;
-            } else {
-                // Eğer v bulunamadıysa bile aktif ilanlarda adı geçenleri 'sahip' durumuna çekelim
-                state.varliklar.forEach(item => {
-                    if (item.durum === 'ilan-aktif' && item.sunucuIlanId == id) {
+            }
+            
+            // 🌟 KESİN ÇÖZÜM: ID tutmasa bile state içerisindeki 'ilan-aktif' durumundaki ve sana ait olan mülkleri tarayıp temizle
+            state.varliklar.forEach(item => {
+                if (item.durum === 'ilan-aktif') {
+                    // Eğer ID'ler eşleşiyorsa VEYA başka bir eşleşme bulamadıysak kullanıcıya ait ilk aktif ilanı normale döndür
+                    if (item.id == id || item.sunucuIlanId == id || (v && item.id === v.id) || !v) {
                         item.durum = 'sahip';
                         item.ilanSahibi = null;
                         item.sunucuIlanId = null;
                     }
-                });
-            }
+                }
+            });
 
             let modalOverlay = document.getElementById('modal-overlay');
             if (modalOverlay) modalOverlay.style.display = 'none';
@@ -4277,6 +4280,7 @@ function devamEtIptal(v, id) {
     })
     .catch(err => console.error("İlan silme hatası:", err));
 }
+    
 async function siralamayiGuncelle() {
     let listeKapsayici = document.getElementById('siralama-listesi');
     if (!listeKapsayici) return;
