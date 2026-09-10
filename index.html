@@ -4807,14 +4807,14 @@ function krediIslem(inputId, vadeInputId, isim, bedel, kapsam, ilanId = null) {
         toplamGeriOdeme = aylikTaksit * n;
     }
 
-    // Geçici işlem objesinde ilanId'yi de saklıyoruz
+    // 🌟 Burada ilanId'yi tempIslem nesnesine kaydediyoruz
     tempIslem = {
         inputId: inputId,
         vadeInputId: vadeInputId,
         isim: isim,
         bedel: bedel,
         kapsam: kapsam,
-        ilanId: ilanId,
+        ilanId: ilanId, // Aktarılan ilan ID'si
         miktar: miktar,
         vade: vade,
         toplamGeriOdeme: toplamGeriOdeme,
