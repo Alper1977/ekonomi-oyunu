@@ -4919,16 +4919,20 @@ function krediyiKesinOnayla() {
     let islemTipi = (kapsam === 'ilan') ? 'al' : 'yap';
     let sure = (isim === 'Bayi') ? (3 * 86400000) : (12 * 86400000);
     
-    let yeniVarlik = {
-        id: Date.now() + Math.random(),
-        isim: isim,
-        durum: (islemTipi === 'yap' ? 'inşaat' : 'sahip'),
-        bitis: (islemTipi === 'yap' ? Date.now() + sure : null),
-        bloke: true,
-        krediID: yeniKrediID
-    };
+    // Eğer ilan üzerinden alınıyorsa, portfoyuSenkronizeEt sunucudan asıl varlığı getireceği için 
+    // yerel olarak state.varliklar'a direkt push yapıp çift (biri blokeli biri blokesiz) varlık oluşmasını engelliyoruz.
+    if (kapsam !== 'ilan') {
+        let yeniVarlik = {
+            id: Date.now() + Math.random(),
+            isim: isim,
+            durum: (islemTipi === 'yap' ? 'inşaat' : 'sahip'),
+            bitis: (islemTipi === 'yap' ? Date.now() + sure : null),
+            bloke: true,
+            krediID: yeniKrediID
+        };
+        state.varliklar.push(yeniVarlik);
+    }
 
-    state.varliklar.push(yeniVarlik);
     state.varliklar = state.varliklar.filter(v => v.durum !== 'silinecek');
 
     if (kapsam === 'ilan' && typeof botlar !== 'undefined') {
@@ -4942,7 +4946,7 @@ function krediyiKesinOnayla() {
     if (miktarInput) miktarInput.value = '';
     if (vadeSelect) vadeSelect.value = "48";
 
-    // 🌟 1. Önce sunucuya ilan satın alındığını bildiriyoruz (Nakit alımlarda kullanılan endpoint ile birebir)
+    // 🌟 1. Önce sunucuya ilan satın alındığını bildiriyoruz
     if (kapsam === 'ilan' && ilanId) {
         fetch('/api/ilan-satin-al', {
             method: 'POST',
