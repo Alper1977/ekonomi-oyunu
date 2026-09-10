@@ -4981,7 +4981,19 @@ state.krediler.push({
         portfoyuSunucuyaKaydet(state);
     }
 }
-
+    
+function islemiIptalEt() {
+    tempIslem = null; // Bekleyen geçici işlemi sıfırla
+    
+    // Projende modalın ID'si muhtemelen 'modal-overlay' veya benzeridir, 
+    // her ihtimale karşı yaygın olanları kapatalım:
+    let modalOverlay = document.getElementById('modal-overlay');
+    if (modalOverlay) modalOverlay.style.display = 'none';
+    
+    let modal = document.getElementById('modal');
+    if (modal) modal.style.display = 'none';
+}
+    
 function krediOde() {
     let input = document.getElementById('in-kredi-ode');
     if (!input) return;
