@@ -4169,6 +4169,12 @@ function ilanaCikar(id) {
      
     let satisFiyati = v.bedel || (typeof satisFiyatlari !== 'undefined' && satisFiyatlari[v.isim] ? satisFiyatlari[v.isim] : 2000000);
     
+    // 🌟 KİLİT NOKTA: Sunucu cevabını beklemeden, tıklar tıklamaz durumu 'ilan-aktif' yapıyoruz ki anında ekranda satsın ve ikinci kez tıklanamasın!
+    v.durum = 'ilan-aktif';
+    if (typeof guncelle === 'function') {
+        guncelle();
+    }
+    
     // 🌟 1. KURAL: Konumu ASLA sıfırlama! Eğer daha önce atanmış bir konumu yoksa ilk kez ata, varsa aynen koru.
     let haritalanabilirMulkler = ['arsası', 'otel', 'fabrika', 'hastane', 'okul', 'avm', 'hipermarket', 'konut'];
     let haritadaGosterilir = haritalanabilirMulkler.some(tur => v.isim.toLowerCase().includes(tur));
@@ -4200,8 +4206,7 @@ function ilanaCikar(id) {
     .then(res => res.json())
     .then(data => {
         if (data.basari) {
-            v.durum = 'ilan-aktif';
-            v.ilanSahibi = 'ben'; 
+            v.ilanSahibi = 'ben';  
             v.ilanZamanKaydi = Date.now();
             v.sunucuIlanId = data.id;
 
@@ -4214,11 +4219,20 @@ function ilanaCikar(id) {
             if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
             if (typeof portfoyuSunucuyaKaydet === 'function') portfoyuSunucuyaKaydet(state);
         } else {
+            // Hata olursa durumu geri al
+            v.durum = 'sahip';
+            if (typeof guncelle === 'function') guncelle();
             modalGoster(data.mesaj || "İlan yayınlanamadı!");
         }
     })
-    .catch(err => console.error("İlan ekleme hatası:", err));
+    .catch(err => {
+        console.error("İlan ekleme hatası:", err);
+        // Hata durumunda da kilidi kaldır ve sahibine döndür
+        v.durum = 'sahip';
+        if (typeof guncelle === 'function') guncelle();
+    });
 }
+    
 function vazgec(id) {
     // 1. Önce doğrudan state.varliklar içinde id veya sunucuIlanId eşleşmesi arayalım
     let v = state.varliklar.find(x => x.id == id || x.sunucuIlanId == id);
