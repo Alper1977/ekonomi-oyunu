@@ -4163,50 +4163,38 @@ async function oyuncuIlaniKesinSatinAl(isim, bedel, ilanId, gelenKonum) {
     }
 }
     
-function ilanaCikar(id, btnElement) {  
+function ilanaCikar(id) {  
     let v = state.varliklar.find(x => x.id == id);
     if (!v) return;
     
-    // Zaten satışta veya ilanda olan bir mülk için tekrar ilan açılmasını engelle
-    if (v.durum === 'ilan-aktif' || v.durum === 'satildi' || v.durum === 'satildi-bekliyor') {
+    // 🌟 Zaten işlemde veya ilandaysa anında çık (Çift tıklama ve spam koruması)
+    if (v._islemde || v.durum === 'ilan-aktif' || v.durum === 'satildi' || v.durum === 'satildi-bekliyor') {
         return;
     }
      
+    // İşaretle ve kilitle
+    v._islemde = true;
+    v.durum = 'ilan-aktif';
+    if (typeof guncelle === 'function') {
+        guncelle(); // Artık render fonksiyonu _islemde sayesinde bu mülke buton koymayacak
+    }
+    
     let satisFiyati = v.bedel || (typeof satisFiyatlari !== 'undefined' && satisFiyatlari[v.isim] ? satisFiyatlari[v.isim] : 2000000);
     
-    // 🌟 1. ANINDA GÖRSEL KİLİT: Butona tıklandığı an disable yapıp yazısını değiştiriyoruz
-    if (btnElement) {
-        btnElement.disabled = true;
-        btnElement.innerText = "İlana Çıkarılıyor...";
-        btnElement.style.opacity = "0.6";
-    }
-
-    // 🌟 2. Mülkü hemen lokalde 'ilan-aktif' yapıp arayüzü yeniliyoruz
-   v.durum = 'ilan-aktif';
-    v._islemde = true; // 🌟 İşlem başladığı an bayrağı true yapıyoruz ki senkronizasyon ezmesin!
-    if (typeof guncelle === 'function') {
-        guncelle();
-    }
-    
-    // 🌟 3. Kural: Konumu ASLA sıfırlama!
     let haritalanabilirMulkler = ['arsası', 'otel', 'fabrika', 'hastane', 'okul', 'avm', 'hipermarket', 'konut'];
     let haritadaGosterilir = haritalanabilirMulkler.some(tur => v.isim.toLowerCase().includes(tur));
 
     if (haritadaGosterilir) {
         if (!v.atananKonum) {
-            if (typeof arsaKonumunuAl === 'function') {
-                v.atananKonum = arsaKonumunuAl(v);
-            } else {
-                v.atananKonum = "Merkezi Konum";
-            }
+            v.atananKonum = (typeof arsaKonumunuAl === 'function') ? arsaKonumunuAl(v) : "Merkezi Konum";
         }
     }
     
     let atananKonumVal = v.atananKonum || null;
     let saticiAdi = (typeof aktifKullaniciAdi !== 'undefined' && aktifKullaniciAdi) ? aktifKullaniciAdi : 'Ben';
 
-    // Sunucuya ilanı gönderiyoruz
-fetch('/api/ilan-ekle', {
+    // Sunucuya gönder
+    fetch('/api/ilan-ekle', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -4218,39 +4206,25 @@ fetch('/api/ilan-ekle', {
     })
     .then(res => res.json())
     .then(data => {
+        v._islemde = false; // İşlem bitti, kilidi aç
         if (data.basari) {
             v.ilanSahibi = 'ben';  
             v.ilanZamanKaydi = Date.now();
             v.sunucuIlanId = data.id;
-            v._islemde = false; // İşlem bitti, bayrağı kaldır
 
-            if (typeof guncelle === 'function') {
-                guncelle();
-            }
-
+            if (typeof guncelle === 'function') guncelle();
             if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
             if (typeof portfoyuSunucuyaKaydet === 'function') portfoyuSunucuyaKaydet(state);
         } else {
-            v.durum = 'sahip';
-            v._islemde = false; // Hata durumunda bayrağı kaldır
-            if (btnElement) {
-                btnElement.disabled = false;
-                btnElement.innerText = "Sat";
-                btnElement.style.opacity = "1";
-            }
+            v.durum = 'sahip'; // Hata olursa geri al
             if (typeof guncelle === 'function') guncelle();
             modalGoster(data.mesaj || "İlan yayınlanamadı!");
         }
     })
     .catch(err => {
         console.error("İlan ekleme hatası:", err);
+        v._islemde = false;
         v.durum = 'sahip';
-        v._islemde = false; // Hata durumunda bayrağı kaldır
-        if (btnElement) {
-            btnElement.disabled = false;
-            btnElement.innerText = "Sat";
-            btnElement.style.opacity = "1";
-        }
         if (typeof guncelle === 'function') guncelle();
     });
 }
