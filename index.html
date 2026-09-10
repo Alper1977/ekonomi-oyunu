@@ -5335,6 +5335,9 @@ function faizOranlariniGuncelle() {
 }
 
 // 🌟 1. TÜM SAYFALARDA ORTAK VE KESİNTİSİZ SOCKET DİNLEYİCİSİ
+
+
+    
 if (typeof socket !== 'undefined' && socket) {
     socket.off('ayarlarDegisti');
     
@@ -5400,6 +5403,28 @@ if (typeof socket !== 'undefined' && socket) {
 
 // 🌟 2. SAYFA YÜKLENME (DOM) KONTROLÜ
 window.addEventListener('DOMContentLoaded', async () => {
+// 🌟 TÜM BUTONLAR İÇİN OTOMATİK SPAM / ÇİFT TIKLAMA KORUMASI
+    document.addEventListener('click', (e) => {
+        let hedefBtn = e.target.closest('button');
+        if (!hedefBtn) return;
+        
+        if (hedefBtn.dataset.kilitli === 'true') {
+            e.stopImmediatePropagation();
+            e.preventDefault();
+            return;
+        }
+        
+        hedefBtn.dataset.kilitli = 'true';
+        hedefBtn.style.opacity = '0.6';
+        hedefBtn.style.pointerEvents = 'none';
+        
+        setTimeout(() => {
+            hedefBtn.dataset.kilitli = 'false';
+            hedefBtn.style.opacity = '1';
+            hedefBtn.style.pointerEvents = 'auto';
+        }, 350); // 350 milisaniye boyunca aynı butona tekrar basılamaz
+    }, true);
+    
     try {
         let response = await fetch('/api/aktif-kullanici');
         if (response.ok) {
@@ -5432,6 +5457,7 @@ window.addEventListener('DOMContentLoaded', async () => {
                 }
 
                 changePage('page-mali');
+              
                 guncelle(); 
 
                 if (typeof zenginlerListesiniGuncelle === 'function') {
