@@ -2470,20 +2470,36 @@ setInterval(async () => {
     // Yeni dinamik kontrol bloğu buraya gelecek
 
 let simdikiZaman = typeof saat !== 'undefined' ? { saat: saat, dakika: dakika } : { saat: new Date().getHours(), dakika: new Date().getMinutes() };
-let eslesenOdeme = odemeProgrami.find(p => p.saat === simdikiZaman.saat && p.dakika === simdikiZaman.dakika);
+let simdikiToplamDakika = simdikiZaman.saat * 60 + simdikiZaman.dakika;
 
-if (eslesenOdeme) {
+// odemeProgramındaki saatleri kontrol et: Ödeme saatinden itibaren 60 dakika (1 saat) geçerli olsun
+let aktifOdemePenceresi = odemeProgrami.find(p => {
+    let odemeToplamDakika = p.saat * 60 + (p.dakika || 0);
+    let fark = simdikiToplamDakika - odemeToplamDakika;
+    
+    // Eğer oyuncu ödeme saatinden itibaren geçen 0 ile 59 dakika arasındaysa (1 saatlik pencere)
+    return fark >= 0 && fark < 60;
+});
 
+if (aktifOdemePenceresi) {
+    let bugunStr = new Date().toISOString().split('T')[0]; // Günlük benzersiz anahtar için
+    
     state.varliklar.forEach(v => {
-
-        if ((v.durum === 'sahip' || v.durum === 'ilan-aktif') && v.isim !== 'Konut' && v.sonTalepDakikasi !== simdikiZaman.dakika) {
-            v.talepAktif = true;
-            v.talepBaslangic = simdiMs;
-            v.sonTalepDakikasi = simdikiZaman.dakika;
-            veriDegisti = true;
+        if ((v.durum === 'sahip' || v.durum === 'ilan-aktif') && v.isim !== 'Konut') {
+            // Bu varlık için bugün bu ödeme saatinde zaten tahsilat açıldı mı veya yapıldı mı?
+            let talepAnahtari = `${bugunStr}-${aktifOdemePenceresi.saat}-${v.id || v.isim}`;
+            
+            if (!v.sonTahsilatGunu || v.sonTahsilatGunu !== talepAnahtari) {
+                v.talepAktif = true;
+                v.talepBaslangic = Date.now();
+                v.sonTahsilatGunu = talepAnahtari; // Bugün bu saat için açıldı olarak işaretle
+                veriDegisti = true;
+            }
         }
     });
-    guncelle();
+    if (typeof veriDegisti !== 'undefined' && veriDegisti) {
+        guncelle();
+    }
 }
 
     state.varliklar.forEach(v => {
