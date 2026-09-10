@@ -4919,16 +4919,20 @@ function krediyiKesinOnayla() {
     let islemTipi = (kapsam === 'ilan') ? 'al' : 'yap';
     let sure = (isim === 'Bayi') ? (3 * 86400000) : (12 * 86400000);
     
-    let yeniVarlik = {
-        id: Date.now() + Math.random(),
-        isim: isim,
-        durum: (islemTipi === 'yap' ? 'inşaat' : 'sahip'),
-        bitis: (islemTipi === 'yap' ? Date.now() + sure : null),
-        bloke: true,
-        krediID: yeniKrediID
-    };
+    // Sadece ilan dışı işlemler için (örn. arsa dönüştürme/inşaat) yerel ekleme yapıyoruz.
+    // İlan alımlarında ekleme ve bloke koyma işini tamamen sunucu hallediyor.
+    if (kapsam !== 'ilan') {
+        let yeniVarlik = {
+            id: Date.now() + Math.random(),
+            isim: isim,
+            durum: (islemTipi === 'yap' ? 'inşaat' : 'sahip'),
+            bitis: (islemTipi === 'yap' ? Date.now() + sure : null),
+            bloke: true,
+            krediID: yeniKrediID
+        };
+        state.varliklar.push(yeniVarlik);
+    }
 
-    state.varliklar.push(yeniVarlik);
     state.varliklar = state.varliklar.filter(v => v.durum !== 'silinecek');
 
     if (kapsam === 'ilan' && typeof botlar !== 'undefined') {
@@ -4942,17 +4946,16 @@ function krediyiKesinOnayla() {
     if (miktarInput) miktarInput.value = '';
     if (vadeSelect) vadeSelect.value = "48";
 
-    // 🌟 Nakit alımdaki mantığın aynısı: Önce sunucu isteği tetikleniyor, arka planda güvenle siliniyor
     if (kapsam === 'ilan' && ilanId) {
         fetch('/api/ilan-satin-al', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ilanId: ilanId })
+            body: JSON.stringify({ ilanId: ilanId, odenenNakit: gerekenPesinat })
         })
         .then(res => res.json())
         .then(sonuc => {
             if (!sonuc.basari) {
-                console.error("Kredili alımda satıcının envanterinden düşerken hata:", sonuc.mesaj);
+                console.error("Kredili alımda hata:", sonuc.mesaj);
             } else {
                 if (typeof portfoyuSenkronizeEt === 'function') portfoyuSenkronizeEt();
                 if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
