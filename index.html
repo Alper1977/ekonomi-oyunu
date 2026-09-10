@@ -4216,10 +4216,33 @@ function ilanaCikar(id) {
     .catch(err => console.error("İlan ekleme hatası:", err));
 }
 function vazgec(id) {
-    let v = state.varliklar.find(x => x.id == id);
-    if (!v) return;
+    // 1. Önce doğrudan state.varliklar içinde id veya sunucuIlanId eşleşmesi arayalım
+    let v = state.varliklar.find(x => x.id == id || x.sunucuIlanId == id);
+    
+    // Eğer state içinde bulamadıysak, sunucudan gelen ilan ID'si ile eşleşen mülkü bulmaya çalışalım
+    if (!v) {
+        // İlanlarda bu ID'ye sahip mülkün adını bulup state'den eşleştirebiliriz
+        fetch('/api/ilanlar')
+            .then(res => res.json())
+            .then(data => {
+                if (data.basari && Array.isArray(data.ilanlar)) {
+                    let bulunanIlan = data.ilanlar.find(ilan => ilan.id == id);
+                    if (bulunanIlan) {
+                        // Varlık ismine ve 'ilan-aktif' durumuna göre eşleşeni bul
+                        v = state.varliklar.find(x => x.isim === bulunanIlan.ilan_tipi && x.durum === 'ilan-aktif');
+                    }
+                }
+                devamEtIptal(v, id);
+            })
+            .catch(() => devamEtIptal(null, id));
+        return;
+    }
 
-    let sunucuId = v.sunucuIlanId; // Eğer id eşleşmezse veritabanından sildirmek için ortak ID kullanabiliriz
+    devamEtIptal(v, id);
+}
+
+function devamEtIptal(v, id) {
+    let sunucuId = v ? v.sunucuIlanId : id; 
 
     fetch('/api/ilan-sil', {
         method: 'POST',
@@ -4228,13 +4251,20 @@ function vazgec(id) {
     })
     .then(res => res.json())
     .then(data => {
-        if (data.basari || true) { // Garanti olsun diye lokalde de düşürüyoruz
-            if (v.durum === 'ilan-aktif') {
-                if (v.ilanSahibi === 'ben') {
-                    v.durum = 'sahip';
-                    v.ilanSahibi = null;
-                    v.sunucuIlanId = null;
-                }
+        if (data.basari || true) {
+            if (v) {
+                v.durum = 'sahip';
+                v.ilanSahibi = null;
+                v.sunucuIlanId = null;
+            } else {
+                // Eğer v bulunamadıysa bile aktif ilanlarda adı geçenleri 'sahip' durumuna çekelim
+                state.varliklar.forEach(item => {
+                    if (item.durum === 'ilan-aktif' && item.sunucuIlanId == id) {
+                        item.durum = 'sahip';
+                        item.ilanSahibi = null;
+                        item.sunucuIlanId = null;
+                    }
+                });
             }
 
             let modalOverlay = document.getElementById('modal-overlay');
