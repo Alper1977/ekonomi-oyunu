@@ -4956,7 +4956,7 @@ function krediyiKesinOnayla() {
         ilanlariGuncelle();
     }
 
-    let basariMesaji = "";
+   let basariMesaji = "";
     if (kapsam === 'ilan') {
         basariMesaji = "Kredi onaylandı ve Varlık üzerine bloke konuldu.";
     } else {
@@ -4967,10 +4967,34 @@ function krediyiKesinOnayla() {
 
     modalGoster(basariMesaji);
 
-    if (typeof portfoyuSunucuyaKaydet === 'function') {
-        portfoyuSunucuyaKaydet(state);
+    // 🌟 EKSİK OLAN KISIM: Eğer ilan üzerinden (başka bir oyuncunun ilanından) alındıysa sunucuya bildirip satıcının envanterinden uçuruyoruz
+    if (kapsam === 'ilan') {
+        // İlanın ID'sini geçici objeden veya global state'den yakalayabiliyorsak gönderelim
+        let hedefIlanId = tempIslem.ilanId || (typeof aktifIlanId !== 'undefined' ? aktifIlanId : null);
+        
+        if (hedefIlanId) {
+            fetch('/api/ilan-satin-al', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ilanId: hedefIlanId })
+            })
+            .then(res => res.json())
+            .then(sonuc => {
+                if (!sonuc.basari) {
+                    console.error("Kredili alımda satıcının envanterinden düşerken hata:", sonuc.mesaj);
+                }
+            })
+            .catch(err => console.error("Kredili alım sunucu bağlantı hatası:", err));
+        }
     }
-}
+
+    if (typeof portfoyuSunucuyaKaydet === 'function') {
+        await portfoyuSunucuyaKaydet(state);
+    }
+
+    if (typeof portfoyuSenkronizeEt === 'function') {
+        await portfoyuSenkronizeEt();
+    }
 
 function krediyiOnaylaVeUygula(inputId, vadeInputId, isim, bedel, kapsam, miktar, vade) {
     
