@@ -13,7 +13,7 @@ const io = new Server(server);
 app.use(express.json());
 app.use(express.static(__dirname));
 
-console.log("Klasördeki dosyalar:", fs.readdirSync(__dirname));
+console.log("Klasördeki dosyalar:", fs.readdirSync(__dirname)); 
 
 app.get('/', (req, res) => {
     res.sendFile(__dirname + '/index.html');
