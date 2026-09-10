@@ -4762,7 +4762,7 @@ function changePage(p) {
 }
 
 
-function krediIslem(inputId, vadeInputId, isim, bedel, kapsam) {
+function krediIslem(inputId, vadeInputId, isim, bedel, kapsam, ilanId = null) {
     let miktarInput = document.getElementById(inputId);
     let vadeSelect = document.getElementById(vadeInputId);
 
@@ -4770,21 +4770,18 @@ function krediIslem(inputId, vadeInputId, isim, bedel, kapsam) {
     let miktar = parseFloat(hamTutar) || 0;
     let vade = vadeSelect ? parseInt(vadeSelect.value) || 12 : 12;
 
-    // 1. Temel Geçerlilik Kontrolü
     if (miktar <= 0) {
         modalGoster("Lütfen geçerli bir kredi miktarı girin.");
         if (miktarInput) miktarInput.value = '';
         return;
     }
 
-    // 2. Tavan Limit Kontrolü (Ekranda yazan doğru net limit / 71 Milyon)
     let maxLimit = (typeof state !== 'undefined' && state.krediLimiti) ? state.krediLimiti : 0;
     if (miktar > maxLimit) {
         modalGoster(`Girilen miktar maksimum kredi limitini (${maxLimit.toLocaleString()} TL) aşıyor!`);
         return;
     }
 
-    // 3. Faiz Oranını Dinamik Olarak Çekme ve Normalleştirme
     let aylikFaizOrani = 0.05; 
     let faizInput = document.getElementById('adm-faiz-yatirim');
     
@@ -4799,7 +4796,6 @@ function krediIslem(inputId, vadeInputId, isim, bedel, kapsam) {
         aylikFaizOrani = f > 1 ? f / 100 : f;
     }
 
-    // 4. Anüite (Bileşik Faizli) Taksit ve Geri Ödeme Hesaplama
     let toplamGeriOdeme, aylikTaksit;
     if (aylikFaizOrani === 0) {
         toplamGeriOdeme = miktar;
@@ -4811,13 +4807,14 @@ function krediIslem(inputId, vadeInputId, isim, bedel, kapsam) {
         toplamGeriOdeme = aylikTaksit * n;
     }
 
-    // 5. Geçici İşlem Objesini Oluşturma ve Onay Modali
+    // Geçici işlem objesinde ilanId'yi de saklıyoruz
     tempIslem = {
         inputId: inputId,
         vadeInputId: vadeInputId,
         isim: isim,
         bedel: bedel,
         kapsam: kapsam,
+        ilanId: ilanId,
         miktar: miktar,
         vade: vade,
         toplamGeriOdeme: toplamGeriOdeme,
@@ -4835,7 +4832,6 @@ function krediIslem(inputId, vadeInputId, isim, bedel, kapsam) {
 function krediyiKesinOnayla() {
     if (!tempIslem) return;
 
-    // 1. KONTROL: Gecikmiş kredi varsa yeni kredi verilmez
     let gecikmedeKrediVar = state.krediler && state.krediler.find(kr => kr.ustUsteOdenmeyen > 0);
     if (gecikmedeKrediVar) {
         tempIslem = null; 
@@ -4844,7 +4840,7 @@ function krediyiKesinOnayla() {
         return;
     }
 
-    let { inputId, vadeInputId, isim, bedel, kapsam, miktar, vade, toplamGeriOdeme, aylikTaksit } = tempIslem;
+    let { inputId, vadeInputId, isim, bedel, kapsam, ilanId, miktar, vade, toplamGeriOdeme, aylikTaksit } = tempIslem;
     let miktarInput = document.getElementById(inputId);
     let vadeSelect = document.getElementById(vadeInputId);
 
@@ -4856,7 +4852,6 @@ function krediyiKesinOnayla() {
         return;
     }
 
-    // 🌟 2. KONTROL: En fazla %70 kredi verilebilir (Yani en az %30 peşinat sınırı)
     let maksimumKrediLimiti = bedel * 0.70;
     if (miktar > maksimumKrediLimiti) {
         if (miktarInput) miktarInput.value = '';
@@ -4866,7 +4861,6 @@ function krediyiKesinOnayla() {
         return;
     }
 
-    // 🌟 3. KONTROL: Dinamik Peşinat ve %30 Minimum Peşinat Kuralı
     let gerekenPesinat = bedel - miktar; 
     let verilenPesinatYuzdesi = (gerekenPesinat / bedel) * 100;
 
@@ -4878,7 +4872,6 @@ function krediyiKesinOnayla() {
         return;
     }
 
-    // Kasada gereken nakit (peşinat) var mı kontrolü
     if (state.nakit < gerekenPesinat) {
         if (miktarInput) miktarInput.value = '';
         if (vadeSelect) vadeSelect.value = "48";
@@ -4956,7 +4949,7 @@ function krediyiKesinOnayla() {
         ilanlariGuncelle();
     }
 
-   let basariMesaji = "";
+    let basariMesaji = "";
     if (kapsam === 'ilan') {
         basariMesaji = "Kredi onaylandı ve Varlık üzerine bloke konuldu.";
     } else {
@@ -4967,35 +4960,29 @@ function krediyiKesinOnayla() {
 
     modalGoster(basariMesaji);
 
-    // 🌟 EKSİK OLAN KISIM: Eğer ilan üzerinden (başka bir oyuncunun ilanından) alındıysa sunucuya bildirip satıcının envanterinden uçuruyoruz
-    if (kapsam === 'ilan') {
-        // İlanın ID'sini geçici objeden veya global state'den yakalayabiliyorsak gönderelim
-        let hedefIlanId = tempIslem.ilanId || (typeof aktifIlanId !== 'undefined' ? aktifIlanId : null);
-        
-        if (hedefIlanId) {
-            fetch('/api/ilan-satin-al', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ilanId: hedefIlanId })
-            })
-            .then(res => res.json())
-            .then(sonuc => {
-                if (!sonuc.basari) {
-                    console.error("Kredili alımda satıcının envanterinden düşerken hata:", sonuc.mesaj);
-                }
-            })
-            .catch(err => console.error("Kredili alım sunucu bağlantı hatası:", err));
-        }
+    // 🌟 İlan üzerinden alındıysa satıcının envanterinden silmek için sunucuya bildiriyoruz
+    if (kapsam === 'ilan' && ilanId) {
+        fetch('/api/ilan-satin-al', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ilanId: ilanId })
+        })
+        .then(res => res.json())
+        .then(sonuc => {
+            if (!sonuc.basari) {
+                console.error("Kredili alımda satıcının envanterinden düşerken hata:", sonuc.mesaj);
+            } else {
+                if (typeof portfoyuSenkronizeEt === 'function') portfoyuSenkronizeEt();
+            }
+        })
+        .catch(err => console.error("Kredili alım sunucu bağlantı hatası:", err));
     }
 
     if (typeof portfoyuSunucuyaKaydet === 'function') {
-        await portfoyuSunucuyaKaydet(state);
+        portfoyuSunucuyaKaydet(state);
     }
-
-    if (typeof portfoyuSenkronizeEt === 'function') {
-        await portfoyuSenkronizeEt();
-    }
-
+}
+    
 function krediyiOnaylaVeUygula(inputId, vadeInputId, isim, bedel, kapsam, miktar, vade) {
     
     // 🌟 YENİ EKLEDİĞİMİZ KONTROL: Gecikmiş kredi varsa bu yolla da krediyi engelle
