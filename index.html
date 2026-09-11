@@ -4031,6 +4031,41 @@ async function islemKesinOnayla(isim, bedel, tip, ilanId) {
         modalGoster(`Tebrikler! ${isim} varlığını ${sayisalBedel.toLocaleString()} TL ödeyerek başarıyla satın aldınız.`);
     }
 }
+
+function kamuMulkSatinAlNakit(mulkIsmi, fiyat) {
+    let temizFiyat = Number(fiyat) || 0;
+
+    if (state.nakit < temizFiyat) {
+        modalGoster("⚠️ **YETERSİZ BAKİYE:** Bu kamu mülkünü nakit olarak alabilmek için yeterli paranız yok!");
+        return;
+    }
+
+    // Parayı kasadan düş
+    state.nakit -= temizFiyat;
+
+    // Varlığı kullanıcının envanterine blokesiz (serbest) olarak ekle
+    state.varliklar.push({
+        id: 'kamu_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+        isim: mulkIsmi,
+        fiyat: temizFiyat,
+        durum: 'sahip',
+        bloke: false,
+        krediID: null,
+        atananKonum: typeof arsaKonumunuAl === 'function' ? arsaKonumunuAl(mulkIsmi) : ''
+    });
+
+    // Arayüzü ve verileri güncelle
+    guncelle();
+    if (typeof ilanlariGuncelle === 'function') {
+        ilanlariGuncelle();
+    }
+    if (typeof portfoyuSunucuyaKaydet === 'function') {
+        portfoyuSunucuyaKaydet(state);
+    }
+
+    modalGoster(`✅ <b>BAŞARILI:</b> ${mulkIsmi} başarıyla ${temizFiyat.toLocaleString()} TL nakit ödenerek satın alındı!`);
+}    
+    
 function baskasiSatinAlOnay(varlikId, botIsmi, fiyat) {
     let butonlar = `
         <button class="btn-green" onclick="baskasiSatinAl(${varlikId}, '${botIsmi}', ${fiyat})">ONAYLA</button>
