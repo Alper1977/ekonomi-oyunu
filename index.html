@@ -4141,41 +4141,45 @@ function vazgec(id) {
 }
     
 function devamEtIptal(v, id) {
-    let sunucuId = v ? v.sunucuIlanId : id; 
+    // Hem sunucu ilan ID'sini, hem mülk ID'sini, hem de ismini paketleyip gönderelim
+    let gonderilecekVeri = {
+        id: (v && v.sunucuIlanId) ? v.sunucuIlanId : id,
+        varlikId: v ? v.id : null,
+        ilanTipi: v ? v.isim : null
+    };
 
     fetch('/api/ilan-sil', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: sunucuId || id })
+        body: JSON.stringify(gonderilecekVeri)
     })
     .then(res => res.json())
     .then(data => {
-        if (data.basari || true) {
-            if (v) {
-                v.durum = 'sahip';
-                v.ilanSahibi = null;
-                v.sunucuIlanId = null;
-            }
-            
-            // 🌟 KESİN ÇÖZÜM: ID tutmasa bile state içerisindeki 'ilan-aktif' durumundaki ve sana ait olan mülkleri tarayıp temizle
-            state.varliklar.forEach(item => {
-                if (item.durum === 'ilan-aktif') {
-                    // Eğer ID'ler eşleşiyorsa VEYA başka bir eşleşme bulamadıysak kullanıcıya ait ilk aktif ilanı normale döndür
-                    if (item.id == id || item.sunucuIlanId == id || (v && item.id === v.id) || !v) {
-                        item.durum = 'sahip';
-                        item.ilanSahibi = null;
-                        item.sunucuIlanId = null;
-                    }
-                }
-            });
-
-            let modalOverlay = document.getElementById('modal-overlay');
-            if (modalOverlay) modalOverlay.style.display = 'none';
-
-            guncelle();
-            if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
-            if (typeof portfoyuSunucuyaKaydet === 'function') portfoyuSunucuyaKaydet(state);
+        // Sunucu silmese bile yerelde kesin olarak temizle
+        if (v) {
+            v.durum = 'sahip';
+            v.ilanSahibi = null;
+            v.sunucuIlanId = null;
+            v._islemde = false;
         }
+        
+        state.varliklar.forEach(item => {
+            if (item.durum === 'ilan-aktif') {
+                if (item.id == id || item.sunucuIlanId == id || (v && item.id === v.id) || !v) {
+                    item.durum = 'sahip';
+                    item.ilanSahibi = null;
+                    item.sunucuIlanId = null;
+                    item._islemde = false;
+                }
+            }
+        });
+
+        let modalOverlay = document.getElementById('modal-overlay');
+        if (modalOverlay) modalOverlay.style.display = 'none';
+
+        guncelle();
+        if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
+        if (typeof portfoyuSunucuyaKaydet === 'function') portfoyuSunucuyaKaydet(state);
     })
     .catch(err => console.error("İlan silme hatası:", err));
 }
