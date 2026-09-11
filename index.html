@@ -5349,39 +5349,43 @@ function taksitleriOdeVeyaKontrolEt() {
             state.krediler = state.krediler.filter(kr => kr.kalanBorc > 0 || kr.icradanKalanBorc);
             state.kredi = state.krediler.reduce((toplam, kr) => toplam + (kr.kalanBorc || 0), 0);
         }
-    } else {
-        // 🚨 TAKSİT ÖDENEMEDİ: ZİNCİRLEME HACİZ BAŞLIYOR
+   } else {
+        // 🚨 TAKSİT ÖDENEMEDİ: ÖNCE BLOKELİLER, SONRA DİĞER VARLIKLAR ZİNCİRLEME HACİZ
         if (state.krediler && Array.isArray(state.krediler) && state.krediler.length > 0) {
             let yapilanIslemler = [];
-            
-            // Toplam borcu ve aktif kredileri ele alalım
             let toplamBorc = state.krediler.reduce((t, k) => t + (k.kalanBorc || 0), 0);
 
-            // ZİNCİRLEME DÖNGÜ: Borç sıfırlanana veya satılacak mal kalmayana kadar durmak yok
+            // ZİNCİRLEME HACİZ DÖNGÜSÜ
             while (toplamBorc > 0) {
-                let ilgiliVarlik = state.varliklar.find(v => v.bloke === true) || 
-                                      state.varliklar.find(v => v.durum === 'sahip' || v.bloke === false || v.durum === undefined);
+                // 1. ÖNCELİK: Önce blokeli varlıkları sırayla tüket
+                let ilgiliVarlik = state.varliklar.find(v => v.bloke === true);
+                
+                // 2. ÖNCELİK: Blokeli varlık kalmadıysa, serbest (blokeli olmayan) varlıklara geç
+                if (!ilgiliVarlik) {
+                    ilgiliVarlik = state.varliklar.find(v => v.bloke === false || v.durum === 'sahip' || v.durum === undefined);
+                }
 
-                if (!ilgiliVarlik) break; // Satılacak hiç mal kalmadı!
+                // Elimizde satılacak hiçbir mülk kalmadıysa döngüyü kır
+                if (!ilgiliVarlik) break;
 
                 let satisFiyati = (satisFiyatlari && satisFiyatlari[ilgiliVarlik.isim]) ? satisFiyatlari[ilgiliVarlik.isim] : (ilgiliVarlik.fiyat || 12000000);
                 
-                // Varlığı envanterden sil
+                // Varlığı envanterden düş
                 state.varliklar = state.varliklar.filter(v => v.id !== ilgiliVarlik.id);
 
                 if (satisFiyati >= toplamBorc) {
                     let artisFarki = satisFiyati - toplamBorc;
                     state.nakit += artisFarki;
                     toplamBorc = 0;
-                    yapilanIslemler.push(`<b>${ilgiliVarlik.isim}</b> haczedilerek satıldı. Borç tamamen kapandı, artan <b>${artisFarki.toLocaleString()} TL</b> nakite eklendi.`);
+                    yapilanIslemler.push(`<b>${ilgiliVarlik.isim}</b> (${ilgiliVarlik.bloke ? 'Blokeli Mülk' : 'Serbest Mülk'}) haczedilerek satıldı. Borç tamamen kapandı, artan <b>${artisFarki.toLocaleString()} TL</b> nakite eklendi.`);
                     break;
                 } else {
                     toplamBorc -= satisFiyati;
-                    yapilanIslemler.push(`<b>${ilgiliVarlik.isim}</b> haczedilerek satıldı (${satisFiyati.toLocaleString()} TL), yetmedi. Kalan borç: <b>${toplamBorc.toLocaleString()} TL</b>.`);
+                    yapilanIslemler.push(`<b>${ilgiliVarlik.isim}</b> (${ilgiliVarlik.bloke ? 'Blokeli Mülk' : 'Serbest Mülk'}) satıldı (${satisFiyati.toLocaleString()} TL), yetmedi. Kalan borç: <b>${toplamBorc.toLocaleString()} TL</b>.`);
                 }
             }
 
-            // Hacizler bitti, eğer hâlâ borç kaldıysa (çünkü mallar tükendi) bakiye borç olarak kilitliyoruz
+            // Hacizler bitti, eğer hâlâ borç kaldıysa bakiye borç olarak kilitliyoruz
             if (toplamBorc > 0) {
                 state.krediler = [{
                     id: 'icra_bakiye_' + Date.now(),
@@ -5391,7 +5395,7 @@ function taksitleriOdeVeyaKontrolEt() {
                 }];
                 state.kredi = toplamBorc;
                 state.nakit = 0; // Kasadaki para da haczedilir
-                yapilanIslemler.push(`🚨 <b>Haczedilecek başka mülk kalmadı!</b> Tüm varlıklar tükendi. Kalan <b>${toplamBorc.toLocaleString()} TL</b> bakiye borç olarak bırakıldı. Yeni kredi çekilemez, kasaya girecek her kuruş bu borçtan düşülecektir.`);
+                yapilanIslemler.push(`🚨 <b>Haczedilecek başka mülk kalmadı!</b> Tüm varlıklar tükendi. Kalan <b>${toplamBorc.toLocaleString()} TL</b> bakiye borç olarak bırakıldı. Yeni kredi çekilemez.`);
             } else {
                 state.kredi = 0;
                 state.krediler = [];
@@ -5403,6 +5407,8 @@ function taksitleriOdeVeyaKontrolEt() {
             if (yapilanIslemler.length > 0) {
                 modalGoster(`🚨 <b>ZORUNLU İCRA / HACİZ RAPORU</b><br><br>` + yapilanIslemler.join('<br>'));
             }
+        }
+    }
         } else {
             // Krediler dizisi yoksa direkt dışarıdan tetikle
             state.ustUsteOdenmeyenTaksit = (state.ustUsteOdenmeyenTaksit || 0) + 1;
