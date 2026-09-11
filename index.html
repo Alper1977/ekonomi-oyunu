@@ -5340,28 +5340,29 @@ function taksitleriOdeVeyaKontrolEt() {
                     }
 
                     if (ilgiliVarlik) {
-                        let satisFiyati = (satisFiyatlari && satisFiyatlari[ilgiliVarlik.isim]) ? satisFiyatlari[ilgiliVarlik.isim] : 10000000;
-                        
-                        state.varliklar = state.varliklar.filter(v => v.id !== ilgiliVarlik.id);
+                        // İCRA BLOKU İÇİNDEKİ YER (Teminat borcu karşılamadığında)
+let satisFiyati = (satisFiyatlari && satisFiyatlari[ilgiliVarlik.isim]) ? satisFiyatlari[ilgiliVarlik.isim] : 10000000;
+state.varliklar = state.varliklar.filter(v => v.id !== ilgiliVarlik.id);
 
-                        let artisFarki = satisFiyati - kr.kalanBorc;
+let artisFarki = satisFiyati - kr.kalanBorc;
 
-                        if (artisFarki > 0) {
-                            state.nakit += artisFarki;
-                            kr.kalanBorc = 0;
-                            kr.silinecek = true;
-                            kr.icradanKalanBorc = false;
-                            modalGoster(`🚨 <b>İCRA / SATIŞ:</b> 3 dönem ödenemeyen <b>${ilgiliVarlik.isim}</b> satıldı, borç tamamen kapandı ve artan para nakite eklendi.`);
-                        } else {
-                            let kalanMukimBorc = Math.abs(artisFarki);
-                            kr.kalanBorc = kalanMukimBorc; 
-                            kr.ustUsteOdenmeyen = 0; 
-                            kr.icradanKalanBorc = true; // Kilit bayrağı aktifleşti, yeni kredi çekilemez!
-                            kr.silinecek = false;
-                            
-                            modalGoster(`🚨 <b>İCRA VE KALAN BORÇ:</b> 3 dönem ödenemeyen <b>${ilgiliVarlik.isim}</b> satıldı ancak satış bedeli borcu kapatmaya yetmedi! Kalan <b>${kalanMukimBorc.toLocaleString()} TL</b> borcunuz bakiye olarak bırakıldı ve yeni kredi çekmeniz kilitlendi.`);
-                        }
-                        icraYapildi = true;
+if (artisFarki > 0) {
+    state.nakit += artisFarki;
+    kr.kalanBorc = 0;
+    kr.silinecek = true;
+    kr.icradanKalanBorc = false;
+    modalGoster(`🚨 <b>İCRA / SATIŞ:</b> <b>${ilgiliVarlik.isim}</b> satıldı, borç tamamen kapandı ve artan para nakite eklendi.`);
+} else {
+    // 🌟 TEMİNAT YETMEDİ: Kalan borç bakiye olarak kalır, asla sıfırlanmaz!
+    let kalanMukimBorc = Math.abs(artisFarki);
+    kr.kalanBorc = kalanMukimBorc; 
+    kr.ustUsteOdenmeyen = 0; 
+    kr.icradanKalanBorc = true; // Yeni kredi çekilmesini kilitler
+    kr.silinecek = false;
+    
+    modalGoster(`🚨 <b>İCRA VE KALAN BORÇ:</b> <b>${ilgiliVarlik.isim}</b> satıldı ancak satış bedeli borcu kapatmaya yetmedi! Kalan <b>${kalanMukimBorc.toLocaleString()} TL</b> borcunuz bakiye olarak kaldı.`);
+}
+icraYapildi = true;
                     } else {
                         // 🌟 DÜZELTME: Haczedilecek mal kalmadıysa borç silinmez, bakiye sabit kalır ve kilit aktifleşir!
                         kr.icradanKalanBorc = true;
