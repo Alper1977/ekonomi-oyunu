@@ -477,44 +477,6 @@ app.post('/api/ilan-ekle', (req, res) => {
     }
 });
 
-app.post('/api/ilan-sil', (req, res) => {
-    if (!req.session || !req.session.kullanici) {
-        return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı!" });
-    }
-
-    const { id } = req.body;
-    try {
-        db.prepare(`DELETE FROM ilanlar WHERE id = ? AND kullanici_id = ?`).run(id, req.session.kullanici.id);
-        res.json({ basari: true, mesaj: "İlan kaldırıldı." });
-    } catch (err) {
-        res.status(500).json({ basari: false, mesaj: err.message });
-    }
-});
-
-app.post('/api/ilan-guncelle', (req, res) => {
-    if (!req.session || !req.session.kullanici) {
-        return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı!" });
-    }
-
-    const { id, fiyat, detaylar } = req.body;
-    try {
-        const info = db.prepare(`UPDATE ilanlar SET fiyat = ?, detaylar = ? WHERE id = ? AND kullanici_id = ?`).run(
-            fiyat, 
-            JSON.stringify(detaylar || {}), 
-            id, 
-            req.session.kullanici.id
-        );
-
-        if (info.changes === 0) {
-            return res.status(403).json({ basari: false, mesaj: "Bu ilanı güncelleme yetkiniz yok veya ilan bulunamadı." });
-        }
-
-        res.json({ basari: true, mesaj: "İlan başarıyla güncellendi." });
-    } catch (err) {
-        res.status(500).json({ basari: false, mesaj: err.message });
-    }
-});
-
 app.post('/api/ilan-satin-al', (req, res) => {
     if (!req.session || !req.session.kullanici) {
         return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı!" });
@@ -526,10 +488,14 @@ app.post('/api/ilan-satin-al', (req, res) => {
 
     try {
         const transaction = db.transaction(() => {
-            // Önce veritabanında ilanı arıyoruz
             let ilan = null;
-            if (ilanId) {
-                ilan = db.prepare(`SELECT * FROM ilanlar WHERE id = ?`).get(ilanId);
+            // Eğer gelen ilanId veritabanındaki sayısal/UUID ID'lere uymuyorsa hata patlatmaması için try-catch içine alıyoruz
+            if (ilanId && !String(ilanId).startsWith('kamu_') && typeof ilanId !== 'string' || !isNaN(ilanId)) {
+                try {
+                    ilan = db.prepare(`SELECT * FROM ilanlar WHERE id = ?`).get(ilanId);
+                } catch (e) {
+                    ilan = null;
+                }
             }
             
             let saticiId = null;
@@ -551,9 +517,10 @@ app.post('/api/ilan-satin-al', (req, res) => {
                     detaylarObj = {};
                 }
             } else {
-                // KAMU VEYA BOT İLANI (Veritabanında kayıtlı değilse bile istemciden gelen verilerle güvenle işlenir)
-                ilanFiyat = ilanTipiBedel || (odenenNakit ? odenenNakit * 10/7 : 0);
-                ilanTipi = ilanIsmi || "Kamu Mülkü";
+                // KAMU VEYA BOT İLANI (Veritabanında yoksa, istemciden gelen verileri doğrudan baz alıyoruz)
+                ilanFiyat = ilanTipiBedel || (odenenNakit ? Number(odenenNakit) * 10/7 : 0);
+                // Kamu ilanlarında isim bazen ilanIsmi ile bazen ilanId'nin kendisi (örn: "Konut", "Fabrika") olarak gelir
+                ilanTipi = ilanIsmi || (typeof ilanId === 'string' && !ilanId.startsWith('ilan_') ? ilanId : "Kamu Mülkü");
             }
 
             // 1. ALICI İŞLEMLERİ
@@ -563,7 +530,7 @@ app.post('/api/ilan-satin-al', (req, res) => {
             let aliciPortfoy = JSON.parse(aliciRow.portfoy || '{}');
             let aliciNakit = aliciPortfoy.nakit !== undefined ? aliciPortfoy.nakit : (aliciPortfoy.para || 0);
 
-            const tahsilEdilecekTutar = (odenenNakit !== undefined && odenenNakit !== null) ? odenenNakit : ilanFiyat;
+            const tahsilEdilecekTutar = (odenenNakit !== undefined && odenenNakit !== null) ? Number(odenenNakit) : ilanFiyat;
 
             if (aliciNakit < tahsilEdilecekTutar) {
                 throw new Error("Yeterli nakit paranız (peşinatınız) yok!");
@@ -573,8 +540,9 @@ app.post('/api/ilan-satin-al', (req, res) => {
             aliciPortfoy.nakit = aliciNakit;
             if (!aliciPortfoy.varliklar) aliciPortfoy.varliklar = [];
 
-            const yeniBlokeDurumu = (odenenNakit !== undefined && odenenNakit !== null && odenenNakit < ilanFiyat);
+            const yeniBlokeDurumu = (odenenNakit !== undefined && odenenNakit !== null && Number(odenenNakit) < ilanFiyat);
 
+            // KESİN EKLEME GARANTİSİ: Kamu veya bot fark etmeksizin mülk envantere işlenir
             aliciPortfoy.varliklar.push({
                 id: Date.now() + Math.random(),
                 isim: ilanTipi,
@@ -587,7 +555,7 @@ app.post('/api/ilan-satin-al', (req, res) => {
             db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`).run(JSON.stringify(aliciPortfoy), Date.now(), aliciId);
             guncelAliciPortfoy = aliciPortfoy;
 
-            // 2. SATICI İŞLEMLERİ (Sadece gerçek kullanıcılar için çalışır, kamu/bot için pas geçer)
+            // 2. SATICI İŞLEMLERİ (Sadece gerçek kullanıcılar için çalışır)
             if (saticiId) {
                 const saticiRow = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(saticiId);
                 
@@ -622,7 +590,7 @@ app.post('/api/ilan-satin-al', (req, res) => {
                 }
             }
 
-            // 3. İlan veritabanındaysa havuzdan kaldırılır, değilse hata vermez
+            // 3. İlan veritabanındaysa silinir
             if (ilan) {
                 db.prepare(`DELETE FROM ilanlar WHERE id = ?`).run(ilanId);
             }
