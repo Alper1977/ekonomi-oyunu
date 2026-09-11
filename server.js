@@ -521,32 +521,39 @@ app.post('/api/ilan-satin-al', (req, res) => {
     }
 
     const aliciId = req.session.kullanici.id;
-    const { ilanId, odenenNakit } = req.body;
+    const { ilanId, odenenNakit, ilanTipiBedel, ilanIsmi } = req.body;
     let guncelAliciPortfoy = null;
 
     try {
         const transaction = db.transaction(() => {
-            const ilan = db.prepare(`SELECT * FROM ilanlar WHERE id = ?`).get(ilanId);
-            if (!ilan) {
-                throw new Error("İlan bulunamadı veya zaten satılmış.");
-            }
-
-            if (ilan.kullanici_id === aliciId) {
-                throw new Error("Kendi ilanınızı satın alamazsınız!");
-            }
-
-            const saticiId = ilan.kullanici_id;
-            const ilanFiyat = ilan.fiyat;
-            const ilanTipi = ilan.ilan_tipi;
+            // Önce veritabanında ilanı arıyoruz
+            let ilan = db.prepare(`SELECT * FROM ilanlar WHERE id = ?`).get(ilanId);
             
+            let saticiId = null;
+            let ilanFiyat = 0;
+            let ilanTipi = "";
             let detaylarObj = {};
-            try {
-                detaylarObj = JSON.parse(ilan.detaylar || '{}');
-            } catch (e) {
-                detaylarObj = {};
+
+            if (ilan) {
+                // GERÇEK KULLANICI İLANI (P2P)
+                if (ilan.kullanici_id === aliciId) {
+                    throw new Error("Kendi ilanınızı satın alamazsınız!");
+                }
+                saticiId = ilan.kullanici_id;
+                ilanFiyat = ilan.fiyat;
+                ilanTipi = ilan.ilan_tipi;
+                try {
+                    detaylarObj = JSON.parse(ilan.detaylar || '{}');
+                } catch (e) {
+                    detaylarObj = {};
+                }
+            } else {
+                // BOT VEYA KAMU İLANI (Veritabanında kayıtlı değilse bile güvenle işlenir)
+                ilanFiyat = ilanTipiBedel || odenenNakit * 10/7; // Peşinat oranına göre yaklaşık bedel veya gönderilen değer
+                ilanTipi = ilanIsmi || "Mülk";
             }
 
-            // ALICI İŞLEMLERİ
+            // 1. ALICI İŞLEMLERİ
             const aliciRow = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(aliciId);
             if (!aliciRow) throw new Error("Alıcı bulunamadı.");
             
@@ -575,9 +582,9 @@ app.post('/api/ilan-satin-al', (req, res) => {
             });
 
             db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`).run(JSON.stringify(aliciPortfoy), Date.now(), aliciId);
-            guncelAliciPortfoy = aliciPortfoy; // İstemciye göndermek için hafızaya alıyoruz
+            guncelAliciPortfoy = aliciPortfoy;
 
-            // SATICI İŞLEMLERİ (Gerçek kullanıcılar için P2P dengesi)
+            // 2. SATICI İŞLEMLERİ (Sadece gerçek kullanıcılar için çalışır, bot/kamu için pas geçer)
             if (saticiId) {
                 const saticiRow = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(saticiId);
                 
@@ -612,7 +619,10 @@ app.post('/api/ilan-satin-al', (req, res) => {
                 }
             }
 
-            db.prepare(`DELETE FROM ilanlar WHERE id = ?`).run(ilanId);
+            // 3. İlan veritabanındaysa havuzdan kaldırılır, değilse hata vermez
+            if (ilan) {
+                db.prepare(`DELETE FROM ilanlar WHERE id = ?`).run(ilanId);
+            }
 
             return true;
         });
