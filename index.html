@@ -4960,12 +4960,12 @@ function krediyiKesinOnayla() {
     if (miktarInput) miktarInput.value = '';
     if (vadeSelect) vadeSelect.value = "48";
 
- if (kapsam === 'ilan' && ilanId) {
+if (kapsam === 'ilan') {
         fetch('/api/ilan-satin-al', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
-                ilanId: ilanId, 
+                ilanId: ilanId || null, // Kamu için null gider, sunucu bunu yakalar
                 odenenNakit: gerekenPesinat,
                 ilanTipiBedel: bedel,
                 ilanIsmi: isim 
@@ -4983,7 +4983,7 @@ function krediyiKesinOnayla() {
                 if (typeof guncelle === 'function') guncelle();
                 if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
                 
-                let basariMesaji = "Kredi onaylandı, peşinat tahsil edildi ve varlık envanterinize eklendi.\n\nKasanızdan peşinat için " + gerekenPesinat.toLocaleString() + " TL nakit tahsil edilmiştir.";
+                let basariMesaji = "Kredi onaylandı, peşinat tahsil edildi ve kamu mülkü envanterinize eklendi.\n\nKasanızdan peşinat için " + gerekenPesinat.toLocaleString() + " TL nakit tahsil edilmiştir.";
                 modalGoster(basariMesaji);
             }
         })
@@ -4992,6 +4992,7 @@ function krediyiKesinOnayla() {
             modalGoster("Sunucu bağlantı hatası oluştu.");
         });
     } else {
+        // Kapsam ilan değilse (kendi arazine bina yapma vb. durumlar)
         guncelle();
         if (typeof portfoyuSunucuyaKaydet === 'function') {
             portfoyuSunucuyaKaydet(state);
