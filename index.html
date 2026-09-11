@@ -3529,7 +3529,6 @@ async function ilanlariGuncelle() {
                 </div>
             `;
         } else if (tipKyn === 'diger-oyuncu') {
-            // 🌟 2. BURASI DÜZELTİLDİ: atananKonum parametresi onay fonksiyonuna aktarıldı
             ortaAlanHTML = `
                 <div class="kredi-group">
                     <input type="text" id="${inputId}" placeholder="Kredi Tutarı" oninput="parayiFormatlaMetin(this)" value="">
@@ -3546,6 +3545,7 @@ async function ilanlariGuncelle() {
                 </div>
             `;
         } else if (tipKyn === 'kamu') {
+            // BURASI KAMU İÇİN ÖZEL OLARAK EKLENDİ
             ortaAlanHTML = `
                 <div class="kredi-group">
                     <input type="text" id="${inputId}" placeholder="Kredi Tutarı" oninput="parayiFormatlaMetin(this)" value="">
@@ -3559,6 +3559,22 @@ async function ilanlariGuncelle() {
                 <div class="button-row">
                     <button class="btn-green" onclick="onayPenceresi('${varlikIsmi}', ${satisBedeli}, 'al')">NAKİT</button>
                     <button class="btn-red" onclick="krediIslem('${inputId}', '${vadeInputId}', '${varlikIsmi}', ${satisBedeli}, 'ilan', null, '', '${varlikIsmi}')">KREDİ</button>
+                </div>
+            `;
+        } else {
+            ortaAlanHTML = `
+                <div class="kredi-group">
+                    <input type="text" id="${inputId}" placeholder="Kredi Tutarı" oninput="parayiFormatlaMetin(this)" value="">
+                    <select id="${vadeInputId}">
+                        <option value="12">12 Ay</option>
+                        <option value="24">24 Ay</option>
+                        <option value="36">36 Ay</option>
+                        <option value="48" selected>48 Ay</option>
+                    </select>
+                </div>
+                <div class="button-row">
+                    <button class="btn-green" onclick="onayPenceresi('${varlikIsmi}', ${satisBedeli}, 'al')">NAKİT</button>
+                    <button class="btn-red" onclick="krediIslem('${inputId}', '${vadeInputId}', '${varlikIsmi}', ${satisBedeli}, 'ilan')">KREDİ</button>
                 </div>
             `;
         }
@@ -3578,6 +3594,7 @@ async function ilanlariGuncelle() {
         `;
         return itemBox;
     }
+    
     let botMulkListesi = [];
     let botArsaListesi = [];
 
