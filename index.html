@@ -3545,7 +3545,7 @@ async function ilanlariGuncelle() {
                     <button class="btn-red" onclick="krediIslem('${inputId}', '${vadeInputId}', '${varlikIsmi}', ${satisBedeli}, 'ilan', ${uniqueId})">KREDİ</button>
                 </div>
             `;
-        } else {
+        } else if (tipKyn === 'kamu') {
             ortaAlanHTML = `
                 <div class="kredi-group">
                     <input type="text" id="${inputId}" placeholder="Kredi Tutarı" oninput="parayiFormatlaMetin(this)" value="">
@@ -3558,7 +3558,7 @@ async function ilanlariGuncelle() {
                 </div>
                 <div class="button-row">
                     <button class="btn-green" onclick="onayPenceresi('${varlikIsmi}', ${satisBedeli}, 'al')">NAKİT</button>
-                    <button class="btn-red" onclick="krediIslem('${inputId}', '${vadeInputId}', '${varlikIsmi}', ${satisBedeli}, 'ilan')">KREDİ</button>
+                    <button class="btn-red" onclick="krediIslem('${inputId}', '${vadeInputId}', '${varlikIsmi}', ${satisBedeli}, 'ilan', null, '', '${varlikIsmi}')">KREDİ</button>
                 </div>
             `;
         }
