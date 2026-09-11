@@ -414,7 +414,7 @@ setInterval(() => {
     } catch (err) {
         console.error("Arka plan oyun döngüsü genel hata:", err.message);
     }
-}, 30000);
+}, 5000);
 
 // --- API Rotaları ---
 
