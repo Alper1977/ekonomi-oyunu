@@ -4946,7 +4946,7 @@ function krediyiKesinOnayla() {
     if (miktarInput) miktarInput.value = '';
     if (vadeSelect) vadeSelect.value = "48";
 
-    if (kapsam === 'ilan' && ilanId) {
+if (kapsam === 'ilan' && ilanId) {
         fetch('/api/ilan-satin-al', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -4956,34 +4956,35 @@ function krediyiKesinOnayla() {
         .then(sonuc => {
             if (!sonuc.basari) {
                 console.error("Kredili alımda hata:", sonuc.mesaj);
+                modalGoster("İşlem başarısız: " + sonuc.mesaj);
             } else {
+                // Sadece sunucu onay verdikten sonra portföyü ve ilanları taze çekiyoruz
                 if (typeof portfoyuSenkronizeEt === 'function') portfoyuSenkronizeEt();
                 if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
+                
+                let basariMesaji = "Kredi onaylandı, peşinat tahsil edildi ve varlık üzerine bloke konuldu.\n\nKasanızdan peşinat için " + gerekenPesinat.toLocaleString() + " TL nakit tahsil edilmiştir.";
+                modalGoster(basariMesaji);
             }
         })
-        .catch(err => console.error("Kredili alım sunucu bağlantı hatası:", err));
-    }
-
-    guncelle();
-    
-    if (typeof portfoyuSunucuyaKaydet === 'function') {
-        portfoyuSunucuyaKaydet(state);
-    }
-
-    if (typeof ilanlariGuncelle === 'function') {
-        ilanlariGuncelle();
-    }
-
-    let basariMesaji = "";
-    if (kapsam === 'ilan') {
-        basariMesaji = "Kredi onaylandı ve Varlık üzerine bloke konuldu.";
+        .catch(err => {
+            console.error("Kredili alım sunucu bağlantı hatası:", err);
+            modalGoster("Bağlantı hatası oluştu.");
+        });
     } else {
-        basariMesaji = "Kredi onaylandı, Varlık üzerine bloke konuldu, arsa dönüştürüldü ve inşaat başlatıldı.";
+        // İlan dışı (arsa dönüştürme vb.) işlemler için eski yerel kayıt sistemi çalışmaya devam eder
+        guncelle();
+        if (typeof portfoyuSunucuyaKaydet === 'function') {
+            portfoyuSunucuyaKaydet(state);
+        }
+        if (typeof ilanlariGuncelle === 'function') {
+            ilanlariGuncelle();
+        }
+
+        let basariMesaji = "Kredi onaylandı, Varlık üzerine bloke konuldu, arsa dönüştürüldü ve inşaat başlatıldı.";
+        basariMesaji += "\n\nKasanızdan peşinat için " + gerekenPesinat.toLocaleString() + " TL nakit tahsil edilmiştir.";
+        modalGoster(basariMesaji);
     }
 
-    basariMesaji += "\n\nKasanızdan peşinat için " + gerekenPesinat.toLocaleString() + " TL nakit tahsil edilmiştir.";
-
-    modalGoster(basariMesaji);
     tempIslem = null;
 }
     
