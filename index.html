@@ -3228,12 +3228,7 @@ async function ilanlariGuncelle() {
         ilanFaizSpan.innerText = guncelFaiz;
     }
 
-    let activeEl = document.activeElement;
-    if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'SELECT')) {
-        if (activeEl.id && (activeEl.id.includes('bot-') || activeEl.id.includes('kamu-') || activeEl.id.includes('oyuncu-'))) {
-            return; 
-        }
-    }
+    // 🌟 DÜZELTME 1: Input odağı kontrolü listeyi tamamen kilitlemesin diye kaldırıldı veya esnetildi.
 
     let emlakBaslik = document.getElementById('emlak-baslik-div');
     let arsaBaslik = document.getElementById('arsa-baslik-div');
@@ -3292,13 +3287,12 @@ async function ilanlariGuncelle() {
         kapsayici.appendChild(arsaIcerikDiv);
     }
 
-  // 1. Fonksiyonun parametrelerine 'atananKonum' eklendi
     function kartHtmlUret(baslikMetni, botIsmi, varlikIsmi, satisBedeli, uniqueId, inputId, vadeInputId, arsaMi, atananKonum, tipKyn) {
         let goruntuleBtnHTML = arsaMi ? `<button onclick="arsaKonumGoster('${varlikIsmi}', '${atananKonum}')" style="background:#3498db; color:#fff; border:none; padding:4px 8px; border-radius:4px; font-weight:bold; font-size:10px; cursor:pointer; width:100%; margin-bottom:6px;">GÖRÜNTÜLE</button>` : '';
         
         let ortaAlanHTML = '';
 
-       if (tipKyn === 'benim-ilanim') {
+        if (tipKyn === 'benim-ilanim') {
             ortaAlanHTML = `
                 <div class="button-row" style="margin-top: 4px;">
                     <button class="btn-red" onclick="vazgec(${uniqueId})" style="width: 100%;">Vazgeç</button>
@@ -3405,7 +3399,7 @@ async function ilanlariGuncelle() {
                 let arsaMi = haritalanabilirMulkler.some(tur => varlik.isim.toLowerCase().includes(tur));
                 
                 if (arsaMi && !varlik.atananKonum) {
-                    varlik.atananKonum = arsaKonumunuAl(varlik);
+                    varlik.atananKonum = (typeof arsaKonumunuAl === 'function') ? arsaKonumunuAl(varlik) : 'Merkezi Konum';
                 }
 
                 let veriObj = { bot, varlik, satisBedeli, uniqueId, inputId, vadeInputId, arsaMi };
@@ -3491,7 +3485,9 @@ async function ilanlariGuncelle() {
 
         let haritalanabilirMulkler = ['arsası', 'otel', 'fabrika', 'hastane', 'okul', 'avm', 'hipermarket', 'konut'];
         let arsaMi = haritalanabilirMulkler.some(tur => urun.isim.toLowerCase().includes(tur));
-        let kamuKonumu = arsaMi ? arsaKonumunuAl(urun.isim) : '';
+        
+        // 🌟 DÜZELTME 2: Hatalı string geçişi güvenli hale getirildi
+        let kamuKonumu = (arsaMi && typeof arsaKonumunuAl === 'function') ? arsaKonumunuAl({ isim: urun.isim }) : 'Merkezi Konum';
 
         let veriObj = { urun, satisBedeli, inputId, vadeInputId, arsaMi, kamuKonumu };
 
@@ -3536,6 +3532,7 @@ async function ilanlariGuncelle() {
         });
     }
 }
+    
 function kamuUrunleriforEachSafe(arr, callback) {
     for (let i = 0; i < arr.length; i++) {
         callback(arr[i]);
