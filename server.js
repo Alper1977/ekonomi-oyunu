@@ -330,23 +330,28 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
                     // Nakit yetmedi, ödenmedi sayılır
                     kr.ustUsteOdenmeyen++;
 
-                    // 3 Dönem üst üste ödenmediyse İCRA (Varlığa el koyma)
-                    if (kr.ustUsteOdenmeyen >= 3 && portfoy.varliklar) {
-                        let ilgiliVarlik = portfoy.varliklar.find(v => v && v.krediID === kr.id && v.bloke === true);
-                        if (ilgiliVarlik) {
-                            let satisFiyati = (satisFiyatlari && satisFiyatlari[ilgiliVarlik.isim]) ? satisFiyatlari[ilgiliVarlik.isim] : 10000000;
-                            
-                            // Varlığı portföyden sil
-                            portfoy.varliklar = portfoy.varliklar.filter(v => v && v.id !== ilgiliVarlik.id);
-
-                            let artisFarki = satisFiyati - kr.kalanBorc;
-                            if (artisFarki > 0) {
-                                portfoy.nakit += artisFarki;
-                                portfoy.para = portfoy.nakit;
-                            }
-                        }
-                        kr.silinecek = true;
+                // 3 Dönem üst üste ödenmediyse İCRA (Varlığa el koyma)
+                if (kr.ustUsteOdenmeyen >= 3 && portfoy.varliklar) {
+                    // Önce krediID ile ara, bulamazsa aynı isimli blokeli varlıklardan ilkini seç
+                    let ilgiliVarlik = portfoy.varliklar.find(v => v && v.krediID === kr.id && v.bloke === true);
+                    if (!ilgiliVarlik) {
+                        ilgiliVarlik = portfoy.varliklar.find(v => v && v.isim === kr.isim && v.bloke === true);
                     }
+
+                    if (ilgiliVarlik) {
+                        let satisFiyati = (satisFiyatlari && satisFiyatlari[ilgiliVarlik.isim]) ? satisFiyatlari[ilgiliVarlik.isim] : 10000000;
+                        
+                        // Varlığı portföyden kesin olarak sil (icra et)
+                        portfoy.varliklar = portfoy.varliklar.filter(v => v && v.id !== ilgiliVarlik.id);
+
+                        let artisFarki = satisFiyati - kr.kalanBorc;
+                        if (artisFarki > 0) {
+                            portfoy.nakit += artisFarki;
+                            portfoy.para = portfoy.nakit;
+                        }
+                    }
+                    kr.silinecek = true;
+                }
                 }
                 degisiklikOldu = true;
             });
