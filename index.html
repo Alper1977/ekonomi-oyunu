@@ -5407,8 +5407,7 @@ function taksitleriOdeVeyaKontrolEt() {
             if (yapilanIslemler.length > 0) {
                 modalGoster(`🚨 <b>ZORUNLU İCRA / HACİZ RAPORU</b><br><br>` + yapilanIslemler.join('<br>'));
             }
-        }
-    }
+    
         } else {
             // Krediler dizisi yoksa direkt dışarıdan tetikle
             state.ustUsteOdenmeyenTaksit = (state.ustUsteOdenmeyenTaksit || 0) + 1;
