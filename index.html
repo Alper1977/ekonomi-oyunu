@@ -1749,41 +1749,60 @@ async function portfoyuSenkronizeEt() {
     }
 }
 
-async function portfoyuSunucuyaKaydet(yeniPortfoy) {
-
-    if (!yeniPortfoy || typeof state === 'undefined' || !state) {
-        return;
-    }
-
-
-    if (!yeniPortfoy || (typeof girisYapildi !== 'undefined' && !girisYapildi)) {
-        return;
-    }
-
+async function portfoyuSenkronizeEt() {
     try {
-        let response = await fetch('/api/portfoy-guncelle', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include', // 🌟 İŞTE BU KISIM EKSİK! Oturum çerezini sunucuya gönderir.
-            body: JSON.stringify({ portfoy: yeniPortfoy })
-        });
+        let response = await fetch('/api/aktif-kullanici', { credentials: 'include' });
+        if (response.ok) {
+            let user = await response.json();
+            if (user && user.portfoy) {
+                // Nakiti güncelle
+                state.nakit = user.portfoy.nakit !== undefined ? user.portfoy.nakit : state.nakit;
+                
+                let sunucuVarliklar = user.portfoy.varliklar || [];
 
-        if (response.status === 401) {
-            console.warn("Oturum açık değil veya düşmüş, portföy sunucuya kaydedilemedi.");
-            return;
-        }
+                // 🌟 ÇÖZÜM: Lokaldeki varlıkların ID'lerini baz alıyoruz. 
+                // Eğer sunucudan gelen bir mülk lokalde artık yoksa (haczedilmiş veya satılmışsa), 
+                // sunucunun onu geri getirmesine ASLA izin vermiyoruz.
+                if (state.varliklar && state.varliklar.length > 0) {
+                    let lokalVarlikIdleri = new Set(state.varliklar.map(v => v.id));
+                    
+                    // Sunucudan gelenlerden sadece lokalde hâlâ var olanları al veya lokaldeki güncel objeleri koru
+                    state.varliklar = state.varliklar.map(lokalV => {
+                        let sunucuEslesmesi = sunucuVarliklar.find(sv => sv.id == lokalV.id || sv.varlikId == lokalV.id);
+                        // Eğer sunucuda bloke durumu veya başka bir şey güncellendiyse onu al ama lokalden silme
+                        if (sunucuEslesmesi) {
+                            return { ...sunucuEslesmesi, ...lokalV }; // Lokaldeki işlem önceliklidir
+                        }
+                        return lokalV;
+                    });
 
-        if (!response.ok) {
-            console.error("Sunucu hata kodu döndürdü:", response.status);
-            return;
-        }
-
-        let sonuc = await response.json();
-        if (!sonuc.basari) {
-            console.error("Portföy kaydedilemedi:", sonuc.mesaj);
+                    // Sunucuda olup lokalde olmayanları ekleme, çünkü lokalde silinmiştir/haczedilmiştir.
+                    // Sadece lokalde olup sunucuda henüz ol(a)mayan yeni eklenenleri koru:
+                    sunucuVarliklar.forEach(sv => {
+                        // Eğer sunucudaki mülk lokalde yoksa ve bu bir silinme değil de yeni ekleme durumuysa 
+                        // (Bunu anlamak için lokal ID setinde var mı diye bakıyoruz)
+                        // Dikkat: Hacizle silinenler lokal ID setinde YOKTUR, bu yüzden geri eklenmezler!
+                        if (!lokalVarlikIdleri.has(sv.id)) {
+                            // Burada sunucudan gelen eski silinmiş mülkün geri gelmesini engellemek için 
+                            // ekleme yapmıyoruz. Sadece tamamen yeni bir mülkse eklenebilir ama 
+                            // haciz senaryosunda sunucu eski veri getirdiği için burayı pas geçiyoruz.
+                        }
+                    });
+                } else {
+                    // Lokal boşsa direkt sunucucundakini al
+                    state.varliklar = sunucuVarliklar;
+                }
+                
+                // DOM elementlerini güncelle
+                if (typeof varliklariGoster === 'function') {
+                    varliklariGoster();
+                } else if (typeof guncelle === 'function') {
+                    guncelle();
+                }
+            }
         }
     } catch (err) {
-        console.error("Sunucu bağlantı veya JSON ayrıştırma hatası:", err);
+        console.error("Portföy senkronizasyon hatası:", err);
     }
 }
 
