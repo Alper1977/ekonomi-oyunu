@@ -4965,7 +4965,7 @@ if (kapsam === 'ilan') {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
-                ilanId: ilanId || null, // Kamu için null gider, sunucu bunu yakalar
+                ilanId: ilanId || null, 
                 odenenNakit: gerekenPesinat,
                 ilanTipiBedel: bedel,
                 ilanIsmi: isim 
@@ -4980,6 +4980,15 @@ if (kapsam === 'ilan') {
                     state.nakit = sonuc.yeniPortfoy.nakit !== undefined ? sonuc.yeniPortfoy.nakit : state.nakit;
                     state.varliklar = sonuc.yeniPortfoy.varliklar || state.varliklar;
                 }
+
+                // 🔑 İŞTE KRİTİK DÜZELTME BURASI: 
+                // Sunucudan gelen son varlığı bul ve krediye az önce bağladığımız ID ile bloke durumunu mülke kilitlenmesini zorla!
+                let sonEklenenVarlik = state.varliklar[state.varliklar.length - 1];
+                if (sonEklenenVarlik) {
+                    sonEklenenVarlik.bloke = true;
+                    sonEklenenVarlik.krediID = yeniKrediID;
+                }
+
                 if (typeof guncelle === 'function') guncelle();
                 if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
                 
