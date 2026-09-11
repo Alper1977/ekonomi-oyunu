@@ -4077,31 +4077,60 @@ function ilanaCikar(id) {
 }
     
 function vazgec(id) {
-    // 1. Önce doğrudan state.varliklar içinde id veya sunucuIlanId eşleşmesi arayalım
+    // Doğrudan yerel id veya sunucuIlanId ile eşleşen varlığı bul
     let v = state.varliklar.find(x => x.id == id || x.sunucuIlanId == id);
     
-    // Eğer state içinde bulamadıysak, sunucudan gelen ilan ID'si ile eşleşen mülkü bulmaya çalışalım
+    // Eğer varlık bulunamadıysa ama elimizde aktif ilanlardan biri varsa, ID'yi esneterek yakala
     if (!v) {
-        // İlanlarda bu ID'ye sahip mülkün adını bulup state'den eşleştirebiliriz
-        fetch('/api/ilanlar')
-            .then(res => res.json())
-            .then(data => {
-                if (data.basari && Array.isArray(data.ilanlar)) {
-                    let bulunanIlan = data.ilanlar.find(ilan => ilan.id == id);
-                    if (bulunanIlan) {
-                        // Varlık ismine ve 'ilan-aktif' durumuna göre eşleşeni bul
-                        v = state.varliklar.find(x => x.isim === bulunanIlan.ilan_tipi && x.durum === 'ilan-aktif');
-                    }
-                }
-                devamEtIptal(v, id);
-            })
-            .catch(() => devamEtIptal(null, id));
-        return;
+        v = state.varliklar.find(x => x.durum === 'ilan-aktif');
     }
 
-    devamEtIptal(v, id);
-}
+    let silinecekId = (v && v.sunucuIlanId) ? v.sunucuIlanId : id;
 
+    fetch('/api/ilan-sil', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: silinecekId })
+    })
+    .then(res => res.json())
+    .then(data => {
+        // Sunucu silmese bile (veya başarı döndüğünde) yerelde mülkü kurtar
+        if (v) {
+            v.durum = 'sahip';
+            v.ilanSahibi = null;
+            v.sunucuIlanId = null;
+            v._islemde = false;
+        }
+        
+        // Garanti olması için 'ilan-aktif' durumdaki ve ID eşleşen tüm mülkleri 'sahip' yap
+        state.varliklar.forEach(item => {
+            if (item.durum === 'ilan-aktif') {
+                if (item.id == id || item.sunucuIlanId == id || (v && item.id === v.id)) {
+                    item.durum = 'sahip';
+                    item.ilanSahibi = null;
+                    item.sunucuIlanId = null;
+                    item._islemde = false;
+                }
+            }
+        });
+
+        let modalOverlay = document.getElementById('modal-overlay');
+        if (modalOverlay) modalOverlay.style.display = 'none';
+
+        if (typeof guncelle === 'function') guncelle();
+        if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
+        if (typeof portfoyuSunucuyaKaydet === 'function') portfoyuSunucuyaKaydet(state);
+    })
+    .catch(err => {
+        console.error("İlan silme hatası:", err);
+        // Hata durumunda bile kullanıcı takılı kalmasın diye yerelde kilidi aç ve geri al
+        if (v) {
+            v.durum = 'sahip';
+            v._islemde = false;
+        }
+        if (typeof guncelle === 'function') guncelle();
+    });
+}
 function devamEtIptal(v, id) {
     let sunucuId = v ? v.sunucuIlanId : id; 
 
