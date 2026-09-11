@@ -613,6 +613,64 @@ app.get('/api/oyun-ayarlari', (req, res) => {
     }
 });
 
+app.post('/api/ilan-sil', (req, res) => {
+    if (!req.session || !req.session.kullanici) {
+        return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı!" });
+    }
+
+    const userId = req.session.kullanici.id;
+    const { id } = req.body; // Bu gelen id, sunucu ilan ID'si (sunucuIlanId)
+
+    if (!id) {
+        return res.status(400).json({ basari: false, mesaj: "Geçersiz ilan ID!" });
+    }
+
+    try {
+        const transaction = db.transaction(() => {
+            // 1. Önce ilanı bul
+            const ilan = db.prepare(`SELECT * FROM ilanlar WHERE id = ?`).get(id);
+            if (!ilan) {
+                // İlan zaten yoksa başarılı sayıp geçebiliriz
+                return true;
+            }
+
+            // Güvenlik: Sadece ilanın sahibi kendi ilanını silebilir
+            if (ilan.kullanici_id !== userId) {
+                throw new Error("Bu ilanı silmeye yetkiniz yok!");
+            }
+
+            // 2. Kullanıcının portföyünü güncelle (Mülkü 'ilan-aktif' durumundan 'sahip' durumuna çek)
+            const userRow = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(userId);
+            if (userRow && userRow.portfoy) {
+                let portfoyObj = JSON.parse(userRow.portfoy);
+                if (portfoyObj && portfoyObj.varliklar) {
+                    portfoyObj.varliklar.forEach(v => {
+                        // Sunucu ilan ID'si eşleşen varlığı normale döndür
+                        if (v.sunucuIlanId == id || (ilan.detaylar && JSON.parse(ilan.detaylar).varlikId == v.id)) {
+                            v.durum = 'sahip';
+                            v.sunucuIlanId = null;
+                            v.ilanSahibi = null;
+                        }
+                    });
+                    db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`).run(JSON.stringify(portfoyObj), Date.now(), userId);
+                    req.session.kullanici.portfoy = portfoyObj;
+                }
+            }
+
+            // 3. İlanı veritabanından tamamen sil
+            db.prepare(`DELETE FROM ilanlar WHERE id = ?`).run(id);
+
+            return true;
+        });
+
+        transaction();
+        res.json({ basari: true, mesaj: "İlan başarıyla kaldırıldı." });
+    } catch (err) {
+        console.error("İlan silme hatası:", err.message);
+        res.status(400).json({ basari: false, mesaj: err.message });
+    }
+});
+
 app.post('/api/admin/ayar-guncelle', (req, res) => {
     const { ayarlar, sureler } = req.body;
     if (!ayarlar) {
