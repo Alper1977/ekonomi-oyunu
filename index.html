@@ -4076,29 +4076,27 @@ function ilanaCikar(id) {
 function vazgec(id) {
     let v = state.varliklar.find(x => x.id == id || x.sunucuIlanId == id);
 
-    // Sunucudaki gerçek ilan ID'sini bulmak için önce aktif ilanları sorgula
     fetch('/api/ilanlar')
         .then(res => res.json())
         .then(data => {
             let sunucuIlanId = null;
             if (data.basari && Array.isArray(data.ilanlar)) {
-                // Mülk adına, varlık ID'sine veya sunucu ilan ID'sine göre eşleşeni bul
+                // 1. Önce kesin eşleşme: İlanın kendi ID'si veya detayındaki varlık ID'si birebir tutuyor mu?
                 let bulunanIlan = data.ilanlar.find(ilan => 
-                    (v && ilan.ilan_tipi === v.isim) ||
+                    (ilan.id == id) || 
                     (v && ilan.detaylar && ilan.detaylar.varlikId == v.id) ||
-                    (ilan.id == id)
+                    (v && ilan.benim_mi && ilan.ilan_tipi === v.isim)
                 );
+
                 if (bulunanIlan) {
                     sunucuIlanId = bulunanIlan.id;
                 }
             }
 
-            // Eğer listede bulunamazsa varlığın kendi kayıtlı sunucuIlanId'sini dene
             if (!sunucuIlanId && v && v.sunucuIlanId) {
                 sunucuIlanId = v.sunucuIlanId;
             }
 
-            // Gerçek sunucu ilan ID'si ile silme isteği at
             return fetch('/api/ilan-sil', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -4114,7 +4112,6 @@ function vazgec(id) {
                 v._islemde = false;
             }
             
-            // Yerelde ilan-aktif olan eşleşen mülkleri normale döndür
             state.varliklar.forEach(item => {
                 if (item.durum === 'ilan-aktif') {
                     if (item.id == id || item.sunucuIlanId == id || (v && item.id === v.id)) {
