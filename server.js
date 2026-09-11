@@ -578,32 +578,39 @@ app.post('/api/ilan-satin-al', (req, res) => {
 
             db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`).run(JSON.stringify(aliciPortfoy), Date.now(), aliciId);
 
-            const saticiRow = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(saticiId);
-            if (saticiRow && saticiRow.portfoy) {
-                let saticiPortfoy = JSON.parse(saticiRow.portfoy || '{}');
-                let saticiNakit = saticiPortfoy.nakit !== undefined ? saticiPortfoy.nakit : (saticiPortfoy.para || 0);
-                
-                // Satıcıya her durumda tam ilan fiyatı (veya alınan peşinat - oyuna göre değişir) eklenir
-                saticiNakit += ilanFiyat;
-                saticiPortfoy.nakit = saticiNakit;
+            // Satıcı kontrolü (Eğer satıcı bir sistem kullanıcısıysa portföyünü günceller, kamu/özel bot ise hata vermeden geçer)
+            if (saticiId) {
+                const saticiRow = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(saticiId);
+                if (saticiRow && saticiRow.portfoy) {
+                    let saticiPortfoy = JSON.parse(saticiRow.portfoy || '{}');
+                    let saticiNakit = saticiPortfoy.nakit !== undefined ? saticiPortfoy.nakit : (saticiPortfoy.para || 0);
+                    
+                    // Satıcıya her durumda tam ilan fiyatı (veya alınan peşinat - oyuna göre değişir) eklenir
+                    saticiNakit += ilanFiyat;
+                    saticiPortfoy.nakit = saticiNakit;
 
-                if (saticiPortfoy.varliklar) {
-                    saticiPortfoy.varliklar = saticiPortfoy.varliklar.filter(v => {
-                        if (!v) return false;
-                        // Hedef varlık ID eşleşiyorsa kesinlikle sil
-                        if (hedefVarlikId && String(v.id) === String(hedefVarlikId)) {
-                            return false; 
-                        }
-                        // İsim ve tip eşleşiyorsa (ilan durumunda olanları) sil
-                        if (v.isim === ilanTipi && (v.durum === 'ilan-aktif' || v.durum === 'satildi' || v.durum === 'sahip')) {
-                            // Sadece ilk eşleşen ilandaki varlığı uçurmak için kontrol ekleyebiliriz ama genelde aynısından tektir
-                            return false; 
-                        }
-                        return true;
-                    });
+                    if (saticiPortfoy.varliklar) {
+                        let silindiMi = false;
+                        saticiPortfoy.varliklar = saticiPortfoy.varliklar.filter(v => {
+                            if (!v) return true;
+                            if (silindiMi) return true;
+
+                            // Hedef varlık ID eşleşiyorsa sil
+                            if (hedefVarlikId && String(v.id) === String(hedefVarlikId)) {
+                                silindiMi = true;
+                                return false; 
+                            }
+                            // İsim ve tip eşleşiyorsa sil
+                            if (v.isim === ilanTipi && (v.durum === 'ilan-aktif' || v.durum === 'satildi' || v.durum === 'sahip')) {
+                                silindiMi = true;
+                                return false; 
+                            }
+                            return true;
+                        });
+                    }
+
+                    db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`).run(JSON.stringify(saticiPortfoy), Date.now(), saticiId);
                 }
-
-                db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`).run(JSON.stringify(saticiPortfoy), Date.now(), saticiId);
             }
 
             db.prepare(`DELETE FROM ilanlar WHERE id = ?`).run(ilanId);
