@@ -3556,7 +3556,7 @@ async function ilanlariGuncelle() {
                     </select>
                 </div>
                 <div class="button-row">
-                    <button class="btn-green" onclick="kamuMulkSatinAlNakit('${varlikIsmi}', ${satisBedeli})">NAKİT</button>
+                    <button class="btn-green" onclick="kamuMulkSatinAlOnay('${varlikIsmi}', ${satisBedeli})">NAKİT</button>
                     <button class="btn-red" onclick="krediIslem('${inputId}', '${vadeInputId}', '${varlikIsmi}', ${satisBedeli}, 'ilan', null, '', '${varlikIsmi}')">KREDİ</button>
                 </div>
             `;
@@ -4032,39 +4032,45 @@ async function islemKesinOnayla(isim, bedel, tip, ilanId) {
     }
 }
 
-function kamuMulkSatinAlNakit(mulkIsmi, fiyat) {
+function kamuMulkSatinAlOnay(mulkIsmi, fiyat) {
+    let temizFiyat = Number(fiyat) || 0;
+    
+    let butonlar = `
+        <button class="btn-green" onclick="kamuMulkKesinSatinAl('${mulkIsmi}', ${temizFiyat})">ONAYLA</button>
+        <button onclick="document.getElementById('modal-overlay').style.display='none'" style="background-color: #d9534f; color: white; margin-left: 10px;">VAZGEÇ</button>
+    `;
+    
+    modalGoster(`${mulkIsmi} kamu mülkünü ${temizFiyat.toLocaleString()} TL ödeyerek satın almak istiyor musunuz?`, butonlar);
+}
+
+function kamuMulkKesinSatinAl(mulkIsmi, fiyat) {
     let temizFiyat = Number(fiyat) || 0;
 
     if (state.nakit < temizFiyat) {
-        modalGoster("⚠️ **YETERSİZ BAKİYE:** Bu kamu mülkünü nakit olarak alabilmek için yeterli paranız yok!");
+        modalGoster("⚠️ Yeterli nakit paranız yok!");
         return;
     }
 
-    // Parayı kasadan düş
     state.nakit -= temizFiyat;
 
-    // Varlığı kullanıcının envanterine blokesiz (serbest) olarak ekle
     state.varliklar.push({
         id: 'kamu_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
         isim: mulkIsmi,
-        fiyat: temizFiyat,
         durum: 'sahip',
         bloke: false,
         krediID: null,
         atananKonum: typeof arsaKonumunuAl === 'function' ? arsaKonumunuAl(mulkIsmi) : ''
     });
 
-    // Arayüzü ve verileri güncelle
-    guncelle();
-    if (typeof ilanlariGuncelle === 'function') {
-        ilanlariGuncelle();
-    }
-    if (typeof portfoyuSunucuyaKaydet === 'function') {
-        portfoyuSunucuyaKaydet(state);
-    }
+    let modalOverlay = document.getElementById('modal-overlay');
+    if (modalOverlay) modalOverlay.style.display = 'none';
 
-    modalGoster(`✅ <b>BAŞARILI:</b> ${mulkIsmi} başarıyla ${temizFiyat.toLocaleString()} TL nakit ödenerek satın alındı!`);
-}    
+    if (typeof veriDegisti !== 'undefined') veriDegisti = true;
+    if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
+    if (typeof portfoyuSunucuyaKaydet === 'function') portfoyuSunucuyaKaydet(state);
+
+    modalGoster(`Tebrikler! ${mulkIsmi} kamu mülkünü başarıyla satın aldınız.`);
+}
     
 function baskasiSatinAlOnay(varlikId, botIsmi, fiyat) {
     let butonlar = `
