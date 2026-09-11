@@ -5309,7 +5309,7 @@ function taksitleriOdeVeyaKontrolEt() {
                 if (kr.kalanBorc > 0) {
                     kr.kalanBorc = Math.max(0, kr.kalanBorc - taksitMiktari);
                     if (kr.kalanBorc === 0) {
-                        kr.icradanKalanBorc = false; // Borç bittiği için kilit kaldırılır
+                        kr.icradanKalanBorc = false;
                         let ilgiliVarlik = state.varliklar.find(v => v.krediID === kr.id || v.isim === kr.isim);
                         if (ilgiliVarlik) {
                             ilgiliVarlik.bloke = false;
@@ -5318,7 +5318,8 @@ function taksitleriOdeVeyaKontrolEt() {
                     }
                 }
             });
-            state.krediler = state.krediler.filter(kr => kr.kalanBorc > 0);
+            // 🌟 KRİTİK: icradanKalanBorc = true olanlar borcu bitmese bile ASLA filtrelenip silinmez, listede kalır!
+            state.krediler = state.krediler.filter(kr => kr.kalanBorc > 0 || kr.icradanKalanBorc);
             state.kredi = state.krediler.reduce((toplam, kr) => toplam + (kr.kalanBorc || 0), 0);
         }
 
@@ -5328,7 +5329,7 @@ function taksitleriOdeVeyaKontrolEt() {
             let icraYapildi = false;
 
             state.krediler.forEach(kr => {
-                if (kr.kalanBorc <= 0) return;
+                if (kr.kalanBorc <= 0 && !kr.icradanKalanBorc) return;
 
                 kr.ustUsteOdenmeyen = (kr.ustUsteOdenmeyen || 0) + 1;
                 console.log(`Kredi taksiti ödenemedi! Üst üste: ${kr.ustUsteOdenmeyen}`);
@@ -5340,41 +5341,39 @@ function taksitleriOdeVeyaKontrolEt() {
                     }
 
                     if (ilgiliVarlik) {
-                        // İCRA BLOKU İÇİNDEKİ YER (Teminat borcu karşılamadığında)
-let satisFiyati = (satisFiyatlari && satisFiyatlari[ilgiliVarlik.isim]) ? satisFiyatlari[ilgiliVarlik.isim] : 10000000;
-state.varliklar = state.varliklar.filter(v => v.id !== ilgiliVarlik.id);
+                        let satisFiyati = (satisFiyatlari && satisFiyatlari[ilgiliVarlik.isim]) ? satisFiyatlari[ilgiliVarlik.isim] : 10000000;
+                        
+                        state.varliklar = state.varliklar.filter(v => v.id !== ilgiliVarlik.id);
 
-let artisFarki = satisFiyati - kr.kalanBorc;
+                        let artisFarki = satisFiyati - kr.kalanBorc;
 
-if (artisFarki > 0) {
-    state.nakit += artisFarki;
-    kr.kalanBorc = 0;
-    kr.silinecek = true;
-    kr.icradanKalanBorc = false;
-    modalGoster(`🚨 <b>İCRA / SATIŞ:</b> <b>${ilgiliVarlik.isim}</b> satıldı, borç tamamen kapandı ve artan para nakite eklendi.`);
-} else {
-    // 🌟 TEMİNAT YETMEDİ: Kalan borç bakiye olarak kalır, asla sıfırlanmaz!
-    let kalanMukimBorc = Math.abs(artisFarki);
-    kr.kalanBorc = kalanMukimBorc; 
-    kr.ustUsteOdenmeyen = 0; 
-    kr.icradanKalanBorc = true; // Yeni kredi çekilmesini kilitler
-    kr.silinecek = false;
-    
-    modalGoster(`🚨 <b>İCRA VE KALAN BORÇ:</b> <b>${ilgiliVarlik.isim}</b> satıldı ancak satış bedeli borcu kapatmaya yetmedi! Kalan <b>${kalanMukimBorc.toLocaleString()} TL</b> borcunuz bakiye olarak kaldı.`);
-}
-icraYapildi = true;
+                        if (artisFarki > 0) {
+                            state.nakit += artisFarki;
+                            kr.kalanBorc = 0;
+                            kr.silinecek = true;
+                            kr.icradanKalanBorc = false;
+                            modalGoster(`🚨 <b>İCRA / SATIŞ:</b> <b>${ilgiliVarlik.isim}</b> satıldı, borç tamamen kapandı ve artan para nakite eklendi.`);
+                        } else {
+                            let kalanMukimBorc = Math.abs(artisFarki);
+                            kr.kalanBorc = kalanMukimBorc; 
+                            kr.ustUsteOdenmeyen = 0; 
+                            kr.icradanKalanBorc = true; // Kilit aktif kalır
+                            kr.silinecek = false;
+                            
+                            modalGoster(`🚨 <b>İCRA VE KALAN BORÇ:</b> <b>${ilgiliVarlik.isim}</b> satıldı ancak satış bedeli borcu kapatmaya yetmedi! Kalan <b>${kalanMukimBorc.toLocaleString()} TL</b> borç bakiye olarak bırakıldı.`);
+                        }
+                        icraYapildi = true;
                     } else {
-                        // 🌟 DÜZELTME: Haczedilecek mal kalmadıysa borç silinmez, bakiye sabit kalır ve kilit aktifleşir!
                         kr.icradanKalanBorc = true;
                         kr.silinecek = false;
                         state.ustUsteOdenmeyenTaksit = (state.ustUsteOdenmeyenTaksit || 0) + 1;
                         
-                        modalGoster(`🚨 <b>İCRA UYARISI:</b> Haczedilecek başka mülkünüz kalmadı! Kalan <b>${kr.kalanBorc.toLocaleString()} TL</b> borcunuz bakiye olarak kalmaya devam ediyor. Borcunuz tamamen bitene kadar yeni kredi alamazsınız.`);
+                        modalGoster(`🚨 <b>İCRA UYARISI:</b> Haczedilecek mülk kalmadı! Kalan <b>${kr.kalanBorc.toLocaleString()} TL</b> borç bakiye olarak duruyor. Yeni kredi alamazsınız.`);
                     }
                 }
             });
 
-            state.krediler = state.krediler.filter(kr => kr.kalanBorc > 0 && !kr.silinecek);
+            state.krediler = state.krediler.filter(kr => (kr.kalanBorc > 0 && !kr.silinecek) || kr.icradanKalanBorc);
             state.kredi = state.krediler.reduce((toplam, kr) => toplam + (kr.kalanBorc || 0), 0);
         } else {
             state.ustUsteOdenmeyenTaksit = (state.ustUsteOdenmeyenTaksit || 0) + 1;
@@ -5385,6 +5384,7 @@ icraYapildi = true;
         }
     }
 
+    // Kasa parasıyla kalan borçları eritme (İcradan kalan borcu korur, sıfırlatmaz)
     if (state.nakit > 0 && state.krediler && state.krediler.length > 0) {
         state.krediler.forEach(kr => {
             if (kr.kalanBorc > 0 && state.nakit > 0) {
@@ -5392,12 +5392,11 @@ icraYapildi = true;
                 state.nakit -= odenen;
                 kr.kalanBorc -= odenen;
                 if (kr.kalanBorc === 0) {
-                    kr.icradanKalanBorc = false;
-                    kr.silinecek = true;
+                    kr.icradanKalanBorc = false; // Borç bittiyse kilit kalkar
                 }
             }
         });
-        state.krediler = state.krediler.filter(kr => kr.kalanBorc > 0);
+        state.krediler = state.krediler.filter(kr => (kr.kalanBorc > 0) || kr.icradanKalanBorc);
         state.kredi = state.krediler.reduce((toplam, kr) => toplam + (kr.kalanBorc || 0), 0);
     }
 
@@ -5413,7 +5412,8 @@ function kalanBorclariOtomatikOde() {
     if (!state.krediler || state.krediler.length === 0) return;
 
     state.krediler.forEach(kr => {
-        // Eğer icralık olmuş ve hâlâ kalan borcu varsa
+        // Eğer kalan borcu varsa ve kasada para varsa öde
+        // DİKKAT: icradanKalanBorc bayrağı aktifse borç bitene kadar silinecek = true YAPILAMAZ!
         if (kr.kalanBorc > 0 && state.nakit > 0) {
             let odenecekMiktar = Math.min(state.nakit, kr.kalanBorc);
             state.nakit -= odenecekMiktar;
@@ -5421,18 +5421,26 @@ function kalanBorclariOtomatikOde() {
             
             if (kr.kalanBorc <= 0) {
                 kr.kalanBorc = 0;
-                kr.silinecek = true;
+                if (!kr.icradanKalanBorc) {
+                    kr.silinecek = true;
+                }
             }
         }
     });
 
-    // Kapananları temizle
+    // Sadece gerçekten normal yoldan bitenleri temizle. İcradan kalan borç bittiyse kilidi kaldırıp öyle temizle.
+    state.krediler.forEach(kr => {
+        if (kr.kalanBorc === 0 && kr.icradanKalanBorc) {
+            kr.icradanKalanBorc = false;
+            kr.silinecek = true;
+        }
+    });
+
     state.krediler = state.krediler.filter(kr => !kr.silinecek);
-    state.kredi = state.krediler.reduce((toplam, kr) => toplam + kr.kalanBorc, 0);
+    state.kredi = state.krediler.reduce((toplam, kr) => toplam + (kr.kalanBorc || 0), 0);
 }
-    
+
 function zorunluVarlikSatisiAndKapatma() {
-    // Önce blokeli malları bul, yoksa genel sahip olunan mallara bak
     let satilacakVarliklar = state.varliklar.filter(v => v.bloke === true);
 
     if (satilacakVarliklar.length === 0) {
@@ -5443,52 +5451,48 @@ function zorunluVarlikSatisiAndKapatma() {
     }
 
     if (satilacakVarliklar.length > 0) {
-        // Sırayla ilk blokeli/sahip olunan varlığı seçip icraya veriyoruz
         let satilacakVarlik = satilacakVarliklar[0];
         let satisFiyati = (satisFiyatlari && satisFiyatlari[satilacakVarlik.isim]) ? satisFiyatlari[satilacakVarlik.isim] : 10000000;
 
         // Varlığı envanterden sil
         state.varliklar = state.varliklar.filter(v => v.id !== satilacakVarlik.id);
 
-        // Toplam kredi borcundan bu malın satış gelirini düş veya kalan borçla mahsuplaş
         let toplamKrediBorcu = state.kredi || 0;
         let artisFarki = satisFiyati - toplamKrediBorcu;
 
         if (artisFarki > 0) {
-            // Malın fiyatı tüm borçtan fazla, borç sıfırlanır, kalan para nakite eklenir
             state.nakit += artisFarki;
             state.kredi = 0;
             state.krediler = [];
             state.taksit = 0;
         } else {
-            // Mal satıldı ama borca ancak yetiyor veya partial kapanıyor
-            state.kredi -= satisFiyati;
-            if (state.kredi < 0) state.kredi = 0;
-
-            // Eğer bu malın özel bir krediID'si varsa ilgili krediyi düşürelim
-            if (satilacakVarlik.krediID && state.krediler) {
-                state.krediler = state.krediler.filter(k => k.id !== satilacakVarlik.krediID);
-            } else if (state.krediler && state.krediler.length > 0) {
-                // Yoksa sıradaki ilk krediyi düşelim/kapatalım
-                state.krediler.shift();
-            }
-
-            // Kalan kredilere göre yeni taksiti güncelle
-            if (state.kredi <= 0) {
-                state.kredi = 0;
-                state.taksit = 0;
-                state.krediler = [];
+            // Teminat borcu kapatmaya yetmedi: Kalan fark bakiye kalır, krediler silinmez, kilit aktifleşir!
+            let kalanMukimBorc = Math.abs(artisFarki);
+            
+            if (state.krediler && state.krediler.length > 0) {
+                // İlk kredinin kalan borcunu net bakiye yap ve kilitle
+                let aktifKredi = state.krediler[0];
+                aktifKredi.kalanBorc = kalanMukimBorc;
+                aktifKredi.icradanKalanBorc = true; // 🌟 Yeni kredi almayı kesin olarak kilitler
+                aktifKredi.ustUsteOdenmeyen = 0;
             } else {
-                state.taksit = (state.kredi / 48) * (typeof faizOranlari !== 'undefined' ? faizOranlari.krediKatsayi : 1.25);
+                // Eğer krediler dizisi boşsa yeni bir bakiye nesnesi oluşturup kilitleyelim ki borç kaybolmasın
+                state.krediler = [{
+                    kalanBorc: kalanMukimBorc,
+                    icradanKalanBorc: true,
+                    taksitTutu: 0
+                }];
             }
+
+            state.kredi = kalanMukimBorc;
+            state.taksit = 0; // İcralık durumda yeni taksit üretilmez, bakiye olarak bekler
         }
 
-        // Sayaç sıfırlanır ki sonraki periyotlarda nakit hâlâ yetmiyorsa zincirleme satış devam edebilsin
         state.ustUsteOdenmeyenTaksit = 0;
 
-        modalGoster(`🚨 <b>İCRA / ZORUNLU SATIŞ!</b><br><br>3 dönem üst üste taksit ödenemediği için <b>${satilacakVarlik.isim}</b> adlı varlığınız icradan satıldı. Borçtan düşüldü ve kalan bakiye güncellendi.`);
+        modalGoster(`🚨 <b>İCRA / ZORUNLU SATIŞ!</b><br><br>3 dönem üst üste taksit ödenemediği için <b>${satilacakVarlik.isim}</b> satıldı. Satış bedeli borcu kapatmaya yetmediği için kalan <b>${Math.abs(artisFarki).toLocaleString()} TL</b> borç bakiye olarak bırakıldı ve yeni kredi çekmeniz kilitlendi.`);
         
-        console.log(`İcra gerçekleşti: ${satilacakVarlik.isim} satıldı.`);
+        console.log(`İcra gerçekleşti: ${satilacakVarlik.isim} satıldı, kalan borç bakiye bırakıldı.`);
     } else {
         modalGoster("⚠️ **UYARI:** Taksitlerinizi ödeyemiyorsunuz ve haczedilecek/satılacak hiçbir varlığınız kalmadı!");
     }
