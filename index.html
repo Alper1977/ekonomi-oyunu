@@ -3840,25 +3840,53 @@ function kamuMulkKesinSatinAl(mulkIsmi, fiyat) {
         return;
     }
 
-    state.nakit -= temizFiyat;
+    // Sunucuya güvenli satın alma isteği gönder
+    fetch('/api/ilan-satin-al', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            ilanId: null,             // Kamu olduğu için ID yok
+            odenenNakit: temizFiyat,    // Ödenen nakit
+            ilanTipiBedel: temizFiyat,  // Bedel
+            ilanIsmi: mulkIsmi          // Mülkün adı (Sunucu bu sayede ne alındığını biliyor)
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.basari) {
+            // Sunucudan dönen güncel portföyü ve parayı yerel state'e işle
+            if (data.yeniPortfoy) {
+                state.varliklar = data.yeniPortfoy.varliklar || [];
+                state.nakit = data.yeniPortfoy.nakit !== undefined ? data.yeniPortfoy.nakit : (state.nakit - temizFiyat);
+            } else {
+                state.nakit -= temizFiyat;
+                state.varliklar.push({
+                    id: 'kamu_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+                    isim: mulkIsmi,
+                    durum: 'sahip',
+                    bloke: false,
+                    krediID: null,
+                    atananKonum: typeof arsaKonumunuAl === 'function' ? arsaKonumunuAl(mulkIsmi) : ''
+                });
+            }
 
-    state.varliklar.push({
-        id: 'kamu_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
-        isim: mulkIsmi,
-        durum: 'sahip',
-        bloke: false,
-        krediID: null,
-        atananKonum: typeof arsaKonumunuAl === 'function' ? arsaKonumunuAl(mulkIsmi) : ''
+            let modalOverlay = document.getElementById('modal-overlay');
+            if (modalOverlay) modalOverlay.style.display = 'none';
+
+            if (typeof veriDegisti !== 'undefined') veriDegisti = true;
+            if (typeof guncelle === 'function') guncelle();
+            if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
+            if (typeof portfoyuSunucuyaKaydet === 'function') portfoyuSunucuyaKaydet(state);
+
+            modalGoster(`Tebrikler! ${mulkIsmi} kamu mülkünü başarıyla satın aldınız.`);
+        } else {
+            alert("Satın alma başarısız: " + data.mesaj);
+        }
+    })
+    .catch(err => {
+        console.error("Kamu mülk satın alma bağlantı hatası:", err);
+        alert("Bir hata oluştu, işlem gerçekleştirilemedi.");
     });
-
-    let modalOverlay = document.getElementById('modal-overlay');
-    if (modalOverlay) modalOverlay.style.display = 'none';
-
-    if (typeof veriDegisti !== 'undefined') veriDegisti = true;
-    if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
-    if (typeof portfoyuSunucuyaKaydet === 'function') portfoyuSunucuyaKaydet(state);
-
-    modalGoster(`Tebrikler! ${mulkIsmi} kamu mülkünü başarıyla satın aldınız.`);
 }
     
 function baskasiSatinAlOnay(varlikId, botIsmi, fiyat) {
