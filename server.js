@@ -747,15 +747,13 @@ app.get('/api/portfoy-getir', (req, res) => {
         const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
         const ayarlar = ayarKaydi ? JSON.parse(ayarKaydi.ayarlar) : {};
 
-        // 🌟 Çevrimdışı geçen süredeki gelirleri hesaba kat!
+        // 🌟 Çevrimdışı geçen süredeki tüm ekonomiyi (faiz, taksit, icra vb.) işlet
         const guncelPortfoy = kullaniciEkonomisiniIslet(user, ayarlar) || JSON.parse(user.portfoy || '{}');
 
+        // Bütün portföy objesini ve altındaki tüm state verilerini eksiksiz fırlatıyoruz!
         res.json({
             basari: true,
-            nakit: guncelPortfoy.nakit !== undefined ? guncelPortfoy.nakit : (guncelPortfoy.para || 0),
-            varliklar: guncelPortfoy.varliklar || [],
-            gunlukGelir: guncelPortfoy.gunlukGelir || 0,
-            konutKiraGeliri: guncelPortfoy.konutKiraGeliri || 0 
+            portfoy: guncelPortfoy
         });
     } catch (err) {
         console.error("Portföy getirme hatası:", err.message);
