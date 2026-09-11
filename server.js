@@ -527,7 +527,10 @@ app.post('/api/ilan-satin-al', (req, res) => {
     try {
         const transaction = db.transaction(() => {
             // Önce veritabanında ilanı arıyoruz
-            let ilan = db.prepare(`SELECT * FROM ilanlar WHERE id = ?`).get(ilanId);
+            let ilan = null;
+            if (ilanId) {
+                ilan = db.prepare(`SELECT * FROM ilanlar WHERE id = ?`).get(ilanId);
+            }
             
             let saticiId = null;
             let ilanFiyat = 0;
@@ -548,9 +551,9 @@ app.post('/api/ilan-satin-al', (req, res) => {
                     detaylarObj = {};
                 }
             } else {
-                // BOT VEYA KAMU İLANI (Veritabanında kayıtlı değilse bile güvenle işlenir)
-                ilanFiyat = ilanTipiBedel || odenenNakit * 10/7; // Peşinat oranına göre yaklaşık bedel veya gönderilen değer
-                ilanTipi = ilanIsmi || "Mülk";
+                // KAMU VEYA BOT İLANI (Veritabanında kayıtlı değilse bile istemciden gelen verilerle güvenle işlenir)
+                ilanFiyat = ilanTipiBedel || (odenenNakit ? odenenNakit * 10/7 : 0);
+                ilanTipi = ilanIsmi || "Kamu Mülkü";
             }
 
             // 1. ALICI İŞLEMLERİ
@@ -584,7 +587,7 @@ app.post('/api/ilan-satin-al', (req, res) => {
             db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`).run(JSON.stringify(aliciPortfoy), Date.now(), aliciId);
             guncelAliciPortfoy = aliciPortfoy;
 
-            // 2. SATICI İŞLEMLERİ (Sadece gerçek kullanıcılar için çalışır, bot/kamu için pas geçer)
+            // 2. SATICI İŞLEMLERİ (Sadece gerçek kullanıcılar için çalışır, kamu/bot için pas geçer)
             if (saticiId) {
                 const saticiRow = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(saticiId);
                 
