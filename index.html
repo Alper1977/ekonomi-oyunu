@@ -4779,10 +4779,11 @@ function changePage(p) {
 
 
 function krediIslem(inputId, vadeInputId, isim, bedel, kapsam, ilanId = null) {
-    // 🌟 KREDİ ENGELİ: Aktif ya da icradan kalma eksi borç varsa süreci doğrudan kes
-    let aktifVeyaKalanBorcVar = state.krediler && state.krediler.some(kr => kr.ustUsteOdenmeyen > 0 || kr.kalanBorc > 0);
-    if (aktifVeyaKalanBorcVar) {
-        modalGoster(`⚠️ <b>KREDİ REDDEDİLDİ</b><br><br>Ödenmemiş veya icradan kalmış aktif bir kredi borcunuz bulunuyor. Yeni kredi çekebilmek için önce mevcut borcunuzu kapatmalısınız!`);
+    // 🌟 DÜZELTME BURADA: Sadece taksiti geciken (ustUsteOdenmeyen > 0) veya icradan dolayı kalıntı borcu olan durumlarda engelle. 
+    // Normal, düzenli ödenen aktif krediler yeni kredi çekmeye engel DEĞİLDİR.
+    let sorunluKrediVar = state.krediler && state.krediler.some(kr => (kr.ustUsteOdenmeyen || 0) > 0 || (kr.icradanKalanBorc === true));
+    if (sorunluKrediVar) {
+        modalGoster(`⚠️ <b>KREDİ REDDEDİLDİ</b><br><br>Gecikmiş taksitleriniz veya icradan kalan ödenmemiş borcunuz bulunuyor. Borcunuzu tamamen kapatana kadar yeni kredi kullanamazsınız!`);
         return;
     }
 
@@ -4854,13 +4855,12 @@ function krediIslem(inputId, vadeInputId, isim, bedel, kapsam, ilanId = null) {
 function krediyiKesinOnayla() {
     if (!tempIslem) return;
 
-    // 🌟 KREDİ ENGELİ: Kesin onay aşamasında da ek güvenlik katmanı
-    let aktifVeyaKalanBorcVar = state.krediler && state.krediler.some(kr => kr.ustUsteOdenmeyen > 0 || kr.kalanBorc > 0);
-    if (aktifVeyaKalanBorcVar) {
+    let sorunluKrediVar = state.krediler && state.krediler.some(kr => (kr.ustUsteOdenmeyen || 0) > 0 || (kr.icradanKalanBorc === true));
+    if (sorunluKrediVar) {
         tempIslem = null; 
         let modalOverlay = document.getElementById('modal-overlay');
         if (modalOverlay) modalOverlay.style.display = 'none'; 
-        modalGoster(`⚠️ <b>KREDİ REDDEDİLDİ</b><br><br>Ödenmemiş veya icradan kalmış aktif bir kredi borcunuz bulunuyor. Yeni kredi çekebilmek için önce mevcut borcunuzu kapatmalısınız!`);
+        modalGoster(`⚠️ <b>KREDİ REDDEDİLDİ</b><br><br>Gecikmiş taksitleriniz veya icradan kalan ödenmemiş borcunuz bulunuyor. Borcunuzu tamamen kapatana kadar yeni kredi kullanamazsınız!`);
         return;
     }
 
@@ -4937,7 +4937,9 @@ function krediyiKesinOnayla() {
         id: yeniKrediID,
         isim: isim,
         kalanBorc: toplamGeriOdeme,
-        taksit: aylikTaksit
+        taksit: aylikTaksit,
+        ustUsteOdenmeyen: 0,
+        icradanKalanBorc: false // Sağlıklı yeni kredi olarak başlar
     });
 
     let islemTipi = (kapsam === 'ilan') ? 'al' : 'yap';
@@ -5359,7 +5361,8 @@ function taksitleriOdeVeyaKontrolEt() {
                             // 🌟 İŞTE İSTEDİĞİN KRİTİK YER: Mal satıldı ama borcu karşılamadı! Eksi/kalan borç olarak kalır.
                             let kalanMukimBorc = Math.abs(artisFarki);
                             kr.kalanBorc = kalanMukimBorc; 
-                            kr.ustUsteOdenmeyen = 0; // Sayaç sıfırlanır ama borç kapanmadığı için kredi silinmez
+                            kr.ustUsteOdenmeyen = 0; 
+                            kr.icradanKalanBorc = true; // 🌟 Kilit bayrağı aktifleşti! Borç tamamen biterse bu kalkacak.
                             kr.silinecek = false;
                             
                             modalGoster(`🚨 <b>İCRA VE KALAN BORÇ:</b> 3 dönem ödenemeyen <b>${ilgiliVarlik.isim}</b> satıldı ancak satış bedeli borcu kapatmaya yetmedi! Kalan <b>${kalanMukimBorc.toLocaleString()} TL</b> borcunuz sonraki tahsilatlardan düşülmek üzere bakiye olarak bırakıldı.`);
