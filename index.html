@@ -3217,6 +3217,13 @@ function yatirimlariGuncelle() {
 
 
 async function ilanlariGuncelle() {
+// Kullanıcı şu an herhangi bir kredi inputuna odaklandıysa arayüzü yenileme (yazısını silmesin)
+    const aktifEleman = document.activeElement;
+    if (aktifEleman && aktifEleman.tagName === 'INPUT' && aktifEleman.id && aktifEleman.id.includes('kredi')) {
+        return; 
+    }
+
+    
     let kapsayici = document.getElementById('ilanlar-kapsayici');
     if (!kapsayici) return;
 
