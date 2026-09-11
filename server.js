@@ -489,8 +489,8 @@ app.post('/api/ilan-satin-al', (req, res) => {
     try {
         const transaction = db.transaction(() => {
             let ilan = null;
-            // Eğer gelen ilanId veritabanındaki sayısal/UUID ID'lere uymuyorsa hata patlatmaması için try-catch içine alıyoruz
-            if (ilanId && !String(ilanId).startsWith('kamu_') && typeof ilanId !== 'string' || !isNaN(ilanId)) {
+            // Sadece geçerli bir ilanId varsa veritabanında ara
+            if (ilanId !== null && ilanId !== undefined && ilanId !== 'null' && ilanId !== '') {
                 try {
                     ilan = db.prepare(`SELECT * FROM ilanlar WHERE id = ?`).get(ilanId);
                 } catch (e) {
@@ -517,13 +517,12 @@ app.post('/api/ilan-satin-al', (req, res) => {
                     detaylarObj = {};
                 }
             } else {
-                // KAMU VEYA BOT İLANI (Veritabanında yoksa, istemciden gelen verileri doğrudan baz alıyoruz)
+                // KAMU VEYA BOT İLANI (Veritabanında yoksa doğrudan istemciden gelen verileri baz al)
                 ilanFiyat = ilanTipiBedel || (odenenNakit ? Number(odenenNakit) * 10/7 : 0);
-                // Kamu ilanlarında isim bazen ilanIsmi ile bazen ilanId'nin kendisi (örn: "Konut", "Fabrika") olarak gelir
-                ilanTipi = ilanIsmi || (typeof ilanId === 'string' && !ilanId.startsWith('ilan_') ? ilanId : "Kamu Mülkü");
+                ilanTipi = ilanIsmi || "Kamu Mülkü";
             }
 
-            // 1. ALICI İŞLEMLERİ
+            // ALICI İŞLEMLERİ
             const aliciRow = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(aliciId);
             if (!aliciRow) throw new Error("Alıcı bulunamadı.");
             
@@ -542,7 +541,6 @@ app.post('/api/ilan-satin-al', (req, res) => {
 
             const yeniBlokeDurumu = (odenenNakit !== undefined && odenenNakit !== null && Number(odenenNakit) < ilanFiyat);
 
-            // KESİN EKLEME GARANTİSİ: Kamu veya bot fark etmeksizin mülk envantere işlenir
             aliciPortfoy.varliklar.push({
                 id: Date.now() + Math.random(),
                 isim: ilanTipi,
@@ -555,7 +553,7 @@ app.post('/api/ilan-satin-al', (req, res) => {
             db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`).run(JSON.stringify(aliciPortfoy), Date.now(), aliciId);
             guncelAliciPortfoy = aliciPortfoy;
 
-            // 2. SATICI İŞLEMLERİ (Sadece gerçek kullanıcılar için çalışır)
+            // SATICI İŞLEMLERİ (Sadece gerçek kullanıcılar için)
             if (saticiId) {
                 const saticiRow = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(saticiId);
                 
@@ -590,7 +588,6 @@ app.post('/api/ilan-satin-al', (req, res) => {
                 }
             }
 
-            // 3. İlan veritabanındaysa silinir
             if (ilan) {
                 db.prepare(`DELETE FROM ilanlar WHERE id = ?`).run(ilanId);
             }
