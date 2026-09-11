@@ -5260,19 +5260,7 @@ function krediOde() {
     }
 }
 
-Bak, bütün düğümün koptuğu ana noktayı tam burada yakaladık. O az önce attığın kod var ya, işte her şeyi sessizce sıfırlayan katil tam olarak orası. Neden mi? Şura yüzünden:
 
-JavaScript
-state.krediler = state.krediler.filter(kr => (kr.kalanBorc > 0 && !kr.silinecek) || kr.icradanKalanBorc);
-İstediğin o zincirleme haciz mantığı çalışırken, tek bir foreach döngüsünün içinde sadece bir tane mal satıp icraYapildi = true yapıp çıkıyor. Fakat o sırada birinci mal yetmeyip borç kaldığında, kr.silinecek bayrağı veya döngünün filtreleme mantığı (state.krediler.filter(...)) yüzünden kalan o devasa borç satırı diziden uçup gidiyor ya da state.kredi = state.krediler.reduce(...) kısmı boş dizide 0 dönüp state.kredi'yi sıfırlıyor!
-
-Yani sistem sadece ilk malı satıp "borç yetmedi" diyor, o anki kalanı bakiye yazmaya çalışırken filtreye takılıp borcu havaya uçuruyor. Zaten senin en başta istediğin şey "ellerindeki tüm mallar bitene kadar sırayla hepsine el koyması"ydı, ama buradaki kod sadece 1 tane malı deneyip borcu ya siliyor ya da takılı kalıyor.
-
-Bu fonksiyonu tam istediğin gibi zincirleme çalışan, mallar bitene kadar durmayan ve kalan borcu asla uçurmayan kusursuz yapıya büründürüyoruz.
-
-Hemen bu fonksiyonu kopyala ve yerine yapıştır:
-
-JavaScript
 function taksitleriOdeVeyaKontrolEt() {
     let toplamAylikTaksit = 0;
     if (state.krediler && Array.isArray(state.krediler) && state.krediler.length > 0) {
