@@ -4955,20 +4955,19 @@ if (kapsam === 'ilan' && ilanId) {
         .then(res => res.json())
         .then(sonuc => {
             if (!sonuc.basari) {
-                console.error("Kredili alımda hata:", sonuc.mesaj);
-                modalGoster("İşlem başarısız: " + sonuc.mesaj);
+                modalGoster("İşlem Başarısız: " + sonuc.mesaj);
             } else {
-                // Sadece sunucu onay verdikten sonra portföyü ve ilanları taze çekiyoruz
+                // Sunucu işlemi başarıyla bitirdiğinde envanteri ve ilanları sunucudan taze çekiyoruz
                 if (typeof portfoyuSenkronizeEt === 'function') portfoyuSenkronizeEt();
                 if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
                 
-                let basariMesaji = "Kredi onaylandı, peşinat tahsil edildi ve varlık üzerine bloke konuldu.\n\nKasanızdan peşinat için " + gerekenPesinat.toLocaleString() + " TL nakit tahsil edilmiştir.";
+                let basariMesaji = "Kredi onaylandı, peşinat tahsil edildi ve varlık envanterinize eklendi.\n\nKasanızdan peşinat için " + gerekenPesinat.toLocaleString() + " TL nakit tahsil edilmiştir.";
                 modalGoster(basariMesaji);
             }
         })
         .catch(err => {
-            console.error("Kredili alım sunucu bağlantı hatası:", err);
-            modalGoster("Bağlantı hatası oluştu.");
+            console.error("Bağlantı hatası:", err);
+            modalGoster("Sunucu bağlantı hatası oluştu.");
         });
     } else {
         // İlan dışı (arsa dönüştürme vb.) işlemler için eski yerel kayıt sistemi çalışmaya devam eder
