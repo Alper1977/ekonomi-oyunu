@@ -5501,12 +5501,18 @@ function zorunluVarlikSatisiAndKapatma() {
 
     let yapilanIslemler = [];
 
-    // Zincirleme İcra Döngüsü
+    // ZİNCİRLEME İCRA DÖNGÜSÜ: Borç bitene kadar durmaksızın varlıkları tüketir
     while (toplamKrediBorcu > 0) {
-        let satilacakVarlik = state.varliklar.find(v => v.bloke === true) || 
-                              state.varliklar.find(v => v.durum === 'sahip' || v.bloke === false || v.durum === undefined);
+        // ÖNCE TÜM BLOKELİ VARLIKLARI SIRAYLA BUL VE TÜKET
+        let satilacakVarlik = state.varliklar.find(v => v.bloke === true);
+        
+        // Blokeli varlıklar tamamen bittiyse serbest varlıklara geç
+        if (!satilacakVarlik) {
+            satilacakVarlik = state.varliklar.find(v => v.durum === 'sahip' || v.bloke === false || v.durum === undefined);
+        }
 
-        if (!satilacakVarlik) break; // Satılacak mal kalmadı
+        // Satılacak hiç mal kalmadıysa döngüyü kır
+        if (!satilacakVarlik) break; 
 
         let satisFiyati = (satisFiyatlari && satisFiyatlari[satilacakVarlik.isim]) ? satisFiyatlari[satilacakVarlik.isim] : (satilacakVarlik.fiyat || 12000000);
         
@@ -5517,17 +5523,16 @@ function zorunluVarlikSatisiAndKapatma() {
             let artisFarki = satisFiyati - toplamKrediBorcu;
             state.nakit += artisFarki;
             
-            // Borç tamamen bitti
+            yapilanIslemler.push(`<b>${satilacakVarlik.isim}</b> (${satilacakVarlik.bloke ? 'Blokeli' : 'Serbest'}) haczedilerek satıldı (${satisFiyati.toLocaleString()} TL). Borç tamamen kapandı, artan <b>${artisFarki.toLocaleString()} TL</b> nakite eklendi.`);
+            
             toplamKrediBorcu = 0;
             state.krediler = [];
             state.kredi = 0;
             state.taksit = 0;
-            
-            yapilanIslemler.push(`<b>${satilacakVarlik.isim}</b> haczedilerek satıldı. Borç tamamen kapandı, artan <b>${artisFarki.toLocaleString()} TL</b> nakite eklendi.`);
             break;
         } else {
             toplamKrediBorcu -= satisFiyati;
-            yapilanIslemler.push(`<b>${satilacakVarlik.isim}</b> haczedilerek satıldı (${satisFiyati.toLocaleString()} TL), yetmedi. Kalan borç: <b>${toplamKrediBorcu.toLocaleString()} TL</b>.`);
+            yapilanIslemler.push(`<b>${satilacakVarlik.isim}</b> (${satilacakVarlik.bloke ? 'Blokeli' : 'Serbest'}) haczedilerek satıldı (${satisFiyati.toLocaleString()} TL), yetmedi. Kalan borç: <b>${toplamKrediBorcu.toLocaleString()} TL</b>.`);
             
             // Kredilerden düş
             if (state.krediler && state.krediler.length > 0) {
@@ -5539,21 +5544,22 @@ function zorunluVarlikSatisiAndKapatma() {
                         kalanDusulecek -= dusulen;
                     }
                 });
+                state.krediler = state.krediler.filter(kr => kr.kalanBorc > 0);
             }
         }
     }
 
-    // DÖNGÜ BİTTİ: Mallar bittiği halde hala borç varsa, bakiye borcu kesin olarak buraya sabitliyoruz
+    // DÖNGÜ BİTTİ: Mallar bittiği halde hala borç varsa, bakiye borcu kesin olarak sabitliyoruz
     if (toplamKrediBorcu > 0) {
         state.krediler = [{
             id: 'icra_bakiye_' + Date.now(),
             kalanBorc: toplamKrediBorcu,
-            icradanKalanBorc: true, // Yeni kredi çekilmesini kesin engeller
+            icradanKalanBorc: true, 
             taksitTutu: 0
         }];
         state.kredi = toplamKrediBorcu;
         state.taksit = 0;
-        state.nakit = 0; // Kasadaki para da haczedilir
+        state.nakit = 0; 
         yapilanIslemler.push(`🚨 <b>Haczedilecek başka mülk kalmadı!</b> Tüm varlıklar tükendi. Kalan <b>${toplamKrediBorcu.toLocaleString()} TL</b> bakiye kredi borcu olarak bırakıldı.`);
     } else {
         state.kredi = 0;
