@@ -7,7 +7,7 @@ const Database = require('better-sqlite3');
 const fs = require('fs');
 
 const app = express();
-const server = http.createServer(app);  
+const server = http.createServer(app); 
 const io = new Server(server); 
 
 app.use(express.json());
