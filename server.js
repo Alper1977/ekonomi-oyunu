@@ -521,7 +521,6 @@ app.post('/api/ilan-satin-al', (req, res) => {
     }
 
     const aliciId = req.session.kullanici.id;
-    // İstemciden kredili alım yapılıp yapılmadığını ve ödenecek tutarı (peşinatı) alabiliyoruz
     const { ilanId, odenenNakit } = req.body;
 
     try {
@@ -547,13 +546,13 @@ app.post('/api/ilan-satin-al', (req, res) => {
             }
             const hedefVarlikId = detaylarObj.varlikId; 
 
+            // 1. ALICI İŞLEMLERİ (Her iki türde de ortak)
             const aliciRow = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(aliciId);
             if (!aliciRow) throw new Error("Alıcı bulunamadı.");
             
             let aliciPortfoy = JSON.parse(aliciRow.portfoy || '{}');
             let aliciNakit = aliciPortfoy.nakit !== undefined ? aliciPortfoy.nakit : (aliciPortfoy.para || 0);
 
-            // Eğer istemci kredili alım için özel peşinat gönderdiyse onu baz alıyoruz, yoksa tam fiyatı arıyoruz
             const tahsilEdilecekTutar = (odenenNakit !== undefined && odenenNakit !== null) ? odenenNakit : ilanFiyat;
 
             if (aliciNakit < tahsilEdilecekTutar) {
@@ -564,7 +563,6 @@ app.post('/api/ilan-satin-al', (req, res) => {
             aliciPortfoy.nakit = aliciNakit;
             if (!aliciPortfoy.varliklar) aliciPortfoy.varliklar = [];
 
-            // Kredili alımda blokeli, nakit alımda blokesiz eklenmesini sağlıyoruz
             const yeniBlokeDurumu = (odenenNakit !== undefined && odenenNakit !== null && odenenNakit < ilanFiyat);
 
             aliciPortfoy.varliklar.push({
@@ -578,14 +576,15 @@ app.post('/api/ilan-satin-al', (req, res) => {
 
             db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`).run(JSON.stringify(aliciPortfoy), Date.now(), aliciId);
 
-            // Satıcı kontrolü (Eğer satıcı bir sistem kullanıcısıysa portföyünü günceller, kamu/özel bot ise hata vermeden geçer)
+            // 2. SATICI İŞLEMLERİ (Gerçek kullanıcılar için birebir aynı çalışır, bot/kamu için güvenli geçiş sağlar)
             if (saticiId) {
                 const saticiRow = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(saticiId);
+                
+                // Eğer satıcı gerçek bir kullanıcı sisteminde kayıtlıysa (Gerçek üye ticareti)
                 if (saticiRow && saticiRow.portfoy) {
                     let saticiPortfoy = JSON.parse(saticiRow.portfoy || '{}');
                     let saticiNakit = saticiPortfoy.nakit !== undefined ? saticiPortfoy.nakit : (saticiPortfoy.para || 0);
                     
-                    // Satıcıya her durumda tam ilan fiyatı (veya alınan peşinat - oyuna göre değişir) eklenir
                     saticiNakit += ilanFiyat;
                     saticiPortfoy.nakit = saticiNakit;
 
@@ -595,12 +594,10 @@ app.post('/api/ilan-satin-al', (req, res) => {
                             if (!v) return true;
                             if (silindiMi) return true;
 
-                            // Hedef varlık ID eşleşiyorsa sil
                             if (hedefVarlikId && String(v.id) === String(hedefVarlikId)) {
                                 silindiMi = true;
                                 return false; 
                             }
-                            // İsim ve tip eşleşiyorsa sil
                             if (v.isim === ilanTipi && (v.durum === 'ilan-aktif' || v.durum === 'satildi' || v.durum === 'sahip')) {
                                 silindiMi = true;
                                 return false; 
@@ -613,6 +610,7 @@ app.post('/api/ilan-satin-al', (req, res) => {
                 }
             }
 
+            // 3. İlan havuzdan kaldırılır
             db.prepare(`DELETE FROM ilanlar WHERE id = ?`).run(ilanId);
 
             return true;
