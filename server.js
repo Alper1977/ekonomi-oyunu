@@ -229,32 +229,35 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
         }
     }
 
-    // --- 3. KREDİ TAKSİTLERİ VE İCRA (GÜVENLİ SINIRLANDIRMA) ---
+// --- 3. KREDİ TAKSİTLERİ VE İCRA (GÜVENLİ SINIRLANDIRMA) ---
     const taksitPeriyotSayisi = Math.floor(gecenSure / taksitPeriyodu);
     if (taksitPeriyotSayisi > 0 && portfoy.krediler && Array.isArray(portfoy.krediler) && portfoy.krediler.length > 0) {
         
-        // 🌟 KRİTİK DÜZELTME: Oyuncu günlerce girmdiyse sistemi tek turda patlatmamak için 
-        // periyodu maksimum 1 olarak sınırlandırıyoruz. Böylece her çalıştırmada 1 taksit kontrol edilir.
         let islenecekDonem = Math.min(taksitPeriyotSayisi, 1);
 
         for (let adim = 0; adim < islenecekDonem; adim++) {
             portfoy.krediler.forEach(kr => {
-                if (!kr || kr.kalanBorc <= 0) return;
+                // Borç kontrolü (farklı anahtar ihtimallerine karşı esnek)
+                let borc = kr.kalanBorc !== undefined ? kr.kalanBorc : (kr.anaPara || 0);
+                if (!kr || borc <= 0) return;
 
-                if (!kr.taksitTutu) {
-                    kr.taksitTutu = (kr.kalanBorc / 48) * (faizOranlari.krediKatsayi || 1.25);
+                // Taksit miktarını tüm olası anahtar isimlerinden güvenle çek
+                let taksitMiktari = kr.taksitTutu || kr.taksitTutari || kr.taksitMiktari || 0;
+                if (!taksitMiktari) {
+                    taksitMiktari = (borc / 48) * (faizOranlari.krediKatsayi || 1.25);
+                    kr.taksitTutu = taksitMiktari;
                 }
+
                 if (typeof kr.ustUsteOdenmeyen !== 'number') {
                     kr.ustUsteOdenmeyen = 0;
                 }
 
-                let taksitMiktari = kr.taksitTutu;
                 let mevcutNakit = portfoy.nakit !== undefined ? Number(portfoy.nakit) : (portfoy.para !== undefined ? Number(portfoy.para) : 0);
 
                 if (mevcutNakit < taksitMiktari) {
                     let eksikTutar = taksitMiktari - mevcutNakit;
 
-                    // Dolar/Euro/Altın/Vadeli bozdurma mantığı (Aynı kalıyor)
+                    // Döviz / Altın / Vadeli bozdurma
                     if (eksikTutar > 0 && portfoy.dolar > 0) {
                         let dolarSatis = (kurlar && kurlar.dolar) ? kurlar.dolar.satis : 49;
                         let dolarTl = portfoy.dolar * dolarSatis;
@@ -314,12 +317,15 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
                 if (portfoy.nakit >= taksitMiktari) {
                     portfoy.nakit -= taksitMiktari;
                     portfoy.para = portfoy.nakit;
-                    kr.kalanBorc -= taksitMiktari;
-                    if (kr.kalanBorc < 0) kr.kalanBorc = 0;
+                    
+                    borc -= taksitMiktari;
+                    if (borc < 0) borc = 0;
+                    
+                    kr.kalanBorc = borc;
                     kr.ustUsteOdenmeyen = 0;
 
-                    if (kr.kalanBorc === 0 && portfoy.varliklar) {
-                        let ilgiliVarlik = portfoy.varliklar.find(v => v && v.krediID === kr.id);
+                    if (borc === 0 && portfoy.varliklar) {
+                        let ilgiliVarlik = portfoy.varliklar.find(v => v && (v.krediID === kr.id || v.isim === kr.isim));
                         if (ilgiliVarlik) {
                             ilgiliVarlik.bloke = false;
                             ilgiliVarlik.krediID = null;
@@ -329,16 +335,12 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
                     kr.ustUsteOdenmeyen++;
 
                     if (kr.ustUsteOdenmeyen >= 3 && portfoy.varliklar) {
-                        let ilgiliVarlik = portfoy.varliklar.find(v => v && v.krediID === kr.id && v.bloke === true);
-                        if (!ilgiliVarlik) {
-                            ilgiliVarlik = portfoy.varliklar.find(v => v && v.isim === kr.isim && v.bloke === true);
-                        }
-
+                        let ilgiliVarlik = portfoy.varliklar.find(v => v && (v.krediID === kr.id || v.isim === kr.isim) && v.bloke === true);
                         if (ilgiliVarlik) {
                             let satisFiyati = (satisFiyatlari && satisFiyatlari[ilgiliVarlik.isim]) ? satisFiyatlari[ilgiliVarlik.isim] : 10000000;
                             portfoy.varliklar = portfoy.varliklar.filter(v => v && v.id !== ilgiliVarlik.id);
 
-                            let artisFarki = satisFiyati - kr.kalanBorc;
+                            let artisFarki = satisFiyati - borc;
                             if (artisFarki > 0) {
                                 portfoy.nakit += artisFarki;
                                 portfoy.para = portfoy.nakit;
@@ -350,11 +352,14 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
                 degisiklikOldu = true;
             });
 
-            portfoy.krediler = portfoy.krediler.filter(kr => kr && kr.kalanBorc > 0 && !kr.silinecek);
+            portfoy.krediler = portfoy.krediler.filter(kr => {
+                let b = kr.kalanBorc !== undefined ? kr.kalanBorc : (kr.anaPara || 0);
+                return kr && b > 0 && !kr.silinecek;
+            });
         }
 
-        portfoy.kredi = portfoy.krediler.reduce((toplam, kr) => toplam + (kr.kalanBorc || 0), 0);
-        portfoy.taksit = portfoy.krediler.reduce((toplam, kr) => toplam + (kr.taksitTutu || 0), 0);
+        portfoy.kredi = portfoy.krediler.reduce((toplam, kr) => toplam + (kr.kalanBorc !== undefined ? kr.kalanBorc : (kr.anaPara || 0)), 0);
+        portfoy.taksit = portfoy.krediler.reduce((toplam, kr) => toplam + (kr.taksitTutu || kr.taksitTutari || 0), 0);
         if (portfoy.kredi <= 0) {
             portfoy.kredi = 0;
             portfoy.taksit = 0;
