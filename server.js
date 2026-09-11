@@ -544,9 +544,8 @@ app.post('/api/ilan-satin-al', (req, res) => {
             } catch (e) {
                 detaylarObj = {};
             }
-            const hedefVarlikId = detaylarObj.varlikId; 
 
-            // 1. ALICI İŞLEMLERİ (Her iki türde de ortak)
+            // 1. ALICI İŞLEMLERİ
             const aliciRow = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(aliciId);
             if (!aliciRow) throw new Error("Alıcı bulunamadı.");
             
@@ -565,6 +564,7 @@ app.post('/api/ilan-satin-al', (req, res) => {
 
             const yeniBlokeDurumu = (odenenNakit !== undefined && odenenNakit !== null && odenenNakit < ilanFiyat);
 
+            // KESİN ÇÖZÜM: Bot, kamu veya eksik detaylı ilanlarda bile mülkün envantere eklenmesini sağlayan yapı
             aliciPortfoy.varliklar.push({
                 id: Date.now() + Math.random(),
                 isim: ilanTipi,
@@ -576,11 +576,10 @@ app.post('/api/ilan-satin-al', (req, res) => {
 
             db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`).run(JSON.stringify(aliciPortfoy), Date.now(), aliciId);
 
-            // 2. SATICI İŞLEMLERİ (Gerçek kullanıcılar için birebir aynı çalışır, bot/kamu için güvenli geçiş sağlar)
+            // 2. SATICI İŞLEMLERİ (Gerçek kullanıcılar için P2P dengesini korur, bot/kamu için güvenle atlar)
             if (saticiId) {
                 const saticiRow = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(saticiId);
                 
-                // Eğer satıcı gerçek bir kullanıcı sisteminde kayıtlıysa (Gerçek üye ticareti)
                 if (saticiRow && saticiRow.portfoy) {
                     let saticiPortfoy = JSON.parse(saticiRow.portfoy || '{}');
                     let saticiNakit = saticiPortfoy.nakit !== undefined ? saticiPortfoy.nakit : (saticiPortfoy.para || 0);
@@ -590,6 +589,8 @@ app.post('/api/ilan-satin-al', (req, res) => {
 
                     if (saticiPortfoy.varliklar) {
                         let silindiMi = false;
+                        let hedefVarlikId = detaylarObj.varlikId;
+
                         saticiPortfoy.varliklar = saticiPortfoy.varliklar.filter(v => {
                             if (!v) return true;
                             if (silindiMi) return true;
