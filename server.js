@@ -545,7 +545,7 @@ app.post('/api/ilan-satin-al', (req, res) => {
             } catch (e) {
                 detaylarObj = {};
             }
-            const hedefVarlikId = detaylarObj.varlikId;
+            const hedefVarlikId = detaylarObj.varlikId; 
 
             const aliciRow = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(aliciId);
             if (!aliciRow) throw new Error("Alıcı bulunamadı.");
