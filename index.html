@@ -5409,37 +5409,59 @@ function taksitleriOdeVeyaKontrolEt() {
 }
 
 function kalanBorclariOtomatikOde() {
-    if (!state.krediler || state.krediler.length === 0) return;
+    // Eğer toplam kredi borcu kalmadıysa veya krediler dizisi boşsa çık
+    let toplamBorc = state.kredi || (state.krediler ? state.krediler.reduce((t, k) => t + (k.kalanBorc || 0), 0) : 0);
+    if (toplamBorc <= 0) return;
 
-    state.krediler.forEach(kr => {
-        // Eğer kalan borcu varsa ve kasada para varsa öde
-        // DİKKAT: icradanKalanBorc bayrağı aktifse borç bitene kadar silinecek = true YAPILAMAZ!
-        if (kr.kalanBorc > 0 && state.nakit > 0) {
-            let odenecekMiktar = Math.min(state.nakit, kr.kalanBorc);
-            state.nakit -= odenecekMiktar;
-            kr.kalanBorc -= odenecekMiktar;
+    // 🌟 İSTEDİĞİN KURAL: Kasada para varsa HEMEN HEPSİNİ borçtan düş, kasayı sıfırla!
+    if (state.nakit > 0) {
+        let odenenMiktar = state.nakit; // Kasadaki tüm parayı alıyoruz
+        
+        // Eğer kasadaki para borçtan fazlaysa, artanı kasada bırakıp borcu sıfırlayalım
+        if (odenenMiktar >= toplamBorc) {
+            state.nakit -= toplamBorc; // Sadece borca yeten kadarını düş, kalanı kasada kalsın
             
-            if (kr.kalanBorc <= 0) {
-                kr.kalanBorc = 0;
-                if (!kr.icradanKalanBorc) {
-                    kr.silinecek = true;
-                }
+            // Tüm kredileri ve borçları sıfırla / temizle
+            if (state.krediler && state.krediler.length > 0) {
+                state.krediler.forEach(kr => {
+                    kr.kalanBorc = 0;
+                    kr.icradanKalanBorc = false; // Borç bittiği için kilit kalkar
+                });
+                state.krediler = [];
             }
+            state.kredi = 0;
+            state.taksit = 0;
+            
+            console.log("Kredi borcu kasadaki parayla tamamen kapatıldı!");
+        } else {
+            // Kasadaki para borcu kapatmaya yetmiyor: Kasadaki TÜM para borca gider, kasa 0 kalır!
+            state.nakit = 0; 
+            
+            // Borçtan düş
+            if (state.krediler && state.krediler.length > 0) {
+                // Borcu kredilere paylaştırarak düşelim
+                let kalanDusulecek = odenenMiktar;
+                state.krediler.forEach(kr => {
+                    if (kalanDusulecek > 0 && kr.kalanBorc > 0) {
+                        let dusulen = Math.min(kalanDusulecek, kr.kalanBorc);
+                        kr.kalanBorc -= dusulen;
+                        kalanDusulecek -= dusulen;
+                    }
+                    // İcradan kalan borç bayrağını koruyoruz ki borç bitene kadar yeni kredi açılmasın
+                    kr.icradanKalanBorc = true; 
+                });
+                // Tamamen bitenleri temizle, kalanı tut
+                state.krediler = state.krediler.filter(kr => kr.kalanBorc > 0);
+            }
+            
+            state.kredi = Math.max(0, toplamBorc - odenenMiktar);
+            state.taksit = 0;
+            
+            console.log(`Kasaya giren para doğrudan borca gitti. Kalan toplam borç: ${state.kredi}`);
         }
-    });
-
-    // Sadece gerçekten normal yoldan bitenleri temizle. İcradan kalan borç bittiyse kilidi kaldırıp öyle temizle.
-    state.krediler.forEach(kr => {
-        if (kr.kalanBorc === 0 && kr.icradanKalanBorc) {
-            kr.icradanKalanBorc = false;
-            kr.silinecek = true;
-        }
-    });
-
-    state.krediler = state.krediler.filter(kr => !kr.silinecek);
-    state.kredi = state.krediler.reduce((toplam, kr) => toplam + (kr.kalanBorc || 0), 0);
+    }
 }
-
+    
 function zorunluVarlikSatisiAndKapatma() {
     let satilacakVarliklar = state.varliklar.filter(v => v.bloke === true);
 
