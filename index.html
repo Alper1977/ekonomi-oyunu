@@ -4944,18 +4944,22 @@ function krediyiKesinOnayla() {
     if (miktarInput) miktarInput.value = '';
     if (vadeSelect) vadeSelect.value = "48";
 
-   if (kapsam === 'ilan' && ilanId) {
+ if (kapsam === 'ilan' && ilanId) {
         fetch('/api/ilan-satin-al', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ilanId: ilanId, odenenNakit: gerekenPesinat })
+            body: JSON.stringify({ 
+                ilanId: ilanId, 
+                odenenNakit: gerekenPesinat,
+                ilanTipiBedel: bedel,
+                ilanIsmi: isim 
+            })
         })
         .then(res => res.json())
         .then(sonuc => {
             if (!sonuc.basari) {
                 modalGoster("İşlem Başarısız: " + sonuc.mesaj);
             } else {
-                // Sunucudan gelen güncel portföyü doğrudan state'e işliyoruz
                 if (sonuc.yeniPortfoy) {
                     state.nakit = sonuc.yeniPortfoy.nakit !== undefined ? sonuc.yeniPortfoy.nakit : state.nakit;
                     state.varliklar = sonuc.yeniPortfoy.varliklar || state.varliklar;
