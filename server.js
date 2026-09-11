@@ -522,6 +522,7 @@ app.post('/api/ilan-satin-al', (req, res) => {
 
     const aliciId = req.session.kullanici.id;
     const { ilanId, odenenNakit } = req.body;
+    let guncelAliciPortfoy = null;
 
     try {
         const transaction = db.transaction(() => {
@@ -545,7 +546,7 @@ app.post('/api/ilan-satin-al', (req, res) => {
                 detaylarObj = {};
             }
 
-            // 1. ALICI İŞLEMLERİ
+            // ALICI İŞLEMLERİ
             const aliciRow = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(aliciId);
             if (!aliciRow) throw new Error("Alıcı bulunamadı.");
             
@@ -564,7 +565,6 @@ app.post('/api/ilan-satin-al', (req, res) => {
 
             const yeniBlokeDurumu = (odenenNakit !== undefined && odenenNakit !== null && odenenNakit < ilanFiyat);
 
-            // KESİN ÇÖZÜM: Bot, kamu veya eksik detaylı ilanlarda bile mülkün envantere eklenmesini sağlayan yapı
             aliciPortfoy.varliklar.push({
                 id: Date.now() + Math.random(),
                 isim: ilanTipi,
@@ -575,8 +575,9 @@ app.post('/api/ilan-satin-al', (req, res) => {
             });
 
             db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`).run(JSON.stringify(aliciPortfoy), Date.now(), aliciId);
+            guncelAliciPortfoy = aliciPortfoy; // İstemciye göndermek için hafızaya alıyoruz
 
-            // 2. SATICI İŞLEMLERİ (Gerçek kullanıcılar için P2P dengesini korur, bot/kamu için güvenle atlar)
+            // SATICI İŞLEMLERİ (Gerçek kullanıcılar için P2P dengesi)
             if (saticiId) {
                 const saticiRow = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(saticiId);
                 
@@ -611,14 +612,13 @@ app.post('/api/ilan-satin-al', (req, res) => {
                 }
             }
 
-            // 3. İlan havuzdan kaldırılır
             db.prepare(`DELETE FROM ilanlar WHERE id = ?`).run(ilanId);
 
             return true;
         });
 
         transaction();
-        res.json({ basari: true, mesaj: "Satın alma gerçekleşti, mülk envantere aktarıldı." });
+        res.json({ basari: true, mesaj: "Satın alma gerçekleşti, mülk envantere aktarıldı.", yeniPortfoy: guncelAliciPortfoy });
     } catch (err) {
         console.error("Satın alma işlem hatası:", err.message);
         res.status(400).json({ basari: false, mesaj: err.message });
