@@ -4108,6 +4108,7 @@ function baskasiSatinAl(varlikId, botIsmi, fiyat) {
 function oyuncuIlaniSatinAlOnayla(ilanId, saticiAdi, varlikIsmi, fiyat, konum) {
     let temizFiyat = Number(fiyat) || 0;
     
+    // 🌟 ÇÖZÜM: 'konum' parametresi string olduğu için HTML onclick içinde mutlaka tek tırnak içine ('${konum}') alınmalıdır!
     let butonlar = `
         <button class="btn-green" onclick="oyuncuIlaniKesinSatinAl('${varlikIsmi}', ${temizFiyat}, ${ilanId}, '${konum}')">ONAYLA</button>
         <button onclick="document.getElementById('modal-overlay').style.display='none'" style="background-color: #d9534f; color: white; margin-left: 10px;">VAZGEÇ</button>
@@ -4116,7 +4117,6 @@ function oyuncuIlaniSatinAlOnayla(ilanId, saticiAdi, varlikIsmi, fiyat, konum) {
     modalGoster(`${saticiAdi} kişisinden ${varlikIsmi} varlığını (${konum}) ${temizFiyat.toLocaleString()} TL ödeyerek satın almak istiyor musunuz?`, butonlar);
 }  
 
-// 2. Kesin alım fonksiyonuna 'gelenKonum' olarak al ve nesneye işle
 async function oyuncuIlaniKesinSatinAl(isim, bedel, ilanId, gelenKonum) {
     if (state.nakit < bedel) {
         modalGoster("Yeterli nakit paranız yok!");
@@ -4145,10 +4145,8 @@ async function oyuncuIlaniKesinSatinAl(isim, bedel, ilanId, gelenKonum) {
             durum: 'sahip',
             bloke: false,
             krediID: null,
-            atananKonum: gelenKonum // Artık hata vermeden doğru konumu kilitler!
+            atananKonum: gelenKonum 
         });
-
-       
 
         if (typeof botlar !== 'undefined' && Array.isArray(botlar)) {
             botlar.forEach(b => {
