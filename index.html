@@ -5490,31 +5490,35 @@ function zorunluVarlikSatisiAndKapatma() {
 
     let yapilanIslemler = [];
 
-    // Elimizde haczedilecek mal kalmayana veya borç sıfırlanana kadar döngü
+    // Zincirleme İcra Döngüsü
     while (toplamKrediBorcu > 0) {
         let satilacakVarlik = state.varliklar.find(v => v.bloke === true) || 
                               state.varliklar.find(v => v.durum === 'sahip' || v.bloke === false || v.durum === undefined);
 
-        if (!satilacakVarlik) break; // Satılacak hiçbir mal kalmadı
+        if (!satilacakVarlik) break; // Satılacak mal kalmadı
 
         let satisFiyati = (satisFiyatlari && satisFiyatlari[satilacakVarlik.isim]) ? satisFiyatlari[satilacakVarlik.isim] : (satilacakVarlik.fiyat || 12000000);
         
+        // Varlığı envanterden düş
         state.varliklar = state.varliklar.filter(v => v.id !== satilacakVarlik.id);
 
         if (satisFiyati >= toplamKrediBorcu) {
             let artisFarki = satisFiyati - toplamKrediBorcu;
             state.nakit += artisFarki;
-            state.kredi = 0;
+            
+            // Borç tamamen bitti
+            toplamKrediBorcu = 0;
             state.krediler = [];
+            state.kredi = 0;
             state.taksit = 0;
             
             yapilanIslemler.push(`<b>${satilacakVarlik.isim}</b> haczedilerek satıldı. Borç tamamen kapandı, artan <b>${artisFarki.toLocaleString()} TL</b> nakite eklendi.`);
-            toplamKrediBorcu = 0;
             break;
         } else {
             toplamKrediBorcu -= satisFiyati;
             yapilanIslemler.push(`<b>${satilacakVarlik.isim}</b> haczedilerek satıldı (${satisFiyati.toLocaleString()} TL), yetmedi. Kalan borç: <b>${toplamKrediBorcu.toLocaleString()} TL</b>.`);
             
+            // Kredilerden düş
             if (state.krediler && state.krediler.length > 0) {
                 let kalanDusulecek = satisFiyati;
                 state.krediler.forEach(kr => {
@@ -5524,23 +5528,22 @@ function zorunluVarlikSatisiAndKapatma() {
                         kalanDusulecek -= dusulen;
                     }
                 });
-                state.krediler = state.krediler.filter(kr => kr.kalanBorc > 0);
             }
         }
     }
 
-    // Mallar bitti ama hâlâ borç varsa: Bakiye borç olarak kalır, kasa sıfırlanır, yeni kredi kapanır
+    // DÖNGÜ BİTTİ: Mallar bittiği halde hala borç varsa, bakiye borcu kesin olarak buraya sabitliyoruz
     if (toplamKrediBorcu > 0) {
         state.krediler = [{
             id: 'icra_bakiye_' + Date.now(),
             kalanBorc: toplamKrediBorcu,
-            icradanKalanBorc: true, // Yeni kredi çekmeyi engeller
+            icradanKalanBorc: true, // Yeni kredi çekilmesini kesin engeller
             taksitTutu: 0
         }];
         state.kredi = toplamKrediBorcu;
         state.taksit = 0;
-        state.nakit = 0; // Kalan nakit de haczedilir
-        yapilanIslemler.push(`🚨 <b>Haczedilecek başka mülk kalmadı!</b> Tüm varlıklar tükendi. Kalan <b>${toplamKrediBorcu.toLocaleString()} TL</b> bakiye kredi borcu olarak bırakıldı. Kasaya giren her kuruş bu borçtan düşülecektir.`);
+        state.nakit = 0; // Kasadaki para da haczedilir
+        yapilanIslemler.push(`🚨 <b>Haczedilecek başka mülk kalmadı!</b> Tüm varlıklar tükendi. Kalan <b>${toplamKrediBorcu.toLocaleString()} TL</b> bakiye kredi borcu olarak bırakıldı.`);
     } else {
         state.kredi = 0;
         state.krediler = [];
