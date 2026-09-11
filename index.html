@@ -4944,7 +4944,7 @@ function krediyiKesinOnayla() {
     if (miktarInput) miktarInput.value = '';
     if (vadeSelect) vadeSelect.value = "48";
 
-    if (kapsam === 'ilan' && ilanId) {
+   if (kapsam === 'ilan' && ilanId) {
         fetch('/api/ilan-satin-al', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -4953,22 +4953,23 @@ function krediyiKesinOnayla() {
         .then(res => res.json())
         .then(sonuc => {
             if (!sonuc.basari) {
-                // Eğer sunucuda bot/kamu kaynaklı anlık bir takılma olursa gerçek üyeler etkilenmez, 
-                // ancak varlığın eklenmesi garantiye alınır
-                modalGoster("İşlem Bildirimi: " + sonuc.mesaj);
+                modalGoster("İşlem Başarısız: " + sonuc.mesaj);
+            } else {
+                // Sunucudan gelen güncel portföyü doğrudan state'e işliyoruz
+                if (sonuc.yeniPortfoy) {
+                    state.nakit = sonuc.yeniPortfoy.nakit !== undefined ? sonuc.yeniPortfoy.nakit : state.nakit;
+                    state.varliklar = sonuc.yeniPortfoy.varliklar || state.varliklar;
+                }
+                if (typeof guncelle === 'function') guncelle();
+                if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
+                
+                let basariMesaji = "Kredi onaylandı, peşinat tahsil edildi ve varlık envanterinize eklendi.\n\nKasanızdan peşinat için " + gerekenPesinat.toLocaleString() + " TL nakit tahsil edilmiştir.";
+                modalGoster(basariMesaji);
             }
-            // Gerçek kullanıcılar arası P2P ticaret ve sunucu senkronizasyonu
-            if (typeof portfoyuSenkronizeEt === 'function') portfoyuSenkronizeEt();
-            if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
-            
-            let basariMesaji = "Kredi onaylandı, peşinat tahsil edildi ve varlık envanterinize eklendi.\n\nKasanızdan peşinat için " + gerekenPesinat.toLocaleString() + " TL nakit tahsil edilmiştir.";
-            modalGoster(basariMesaji);
         })
         .catch(err => {
             console.error("Bağlantı hatası:", err);
-            if (typeof portfoyuSenkronizeEt === 'function') portfoyuSenkronizeEt();
-            if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
-            modalGoster("İşlem tamamlandı, mülk envantere işlendi.");
+            modalGoster("Sunucu bağlantı hatası oluştu.");
         });
     } else {
         guncelle();
