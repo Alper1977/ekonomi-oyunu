@@ -4779,6 +4779,13 @@ function changePage(p) {
 
 
 function krediIslem(inputId, vadeInputId, isim, bedel, kapsam, ilanId = null) {
+    // 🌟 KREDİ ENGELİ: Aktif ya da icradan kalma eksi borç varsa süreci doğrudan kes
+    let aktifVeyaKalanBorcVar = state.krediler && state.krediler.some(kr => kr.ustUsteOdenmeyen > 0 || kr.kalanBorc > 0);
+    if (aktifVeyaKalanBorcVar) {
+        modalGoster(`⚠️ <b>KREDİ REDDEDİLDİ</b><br><br>Ödenmemiş veya icradan kalmış aktif bir kredi borcunuz bulunuyor. Yeni kredi çekebilmek için önce mevcut borcunuzu kapatmalısınız!`);
+        return;
+    }
+
     let miktarInput = document.getElementById(inputId);
     let vadeSelect = document.getElementById(vadeInputId);
 
@@ -4823,14 +4830,13 @@ function krediIslem(inputId, vadeInputId, isim, bedel, kapsam, ilanId = null) {
         toplamGeriOdeme = aylikTaksit * n;
     }
 
-    // 🌟 Burada ilanId'yi tempIslem nesnesine kaydediyoruz
     tempIslem = {
         inputId: inputId,
         vadeInputId: vadeInputId,
         isim: isim,
         bedel: bedel,
         kapsam: kapsam,
-        ilanId: ilanId, // Aktarılan ilan ID'si
+        ilanId: ilanId, 
         miktar: miktar,
         vade: vade,
         toplamGeriOdeme: toplamGeriOdeme,
@@ -4848,11 +4854,13 @@ function krediIslem(inputId, vadeInputId, isim, bedel, kapsam, ilanId = null) {
 function krediyiKesinOnayla() {
     if (!tempIslem) return;
 
-    let gecikmedeKrediVar = state.krediler && state.krediler.find(kr => kr.ustUsteOdenmeyen > 0);
-    if (gecikmedeKrediVar) {
+    // 🌟 KREDİ ENGELİ: Kesin onay aşamasında da ek güvenlik katmanı
+    let aktifVeyaKalanBorcVar = state.krediler && state.krediler.some(kr => kr.ustUsteOdenmeyen > 0 || kr.kalanBorc > 0);
+    if (aktifVeyaKalanBorcVar) {
         tempIslem = null; 
-        document.getElementById('modal-overlay').style.display = 'none'; 
-        modalGoster(`⚠️ <b>KREDİ UYARISI</b><br><br>Kredi taksit ödemeleriniz düzenli değil! Gecikmiş ödemeleriniz bulunduğu için <b>kredi borcunuzu kapatmadan</b> yeni kredi kullanamazsınız.`);
+        let modalOverlay = document.getElementById('modal-overlay');
+        if (modalOverlay) modalOverlay.style.display = 'none'; 
+        modalGoster(`⚠️ <b>KREDİ REDDEDİLDİ</b><br><br>Ödenmemiş veya icradan kalmış aktif bir kredi borcunuz bulunuyor. Yeni kredi çekebilmek için önce mevcut borcunuzu kapatmalısınız!`);
         return;
     }
 
@@ -4960,7 +4968,7 @@ function krediyiKesinOnayla() {
     if (miktarInput) miktarInput.value = '';
     if (vadeSelect) vadeSelect.value = "48";
 
-if (kapsam === 'ilan') {
+    if (kapsam === 'ilan') {
         fetch('/api/ilan-satin-al', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -4981,8 +4989,6 @@ if (kapsam === 'ilan') {
                     state.varliklar = sonuc.yeniPortfoy.varliklar || state.varliklar;
                 }
 
-                // 🔑 İŞTE KRİTİK DÜZELTME BURASI: 
-                // Sunucudan gelen son varlığı bul ve krediye az önce bağladığımız ID ile bloke durumunu mülke kilitlenmesini zorla!
                 let sonEklenenVarlik = state.varliklar[state.varliklar.length - 1];
                 if (sonEklenenVarlik) {
                     sonEklenenVarlik.bloke = true;
@@ -5001,7 +5007,6 @@ if (kapsam === 'ilan') {
             modalGoster("Sunucu bağlantı hatası oluştu.");
         });
     } else {
-        // Kapsam ilan değilse (kendi arazine bina yapma vb. durumlar)
         guncelle();
         if (typeof portfoyuSunucuyaKaydet === 'function') {
             portfoyuSunucuyaKaydet(state);
@@ -5296,32 +5301,103 @@ function taksitleriOdeVeyaKontrolEt() {
         state.nakit -= toplamAylikTaksit;
         state.ustUsteOdenmeyenTaksit = 0;
         
-        // Kredilerin kendi içindeki kalan borçlarını da düşür ki döngü tıkır tıkır işlesin
+        // Kredilerin kendi içindeki kalan borçlarını da düşür
         if (state.krediler && Array.isArray(state.krediler)) {
             state.krediler.forEach(kr => {
                 let taksitMiktari = kr.taksitTutu || kr.aylikTaksit || 0;
                 if (kr.kalanBorc > 0) {
                     kr.kalanBorc = Math.max(0, kr.kalanBorc - taksitMiktari);
+                    if (kr.kalanBorc === 0) {
+                        // Borcu bittiyse ilgili malın blokesini kaldır
+                        let ilgiliVarlik = state.varliklar.find(v => v.krediID === kr.id || v.isim === kr.isim);
+                        if (ilgiliVarlik) {
+                            ilgiliVarlik.bloke = false;
+                            ilgiliVarlik.krediID = null;
+                        }
+                    }
                 }
             });
-            // Toplam kredi ana parasını da güncelle
+            // Tamamen 0lenen kredileri temizle
+            state.krediler = state.krediler.filter(kr => kr.kalanBorc > 0);
             state.kredi = state.krediler.reduce((toplam, kr) => toplam + (kr.kalanBorc || 0), 0);
         }
 
         console.log("Taksit başarıyla ödendi.");
     } else {
-        state.ustUsteOdenmeyenTaksit = (state.ustUsteOdenmeyenTaksit || 0) + 1;
-        console.log(`Taksit ödenemedi! Üst üste: ${state.ustUsteOdenmeyenTaksit}`);
+        // Alternatif hesaplar ve nakit yetmedi: Kredi bazlı gecikme takibi yapalım
+        if (state.krediler && Array.isArray(state.krediler)) {
+            let icraYapildi = false;
 
-        if (state.ustUsteOdenmeyenTaksit >= 3) {
-            if (typeof zorunluVarlikSatisiAndKapatma === 'function') {
+            state.krediler.forEach(kr => {
+                if (kr.kalanBorc <= 0) return;
+
+                kr.ustUsteOdenmeyen = (kr.ustUsteOdenmeyen || 0) + 1;
+                console.log(`Kredi taksiti ödenemedi! Üst üste: ${kr.ustUsteOdenmeyen}`);
+
+                if (kr.ustUsteOdenmeyen >= 3 && !icraYapildi) {
+                    // Bu krediye bağlı veya en baştaki blokeli varlığı bul
+                    let ilgiliVarlik = state.varliklar.find(v => (v.krediID === kr.id || v.isim === kr.isim) && v.bloke === true);
+                    if (!ilgiliVarlik) {
+                        ilgiliVarlik = state.varliklar.find(v => v.bloke === true);
+                    }
+
+                    if (ilgiliVarlik) {
+                        let satisFiyati = (satisFiyatlari && satisFiyatlari[ilgiliVarlik.isim]) ? satisFiyatlari[ilgiliVarlik.isim] : 10000000;
+                        
+                        // Varlığı portföyden sil
+                        state.varliklar = state.varliklar.filter(v => v.id !== ilgiliVarlik.id);
+
+                        let artisFarki = satisFiyati - kr.kalanBorc;
+
+                        if (artisFarki > 0) {
+                            // Mal parası borçtan fazla, borç biter artanı nakite eklenir
+                            state.nakit += artisFarki;
+                            kr.kalanBorc = 0;
+                            kr.silinecek = true;
+                            modalGoster(`🚨 <b>İCRA / SATIŞ:</b> 3 dönem ödenemeyen <b>${ilgiliVarlik.isim}</b> satıldı, borç tamamen kapandı ve artan para nakite eklendi.`);
+                        } else {
+                            // 🌟 İŞTE İSTEDİĞİN KRİTİK YER: Mal satıldı ama borcu karşılamadı! Eksi/kalan borç olarak kalır.
+                            let kalanMukimBorc = Math.abs(artisFarki);
+                            kr.kalanBorc = kalanMukimBorc; 
+                            kr.ustUsteOdenmeyen = 0; // Sayaç sıfırlanır ama borç kapanmadığı için kredi silinmez
+                            kr.silinecek = false;
+                            
+                            modalGoster(`🚨 <b>İCRA VE KALAN BORÇ:</b> 3 dönem ödenemeyen <b>${ilgiliVarlik.isim}</b> satıldı ancak satış bedeli borcu kapatmaya yetmedi! Kalan <b>${kalanMukimBorc.toLocaleString()} TL</b> borcunuz sonraki tahsilatlardan düşülmek üzere bakiye olarak bırakıldı.`);
+                        }
+                        icraYapildi = true;
+                    } else {
+                        // Haczedilecek mal kalmadıysa genel sayaç artırılır
+                        state.ustUsteOdenmeyenTaksit = (state.ustUsteOdenmeyenTaksit || 0) + 1;
+                    }
+                }
+            });
+
+            // Borcu bitenleri temizle, kalanı tut
+            state.krediler = state.krediler.filter(kr => kr.kalanBorc > 0 && !kr.silinecek);
+            state.kredi = state.krediler.reduce((toplam, kr) => toplam + (kr.kalanBorc || 0), 0);
+        } else {
+            state.ustUsteOdenmeyenTaksit = (state.ustUsteOdenmeyenTaksit || 0) + 1;
+            if (state.ustUsteOdenmeyenTaksit >= 3 && typeof zorunluVarlikSatisiAndKapatma === 'function') {
                 zorunluVarlikSatisiAndKapatma();
+                state.ustUsteOdenmeyenTaksit = 0;
             }
-            state.ustUsteOdenmeyenTaksit = 0;
         }
     }
 
-    // Güncel taksit toplamını state'e de sabitleyelim ki başka yerler bozulmasın
+    // 🌟 KASA HERYERDEN PARA ALDIĞINDA KALAN BORÇLARI ERİTMEK İÇİN EKOTEST
+    if (state.nakit > 0 && state.krediler && state.krediler.length > 0) {
+        state.krediler.forEach(kr => {
+            if (kr.kalanBorc > 0 && state.nakit > 0) {
+                let odenen = Math.min(state.nakit, kr.kalanBorc);
+                state.nakit -= odenen;
+                kr.kalanBorc -= odenen;
+            }
+        });
+        state.krediler = state.krediler.filter(kr => kr.kalanBorc > 0);
+        state.kredi = state.krediler.reduce((toplam, kr) => toplam + (kr.kalanBorc || 0), 0);
+    }
+
+    // Güncel taksit toplamını state'e sabitleyelim
     state.taksit = toplamAylikTaksit;
 
     guncelle();
@@ -5329,6 +5405,29 @@ function taksitleriOdeVeyaKontrolEt() {
         portfoyuSunucuyaKaydet(state);
     }
 }
+
+function kalanBorclariOtomatikOde() {
+    if (!state.krediler || state.krediler.length === 0) return;
+
+    state.krediler.forEach(kr => {
+        // Eğer icralık olmuş ve hâlâ kalan borcu varsa
+        if (kr.kalanBorc > 0 && state.nakit > 0) {
+            let odenecekMiktar = Math.min(state.nakit, kr.kalanBorc);
+            state.nakit -= odenecekMiktar;
+            kr.kalanBorc -= odenecekMiktar;
+            
+            if (kr.kalanBorc <= 0) {
+                kr.kalanBorc = 0;
+                kr.silinecek = true;
+            }
+        }
+    });
+
+    // Kapananları temizle
+    state.krediler = state.krediler.filter(kr => !kr.silinecek);
+    state.kredi = state.krediler.reduce((toplam, kr) => toplam + kr.kalanBorc, 0);
+}
+    
 function zorunluVarlikSatisiAndKapatma() {
     // Önce blokeli malları bul, yoksa genel sahip olunan mallara bak
     let satilacakVarliklar = state.varliklar.filter(v => v.bloke === true);
