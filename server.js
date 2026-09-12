@@ -388,11 +388,15 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
 
 setInterval(() => {
     try {
-        const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
-        if (!ayarKaydi) return;
-        const ayarlar = JSON.parse(ayarKaydi.ayarlari);
+        // 1. Veritabanından en güncel ayarları her saniye yeniden çekiyoruz
+        const kayit = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
+        if (!kayit) return;
+        const tumAyarlar = JSON.parse(kayit.ayarlar);
+        
+        // Admin panelinden gelen güncel süreler (Örn: 20000 ms)
+        const guncelSureler = tumAyarlar.sureler || {}; 
 
-        // Canlı kurları veritabanından çekiyoruz
+        // Canlı kurlar
         const kurlarKaydi = db.prepare(`SELECT kurlar FROM oyun_kurlari WHERE id = 1`).get();
         const kurlar = kurlarKaydi ? JSON.parse(kurlarKaydi.kurlar) : { dolar: {satis: 49}, euro: {satis: 54}, altin: {satis: 6000} };
 
@@ -401,11 +405,12 @@ setInterval(() => {
         kullanicilar.forEach(user => {
             try {
                 const userTransaction = db.transaction(() => {
-                    kullaniciEkonomisiniIslet(user, ayarlar, kurlar);
+                    // Buraya artık veritabanından taze çekilen 'tumAyarlar' ve 'guncelSureler' gidiyor
+                    kullaniciEkonomisiniIslet(user, tumAyarlar, guncelSureler, kurlar);
                 });
                 userTransaction();
             } catch (userErr) {
-                console.error(`Kullanıcı ID ${user.id} ekonomi işletilirken hata oluştu:`, userErr.message);
+                console.error(`Kullanıcı ID ${user.id} ekonomi işletilirken hata:`, userErr.message);
             }
         });
 
@@ -688,6 +693,9 @@ app.post('/api/admin/ayar-guncelle', (req, res) => {
     try {
         db.prepare(`INSERT OR REPLACE INTO oyun_ayarlari (id, ayarlar) VALUES (1, ?)`).run(JSON.stringify(kayitPaketi));
         
+        // 🌟 SÜRELER DEĞİŞTİĞİ AN KULLANICILARIN SAYACINI ŞİMDİKİ ZAMANA EŞİTLE
+        db.prepare(`UPDATE kullanicilar SET son_guncelleme = ?`).run(Date.now());
+
         io.emit('ayarlarDegisti', {
             ayarlar: kayitPaketi,
             sureler: kayitPaketi.sureler
