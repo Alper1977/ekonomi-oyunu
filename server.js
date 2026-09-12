@@ -374,15 +374,19 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
         }
     }
 
-    const tuketilenPeriyot = Math.max(kiraPeriyotSayisi, faizPeriyotSayisi, taksitPeriyotSayisi);
-    const bazSureMs = Math.min(kiraPeriyodu, faizPeriyodu, taksitPeriyodu);
+   let yeniSonGuncelleme = sonGuncelleme;
     
-    let yeniSonGuncelleme = sonGuncelleme;
-    if (tuketilenPeriyot > 0) {
-        yeniSonGuncelleme += bazSureMs; // Her seferinde sadece 1 birim ileri atarak zaman kaymasını önle
+    if (kiraPeriyotSayisi > 0) {
+        yeniSonGuncelleme = Math.max(yeniSonGuncelleme, sonGuncelleme + (kiraPeriyotSayisi * kiraPeriyodu));
+    }
+    if (faizPeriyotSayisi > 0) {
+        yeniSonGuncelleme = Math.max(yeniSonGuncelleme, sonGuncelleme + (faizPeriyotSayisi * faizPeriyodu));
+    }
+    if (taksitPeriyotSayisi > 0) {
+        yeniSonGuncelleme = Math.max(yeniSonGuncelleme, sonGuncelleme + (taksitPeriyotSayisi * taksitPeriyodu));
     }
 
-    if (degisiklikOldu || tuketilenPeriyot > 0) {
+    if (degisiklikOldu || yeniSonGuncelleme !== sonGuncelleme) {
         db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`).run(
             JSON.stringify(portfoy),
             yeniSonGuncelleme,
