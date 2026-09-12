@@ -170,13 +170,17 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
         return portfoy;
     }
 
-    const gecenSure = simdi - sonGuncelleme;
-    if (gecenSure < 1000) return portfoy; 
-
     const sureler = ayarlar.sureler || {};
     const kiraPeriyodu = sureler.kiraSuresi || 86400000;    
     const faizPeriyodu = sureler.faizSuresi || 86400000;    
-    const taksitPeriyodu = sureler.taksitSuresi || 86400000; 
+    const taksitPeriyodu = sureler.taksitSuresi || 86400000;  
+
+    const gecenSure = simdi - sonGuncelleme;
+    
+    // 🌟 İŞTE BURASI: En kısa periyot dolmadıysa gereksiz yere işlem yapma, direkt çık
+    const minPeriyot = Math.min(kiraPeriyodu, faizPeriyodu, taksitPeriyodu);
+    if (gecenSure < minPeriyot) return portfoy; 
+
     const kazancTablosu = ayarlar.kazancTablosu || {};
     const faizOranlari = ayarlar.faizOranlari || { vadeliGunluk: 0.02, krediKatsayi: 1.25 };
     const satisFiyatlari = ayarlar.satisFiyatlari || {};
