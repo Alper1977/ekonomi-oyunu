@@ -5666,6 +5666,32 @@ function faizOranlariniGuncelle() {
     });
 }
 
+ async function sunucudanVerileriYukle() {
+    try {
+        // Ayarları ve kurları al
+        const ayarRes = await fetch('/api/detayli-oyun-ayarlari');
+        const ayarVerisi = await ayarRes.json();
+        if (ayarVerisi.basari) {
+            window.kurlar = ayarVerisi.kurlar;
+            window.oyunAyar = ayarVerisi.oyunAyar;
+            window.faizOranlari = ayarVerisi.faizOranlari;
+        }
+
+        // Oyun durumunu (botlar ve state) al
+        const durumRes = await fetch('/api/oyun-durumu');
+        const durumVerisi = await durumRes.json();
+        if (durumVerisi.basari) {
+            window.botlar = durumVerisi.botlar;
+            window.gameState = durumVerisi.state;
+        }
+    } catch (hata) {
+        console.error("Sunucu verileri yüklenirken hata oluştu:", hata);
+    }
+}
+
+// Sayfa yüklendiğinde çağır
+sunucudanVerileriYukle();   
+
 // 🌟 1. TÜM SAYFALARDA ORTAK VE KESİNTİSİZ SOCKET DİNLEYİCİSİ
 
 
