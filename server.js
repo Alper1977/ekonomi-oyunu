@@ -144,6 +144,17 @@ db.prepare(`CREATE TABLE IF NOT EXISTS ilanlar (
     tarih DATETIME DEFAULT CURRENT_TIMESTAMP
 )`).run();
 
+db.exec(`
+    CREATE TABLE IF NOT EXISTS oyun_ayarlari (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ayarlar TEXT
+    );
+    CREATE TABLE IF NOT EXISTS oyun_state (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        veri TEXT
+    );
+`);
+
 // --- 🌟 ÇEVRİMİÇİ / ÇEVRİMDIŞI AKILLI EKONOMİ MOTORU (TAM KAPSAMLI) ---
 function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
     if (!userRow || !userRow.portfoy) return null;
@@ -861,6 +872,60 @@ app.post('/api/portfoy-guncelle', (req, res) => {
     } catch (err) {
         console.error("Portföy güncelleme hatası:", err.message);
         return res.status(500).json({ basari: false, mesaj: err.message });
+    }
+});
+
+app.get('/api/detayli-oyun-ayarlari', (req, res) => {
+    try {
+        const kayit = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
+        if (kayit && kayit.ayarlar) {
+            const parsedAyarlar = JSON.parse(kayit.ayarlar);
+            res.json({ 
+                basari: true, 
+                oyunAyar: parsedAyarlar.oyunAyar || {},
+                kurlar: parsedAyarlar.kurlar || {},
+                faizOranlari: parsedAyarlar.faizOranlari || {},
+                satisFiyatlari: parsedAyarlar.satisFiyatlari || {},
+                yatirimMaliyetleri: parsedAyarlar.yatirimMaliyetleri || {}
+            });
+        } else {
+            res.status(404).json({ basari: false, mesaj: "Oyun ayarları bulunamadı." });
+        }
+    } catch (err) {
+        res.status(500).json({ basari: false, mesaj: err.message });
+    }
+});
+
+// --- OYUN DURUMUNU (STATE VE BOTLAR) SUNUCUDAN SUNMA ---
+app.get('/api/oyun-durumu', (req, res) => {
+    try {
+        const stateKayit = db.prepare(`SELECT veri FROM oyun_state WHERE id = 1`).get();
+        let stateVerisi = stateKayit ? JSON.parse(stateKayit.veri) : { state: {}, botlar: [] };
+
+        res.json({
+            basari: true,
+            state: stateVerisi.state || {},
+            botlar: stateVerisi.botlar || []
+        });
+    } catch (err) {
+        res.status(500).json({ basari: false, mesaj: err.message });
+    }
+});
+
+// --- OYUN DURUMUNU GÜNCELLEME (İstemci veya Arka Plan Döngüsü İçin) ---
+app.post('/api/oyun-durumu-guncelle', (req, res) => {
+    try {
+        const { state, botlar } = req.body;
+        const paket = JSON.stringify({ state: state || {}, botlar: botlar || [] });
+        
+        db.prepare(`INSERT OR REPLACE INTO oyun_state (id, veri) VALUES (1, ?)`).run(paket);
+        
+        // Socket.io ile bağlı diğer istemcilere de anlık bildir
+        io.emit('stateDegisti', { state, botlar });
+
+        res.json({ basari: true, mesaj: "Oyun durumu güncellendi." });
+    } catch (err) {
+        res.status(500).json({ basari: false, mesaj: err.message });
     }
 });
 
