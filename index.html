@@ -5066,9 +5066,9 @@ function faizOranlariniGuncelle() {
     });
 }
 
- async function sunucudanVerileriYukle() {
+// 1. Sunucu verilerini çeken ana fonksiyon
+async function sunucudanVerileriYukle() {
     try {
-        // Ayarları ve kurları al
         const ayarRes = await fetch('/api/detayli-oyun-ayarlari');
         const ayarVerisi = await ayarRes.json();
         if (ayarVerisi.basari) {
@@ -5077,7 +5077,6 @@ function faizOranlariniGuncelle() {
             window.faizOranlari = ayarVerisi.faizOranlari;
         }
 
-        // Oyun durumunu (botlar ve state) al
         const durumRes = await fetch('/api/oyun-durumu');
         const durumVerisi = await durumRes.json();
         if (durumVerisi.basari) {
@@ -5089,13 +5088,10 @@ function faizOranlariniGuncelle() {
     }
 }
 
-// Sayfa yüklendiğinde çağır
-sunucudanVerileriYukle();   
+// 2. Fonksiyonun ilk çağrısı
+sunucudanVerileriYukle();    
 
-// 🌟 1. TÜM SAYFALARDA ORTAK VE KESİNTİSİZ SOCKET DİNLEYİCİSİ
-
-
-    
+// 3. Socket dinleyicisi (Anlık ayar güncelleme köprüsü)
 if (typeof socket !== 'undefined' && socket) {
     socket.off('ayarlarDegisti');
     
@@ -5103,7 +5099,6 @@ if (typeof socket !== 'undefined' && socket) {
         console.log("🔥 SUNUCUDAN GELEN HAM AYARLAR:", gelenVeri);
         if (!gelenVeri || !gelenVeri.ayarlar) return;
 
-        // Global ayar nesnelerini güncelle
         window.oyunAyar = gelenVeri.ayarlar;
         window.oyunAyarlari = gelenVeri.sureler || gelenVeri.ayarlar.sureler || {};
 
@@ -5113,7 +5108,6 @@ if (typeof socket !== 'undefined' && socket) {
         if (typeof satisFiyatlari !== 'undefined') satisFiyatlari = window.oyunAyar.satisFiyatlari || satisFiyatlari;
         if (typeof yatirimMaliyetleri !== 'undefined') yatirimMaliyetleri = window.oyunAyar.yatirimMaliyetleri || yatirimMaliyetleri;
         
-        // State değerlerini anında güncelle
         if (typeof state !== 'undefined' && state) {
             if (window.oyunAyar.gunlukGelir !== undefined) {
                 state.gunlukGelir = Number(window.oyunAyar.gunlukGelir);
@@ -5123,7 +5117,6 @@ if (typeof socket !== 'undefined' && socket) {
             }
         }
         
-        // DOM elementlerini zorla güncelle (Sayfada o an hangisi varsa)
         let gunlukGelirEl = document.getElementById('gunluk-gelir') || document.getElementById('yazi-gunluk-gelir');
         if (gunlukGelirEl && window.oyunAyar.gunlukGelir !== undefined) {
             gunlukGelirEl.innerText = Number(window.oyunAyar.gunlukGelir).toLocaleString() + " TL";
@@ -5137,7 +5130,6 @@ if (typeof socket !== 'undefined' && socket) {
             }) + ' TL';
         }
 
-        // Varsa render fonksiyonlarını tetikle
         if (typeof guncelle === 'function') guncelle();
         if (typeof yatirimlariGuncelle === 'function') yatirimlariGuncelle();
         
@@ -5145,7 +5137,6 @@ if (typeof socket !== 'undefined' && socket) {
             adminPaneliniAc();
         }
 
-        // DOM tam boyama yapana kadar minik bir rötarla garantiye al
         setTimeout(() => {
             let kiraEl = document.getElementById('val-kira');
             if (kiraEl && window.oyunAyar && window.oyunAyar.konutKiraGeliri !== undefined) {
@@ -5158,10 +5149,8 @@ if (typeof socket !== 'undefined' && socket) {
     });
 }
 
-
-// 🌟 2. SAYFA YÜKLENME (DOM) KONTROLÜ
+// 4. Sayfa yüklenme kontrolü ve döngülerin başlatılması
 window.addEventListener('DOMContentLoaded', async () => {
-// 🌟 TÜM BUTONLAR İÇİN OTOMATİK SPAM / ÇİFT TIKLAMA KORUMASI
     document.addEventListener('click', (e) => {
         let hedefBtn = e.target.closest('button');
         if (!hedefBtn) return;
@@ -5180,7 +5169,7 @@ window.addEventListener('DOMContentLoaded', async () => {
             hedefBtn.dataset.kilitli = 'false';
             hedefBtn.style.opacity = '1';
             hedefBtn.style.pointerEvents = 'auto';
-        }, 350); // 350 milisaniye boyunca aynı butona tekrar basılamaz
+        }, 350);
     }, true);
     
     try {
@@ -5201,7 +5190,6 @@ window.addEventListener('DOMContentLoaded', async () => {
                     state = data.portfoy;
                 }
 
-                // Sunucudan güncel oyun ayarlarını çek
                 let ayarRes = await fetch('/api/oyun-ayarlari');
                 let ayarSonuc = await ayarRes.json();
                 if (ayarSonuc.basari && ayarSonuc.ayarlar) {
@@ -5215,18 +5203,12 @@ window.addEventListener('DOMContentLoaded', async () => {
                 }
 
                 changePage('page-mali');
-              
                 guncelle(); 
 
                 if (typeof zenginlerListesiniGuncelle === 'function') {
                     zenginlerListesiniGuncelle();
                 }
-                if (typeof zenginlerListesiniGuncelle === 'function') {
-                    zenginlerListesiniGuncelle();
-                }
 
-                // 🌟 İŞTE EKSİK OLAN VE KREDİYİ UYANDIRACAK TETİKLEYİCİ BURASI:
-                // Sayfa yüklenip portföy çekildikten sonra arka plan zaman döngülerini (faiz, kredi, taksit) zorla başlat:
                 if (typeof finansalDonguyuBaslat === 'function') {
                     finansalDonguyuBaslat();
                 } else if (typeof donguyuBaslat === 'function') {
