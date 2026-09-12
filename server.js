@@ -921,6 +921,29 @@ app.post('/api/portfoy-guncelle', (req, res) => {
     }
 });
 
+// İstemciden gelen güncel portföyü (vadeli, nakit vb.) veritabanına kaydetme rotası
+app.post('/api/portfoy-kaydet', (req, res) => {
+    if (!req.session || !req.session.userId) {
+        return res.status(401).json({ basari: false, mesaj: "Oturum açılmamış" });
+    }
+
+    let yeniPortfoy = req.body.portfoy;
+    if (!yeniPortfoy) {
+        return res.status(400).json({ basari: false, mesaj: "Geçersiz portföy verisi" });
+    }
+
+    try {
+        db.prepare(`UPDATE kullanicilar SET portfoy = ? WHERE id = ?`).run(
+            JSON.stringify(yeniPortfoy),
+            req.session.userId
+        );
+        res.json({ basari: true });
+    } catch (err) {
+        console.error("Portföy kaydetme hatası:", err.message);
+        res.status(500).json({ basari: false, mesaj: "Sunucu hatası" });
+    }
+});
+
 app.get('/api/kullanicilar-liste', (req, res) => {
     try {
         const rows = db.prepare(`SELECT adsoyad, portfoy FROM kullanicilar`).all();
