@@ -1715,48 +1715,41 @@ async function portfoyuSenkronizeEt() {
         if (response.ok) {
             let user = await response.json();
             if (user && user.portfoy) {
-                // Nakiti güncelle
+                // Nakit ve vadeli hesap değerlerini güncelle
                 state.nakit = user.portfoy.nakit !== undefined ? user.portfoy.nakit : state.nakit;
+                state.vadeli = user.portfoy.vadeli !== undefined ? user.portfoy.vadeli : state.vadeli;
+                state.faiz = user.portfoy.faiz !== undefined ? user.portfoy.faiz : state.faiz;
                 
                 let sunucuVarliklar = user.portfoy.varliklar || [];
 
-                // 🌟 ÇÖZÜM: Lokaldeki varlıkların ID'lerini baz alıyoruz. 
-                // Eğer sunucudan gelen bir mülk lokalde artık yoksa (haczedilmiş veya satılmışsa), 
-                // sunucunun onu geri getirmesine ASLA izin vermiyoruz.
                 if (state.varliklar && state.varliklar.length > 0) {
                     let lokalVarlikIdleri = new Set(state.varliklar.map(v => v.id));
                     
-                    // Sunucudan gelenlerden sadece lokalde hâlâ var olanları al veya lokaldeki güncel objeleri koru
                     state.varliklar = state.varliklar.map(lokalV => {
                         let sunucuEslesmesi = sunucuVarliklar.find(sv => sv.id == lokalV.id || sv.varlikId == lokalV.id);
-                        // Eğer sunucuda bloke durumu veya başka bir şey güncellendiyse onu al ama lokalden silme
                         if (sunucuEslesmesi) {
-                            return { ...sunucuEslesmesi, ...lokalV }; // Lokaldeki işlem önceliklidir
+                            return { ...sunucuEslesmesi, ...lokalV };
                         }
                         return lokalV;
                     });
-
-                    // Sunucuda olup lokalde olmayanları ekleme, çünkü lokalde silinmiştir/haczedilmiştir.
-                    // Sadece lokalde olup sunucuda henüz ol(a)mayan yeni eklenenleri koru:
-                    sunucuVarliklar.forEach(sv => {
-                        // Eğer sunucudaki mülk lokalde yoksa ve bu bir silinme değil de yeni ekleme durumuysa 
-                        // (Bunu anlamak için lokal ID setinde var mı diye bakıyoruz)
-                        // Dikkat: Hacizle silinenler lokal ID setinde YOKTUR, bu yüzden geri eklenmezler!
-                        if (!lokalVarlikIdleri.has(sv.id)) {
-                            // Burada sunucudan gelen eski silinmiş mülkün geri gelmesini engellemek için 
-                            // ekleme yapmıyoruz. Sadece tamamen yeni bir mülkse eklenebilir ama 
-                            // haciz senaryosunda sunucu eski veri getirdiği için burayı pas geçiyoruz.
-                        }
-                    });
                 } else {
-                    // Lokal boşsa direkt sunucucundakini al
                     state.varliklar = sunucuVarliklar;
                 }
                 
-                // DOM elementlerini güncelle
-                if (typeof varliklariGoster === 'function') {
-                    varliklariGoster();
-                } else if (typeof guncelle === 'function') {
+                // 🌟 Ekrandaki vadeli hesap ve günlük faiz DOM elementlerini anında güncelle
+                let vadeliEl = document.getElementById('val-vadeli');
+                if (vadeliEl) {
+                    let vadeliDeger = Number(state.vadeli || 0);
+                    vadeliEl.innerText = vadeliDeger.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
+                }
+
+                let faizEl = document.getElementById('val-faiz');
+                if (faizEl) {
+                    let anlikGunlukFaiz = Number(state.vadeli || 0) * (window.faizOranlari ? window.faizOranlari.vadeliGunluk : 0.02);
+                    faizEl.innerText = anlikGunlukFaiz.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
+                }
+
+                if (typeof guncelle === 'function') {
                     guncelle();
                 }
             }
