@@ -1707,48 +1707,7 @@ async function zenginlerListesiniGuncelle() {
     }
 }
 
-async function portfoyuSenkronizeEt() {
-    try {
-        let response = await fetch('/api/aktif-kullanici', { credentials: 'include' });
-        if (response.ok) {
-            let user = await response.json();
-            if (user && user.portfoy) {
-                // Nakiti güncelle
-                state.nakit = user.portfoy.nakit !== undefined ? user.portfoy.nakit : state.nakit;
-                
-                let sunucuVarliklar = user.portfoy.varliklar || [];
 
-                // İşlemde olan (lokal olarak güncellenmiş) varlıklarımızı koruyalım
-                let islemdekiVarliklar = state.varliklar.filter(v => v._islemde);
-
-                // Sunucudan gelen listede olup işlemde olanları koruyarak state'i güncelleyelim
-                state.varliklar = sunucuVarliklar.map(sunucuV => {
-                    let lokalV = islemdekiVarliklar.find(iv => iv.id == sunucuV.id || iv.id == sunucuV.varlikId);
-                    if (lokalV) {
-                        return lokalV; // Sunucu henüz haberdar değilse lokaldeki işlem halindeki halini tut
-                    }
-                    return sunucuV;
-                });
-
-                // Sunucu listesinde olmayan ama lokalde yeni işlemde kalmış olanları da kaybetmeyelim
-                islemdekiVarliklar.forEach(iv => {
-                    if (!state.varliklar.some(v => v.id == iv.id)) {
-                        state.varliklar.push(iv);
-                    }
-                });
-                
-                // DOM elementlerini güncelle
-                if (typeof varliklariGoster === 'function') {
-                    varliklariGoster();
-                } else if (typeof guncelle === 'function') {
-                    guncelle();
-                }
-            }
-        }
-    } catch (err) {
-        console.error("Portföy senkronizasyon hatası:", err);
-    }
-}
 
 async function portfoyuSenkronizeEt() {
     try {
@@ -1806,6 +1765,21 @@ async function portfoyuSenkronizeEt() {
         console.error("Portföy senkronizasyon hatası:", err);
     }
 }
+
+async function portfoyuSunucuyaKaydet(guncelState) {
+    try {
+        let res = await fetch('/api/portfoy-kaydet', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ portfoy: guncelState })
+        });
+        let sonuc = await res.json();
+        return sonuc.basari;
+    } catch (err) {
+        console.error("Portföy sunucuya kaydedilemedi:", err);
+        return false;
+    }
+}    
 
 let uretilenSifirlaKodu = null;
 let hedefEmail = "";
@@ -2259,7 +2233,7 @@ function islem(tur, tip) {
 
 
 
-function vadeli(tip) {
+async function vadeli(tip) {
     let miktar = geciciVadeliMiktar;
     let input = document.getElementById('in-vadeli');
 
@@ -2294,28 +2268,23 @@ function vadeli(tip) {
     geciciVadeliMiktar = 0;
     if(input) input.value = '';
 
-  // Ekranı güncelle (akilliPara fonksiyonu eksi sıfırları ve küsurat hatalarını engeller)
+    // Arayüzü güncelle
     if (typeof guncelle === 'function') {
         guncelle();
     } else {
-        // Eğer manuel güncelliyorsan doğrudan akilliPara kullanalım:
-        document.getElementById('val-nakit').innerText = akilliPara(state.nakit, " TL");
-        
-        // Vadeli bakiyesindeki eksi sıfır/küsurat oyununu engellemek için kontrol:
         let vadeliDeger = Number(state.vadeli || 0);
-        if (Math.abs(vadeliDeger) < 0.01) vadeliDeger = 0; // 1 kuruştan azsa direkt 0 yap
+        if (Math.abs(vadeliDeger) < 0.01) vadeliDeger = 0;
         
+        document.getElementById('val-nakit').innerText = akilliPara(state.nakit, " TL");
         document.getElementById('val-vadeli').innerText = akilliPara(vadeliDeger, " TL");
 
-        let anlikGunlukFaiz = vadeliDeger * faizOranlari.vadeliGunluk;
+        let anlikGunlukFaiz = vadeliDeger * (window.faizOranlari ? window.faizOranlari.vadeliGunluk : 0.02);
         if (Math.abs(anlikGunlukFaiz) < 0.01) anlikGunlukFaiz = 0;
-        
         document.getElementById('val-faiz').innerText = akilliPara(anlikGunlukFaiz, " TL");
     }
 
-    if (typeof portfoyuSunucuyaKaydet === 'function') {
-        portfoyuSunucuyaKaydet(state);
-    }
+    // 🌟 En kritik nokta: Yapılan değişikliği anında sunucuya bildir ve veritabanına kaydettir
+    await portfoyuSunucuyaKaydet(state);
 }
 
 function islemGerceklessin(isim, bedel, tip, krediKullaniliyor = false, krediID = null) {
