@@ -889,7 +889,15 @@ app.get('/api/aktif-kullanici', (req, res) => {
         const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
         const ayarlar = ayarKaydi ? JSON.parse(ayarKaydi.ayarlar) : {};
 
+        // Ekonomiyi işlet ve yeni portföyü al
         const portfoyObj = kullaniciEkonomisiniIslet(dbUser, ayarlar) || JSON.parse(dbUser.portfoy || '{}');
+        
+        // 🌟 ÇÖZÜM: Hesaplanan güncel portföyü (faiz işlenmiş haliyle) veritabanına kaydet!
+        db.prepare(`UPDATE kullanicilar SET portfoy = ? WHERE id = ?`).run(
+            JSON.stringify(portfoyObj),
+            userId
+        );
+
         req.session.kullanici.portfoy = portfoyObj;
 
         res.json({
