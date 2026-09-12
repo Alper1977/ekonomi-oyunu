@@ -74,7 +74,7 @@ if (ayarSayisi.sayi === 0) {
             "AVM": 3000000,
             "Hipermarket": 700000
         },
-        kurlar: { 
+        kurlar: {  
             dolar: { alis: 50.00, satis: 49.00 },
             euro:  { alis: 55.00, satis: 54.00 },
             altin: { alis: 6100,  satis: 6000 }
@@ -150,6 +150,50 @@ db.exec(`
         veri TEXT
     );
 `);
+
+// --- 🌟 OYUN STATE YÜKLEME VE BAŞLATMA ---
+let dbStateKaydi = db.prepare(`SELECT veri FROM oyun_state WHERE id = 1`).get();
+let state;
+
+if (!dbStateKaydi) {
+    state = {
+        nakit: 0, 
+        dolar: 0, 
+        euro: 0, 
+        altin: 0, 
+        vadeli: 0, 
+        faiz: 0, 
+        kredi: 0, 
+        taksit: 0, 
+        krediLimiti: 0, 
+        gunlukGelir: 800000,
+        konutKiraGeliri: 0,
+        varliklar: [
+            { id: 1, isim: 'Bayi', durum: 'sahip', bloke: false, krediID: null }
+        ],
+        talepler: [
+            { tur: 'Bayi', isim: 'Bayi', bedel: 300000 },
+            { tur: 'Otel', isim: 'Otel', bedel: 4000000 },
+            { tur: 'Fabrika', isim: 'Fabrika', bedel: 1500000 }, 
+            { tur: 'Hastane', isim: 'Hastane', bedel: 2500000 }, 
+            { tur: 'Özel Okul', isim: 'Özel Okul', bedel: 600000 },
+            { tur: 'AVM', isim: 'AVM', bedel: 3000000 },
+            { tur: 'Hipermarket', isim: 'Hipermarket', bedel: 700000 }
+        ],
+        krediler: [],
+        ustUsteOdenmeyenTaksit: 0
+    };
+    db.prepare(`INSERT INTO oyun_state (id, veri) VALUES (1, ?)`).run(JSON.stringify(state));
+} else {
+    state = JSON.parse(dbStateKaydi.veri);
+    if (state.ustUsteOdenmeyenTaksit === undefined) {
+        state.ustUsteOdenmeyenTaksit = 0;
+    }
+}
+
+// Arka plan sayaçları
+let sonFaizZamani = Date.now();
+let sonSirketKazanci = Date.now();
 
 // --- 🌟 ÇEVRİMİÇİ / ÇEVRİMDIŞI AKILLI EKONOMİ MOTORU (TAM KAPSAMLI) ---
 function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
