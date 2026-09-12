@@ -164,7 +164,7 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
     }
 
     const gecenSure = simdi - sonGuncelleme;
-    if (gecenSure < 5000) return portfoy; 
+    if (gecenSure < 1000) return portfoy; 
 
     const sureler = ayarlar.sureler || {};
     const kiraPeriyodu = sureler.kiraSuresi || 86400000;    
@@ -398,7 +398,6 @@ setInterval(() => {
 
         const kullanicilar = db.prepare(`SELECT id, portfoy, son_guncelleme FROM kullanicilar`).all();
         
-        // Her kullanıcıyı kendi bağımsız transaction ve try-catch bloğuna alıyoruz
         kullanicilar.forEach(user => {
             try {
                 const userTransaction = db.transaction(() => {
@@ -407,14 +406,13 @@ setInterval(() => {
                 userTransaction();
             } catch (userErr) {
                 console.error(`Kullanıcı ID ${user.id} ekonomi işletilirken hata oluştu:`, userErr.message);
-                // Bu kullanıcı patlasa bile diğer kullanıcıların parası, dövizi, kredisi etkilenmez
             }
         });
 
     } catch (err) {
         console.error("Arka plan oyun döngüsü genel hata:", err.message);
     }
-}, 5000);
+}, 1000);
 
 // --- API Rotaları ---
 
