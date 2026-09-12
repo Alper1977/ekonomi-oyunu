@@ -996,18 +996,18 @@ async function adminAyarlariniKaydet() {
 
     let yeniFaizYuzdesi = window.oyunAyar.faizOranlari.yatirimKredisiYuzde;
 
-   window.oyunAyarlari = {
-        // Süreleri dakika cinsinden alıp milisaniyeye (* 60 * 1000) çeviriyoruz
-        faizSuresi: (Number(document.getElementById('adm-sure-faiz').value) || 0) * 60 * 1000,
-        taksitSuresi: (Number(document.getElementById('adm-sure-taksit').value) || 0) * 60 * 1000,
-        kiraSuresi: (Number(document.getElementById('adm-sure-kira').value) || 0) * 60 * 1000,
-        sirketKazancSuresi: (Number(document.getElementById('adm-sure-kazanc').value) || 0) * 60 * 1000,
+    window.oyunAyarlari = {
+        faizSuresi: Number(document.getElementById('adm-sure-faiz').value) || 0,
+        taksitSuresi: Number(document.getElementById('adm-sure-taksit').value) || 0,
+        kiraSuresi: Number(document.getElementById('adm-sure-kira').value) || 0,
+        sirketKazancSuresi: Number(document.getElementById('adm-sure-kazanc').value) || 0,
         botHizi: Number(document.getElementById('adm-sure-bothiz').value) || 0,
         botIlanHizi: Number(document.getElementById('adm-sure-botilanhiz').value) || 0,
         maksimumIlanSiniri: Number(document.getElementById('adm-maks-ilan').value) || 0,
-        insaatSuresiBayi: (Number(document.getElementById('adm-insaat-bayi').value) || 0) * 60 * 1000,
-        insaatSuresiDiger: (Number(document.getElementById('adm-insaat-diger').value) || 0) * 60 * 1000
+        insaatSuresiBayi: Number(document.getElementById('adm-insaat-bayi').value) || 0,
+        insaatSuresiDiger: Number(document.getElementById('adm-insaat-diger').value) || 0
     };
+
 
     window.oyunAyar.sureler = window.oyunAyarlari;
 
