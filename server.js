@@ -23,6 +23,13 @@ app.get('/', (req, res) => {
 const db = new Database('./database.db');
 console.log("SQLite veritabanına başarıyla bağlanıldı."); 
 
+try {
+    db.prepare(`UPDATE kullanicilar SET son_guncelleme = ? WHERE son_guncelleme IS NULL OR son_guncelleme > ?`).run(Date.now(), Date.now());
+    console.log("🛡️ Sunucu başlangıç güvenlik kontrolü: Kullanıcı sayaçları senkronize edildi.");
+} catch (e) {
+    console.log("Başlangıç sayaç güncelleme hatası:", e.message);
+}
+
 // Oturumları çakışmayı önlemek için ayrı bir veritabanında (sessions.db) saklıyoruz
 app.use(session({
     store: new SQLiteStore({
