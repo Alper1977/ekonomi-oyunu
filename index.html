@@ -1008,7 +1008,6 @@ async function adminAyarlariniKaydet() {
         insaatSuresiDiger: Number(document.getElementById('adm-insaat-diger').value) || 0
     };
 
-
     window.oyunAyar.sureler = window.oyunAyarlari;
 
     let yatirimSpan = document.getElementById('yazi-yatirim-faiz');
@@ -1707,49 +1706,40 @@ async function zenginlerListesiniGuncelle() {
     }
 }
 
-
-
 async function portfoyuSenkronizeEt() {
     try {
         let response = await fetch('/api/aktif-kullanici', { credentials: 'include' });
         if (response.ok) {
             let user = await response.json();
             if (user && user.portfoy) {
-                // Nakit ve vadeli hesap değerlerini güncelle
+                // Nakiti güncelle
                 state.nakit = user.portfoy.nakit !== undefined ? user.portfoy.nakit : state.nakit;
-                state.vadeli = user.portfoy.vadeli !== undefined ? user.portfoy.vadeli : state.vadeli;
-                state.faiz = user.portfoy.faiz !== undefined ? user.portfoy.faiz : state.faiz;
                 
                 let sunucuVarliklar = user.portfoy.varliklar || [];
 
-                if (state.varliklar && state.varliklar.length > 0) {
-                    let lokalVarlikIdleri = new Set(state.varliklar.map(v => v.id));
-                    
-                    state.varliklar = state.varliklar.map(lokalV => {
-                        let sunucuEslesmesi = sunucuVarliklar.find(sv => sv.id == lokalV.id || sv.varlikId == lokalV.id);
-                        if (sunucuEslesmesi) {
-                            return { ...sunucuEslesmesi, ...lokalV };
-                        }
-                        return lokalV;
-                    });
-                } else {
-                    state.varliklar = sunucuVarliklar;
-                }
+                // İşlemde olan (lokal olarak güncellenmiş) varlıklarımızı koruyalım
+                let islemdekiVarliklar = state.varliklar.filter(v => v._islemde);
+
+                // Sunucudan gelen listede olup işlemde olanları koruyarak state'i güncelleyelim
+                state.varliklar = sunucuVarliklar.map(sunucuV => {
+                    let lokalV = islemdekiVarliklar.find(iv => iv.id == sunucuV.id || iv.id == sunucuV.varlikId);
+                    if (lokalV) {
+                        return lokalV; // Sunucu henüz haberdar değilse lokaldeki işlem halindeki halini tut
+                    }
+                    return sunucuV;
+                });
+
+                // Sunucu listesinde olmayan ama lokalde yeni işlemde kalmış olanları da kaybetmeyelim
+                islemdekiVarliklar.forEach(iv => {
+                    if (!state.varliklar.some(v => v.id == iv.id)) {
+                        state.varliklar.push(iv);
+                    }
+                });
                 
-                // 🌟 Ekrandaki vadeli hesap ve günlük faiz DOM elementlerini anında güncelle
-                let vadeliEl = document.getElementById('val-vadeli');
-                if (vadeliEl) {
-                    let vadeliDeger = Number(state.vadeli || 0);
-                    vadeliEl.innerText = vadeliDeger.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
-                }
-
-                let faizEl = document.getElementById('val-faiz');
-                if (faizEl) {
-                    let anlikGunlukFaiz = Number(state.vadeli || 0) * (window.faizOranlari ? window.faizOranlari.vadeliGunluk : 0.02);
-                    faizEl.innerText = anlikGunlukFaiz.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
-                }
-
-                if (typeof guncelle === 'function') {
+                // DOM elementlerini güncelle
+                if (typeof varliklariGoster === 'function') {
+                    varliklariGoster();
+                } else if (typeof guncelle === 'function') {
                     guncelle();
                 }
             }
@@ -1759,20 +1749,43 @@ async function portfoyuSenkronizeEt() {
     }
 }
 
-async function portfoyuSunucuyaKaydet(guncelState) {
+async function portfoyuSunucuyaKaydet(yeniPortfoy) {
+
+    if (!yeniPortfoy || typeof state === 'undefined' || !state) {
+        return;
+    }
+
+
+    if (!yeniPortfoy || (typeof girisYapildi !== 'undefined' && !girisYapildi)) {
+        return;
+    }
+
     try {
-        let res = await fetch('/api/portfoy-kaydet', {
+        let response = await fetch('/api/portfoy-guncelle', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ portfoy: guncelState })
+            credentials: 'include', // 🌟 İŞTE BU KISIM EKSİK! Oturum çerezini sunucuya gönderir.
+            body: JSON.stringify({ portfoy: yeniPortfoy })
         });
-        let sonuc = await res.json();
-        return sonuc.basari;
+
+        if (response.status === 401) {
+            console.warn("Oturum açık değil veya düşmüş, portföy sunucuya kaydedilemedi.");
+            return;
+        }
+
+        if (!response.ok) {
+            console.error("Sunucu hata kodu döndürdü:", response.status);
+            return;
+        }
+
+        let sonuc = await response.json();
+        if (!sonuc.basari) {
+            console.error("Portföy kaydedilemedi:", sonuc.mesaj);
+        }
     } catch (err) {
-        console.error("Portföy sunucuya kaydedilemedi:", err);
-        return false;
+        console.error("Sunucu bağlantı veya JSON ayrıştırma hatası:", err);
     }
-}    
+}
 
 let uretilenSifirlaKodu = null;
 let hedefEmail = "";
@@ -2226,7 +2239,7 @@ function islem(tur, tip) {
 
 
 
-async function vadeli(tip) {
+function vadeli(tip) {
     let miktar = geciciVadeliMiktar;
     let input = document.getElementById('in-vadeli');
 
@@ -2261,23 +2274,28 @@ async function vadeli(tip) {
     geciciVadeliMiktar = 0;
     if(input) input.value = '';
 
-    // Arayüzü güncelle
+  // Ekranı güncelle (akilliPara fonksiyonu eksi sıfırları ve küsurat hatalarını engeller)
     if (typeof guncelle === 'function') {
         guncelle();
     } else {
-        let vadeliDeger = Number(state.vadeli || 0);
-        if (Math.abs(vadeliDeger) < 0.01) vadeliDeger = 0;
-        
+        // Eğer manuel güncelliyorsan doğrudan akilliPara kullanalım:
         document.getElementById('val-nakit').innerText = akilliPara(state.nakit, " TL");
+        
+        // Vadeli bakiyesindeki eksi sıfır/küsurat oyununu engellemek için kontrol:
+        let vadeliDeger = Number(state.vadeli || 0);
+        if (Math.abs(vadeliDeger) < 0.01) vadeliDeger = 0; // 1 kuruştan azsa direkt 0 yap
+        
         document.getElementById('val-vadeli').innerText = akilliPara(vadeliDeger, " TL");
 
-        let anlikGunlukFaiz = vadeliDeger * (window.faizOranlari ? window.faizOranlari.vadeliGunluk : 0.02);
+        let anlikGunlukFaiz = vadeliDeger * faizOranlari.vadeliGunluk;
         if (Math.abs(anlikGunlukFaiz) < 0.01) anlikGunlukFaiz = 0;
+        
         document.getElementById('val-faiz').innerText = akilliPara(anlikGunlukFaiz, " TL");
     }
 
-    // 🌟 En kritik nokta: Yapılan değişikliği anında sunucuya bildir ve veritabanına kaydettir
-    await portfoyuSunucuyaKaydet(state);
+    if (typeof portfoyuSunucuyaKaydet === 'function') {
+        portfoyuSunucuyaKaydet(state);
+    }
 }
 
 function islemGerceklessin(isim, bedel, tip, krediKullaniliyor = false, krediID = null) {
@@ -2440,7 +2458,15 @@ setInterval(async () => {
 
 
 
-  
+    // 1. Faiz İşlemi
+
+    if (simdiMs - sonFaizZamani >= window.oyunAyarlari.faizSuresi) {
+        state.faiz = state.vadeli * faizOranlari.vadeliGunluk;
+        state.vadeli += state.faiz;
+        sonFaizZamani = simdiMs;
+        guncelle();
+        veriDegisti = true;
+    }
 
     let suAn = new Date();
     let saat = suAn.getHours();
@@ -2539,6 +2565,225 @@ if (aktifOdemePenceresi) {
         guncelle();
     }
 
+if (typeof sonTaksitZamani === 'undefined') { sonTaksitZamani = simdiMs; } 
+
+console.log("Geçen süre (sn):", Math.floor((simdiMs - sonTaksitZamani) / 1000));
+
+// Süre dolduysa ve aktif krediler varsa
+if (simdiMs - sonTaksitZamani >= window.oyunAyarlari.taksitSuresi) {
+
+    console.log("1 dakika doldu, kredi bazlı taksit kontrolü yapılıyor...");
+
+    if (state.krediler && state.krediler.length > 0) {
+
+        let bildirimler = []; // O turda yaşanan tüm uyarıları burada biriktireceğiz
+
+        state.krediler.forEach(kr => {
+
+            if (!kr.taksitTutu) {
+                kr.taksitTutu = (kr.kalanBorc / 48) * (typeof faizOranlari !== 'undefined' ? faizOranlari.krediKatsayi : 1.25);
+            }
+            if (typeof kr.ustUsteOdenmeyen !== 'number') {
+                kr.ustUsteOdenmeyen = 0;
+            }
+
+            let taksitMiktari = kr.taksitTutu;
+
+            // --- OTOMATİK NAKİT TAMAMLAMA (DÖVİZ, ALTIN VE VADELİ KONTROLÜ) ---
+
+            if (state.nakit < taksitMiktari) {
+
+    let eksikTutar = taksitMiktari - state.nakit;
+    let donusturulenAciklama = [];
+
+    // 1. Önce Dolar bozdur
+
+    if (eksikTutar > 0 && state.dolar > 0) {
+
+        let dolarSatisFiyati = (typeof kurlar !== 'undefined' && kurlar.dolar) ? kurlar.dolar.satis : 49;
+        let dolarTlKarsiligi = state.dolar * dolarSatisFiyati;
+
+        if (dolarTlKarsiligi >= eksikTutar) {
+
+            let harcananDolar = eksikTutar / dolarSatisFiyati;
+            state.dolar -= harcananDolar;
+            state.nakit += eksikTutar;
+            donusturulenAciklama.push(`${harcananDolar.toFixed(2)} Dolar bozduruldu`);
+            eksikTutar = 0;
+        } else {
+            state.nakit += dolarTlKarsiligi;
+            eksikTutar -= dolarTlKarsiligi;
+            state.dolar = 0;
+            donusturulenAciklama.push(`Tüm Dolar varlıklarınız bozduruldu (${dolarTlKarsiligi.toLocaleString()} TL)`);
+        }
+    }
+    // 2. Sonra Euro bozdur
+
+    if (eksikTutar > 0 && state.euro > 0) {
+
+        let euroSatisFiyati = (typeof kurlar !== 'undefined' && kurlar.euro) ? kurlar.euro.satis : 54;
+        let euroTlKarsiligi = state.euro * euroSatisFiyati;
+
+        if (euroTlKarsiligi >= eksikTutar) {
+            let harcananEuro = eksikTutar / euroSatisFiyati;
+            state.euro -= harcananEuro;
+            state.nakit += eksikTutar;
+            donusturulenAciklama.push(`${harcananEuro.toFixed(2)} Euro bozduruldu`);
+            eksikTutar = 0;
+        } else {
+            state.nakit += euroTlKarsiligi;
+            eksikTutar -= euroTlKarsiligi;
+            state.euro = 0;
+            donusturulenAciklama.push(`Tüm Euro varlıklarınız bozduruldu (${euroTlKarsiligi.toLocaleString()} TL)`);
+        }
+    }
+
+    // 3. Sonra Altın bozdur
+
+    if (eksikTutar > 0 && state.altin > 0) {
+
+        let altinSatisFiyati = (typeof kurlar !== 'undefined' && kurlar.altin) ? kurlar.altin.satis : 6000;
+        let altinTlKarsiligi = state.altin * altinSatisFiyati;
+
+        if (altinTlKarsiligi >= eksikTutar) {
+            let harcananGram = eksikTutar / altinSatisFiyati;
+            state.altin -= harcananGram;
+            state.nakit += eksikTutar;
+            donusturulenAciklama.push(`${harcananGram.toFixed(2)} gram altın bozduruldu`);
+            eksikTutar = 0;
+        } else {
+            state.nakit += altinTlKarsiligi;
+            eksikTutar -= altinTlKarsiligi;
+            state.altin = 0;
+            donusturulenAciklama.push(`Tüm altınlarınız bozduruldu (${altinTlKarsiligi.toLocaleString()} TL)`);
+        }
+    }
+
+    // 4. En son Vadeli Hesaptan çek
+
+    let vadeliDeger = state.vadeli || state.vadeliHesap || 0;
+    if (eksikTutar > 0 && vadeliDeger > 0) {
+        let cekilecek = Math.min(eksikTutar, vadeliDeger);
+        if (state.vadeli !== undefined) state.vadeli -= cekilecek;
+        if (state.vadeliHesap !== undefined) state.vadeliHesap -= cekilecek;
+        state.nakit += cekilecek;
+        eksikTutar -= cekilecek;
+        donusturulenAciklama.push(`Vadeli hesabınızdan ${cekilecek.toLocaleString()} TL çekildi`);
+    }
+    if (donusturulenAciklama.length > 0) {
+        bildirimler.push(`🔄 <b>OTOMATİK TAHSİLAT:</b> Nakdiniz yetmediği için ${donusturulenAciklama.join(', ')} ve taksit ödendi.`);
+    }
+}
+
+            // SENARYO A: Nakit artık yetiyor mu?
+
+            if (state.nakit >= taksitMiktari) {
+                state.nakit -= taksitMiktari;
+                kr.kalanBorc -= taksitMiktari;
+                if (kr.kalanBorc < 0) kr.kalanBorc = 0;
+                kr.ustUsteOdenmeyen = 0;
+
+                if (kr.kalanBorc === 0) {
+        let ilgiliVarlik = state.varliklar.find(v => v.krediID === kr.id);
+        if (ilgiliVarlik) {
+            ilgiliVarlik.bloke = false; // Bloke kalktı!
+            ilgiliVarlik.krediID = null; // Bağlantıyı temizle
+            bildirimler.push(`🔓 <b>KREDİ BİTTİ:</b> Borcunuz tamamen ödendiği için <b>${ilgiliVarlik.isim}</b> üzerindeki bloke kaldırıldı!`);
+        }
+    }
+            }
+            // SENARYO B: Her şeye rağmen Nakit YETMİYOR
+            else {
+                kr.ustUsteOdenmeyen++;
+
+                // Bu krediye bağlı varlığı bulalım
+
+                let ilgiliVarlik = state.varliklar.find(v => v.krediID === kr.id && v.bloke === true);
+                let varlikAdi = ilgiliVarlik ? ilgiliVarlik.isim : "Bir varlığınız";
+
+                // Eğer 3. taksit dolduysa İCRA İŞLEMİ
+
+                if (kr.ustUsteOdenmeyen >= 3) {
+
+                    if (ilgiliVarlik) {
+
+                        let satisFiyati = (satisFiyatlari && satisFiyatlari[ilgiliVarlik.isim]) ? satisFiyatlari[ilgiliVarlik.isim] : 10000000;
+
+                        // Varlığı sistemden kaldır
+
+                        state.varliklar = state.varliklar.filter(v => v.id !== ilgiliVarlik.id);
+
+                        let artisFarki = satisFiyati - kr.kalanBorc;
+
+                        if (artisFarki > 0) {
+                            state.nakit += artisFarki;
+                        }
+
+                        // İcra bildirimini listeye ekle
+
+                        bildirimler.push(`🚨 <b>İCRA:</b> 3 dönem ödenemeyen ve alternatif hesaplardan da karşılanamayan <b>${varlikAdi}</b> haczedilerek satıldı!`);
+                    }
+                    kr.silinecek = true;
+                } else {
+                    // Normal gecikme bildirimi (1. veya 2. taksit)
+
+                    bildirimler.push(`⚠️ <b>Gecikme:</b> Yeterli likidite bulunamadığından ${varlikAdi} için taksit ödenemedi (${kr.ustUsteOdenmeyen}/3).`);
+                }
+            }
+        });
+
+        // 3. taksiti dolup icralık olan kredileri listeden uçur
+
+        state.krediler = state.krediler.filter(kr => kr.kalanBorc > 0 && !kr.silinecek);
+
+        // Eğer bu turda herhangi bir uyarı/icra olunduysa, hepsini tek pencerede göster!
+        if (bildirimler.length > 0) {
+            modalGoster(`📋 <b>DÖNEMSEL FİNANSAL RAPOR</b><br><br>` + bildirimler.join('<br><br>'));
+        }
+
+        // Genel borç ve taksitleri güncelle
+
+        state.kredi = state.krediler.reduce((toplam, kr) => toplam + kr.kalanBorc, 0);
+        state.taksit = state.krediler.reduce((toplam, kr) => toplam + (kr.taksitTutu || 0), 0);
+
+        if (state.kredi <= 0) {
+            state.kredi = 0;
+            state.taksit = 0;
+            state.krediler = [];
+        }
+    }
+    sonTaksitZamani = simdiMs;
+    guncelle();
+    veriDegisti = true;
+}
+ 
+// 5. Konut Kira Gelirleri
+if (simdiMs - sonKiraZamani >= window.oyunAyarlari.kiraSuresi) {
+    let konutSayisi = state.varliklar.filter(v => v.isim === 'Konut' && v.durum === 'sahip').length;
+    
+    // 🌟 state yerine doğrudan anlık global ayardan okuyoruz
+    let guncelKiraGeliri = window.oyunAyar?.konutKiraGeliri ?? state.konutKiraGeliri ?? 0;
+    let toplamKira = konutSayisi * guncelKiraGeliri;
+
+    state.nakit += toplamKira;
+    sonKiraZamani = simdiMs;
+    guncelle();
+    veriDegisti = true;
+}
+
+// 6. Şirket Günlük Gelirleri
+if (simdiMs - sonSirketKazanci >= window.oyunAyarlari.sirketKazancSuresi) {
+    
+    // 🌟 state yerine doğrudan anlık global ayardan okuyoruz
+    let guncelGunlukGelir = window.oyunAyar?.gunlukGelir ?? state.gunlukGelir ?? 800000;
+
+    state.nakit += guncelGunlukGelir;
+    sonSirketKazanci = simdiMs;
+    guncelle();
+    veriDegisti = true;
+}
+
+    // 🌟 7. EN ÖNEMLİ HAMLE: Döngü içinde parada veya varlıkta bir değişiklik olduysa sunucuya kaydet!
 
     if (veriDegisti) {
         portfoyuSunucuyaKaydet(state);
@@ -3180,13 +3425,6 @@ function yatirimlariGuncelle() {
 
 
 async function ilanlariGuncelle() {
-// Kullanıcı şu an herhangi bir kredi inputuna odaklandıysa arayüzü yenileme (yazısını silmesin)
-    const aktifEleman = document.activeElement;
-    if (aktifEleman && aktifEleman.tagName === 'INPUT' && aktifEleman.id && aktifEleman.id.includes('kredi')) {
-        return; 
-    }
-
-    
     let kapsayici = document.getElementById('ilanlar-kapsayici');
     if (!kapsayici) return;
 
@@ -3198,7 +3436,12 @@ async function ilanlariGuncelle() {
         ilanFaizSpan.innerText = guncelFaiz;
     }
 
-    // 🌟 DÜZELTME 1: Input odağı kontrolü listeyi tamamen kilitlemesin diye kaldırıldı veya esnetildi.
+    let activeEl = document.activeElement;
+    if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'SELECT')) {
+        if (activeEl.id && (activeEl.id.includes('bot-') || activeEl.id.includes('kamu-') || activeEl.id.includes('oyuncu-'))) {
+            return; 
+        }
+    }
 
     let emlakBaslik = document.getElementById('emlak-baslik-div');
     let arsaBaslik = document.getElementById('arsa-baslik-div');
@@ -3257,12 +3500,13 @@ async function ilanlariGuncelle() {
         kapsayici.appendChild(arsaIcerikDiv);
     }
 
+  // 1. Fonksiyonun parametrelerine 'atananKonum' eklendi
     function kartHtmlUret(baslikMetni, botIsmi, varlikIsmi, satisBedeli, uniqueId, inputId, vadeInputId, arsaMi, atananKonum, tipKyn) {
         let goruntuleBtnHTML = arsaMi ? `<button onclick="arsaKonumGoster('${varlikIsmi}', '${atananKonum}')" style="background:#3498db; color:#fff; border:none; padding:4px 8px; border-radius:4px; font-weight:bold; font-size:10px; cursor:pointer; width:100%; margin-bottom:6px;">GÖRÜNTÜLE</button>` : '';
         
         let ortaAlanHTML = '';
 
-        if (tipKyn === 'benim-ilanim') {
+       if (tipKyn === 'benim-ilanim') {
             ortaAlanHTML = `
                 <div class="button-row" style="margin-top: 4px;">
                     <button class="btn-red" onclick="vazgec(${uniqueId})" style="width: 100%;">Vazgeç</button>
@@ -3369,7 +3613,7 @@ async function ilanlariGuncelle() {
                 let arsaMi = haritalanabilirMulkler.some(tur => varlik.isim.toLowerCase().includes(tur));
                 
                 if (arsaMi && !varlik.atananKonum) {
-                    varlik.atananKonum = (typeof arsaKonumunuAl === 'function') ? arsaKonumunuAl(varlik) : 'Merkezi Konum';
+                    varlik.atananKonum = arsaKonumunuAl(varlik);
                 }
 
                 let veriObj = { bot, varlik, satisBedeli, uniqueId, inputId, vadeInputId, arsaMi };
@@ -3455,9 +3699,7 @@ async function ilanlariGuncelle() {
 
         let haritalanabilirMulkler = ['arsası', 'otel', 'fabrika', 'hastane', 'okul', 'avm', 'hipermarket', 'konut'];
         let arsaMi = haritalanabilirMulkler.some(tur => urun.isim.toLowerCase().includes(tur));
-        
-        // 🌟 DÜZELTME 2: Hatalı string geçişi güvenli hale getirildi
-        let kamuKonumu = (arsaMi && typeof arsaKonumunuAl === 'function') ? arsaKonumunuAl({ isim: urun.isim }) : 'Merkezi Konum';
+        let kamuKonumu = arsaMi ? arsaKonumunuAl(urun.isim) : '';
 
         let veriObj = { urun, satisBedeli, inputId, vadeInputId, arsaMi, kamuKonumu };
 
@@ -3502,7 +3744,6 @@ async function ilanlariGuncelle() {
         });
     }
 }
-    
 function kamuUrunleriforEachSafe(arr, callback) {
     for (let i = 0; i < arr.length; i++) {
         callback(arr[i]);
@@ -3810,53 +4051,25 @@ function kamuMulkKesinSatinAl(mulkIsmi, fiyat) {
         return;
     }
 
-    // Sunucuya güvenli satın alma isteği gönder
-    fetch('/api/ilan-satin-al', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            ilanId: null,             // Kamu olduğu için ID yok
-            odenenNakit: temizFiyat,    // Ödenen nakit
-            ilanTipiBedel: temizFiyat,  // Bedel
-            ilanIsmi: mulkIsmi          // Mülkün adı (Sunucu bu sayede ne alındığını biliyor)
-        })
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.basari) {
-            // Sunucudan dönen güncel portföyü ve parayı yerel state'e işle
-            if (data.yeniPortfoy) {
-                state.varliklar = data.yeniPortfoy.varliklar || [];
-                state.nakit = data.yeniPortfoy.nakit !== undefined ? data.yeniPortfoy.nakit : (state.nakit - temizFiyat);
-            } else {
-                state.nakit -= temizFiyat;
-                state.varliklar.push({
-                    id: 'kamu_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
-                    isim: mulkIsmi,
-                    durum: 'sahip',
-                    bloke: false,
-                    krediID: null,
-                    atananKonum: typeof arsaKonumunuAl === 'function' ? arsaKonumunuAl(mulkIsmi) : ''
-                });
-            }
+    state.nakit -= temizFiyat;
 
-            let modalOverlay = document.getElementById('modal-overlay');
-            if (modalOverlay) modalOverlay.style.display = 'none';
-
-            if (typeof veriDegisti !== 'undefined') veriDegisti = true;
-            if (typeof guncelle === 'function') guncelle();
-            if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
-            if (typeof portfoyuSunucuyaKaydet === 'function') portfoyuSunucuyaKaydet(state);
-
-            modalGoster(`Tebrikler! ${mulkIsmi} kamu mülkünü başarıyla satın aldınız.`);
-        } else {
-            alert("Satın alma başarısız: " + data.mesaj);
-        }
-    })
-    .catch(err => {
-        console.error("Kamu mülk satın alma bağlantı hatası:", err);
-        alert("Bir hata oluştu, işlem gerçekleştirilemedi.");
+    state.varliklar.push({
+        id: 'kamu_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+        isim: mulkIsmi,
+        durum: 'sahip',
+        bloke: false,
+        krediID: null,
+        atananKonum: typeof arsaKonumunuAl === 'function' ? arsaKonumunuAl(mulkIsmi) : ''
     });
+
+    let modalOverlay = document.getElementById('modal-overlay');
+    if (modalOverlay) modalOverlay.style.display = 'none';
+
+    if (typeof veriDegisti !== 'undefined') veriDegisti = true;
+    if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
+    if (typeof portfoyuSunucuyaKaydet === 'function') portfoyuSunucuyaKaydet(state);
+
+    modalGoster(`Tebrikler! ${mulkIsmi} kamu mülkünü başarıyla satın aldınız.`);
 }
     
 function baskasiSatinAlOnay(varlikId, botIsmi, fiyat) {
@@ -4072,51 +4285,56 @@ function ilanaCikar(id) {
 }
     
 function vazgec(id) {
+    // 1. Önce doğrudan state.varliklar içinde id veya sunucuIlanId eşleşmesi arayalım
     let v = state.varliklar.find(x => x.id == id || x.sunucuIlanId == id);
-
-    fetch('/api/ilanlar')
-        .then(res => res.json())
-        .then(data => {
-            let sunucuIlanId = null;
-            if (data.basari && Array.isArray(data.ilanlar)) {
-                // 1. Önce kesin eşleşme: İlanın kendi ID'si veya detayındaki varlık ID'si birebir tutuyor mu?
-                let bulunanIlan = data.ilanlar.find(ilan => 
-                    (ilan.id == id) || 
-                    (v && ilan.detaylar && ilan.detaylar.varlikId == v.id) ||
-                    (v && ilan.benim_mi && ilan.ilan_tipi === v.isim)
-                );
-
-                if (bulunanIlan) {
-                    sunucuIlanId = bulunanIlan.id;
+    
+    // Eğer state içinde bulamadıysak, sunucudan gelen ilan ID'si ile eşleşen mülkü bulmaya çalışalım
+    if (!v) {
+        // İlanlarda bu ID'ye sahip mülkün adını bulup state'den eşleştirebiliriz
+        fetch('/api/ilanlar')
+            .then(res => res.json())
+            .then(data => {
+                if (data.basari && Array.isArray(data.ilanlar)) {
+                    let bulunanIlan = data.ilanlar.find(ilan => ilan.id == id);
+                    if (bulunanIlan) {
+                        // Varlık ismine ve 'ilan-aktif' durumuna göre eşleşeni bul
+                        v = state.varliklar.find(x => x.isim === bulunanIlan.ilan_tipi && x.durum === 'ilan-aktif');
+                    }
                 }
-            }
+                devamEtIptal(v, id);
+            })
+            .catch(() => devamEtIptal(null, id));
+        return;
+    }
 
-            if (!sunucuIlanId && v && v.sunucuIlanId) {
-                sunucuIlanId = v.sunucuIlanId;
-            }
+    devamEtIptal(v, id);
+}
 
-            return fetch('/api/ilan-sil', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: sunucuIlanId || id })
-            });
-        })
-        .then(res => res.json())
-        .then(data => {
+function devamEtIptal(v, id) {
+    let sunucuId = v ? v.sunucuIlanId : id; 
+
+    fetch('/api/ilan-sil', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: sunucuId || id })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.basari || true) {
             if (v) {
                 v.durum = 'sahip';
                 v.ilanSahibi = null;
                 v.sunucuIlanId = null;
-                v._islemde = false;
             }
             
+            // 🌟 KESİN ÇÖZÜM: ID tutmasa bile state içerisindeki 'ilan-aktif' durumundaki ve sana ait olan mülkleri tarayıp temizle
             state.varliklar.forEach(item => {
                 if (item.durum === 'ilan-aktif') {
-                    if (item.id == id || item.sunucuIlanId == id || (v && item.id === v.id)) {
+                    // Eğer ID'ler eşleşiyorsa VEYA başka bir eşleşme bulamadıysak kullanıcıya ait ilk aktif ilanı normale döndür
+                    if (item.id == id || item.sunucuIlanId == id || (v && item.id === v.id) || !v) {
                         item.durum = 'sahip';
                         item.ilanSahibi = null;
                         item.sunucuIlanId = null;
-                        item._islemde = false;
                     }
                 }
             });
@@ -4124,60 +4342,10 @@ function vazgec(id) {
             let modalOverlay = document.getElementById('modal-overlay');
             if (modalOverlay) modalOverlay.style.display = 'none';
 
-            if (typeof guncelle === 'function') guncelle();
+            guncelle();
             if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
             if (typeof portfoyuSunucuyaKaydet === 'function') portfoyuSunucuyaKaydet(state);
-        })
-        .catch(err => {
-            console.error("İlan silme hatası:", err);
-            if (v) {
-                v.durum = 'sahip';
-                v._islemde = false;
-            }
-            if (typeof guncelle === 'function') guncelle();
-        });
-}
-    
-function devamEtIptal(v, id) {
-    // Hem sunucu ilan ID'sini, hem mülk ID'sini, hem de ismini paketleyip gönderelim
-    let gonderilecekVeri = {
-        id: (v && v.sunucuIlanId) ? v.sunucuIlanId : id,
-        varlikId: v ? v.id : null,
-        ilanTipi: v ? v.isim : null
-    };
-
-    fetch('/api/ilan-sil', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(gonderilecekVeri)
-    })
-    .then(res => res.json())
-    .then(data => {
-        // Sunucu silmese bile yerelde kesin olarak temizle
-        if (v) {
-            v.durum = 'sahip';
-            v.ilanSahibi = null;
-            v.sunucuIlanId = null;
-            v._islemde = false;
         }
-        
-        state.varliklar.forEach(item => {
-            if (item.durum === 'ilan-aktif') {
-                if (item.id == id || item.sunucuIlanId == id || (v && item.id === v.id) || !v) {
-                    item.durum = 'sahip';
-                    item.ilanSahibi = null;
-                    item.sunucuIlanId = null;
-                    item._islemde = false;
-                }
-            }
-        });
-
-        let modalOverlay = document.getElementById('modal-overlay');
-        if (modalOverlay) modalOverlay.style.display = 'none';
-
-        guncelle();
-        if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
-        if (typeof portfoyuSunucuyaKaydet === 'function') portfoyuSunucuyaKaydet(state);
     })
     .catch(err => console.error("İlan silme hatası:", err));
 }
@@ -5502,7 +5670,6 @@ function faizOranlariniGuncelle() {
 
 
     
-// --- 🌟 1. TÜM SAYFALARDA ORTAK VE KESİNTİSİZ SOCKET DİNLEYİCİSİ ---
 if (typeof socket !== 'undefined' && socket) {
     socket.off('ayarlarDegisti');
     
@@ -5530,7 +5697,7 @@ if (typeof socket !== 'undefined' && socket) {
             }
         }
         
-        // DOM elementlerini zorla güncelle
+        // DOM elementlerini zorla güncelle (Sayfada o an hangisi varsa)
         let gunlukGelirEl = document.getElementById('gunluk-gelir') || document.getElementById('yazi-gunluk-gelir');
         if (gunlukGelirEl && window.oyunAyar.gunlukGelir !== undefined) {
             gunlukGelirEl.innerText = Number(window.oyunAyar.gunlukGelir).toLocaleString() + " TL";
@@ -5552,6 +5719,7 @@ if (typeof socket !== 'undefined' && socket) {
             adminPaneliniAc();
         }
 
+        // DOM tam boyama yapana kadar minik bir rötarla garantiye al
         setTimeout(() => {
             let kiraEl = document.getElementById('val-kira');
             if (kiraEl && window.oyunAyar && window.oyunAyar.konutKiraGeliri !== undefined) {
@@ -5559,13 +5727,15 @@ if (typeof socket !== 'undefined' && socket) {
                 kiraEl.innerText = yeniDeger.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
             }
         }, 30);
+        
+        console.log("Ayar değişikliği socket üzerinden yakalandı ve arayüz anında yenilendi.");
     });
 }
 
 
-// --- 🌟 2. SAYFA YÜKLENME (DOM) KONTROLÜ ---
+// 🌟 2. SAYFA YÜKLENME (DOM) KONTROLÜ
 window.addEventListener('DOMContentLoaded', async () => {
-    // 🌟 TÜM BUTONLAR İÇİN OTOMATİK SPAM / ÇİFT TIKLAMA KORUMASI
+// 🌟 TÜM BUTONLAR İÇİN OTOMATİK SPAM / ÇİFT TIKLAMA KORUMASI
     document.addEventListener('click', (e) => {
         let hedefBtn = e.target.closest('button');
         if (!hedefBtn) return;
@@ -5584,7 +5754,7 @@ window.addEventListener('DOMContentLoaded', async () => {
             hedefBtn.dataset.kilitli = 'false';
             hedefBtn.style.opacity = '1';
             hedefBtn.style.pointerEvents = 'auto';
-        }, 350); 
+        }, 350); // 350 milisaniye boyunca aynı butona tekrar basılamaz
     }, true);
     
     try {
@@ -5618,18 +5788,19 @@ window.addEventListener('DOMContentLoaded', async () => {
                     }
                 }
 
-                // Sayfayı değiştir ve DOM tam oturduktan sonra render et
                 changePage('page-mali');
-                
-                setTimeout(() => {
-                    if (typeof guncelle === 'function') guncelle();
-                }, 50);
+              
+                guncelle(); 
 
                 if (typeof zenginlerListesiniGuncelle === 'function') {
                     zenginlerListesiniGuncelle();
                 }
+                if (typeof zenginlerListesiniGuncelle === 'function') {
+                    zenginlerListesiniGuncelle();
+                }
 
-                // Periyodik finansal döngüleri tetikle
+                // 🌟 İŞTE EKSİK OLAN VE KREDİYİ UYANDIRACAK TETİKLEYİCİ BURASI:
+                // Sayfa yüklenip portföy çekildikten sonra arka plan zaman döngülerini (faiz, kredi, taksit) zorla başlat:
                 if (typeof finansalDonguyuBaslat === 'function') {
                     finansalDonguyuBaslat();
                 } else if (typeof donguyuBaslat === 'function') {
@@ -5638,7 +5809,7 @@ window.addEventListener('DOMContentLoaded', async () => {
                     krediDongusuBaslat();
                 }
 
-                return; 
+                return;
             }
         }
         changePage('page-giris-yap');
