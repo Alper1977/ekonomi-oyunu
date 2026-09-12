@@ -191,6 +191,66 @@ if (!dbStateKaydi) {
     }
 }
 
+// Botlar tablosunu oluştur
+db.exec(`
+    CREATE TABLE IF NOT EXISTS botlar (
+        id INTEGER PRIMARY KEY,
+        isim TEXT,
+        nakit REAL,
+        vadeli REAL,
+        altin REAL,
+        dolar REAL,
+        euro REAL,
+        kredi REAL,
+        varliklar TEXT
+    );
+`);
+
+// Botlar veritabanında var mı kontrol et, yoksa 500 botu üret ve kaydet
+const botSayisi = db.prepare(`SELECT COUNT(*) as sayi FROM botlar`).get();
+let botlar = [];
+
+if (botSayisi.sayi === 0) {
+    let isimHavuzu = ["BUKET", "AHMET", "MEHMET", "AYŞE", "FATMA", "MUSTAFA", "EMEL", "CAN", "ZEYNEP", "BURAK", "SEDA", "EMRE", "DENİZ", "MURAT", "ELİF", "KEREM", "MERVE", "TOLGA", "SELİN", "ONUR", "ESRA", "KAAN", "BÜŞRA", "VOLKAN", "GAMZE", "CEM", "GİZEM", "OĞUZ", "CEREN", "BERK", "DERYA"];
+    let soyisimHavuzu = ["ENERJİ", "İNŞAAT", "TAAHHÜT", "MAKİNA", "METAL", "SANAYİ", "TİCARET", "GRUP", "YAPI", "ENDÜSTRİ", "YILMAZ", "DEMİR", "KAYA", "ÇELİK", "ŞAHİN", "ÖZTÜRK", "YILDIZ", "AYDIN", "ARSLAN", "DOĞAN", "KILIÇ", "ASLAN", "ÇETİN", "KOÇ", "KURT", "ÖZKAN", "ŞİMŞEK", "POLAT", "ÖZDEMİR", "ERDOĞAN"];
+
+    const insertBot = db.prepare(`INSERT INTO botlar (id, isim, nakit, vadeli, altin, dolar, euro, kredi, varliklar) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+    
+    const insertMany = db.transaction((liste) => {
+        for (let bot of liste) {
+            insertBot.run(bot.id, bot.isim, bot.nakit, bot.vadeli, bot.altin, bot.dolar, bot.euro, bot.kredi, JSON.stringify(bot.varliklar));
+        }
+    });
+
+    let tempBotlar = [];
+    for (let i = 1; i <= 500; i++) {
+        let rastgeleIsim = isimHavuzu[Math.floor(Math.random() * isimHavuzu.length)] + " " + soyisimHavuzu[Math.floor(Math.random() * soyisimHavuzu.length)] + " A.Ş.";
+        let baslangicNakit = Math.floor(Math.random() * 50000000) + 5000000;
+        
+        tempBotlar.push({
+            id: 200 + i,
+            isim: rastgeleIsim,
+            nakit: baslangicNakit,
+            vadeli: Math.floor(Math.random() * 10000000),
+            altin: 0,
+            dolar: 0,
+            euro: 0,
+            kredi: 0,
+            varliklar: []
+        });
+    }
+
+    insertMany(tempBotlar);
+    botlar = tempBotlar;
+} else {
+    // Veritabanından botları belleğe çek
+    let hamBotlar = db.prepare(`SELECT * FROM botlar`).all();
+    botlar = hamBotlar.map(b => ({
+        ...b,
+        varliklar: JSON.parse(b.varliklar)
+    }));
+}
+
 // Arka plan sayaçları
 let sonFaizZamani = Date.now();
 let sonSirketKazanci = Date.now();
