@@ -145,10 +145,6 @@ db.prepare(`CREATE TABLE IF NOT EXISTS ilanlar (
 )`).run();
 
 db.exec(`
-    CREATE TABLE IF NOT EXISTS oyun_ayarlari (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        ayarlar TEXT
-    );
     CREATE TABLE IF NOT EXISTS oyun_state (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         veri TEXT
