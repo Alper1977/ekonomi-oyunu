@@ -5502,6 +5502,7 @@ function faizOranlariniGuncelle() {
 
 
     
+// --- 🌟 1. TÜM SAYFALARDA ORTAK VE KESİNTİSİZ SOCKET DİNLEYİCİSİ ---
 if (typeof socket !== 'undefined' && socket) {
     socket.off('ayarlarDegisti');
     
@@ -5529,7 +5530,7 @@ if (typeof socket !== 'undefined' && socket) {
             }
         }
         
-        // DOM elementlerini zorla güncelle (Sayfada o an hangisi varsa)
+        // DOM elementlerini zorla güncelle
         let gunlukGelirEl = document.getElementById('gunluk-gelir') || document.getElementById('yazi-gunluk-gelir');
         if (gunlukGelirEl && window.oyunAyar.gunlukGelir !== undefined) {
             gunlukGelirEl.innerText = Number(window.oyunAyar.gunlukGelir).toLocaleString() + " TL";
@@ -5551,7 +5552,6 @@ if (typeof socket !== 'undefined' && socket) {
             adminPaneliniAc();
         }
 
-        // DOM tam boyama yapana kadar minik bir rötarla garantiye al
         setTimeout(() => {
             let kiraEl = document.getElementById('val-kira');
             if (kiraEl && window.oyunAyar && window.oyunAyar.konutKiraGeliri !== undefined) {
@@ -5559,15 +5559,13 @@ if (typeof socket !== 'undefined' && socket) {
                 kiraEl.innerText = yeniDeger.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
             }
         }, 30);
-        
-        console.log("Ayar değişikliği socket üzerinden yakalandı ve arayüz anında yenilendi.");
     });
 }
 
 
-// 🌟 2. SAYFA YÜKLENME (DOM) KONTROLÜ
+// --- 🌟 2. SAYFA YÜKLENME (DOM) KONTROLÜ ---
 window.addEventListener('DOMContentLoaded', async () => {
-// 🌟 TÜM BUTONLAR İÇİN OTOMATİK SPAM / ÇİFT TIKLAMA KORUMASI
+    // 🌟 TÜM BUTONLAR İÇİN OTOMATİK SPAM / ÇİFT TIKLAMA KORUMASI
     document.addEventListener('click', (e) => {
         let hedefBtn = e.target.closest('button');
         if (!hedefBtn) return;
@@ -5586,7 +5584,7 @@ window.addEventListener('DOMContentLoaded', async () => {
             hedefBtn.dataset.kilitli = 'false';
             hedefBtn.style.opacity = '1';
             hedefBtn.style.pointerEvents = 'auto';
-        }, 350); // 350 milisaniye boyunca aynı butona tekrar basılamaz
+        }, 350); 
     }, true);
     
     try {
@@ -5620,19 +5618,18 @@ window.addEventListener('DOMContentLoaded', async () => {
                     }
                 }
 
+                // Sayfayı değiştir ve DOM tam oturduktan sonra render et
                 changePage('page-mali');
-              
-                guncelle(); 
+                
+                setTimeout(() => {
+                    if (typeof guncelle === 'function') guncelle();
+                }, 50);
 
                 if (typeof zenginlerListesiniGuncelle === 'function') {
                     zenginlerListesiniGuncelle();
                 }
-                if (typeof zenginlerListesiniGuncelle === 'function') {
-                    zenginlerListesiniGuncelle();
-                }
 
-                // 🌟 İŞTE EKSİK OLAN VE KREDİYİ UYANDIRACAK TETİKLEYİCİ BURASI:
-                // Sayfa yüklenip portföy çekildikten sonra arka plan zaman döngülerini (faiz, kredi, taksit) zorla başlat:
+                // Periyodik finansal döngüleri tetikle
                 if (typeof finansalDonguyuBaslat === 'function') {
                     finansalDonguyuBaslat();
                 } else if (typeof donguyuBaslat === 'function') {
