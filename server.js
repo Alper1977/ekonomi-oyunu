@@ -535,16 +535,15 @@ setInterval(async () => {
     
     
     // 1. Faiz İşlemi
+    // 1. Faiz İşlemi
     if (typeof sonFaizZamani !== 'undefined' && window.oyunAyarlari && window.oyunAyarlari.faizSuresi) {
         if (simdiMs - sonFaizZamani >= window.oyunAyarlari.faizSuresi) {
             state.faiz = state.vadeli * faizOranlari.vadeliGunluk;
             state.vadeli += state.faiz;
             sonFaizZamani = simdiMs;
-            if (typeof guncelle === 'function') guncelle();
             veriDegisti = true;
         }
     }
-
     let suAn = new Date();
     let saat = suAn.getHours();
     let dakika = suAn.getMinutes();
