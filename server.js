@@ -533,68 +533,7 @@ setInterval(async () => {
         // Ağ hatası
     }
     
-    // AKTİF VARLIKLAR LİSTELEME RENDER BLOKLARI (Eksiksiz korundu)
-    if (typeof aktifVarliklar !== 'undefined' && Array.isArray(aktifVarliklar) && typeof vList !== 'undefined' && vList) {
-        vList.innerHTML = '';
-        aktifVarliklar.forEach(v => {
-            let blokeYazisi = v.bloke ? '<span style="color:#ff4444">(BLOKELİ)</span>' : '';
-            
-            let talepBul = typeof state.talepler !== 'undefined' ? state.talepler.find(t => t.tur === v.isim || t.isim === v.isim) : null;
-            let bedel = v.bedel || (talepBul ? talepBul.bedel : (typeof kazancTablosu !== 'undefined' && kazancTablosu[v.isim] ? kazancTablosu[v.isim] : 0));
-            let gunlukKar = bedel * 3;
-            
-            let haritalanabilirMulkler = ['arsası', 'otel', 'fabrika', 'hastane', 'okul', 'avm', 'hipermarket', 'konut'];
-            let arsaMi = haritalanabilirMulkler.some(tur => v.isim.toLowerCase().includes(tur));
-            
-            if (arsaMi && !v.atananKonum && typeof arsaKonumunuAl === 'function') {
-                v.atananKonum = arsaKonumunuAl(v);
-            }
-            
-            let sagButonlarHTML = '';
-
-            if (v.durum === 'sahip') {
-                if (v.isim !== 'Bayi') {
-                    sagButonlarHTML += `<button onclick="ilanaCikar(${v.id})" style="width: 100%; box-sizing: border-box;">SAT</button>`;
-                }
-            } else if (v.durum === 'inşaat') {
-                let kalanMs = v.bitis - Date.now();
-                let kalanGun = Math.max(0, Math.ceil(kalanMs / (1000 * 60 * 60 * 24)));
-                sagButonlarHTML += `<span style="color:#ffcc00; font-size:11px;">İnşaat: ${kalanGun} gün</span>`;
-            } else if (v.durum === 'ilan-aktif') {
-                sagButonlarHTML += `<span style="color:#ff4444; font-size:13px; font-weight:bold;">SATIŞTA</span>
-                                   <button onclick="vazgec(${v.id})" class="btn-red" style="margin-top: 4px; width: 100%; box-sizing: border-box;">Vazgeç</button>`;
-            }
-
-            let goruntuleBtnVarlik = arsaMi ? `<button onclick="arsaKonumGoster('${v.isim}', '${v.atananKonum}')" style="background:#3498db; color:#fff; border:none; border-radius:4px; font-weight:bold; cursor:pointer; width: 100%; margin-top: 4px; box-sizing: border-box;">Görüntüle</button>` : '';
-
-            let html = `
-                <div class="item-box-varlik">
-                    <div>
-                        <div style="font-weight: bold; color: #fff; font-size: 13px;">${v.isim} ${blokeYazisi}</div>
-                        <div style="font-size: 11px; color: #ffcc00; margin-top: 3px;">Günlük Kar: ${gunlukKar.toLocaleString()} TL</div>
-                    </div>
-                    <div style="display: flex; flex-direction: column; align-items: flex-end; min-width: 90px;">
-                        ${sagButonlarHTML}
-                        ${goruntuleBtnVarlik}
-                    </div>
-                </div>
-            `;
-            vList.innerHTML += html; 
-        });
-    }
     
-    let simdiMs = Date.now();
-    let veriDegisti = false;
-
-    if (typeof window !== 'undefined' && window.oyunAyar) {
-        if (window.oyunAyar.satisFiyatlari) satisFiyatlari = window.oyunAyar.satisFiyatlari;
-        if (window.oyunAyar.faizOranlari) faizOranlari = window.oyunAyar.faizOranlari;
-        if (window.oyunAyar.kurlar) kurlar = window.oyunAyar.kurlar;
-        if (window.oyunAyar.kazancTablosu) kazancTablosu = window.oyunAyar.kazancTablosu;
-        if (window.oyunAyar.yatirimMaliyetleri) yatirimMaliyetleri = window.oyunAyar.yatirimMaliyetleri;
-        if (window.oyunAyar.odemeProgrami) odemeProgrami = window.oyunAyar.odemeProgrami;
-    }
-
     // 1. Faiz İşlemi
     if (typeof sonFaizZamani !== 'undefined' && window.oyunAyarlari && window.oyunAyarlari.faizSuresi) {
         if (simdiMs - sonFaizZamani >= window.oyunAyarlari.faizSuresi) {
