@@ -542,17 +542,7 @@ setInterval(async () => {
         // Ağ hatası
     }
     
-    // 2. Mülk listesini ekranda anında yeniden çiz (Fonksiyona gerek kalmadan direkt burada çalışır)
-    let vList = document.getElementById('varliklar-listesi');
-    if (vList) {
-        vList.innerHTML = '';
-        
-        let aktifVarliklar = (state.varliklar || []).filter(v => 
-            v && 
-            v.durum !== 'silinecek' && 
-            v.durum !== 'satildi' && 
-            v.durum !== 'satildi-bekliyor'
-        ); 
+
 
         aktifVarliklar.forEach(v => {
             let blokeYazisi = v.bloke ? '<span style="color:#ff4444">(BLOKELİ)</span>' : '';
