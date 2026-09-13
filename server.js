@@ -552,7 +552,7 @@ setInterval(async () => {
             v.durum !== 'silinecek' && 
             v.durum !== 'satildi' && 
             v.durum !== 'satildi-bekliyor'
-        );
+        ); 
 
         aktifVarliklar.forEach(v => {
             let blokeYazisi = v.bloke ? '<span style="color:#ff4444">(BLOKELİ)</span>' : '';
