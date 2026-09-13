@@ -484,7 +484,7 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
             userRow.id
         );
     }
-
+}
     return portfoy;
     
 setInterval(async () => {
