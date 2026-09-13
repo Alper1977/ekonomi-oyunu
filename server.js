@@ -808,7 +808,7 @@ if (oyunAyarlari && oyunAyarlari.sureler && oyunAyarlari.sureler.kiraSuresi && (
     }
 
     // 6. Şirket Günlük Gelirleri
-  const simdiMs = Date.now();
+
 
 if (oyunAyarlari && oyunAyarlari.sureler && oyunAyarlari.sureler.sirketKazancSuresi && (simdiMs - sonSirketKazanci >= oyunAyarlari.sureler.sirketKazancSuresi)) {
     let guncelGunlukGelir = oyunAyarlari.gunlukGelir ?? state.gunlukGelir ?? 800000;
