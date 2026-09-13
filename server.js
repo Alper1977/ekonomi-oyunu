@@ -27,7 +27,7 @@ console.log("SQLite veritabanına başarıyla bağlanıldı.");
  sonFaizZamani = Date.now();
  sonSirketKazanci = Date.now();
  sonTaksitZamani = Date.now();
-const satisFiyatlari = oyunAyarlari.satisFiyatlari || {};
+
 
 
 // Oturumları çakışmayı önlemek için ayrı bir veritabanında (sessions.db) saklıyoruz
@@ -832,7 +832,8 @@ if (oyunAyarlari && oyunAyarlari.sureler && oyunAyarlari.sureler.sirketKazancSur
     const simdiMs = Date.now();
 
     if (oyunAyarlari && oyunAyarlari.sureler && oyunAyarlari.sureler.botHizi && (simdiMs - sonBotZamani >= oyunAyarlari.sureler.botHizi)) {
-        let satisFiyatlari = varsayilanAyarlar.satisFiyatlari;
+        const satisFiyatlari = oyunAyarlari.satisFiyatlari || {};
+        
         let gercekVarliklar = Object.keys(satisFiyatlari);
 
         for (let i = 0; i < 5; i++) {
