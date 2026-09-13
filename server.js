@@ -794,7 +794,7 @@ if (oyunAyarlari && oyunAyarlari.sureler && oyunAyarlari.sureler.taksitSuresi &&
     }
 
     // 5. Konut Kira Gelirleri
-   const simdiMs = Date.now();
+   
 
 if (oyunAyarlari && oyunAyarlari.sureler && oyunAyarlari.sureler.kiraSuresi && (simdiMs - sonKiraZamani >= oyunAyarlari.sureler.kiraSuresi)) {
     let konutSayisi = state.varliklar.filter(v => v.isim === 'Konut' && v.durum === 'sahip').length;
