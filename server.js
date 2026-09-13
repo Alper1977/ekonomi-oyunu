@@ -638,9 +638,9 @@ if (simdiMs - sonFaizZamani >= oyunAyarlari.sureler.faizSuresi) {
         if (typeof guncelle === 'function') guncelle();
     }
 
-    if (typeof sonTaksitZamani === 'undefined') { sonTaksitZamani = simdiMs; } 
+if (typeof sonTaksitZamani === 'undefined') { sonTaksitZamani = simdiMs; } 
 
-    if (window.oyunAyarlari && window.oyunAyarlari.taksitSuresi && (simdiMs - sonTaksitZamani >= window.oyunAyarlari.taksitSuresi)) {
+if (oyunAyarlari && oyunAyarlari.sureler && oyunAyarlari.sureler.taksitSuresi && (simdiMs - sonTaksitZamani >= oyunAyarlari.sureler.taksitSuresi)) {
         if (state.krediler && state.krediler.length > 0) {
             let bildirimler = [];
 
