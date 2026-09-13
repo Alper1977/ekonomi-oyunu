@@ -287,7 +287,7 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
 
     let degisiklikOldu = false;
 
-    // --- 1. KİRA / ŞİRKET GELİRLERİ ---
+  // --- 1. KİRA / ŞİRKET GELİRLERİ ---
     const kiraPeriyotSayisi = Math.floor(gecenSure / kiraPeriyodu);
     if (kiraPeriyotSayisi > 0) {
         let toplamEklenenGelir = 0;
@@ -309,17 +309,16 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
         }
 
         if (toplamEklenenGelir > 0) {
-            let mevcutNakit = portfoy.nakit !== undefined ? Number(portfoy.nakit) : (portfoy.para !== undefined ? Number(portfoy.para) : 0);
+            let mevcutNakit = portfoy.nakit !== undefined ? Number(portfoy.nakit) : 0;
             mevcutNakit += toplamEklenenGelir;
             portfoy.nakit = mevcutNakit;
-            portfoy.para = mevcutNakit;
             degisiklikOldu = true;
         }
     }
 
     // --- 2. VADELİ HESAP / FAİZ GELİRLERİ ---
     const faizPeriyotSayisi = Math.floor(gecenSure / faizPeriyodu);
-    let vadeliDeger = portfoy.vadeli !== undefined ? Number(portfoy.vadeli) : (portfoy.vadeliHesap !== undefined ? Number(portfoy.vadeliHesap) : 0);
+    let vadeliDeger = Number(portfoy.vadeli) || 0;
     
     if (faizPeriyotSayisi > 0 && vadeliDeger > 0) {
         let gunlukFaizOrani = faizOranlari.vadeliGunluk !== undefined ? Number(faizOranlari.vadeliGunluk) : 0.02;
@@ -331,9 +330,7 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
         }
 
         if (toplamFaizGetirisi > 0) {
-            let yeniVadeli = anapara + toplamFaizGetirisi;
-            portfoy.vadeli = yeniVadeli;
-            portfoy.vadeliHesap = yeniVadeli;
+            portfoy.vadeli = anapara + toplamFaizGetirisi;
             degisiklikOldu = true;
         }
     }
@@ -354,7 +351,7 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
                 }
 
                 let taksitMiktari = kr.taksitTutu;
-                let mevcutNakit = portfoy.nakit !== undefined ? Number(portfoy.nakit) : (portfoy.para !== undefined ? Number(portfoy.para) : 0);
+                let mevcutNakit = Number(portfoy.nakit) || 0;
 
                 // Nakit yetmiyorsa alternatif hesapları (Dolar, Euro, Altın, Vadeli) sırayla bozdur
                 if (mevcutNakit < taksitMiktari) {
@@ -406,32 +403,28 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
                     }
 
                     // 4. Vadeli Hesaptan Çek
-                    let guncelVadeli = portfoy.vadeli !== undefined ? Number(portfoy.vadeli) : (portfoy.vadeliHesap !== undefined ? Number(portfoy.vadeliHesap) : 0);
+                    let guncelVadeli = Number(portfoy.vadeli) || 0;
                     if (eksikTutar > 0 && guncelVadeli > 0) {
                         let cekilecek = Math.min(eksikTutar, guncelVadeli);
                         guncelVadeli -= cekilecek;
                         mevcutNakit += cekilecek;
                         eksikTutar -= cekilecek;
-                        
                         portfoy.vadeli = guncelVadeli;
-                        portfoy.vadeliHesap = guncelVadeli;
                     }
-
-                    portfoy.nakit = mevcutNakit;
-                    portfoy.para = mevcutNakit;
                 }
+
+                portfoy.nakit = mevcutNakit;
 
                 // Nihai Nakit Kontrolü: Taksit ödenebiliyor mu?
                 if (portfoy.nakit >= taksitMiktari) {
                     portfoy.nakit -= taksitMiktari;
-                    portfoy.para = portfoy.nakit;
                     kr.kalanBorc -= taksitMiktari;
                     if (kr.kalanBorc < 0) kr.kalanBorc = 0;
                     kr.ustUsteOdenmeyen = 0;
 
                     // Borç bittiyse blokesini kaldır
                     if (kr.kalanBorc === 0 && portfoy.varliklar) {
-                        let ilgiliVarlik = portfoy.varliklar.find(v => v && v.krediID === kr.id);
+                        let ilgiliVarlik = portfoy.varliklar.find(v => v && String(v.krediID) === String(kr.id));
                         if (ilgiliVarlik) {
                             ilgiliVarlik.bloke = false;
                             ilgiliVarlik.krediID = null;
@@ -443,7 +436,7 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
 
                     // 3 Dönem üst üste ödenmediyse İCRA (Varlığa el koyma)
                     if (kr.ustUsteOdenmeyen >= 3 && portfoy.varliklar) {
-                        let ilgiliVarlik = portfoy.varliklar.find(v => v && v.krediID === kr.id && v.bloke === true);
+                        let ilgiliVarlik = portfoy.varliklar.find(v => v && String(v.krediID) === String(kr.id) && v.bloke === true);
                         if (ilgiliVarlik) {
                             let satisFiyati = (satisFiyatlari && satisFiyatlari[ilgiliVarlik.isim]) ? satisFiyatlari[ilgiliVarlik.isim] : 10000000;
                             
@@ -453,7 +446,6 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
                             let artisFarki = satisFiyati - kr.kalanBorc;
                             if (artisFarki > 0) {
                                 portfoy.nakit += artisFarki;
-                                portfoy.para = portfoy.nakit;
                             }
                         }
                         kr.silinecek = true;
@@ -494,8 +486,7 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
     }
 
     return portfoy;
-}
-
+    
 setInterval(async () => {
     try {
         let res = await fetch('/api/oyun-ayarlari');
@@ -542,8 +533,9 @@ setInterval(async () => {
         // Ağ hatası
     }
     
-
-
+    // AKTİF VARLIKLAR LİSTELEME RENDER BLOKLARI (Eksiksiz korundu)
+    if (typeof aktifVarliklar !== 'undefined' && Array.isArray(aktifVarliklar) && typeof vList !== 'undefined' && vList) {
+        vList.innerHTML = '';
         aktifVarliklar.forEach(v => {
             let blokeYazisi = v.bloke ? '<span style="color:#ff4444">(BLOKELİ)</span>' : '';
             
@@ -554,7 +546,7 @@ setInterval(async () => {
             let haritalanabilirMulkler = ['arsası', 'otel', 'fabrika', 'hastane', 'okul', 'avm', 'hipermarket', 'konut'];
             let arsaMi = haritalanabilirMulkler.some(tur => v.isim.toLowerCase().includes(tur));
             
-            if (arsaMi && !v.atananKonum) {
+            if (arsaMi && !v.atananKonum && typeof arsaKonumunuAl === 'function') {
                 v.atananKonum = arsaKonumunuAl(v);
             }
             
@@ -589,7 +581,7 @@ setInterval(async () => {
             `;
             vList.innerHTML += html; 
         });
-    
+    }
     
     let simdiMs = Date.now();
     let veriDegisti = false;
@@ -603,77 +595,69 @@ setInterval(async () => {
         if (window.oyunAyar.odemeProgrami) odemeProgrami = window.oyunAyar.odemeProgrami;
     }
 
-
-
     // 1. Faiz İşlemi
-
-    if (simdiMs - sonFaizZamani >= window.oyunAyarlari.faizSuresi) {
-        state.faiz = state.vadeli * faizOranlari.vadeliGunluk;
-        state.vadeli += state.faiz;
-        sonFaizZamani = simdiMs;
-        guncelle();
-        veriDegisti = true;
+    if (typeof sonFaizZamani !== 'undefined' && window.oyunAyarlari && window.oyunAyarlari.faizSuresi) {
+        if (simdiMs - sonFaizZamani >= window.oyunAyarlari.faizSuresi) {
+            state.faiz = state.vadeli * faizOranlari.vadeliGunluk;
+            state.vadeli += state.faiz;
+            sonFaizZamani = simdiMs;
+            if (typeof guncelle === 'function') guncelle();
+            veriDegisti = true;
+        }
     }
 
     let suAn = new Date();
     let saat = suAn.getHours();
     let dakika = suAn.getMinutes();
 
-    // Yeni dinamik kontrol bloğu buraya gelecek
+    let simdikiZaman = typeof saat !== 'undefined' ? { saat: saat, dakika: dakika } : { saat: new Date().getHours(), dakika: new Date().getMinutes() };
+    let simdikiToplamDakika = simdikiZaman.saat * 60 + simdikiZaman.dakika;
 
-let simdikiZaman = typeof saat !== 'undefined' ? { saat: saat, dakika: dakika } : { saat: new Date().getHours(), dakika: new Date().getMinutes() };
-let simdikiToplamDakika = simdikiZaman.saat * 60 + simdikiZaman.dakika;
+    if (typeof odemeProgrami !== 'undefined' && Array.isArray(odemeProgrami)) {
+        let aktifOdemePenceresi = odemeProgrami.find(p => {
+            let odemeToplamDakika = p.saat * 60 + (p.dakika || 0);
+            let fark = simdikiToplamDakika - odemeToplamDakika;
+            return fark >= 0 && fark < 60;
+        });
 
-// odemeProgramındaki saatleri kontrol et: Ödeme saatinden itibaren 60 dakika (1 saat) geçerli olsun
-let aktifOdemePenceresi = odemeProgrami.find(p => {
-    let odemeToplamDakika = p.saat * 60 + (p.dakika || 0);
-    let fark = simdikiToplamDakika - odemeToplamDakika;
-    
-    // Eğer oyuncu ödeme saatinden itibaren geçen 0 ile 59 dakika arasındaysa (1 saatlik pencere)
-    return fark >= 0 && fark < 60;
-});
-
-if (aktifOdemePenceresi) {
-    let bugunStr = new Date().toISOString().split('T')[0]; // Günlük benzersiz anahtar için
-    
-    state.varliklar.forEach(v => {
-        if ((v.durum === 'sahip' || v.durum === 'ilan-aktif') && v.isim !== 'Konut') {
-            // Bu varlık için bugün bu ödeme saatinde zaten tahsilat açıldı mı veya yapıldı mı?
-            let talepAnahtari = `${bugunStr}-${aktifOdemePenceresi.saat}-${v.id || v.isim}`;
+        if (aktifOdemePenceresi) {
+            let bugunStr = new Date().toISOString().split('T')[0];
             
-            if (!v.sonTahsilatGunu || v.sonTahsilatGunu !== talepAnahtari) {
-                v.talepAktif = true;
-                v.talepBaslangic = Date.now();
-                v.sonTahsilatGunu = talepAnahtari; // Bugün bu saat için açıldı olarak işaretle
-                veriDegisti = true;
+            state.varliklar.forEach(v => {
+                if ((v.durum === 'sahip' || v.durum === 'ilan-aktif') && v.isim !== 'Konut') {
+                    let talepAnahtari = `${bugunStr}-${aktifOdemePenceresi.saat}-${v.id || v.isim}`;
+                    
+                    if (!v.sonTahsilatGunu || v.sonTahsilatGunu !== talepAnahtari) {
+                        v.talepAktif = true;
+                        v.talepBaslangic = Date.now();
+                        v.sonTahsilatGunu = talepAnahtari;
+                        veriDegisti = true;
+                    }
+                }
+            });
+            if (veriDegisti && typeof guncelle === 'function') {
+                guncelle();
             }
         }
-    });
-    if (typeof veriDegisti !== 'undefined' && veriDegisti) {
-        guncelle();
     }
-}
 
     state.varliklar.forEach(v => {
         if (v.talepAktif && v.talepBaslangic > 0 && (Date.now() - v.talepBaslangic >= 3600000)) {
             v.talepAktif = false;
             v.talepBaslangic = 0;
-            guncelle();
+            if (typeof guncelle === 'function') guncelle();
             veriDegisti = true;
         }
     });
 
     // 3. İnşaat ve Varlık Bitişleri
-
-   let degisiklikVar = false;
+    let degisiklikVar = false;
 
     state.varliklar.forEach(v => {
-
         if (v.durum === 'inşaat' && simdiMs >= v.bitis) {
             let arsaBloke = v.bloke;
             let arsaKrediId = v.krediID;
-            // 🌟 İŞTE BURASI: Arsanın o anki sabit konumunu mülke kilitliyoruz!
-            let sabitKonum = v.atananKonum || arsaKonumunuAl(v);
+            let sabitKonum = v.atananKonum || (typeof arsaKonumunuAl === 'function' ? arsaKonumunuAl(v) : '');
 
             if (v.isim === 'Konut') {
                 for(let i = 0; i < 30; i++) {
@@ -683,7 +667,7 @@ if (aktifOdemePenceresi) {
                         durum: 'sahip',
                         bloke: arsaBloke,        
                         krediID: arsaKrediId,
-                        atananKonum: sabitKonum // Konutlar da arsanın konumunu alır
+                        atananKonum: sabitKonum
                     });
                 }
             } else {
@@ -693,7 +677,7 @@ if (aktifOdemePenceresi) {
                     durum: 'sahip',
                     bloke: arsaBloke,        
                     krediID: arsaKrediId,
-                    atananKonum: sabitKonum // Yeni mülk arsanın konumunu devralır
+                    atananKonum: sabitKonum
                 });
             }
             v.durum = 'silinecek';
@@ -707,484 +691,410 @@ if (aktifOdemePenceresi) {
         }
     });
 
-   if (degisiklikVar) {
+    if (degisiklikVar) {
         state.varliklar = state.varliklar.filter(v => v.durum !== 'silinecek');
+        if (typeof guncelle === 'function') guncelle();
+    }
+
+    if (typeof sonTaksitZamani === 'undefined') { sonTaksitZamani = simdiMs; } 
+
+    if (window.oyunAyarlari && window.oyunAyarlari.taksitSuresi && (simdiMs - sonTaksitZamani >= window.oyunAyarlari.taksitSuresi)) {
+        if (state.krediler && state.krediler.length > 0) {
+            let bildirimler = [];
+
+            state.krediler.forEach(kr => {
+                if (!kr.taksitTutu) {
+                    kr.taksitTutu = (kr.kalanBorc / 48) * (typeof faizOranlari !== 'undefined' && faizOranlari.krediKatsayi ? faizOranlari.krediKatsayi : 1.25);
+                }
+                if (typeof kr.ustUsteOdenmeyen !== 'number') {
+                    kr.ustUsteOdenmeyen = 0;
+                }
+
+                let taksitMiktari = kr.taksitTutu;
+
+                // --- OTOMATİK NAKİT TAMAMLAMA ---
+                if (state.nakit < taksitMiktari) {
+                    let eksikTutar = taksitMiktari - state.nakit;
+                    let donusturulenAciklama = [];
+
+                    // 1. Dolar
+                    if (eksikTutar > 0 && state.dolar > 0) {
+                        let dolarSatisFiyati = (typeof kurlar !== 'undefined' && kurlar.dolar) ? kurlar.dolar.satis : 49;
+                        let dolarTlKarsiligi = state.dolar * dolarSatisFiyati;
+
+                        if (dolarTlKarsiligi >= eksikTutar) {
+                            let harcananDolar = eksikTutar / dolarSatisFiyati;
+                            state.dolar -= harcananDolar;
+                            state.nakit += eksikTutar;
+                            donusturulenAciklama.push(`${harcananDolar.toFixed(2)} Dolar bozduruldu`);
+                            eksikTutar = 0;
+                        } else {
+                            state.nakit += dolarTlKarsiligi;
+                            eksikTutar -= dolarTlKarsiligi;
+                            state.dolar = 0;
+                            donusturulenAciklama.push(`Tüm Dolar varlıklarınız bozduruldu (${dolarTlKarsiligi.toLocaleString()} TL)`);
+                        }
+                    }
+                    // 2. Euro
+                    if (eksikTutar > 0 && state.euro > 0) {
+                        let euroSatisFiyati = (typeof kurlar !== 'undefined' && kurlar.euro) ? kurlar.euro.satis : 54;
+                        let euroTlKarsiligi = state.euro * euroSatisFiyati;
+
+                        if (euroTlKarsiligi >= eksikTutar) {
+                            let harcananEuro = eksikTutar / euroSatisFiyati;
+                            state.euro -= harcananEuro;
+                            state.nakit += eksikTutar;
+                            donusturulenAciklama.push(`${harcananEuro.toFixed(2)} Euro bozduruldu`);
+                            eksikTutar = 0;
+                        } else {
+                            state.nakit += euroTlKarsiligi;
+                            eksikTutar -= euroTlKarsiligi;
+                            state.euro = 0;
+                            donusturulenAciklama.push(`Tüm Euro varlıklarınız bozduruldu (${euroTlKarsiligi.toLocaleString()} TL)`);
+                        }
+                    }
+                    // 3. Altın
+                    if (eksikTutar > 0 && state.altin > 0) {
+                        let altinSatisFiyati = (typeof kurlar !== 'undefined' && kurlar.altin) ? kurlar.altin.satis : 6000;
+                        let altinTlKarsiligi = state.altin * altinSatisFiyati;
+
+                        if (altinTlKarsiligi >= eksikTutar) {
+                            let harcananGram = eksikTutar / altinSatisFiyati;
+                            state.altin -= harcananGram;
+                            state.nakit += eksikTutar;
+                            donusturulenAciklama.push(`${harcananGram.toFixed(2)} gram altın bozduruldu`);
+                            eksikTutar = 0;
+                        } else {
+                            state.nakit += altinTlKarsiligi;
+                            eksikTutar -= altinTlKarsiligi;
+                            state.altin = 0;
+                            donusturulenAciklama.push(`Tüm altınlarınız bozduruldu (${altinTlKarsiligi.toLocaleString()} TL)`);
+                        }
+                    }
+                    // 4. Vadeli Hesap
+                    let vadeliDeger = state.vadeli || state.vadeliHesap || 0;
+                    if (eksikTutar > 0 && vadeliDeger > 0) {
+                        let cekilecek = Math.min(eksikTutar, vadeliDeger);
+                        if (state.vadeli !== undefined) state.vadeli -= cekilecek;
+                        if (state.vadeliHesap !== undefined) state.vadeliHesap -= cekilecek;
+                        state.nakit += cekilecek;
+                        eksikTutar -= cekilecek;
+                        donusturulenAciklama.push(`Vadeli hesabınızdan ${cekilecek.toLocaleString()} TL çekildi`);
+                    }
+                    if (donusturulenAciklama.length > 0) {
+                        bildirimler.push(`🔄 <b>OTOMATİK TAHSİLAT:</b> Nakdiniz yetmediği için ${donusturulenAciklama.join(', ')} ve taksit ödendi.`);
+                    }
+                }
+
+                if (state.nakit >= taksitMiktari) {
+                    state.nakit -= taksitMiktari;
+                    kr.kalanBorc -= taksitMiktari;
+                    if (kr.kalanBorc < 0) kr.kalanBorc = 0;
+                    kr.ustUsteOdenmeyen = 0;
+
+                    if (kr.kalanBorc === 0) {
+                        let ilgiliVarlik = state.varliklar.find(v => v.krediID === kr.id);
+                        if (ilgiliVarlik) {
+                            ilgiliVarlik.bloke = false;
+                            ilgiliVarlik.krediID = null;
+                            bildirimler.push(`🔓 <b>KREDİ BİTTİ:</b> Borcunuz tamamen ödendiği için <b>${ilgiliVarlik.isim}</b> üzerindeki bloke kaldırıldı!`);
+                        }
+                    }
+                } else {
+                    kr.ustUsteOdenmeyen++;
+
+                    let ilgiliVarlik = state.varliklar.find(v => v.krediID === kr.id && v.bloke === true);
+                    let varlikAdi = ilgiliVarlik ? ilgiliVarlik.isim : "Bir varlığınız";
+
+                    if (kr.ustUsteOdenmeyen >= 3) {
+                        if (ilgiliVarlik) {
+                            let satisFiyati = (satisFiyatlari && satisFiyatlari[ilgiliVarlik.isim]) ? satisFiyatlari[ilgiliVarlik.isim] : 10000000;
+
+                            state.varliklar = state.varliklar.filter(v => v.id !== ilgiliVarlik.id);
+
+                            let artisFarki = satisFiyati - kr.kalanBorc;
+
+                            if (artisFarki > 0) {
+                                state.nakit += artisFarki;
+                            }
+
+                            bildirimler.push(`🚨 <b>İCRA:</b> 3 dönem ödenemeyen ve alternatif hesaplardan da karşılanamayan <b>${varlikAdi}</b> haczedilerek satıldı!`);
+                        }
+                        kr.silinecek = true;
+                    } else {
+                        bildirimler.push(`⚠️ <b>Gecikme:</b> Yeterli likidite bulunamadığından ${varlikAdi} için taksit ödenemedi (${kr.ustUsteOdenmeyen}/3).`);
+                    }
+                }
+            });
+
+            state.krediler = state.krediler.filter(kr => kr.kalanBorc > 0 && !kr.silinecek);
+
+            if (bildirimler.length > 0 && typeof modalGoster === 'function') {
+                modalGoster(`📋 <b>DÖNEMSEL FİNANSAL RAPOR</b><br><br>` + bildirimler.join('<br><br>'));
+            }
+
+            state.kredi = state.krediler.reduce((toplam, kr) => toplam + kr.kalanBorc, 0);
+            state.taksit = state.krediler.reduce((toplam, kr) => toplam + (kr.taksitTutu || 0), 0);
+
+            if (state.kredi <= 0) {
+                state.kredi = 0;
+                state.taksit = 0;
+                state.krediler = [];
+            }
+        }
+        sonTaksitZamani = simdiMs;
+        if (typeof guncelle === 'function') guncelle();
+        veriDegisti = true;
+    }
+
+    // 5. Konut Kira Gelirleri
+    if (window.oyunAyarlari && window.oyunAyarlari.kiraSuresi && (simdiMs - sonKiraZamani >= window.oyunAyarlari.kiraSuresi)) {
+        let konutSayisi = state.varliklar.filter(v => v.isim === 'Konut' && v.durum === 'sahip').length;
+        let guncelKiraGeliri = window.oyunAyar?.konutKiraGeliri ?? state.konutKiraGeliri ?? 0;
+        let toplamKira = konutSayisi * guncelKiraGeliri;
+
+        state.nakit += toplamKira;
+        sonKiraZamani = simdiMs;
+        if (typeof guncelle === 'function') guncelle();
+        veriDegisti = true;
+    }
+
+    // 6. Şirket Günlük Gelirleri
+    if (window.oyunAyarlari && window.oyunAyarlari.sirketKazancSuresi && (simdiMs - sonSirketKazanci >= window.oyunAyarlari.sirketKazancSuresi)) {
+        let guncelGunlukGelir = window.oyunAyar?.gunlukGelir ?? state.gunlukGelir ?? 800000;
+
+        state.nakit += guncelGunlukGelir;
+        sonSirketKazanci = simdiMs;
+        if (typeof guncelle === 'function') guncelle();
+        veriDegisti = true;
+    }
+
+    // Bot İşlemleri
+    if (typeof botlar !== 'undefined' && Array.isArray(botlar)) {
+        if (typeof sonBotZamani === 'undefined') { sonBotZamani = 0; }
+
+        if (window.oyunAyarlari && window.oyunAyarlari.botHizi && (simdiMs - sonBotZamani >= window.oyunAyarlari.botHizi)) {
+            let gercekVarliklar = Object.keys(satisFiyatlari);
+
+            for (let i = 0; i < 5; i++) {
+                let rastgeleBot = botlar[Math.floor(Math.random() * botlar.length)];
+                if (!rastgeleBot) continue;
+
+                if (!rastgeleBot.varliklar) rastgeleBot.varliklar = [];
+
+                if (Math.random() < 0.30) {
+                    rastgeleBot.nakit += Math.floor(Math.random() * 200000000) + 50000000;
+                } else if (gercekVarliklar.length > 0) {
+                    let secilenUrun = gercekVarliklar[Math.floor(Math.random() * gercekVarliklar.length)];
+                    let bedel = satisFiyatlari[secilenUrun];
+
+                    if (rastgeleBot.nakit >= bedel) {
+                        rastgeleBot.nakit -= bedel;
+                        rastgeleBot.varliklar.push({
+                            id: Date.now() + Math.random(),
+                            isim: secilenUrun,
+                            durum: 'sahip'
+                        });
+                    }
+                }
+            }
+            if (typeof zenginlerListesiniGuncelle === 'function') {
+                zenginlerListesiniGuncelle();
+            }
+            sonBotZamani = simdiMs;
+        }
+
+        if (typeof sonBotIlanZamani === 'undefined') { sonBotIlanZamani = 0; }
+        let maksimumIlanSiniri = typeof window.oyunAyarlari !== 'undefined' ? window.oyunAyarlari.maksimumIlanSiniri : 5;
+
+        if (window.oyunAyarlari && window.oyunAyarlari.botIlanHizi && (simdiMs - sonBotIlanZamani >= window.oyunAyarlari.botIlanHizi)) {
+            let aktifIlanSayilari = {};
+
+            botlar.forEach(b => {
+                if (b.varliklar) {
+                    b.varliklar.forEach(v => {
+                        if (v.durum === 'ilan-aktif') {
+                            aktifIlanSayilari[v.isim] = (aktifIlanSayilari[v.isim] || 0) + 1;
+                        }
+                    });
+                }
+            });
+
+            botlar.forEach(bot => {
+                if (bot.varliklar && bot.varliklar.length > 0) {
+                    let sahipVarliklar = bot.varliklar.filter(v => v.durum === 'sahip');
+
+                    if (sahipVarliklar.length > 0 && Math.random() < 0.30) {
+                        let uygunVarliklar = sahipVarliklar.filter(v => {
+                            let mevcutSayi = aktifIlanSayilari[v.isim] || 0;
+                            return mevcutSayi < maksimumIlanSiniri;
+                        });
+
+                        if (uygunVarliklar.length > 0) {
+                            uygunVarliklar.sort(() => Math.random() - 0.5);
+                            let secilenVarlik = uygunVarliklar[0];
+                        
+                            secilenVarlik.durum = 'ilan-aktif';
+                            secilenVarlik.ilanSahibi = bot.isim;
+                            secilenVarlik.ilanVerilisZamani = simdiMs;
+                            aktifIlanSayilari[secilenVarlik.isim] = (aktifIlanSayilari[secilenVarlik.isim] || 0) + 1;
+                        }
+                    }
+                }
+            });
+            sonBotIlanZamani = simdiMs;
+        }
+
+        // Oyuncunun İlanları Kontrol Mekanizması
+        if (window.oyunAyar && window.oyunAyar.GLOBAL_BEKLEME_SURESI) {
+            let beklemeSuresiMs = window.oyunAyar.GLOBAL_BEKLEME_SURESI;
+            let satilikVarliklar = state.varliklar.filter(v => v.durum === 'ilan-aktif' && v.ilanSahibi === 'ben');
+
+            if (satilikVarliklar.length > 0) {
+                satilikVarliklar.forEach(varlik => {
+                    if (!varlik.ilanVerilisZamani) {
+                        varlik.ilanVerilisZamani = simdiMs;
+                    }
+
+                    let gecenSure = simdiMs - varlik.ilanVerilisZamani;
+                    if (gecenSure < beklemeSuresiMs) {
+                        return;
+                    }
+
+                    let satisBedeli = (satisFiyatlari && satisFiyatlari[varlik.isim]) ? satisFiyatlari[varlik.isim] : 2000000;
+                    let alabilecekBotlar = botlar.filter(b => b.nakit >= satisBedeli);
+                    let aliciBot;
+
+                    if (alabilecekBotlar.length > 0) {
+                        aliciBot = alabilecekBotlar[Math.floor(Math.random() * alabilecekBotlar.length)];
+                    } else {
+                        aliciBot = botlar[Math.floor(Math.random() * botlar.length)];
+                        aliciBot.nakit += satisBedeli + 5000000;
+                    }
+
+                    let dusulenBorc = 0;
+
+                    if (varlik.bloke && varlik.krediID && state.krediler) {
+                        let ilgiliKredi = state.krediler.find(kr => kr.id === varlik.krediID);
+
+                        if (ilgiliKredi) {
+                            dusulenBorc = ilgiliKredi.kalanBorc;
+                            state.kredi = Math.max(0, state.kredi - dusulenBorc);
+                            ilgiliKredi.kalanBorc = 0;
+                            state.krediler = state.krediler.filter(kr => kr.kalanBorc > 0);
+
+                            if (state.kredi <= 0) {
+                                state.kredi = 0;
+                                state.taksit = 0;
+                                state.krediler = [];
+                                if (Array.isArray(state.varliklar)) {
+                                    state.varliklar.forEach(item => {
+                                        item.bloke = false;
+                                        item.krediID = null;
+                                    });
+                                }
+                            } else {
+                                let katsayi = (typeof faizOranlari !== 'undefined' && faizOranlari.krediKatsayi) ? faizOranlari.krediKatsayi : 1;
+                                state.taksit = (state.kredi / 48) * katsayi;
+                            }
+                        }
+                    }
+                    let netKazanc = satisBedeli - dusulenBorc;
+
+                    aliciBot.nakit -= satisBedeli;
+                    state.nakit += netKazanc;
+                    varlik.durum = 'silinecek';
+
+                    if (!aliciBot.varliklar) aliciBot.varliklar = [];
+                    aliciBot.varliklar.push({
+                        id: Date.now() + Math.random(),
+                        isim: varlik.isim,
+                        durum: 'sahip'
+                    });
+
+                    veriDegisti = true;
+
+                    let mesaj = `Piyasa Hareketi (Süre Doldu):\n\n${aliciBot.isim}, ilanda bekleyen "${varlik.isim}" varlığını ${satisBedeli.toLocaleString()} TL ödeyerek satın aldı!`;
+                    if (dusulenBorc > 0) {
+                        mesaj += `\n\nKredi Borcu Kapandı: -${dusulenBorc.toLocaleString()} TL\nKasanıza Eklenen Net Tutar: ${netKazanc.toLocaleString()} TL`;
+                    } else {
+                        mesaj += `\nKasanıza Eklenen Tutar: ${satisBedeli.toLocaleString()} TL`;
+                    }
+                    
+                    if (typeof onayModalGoster === 'function') {
+                        onayModalGoster(mesaj, varlik);
+                    } else if (typeof modalGoster === 'function') {
+                        modalGoster(mesaj);
+                    }
+                });
+
+                state.varliklar = state.varliklar.filter(v => v.durum !== 'silinecek');
+                veriDegisti = true;
+            }
+
+            // Diğer Botların İlan Süreleri ve Satışları
+            let beklemeSuresiMsBot = window.oyunAyar.GLOBAL_BEKLEME_SURESI;
+            botlar.forEach(tekilBot => {
+                if (!tekilBot.varliklar || !Array.isArray(tekilBot.varliklar)) return;
+
+                tekilBot.varliklar.forEach(varlik => {
+                    if (varlik.durum !== 'ilan-aktif') return;
+                    if (varlik.satinAlindi || varlik.islemde || varlik.durum === 'satildi-bekliyor' || varlik.durum === 'silinecek') return; 
+
+                    if (!varlik.ilanVerilisZamani) {
+                        varlik.ilanVerilisZamani = simdiMs;
+                        return;
+                    }
+                    
+                    let gecenSure = simdiMs - varlik.ilanVerilisZamani;
+                    if (gecenSure < beklemeSuresiMsBot) return;
+
+                    let satisBedeli = (satisFiyatlari && satisFiyatlari[varlik.isim]) ? satisFiyatlari[varlik.isim] : 2000000;
+                    let alabilecekBotlar = botlar.filter(b => b.isim !== tekilBot.isim && b.nakit >= satisBedeli);
+                    let aliciBot;
+
+                    if (alabilecekBotlar.length > 0) {
+                        aliciBot = alabilecekBotlar[Math.floor(Math.random() * alabilecekBotlar.length)];
+                    } else {
+                        let digerBotlar = botlar.filter(b => b.isim !== tekilBot.isim);
+                        if (digerBotlar.length > 0) {
+                            aliciBot = digerBotlar[Math.floor(Math.random() * digerBotlar.length)];
+                            aliciBot.nakit += satisBedeli + 5000000;
+                        }
+                    }
+
+                    if (aliciBot) {
+                        aliciBot.nakit -= satisBedeli;
+                        tekilBot.nakit += satisBedeli;
+                        varlik.durum = 'satildi_isaretle';
+
+                        if (!aliciBot.varliklar) aliciBot.varliklar = [];
+                        aliciBot.varliklar.push({
+                            id: Date.now() + Math.random(),
+                            isim: varlik.isim,
+                            durum: 'sahip'
+                        });
+                        veriDegisti = true;
+                    }
+                });
+
+                tekilBot.varliklar = tekilBot.varliklar.filter(v => v.durum !== 'satildi_isaretle');
+            });
+        }
+    }
+
+    if (typeof guncelle === 'function') {
         guncelle();
     }
 
-if (typeof sonTaksitZamani === 'undefined') { sonTaksitZamani = simdiMs; } 
-
-console.log("Geçen süre (sn):", Math.floor((simdiMs - sonTaksitZamani) / 1000));
-
-// Süre dolduysa ve aktif krediler varsa
-if (simdiMs - sonTaksitZamani >= window.oyunAyarlari.taksitSuresi) {
-
-    console.log("1 dakika doldu, kredi bazlı taksit kontrolü yapılıyor...");
-
-    if (state.krediler && state.krediler.length > 0) {
-
-        let bildirimler = []; // O turda yaşanan tüm uyarıları burada biriktireceğiz
-
-        state.krediler.forEach(kr => {
-
-            if (!kr.taksitTutu) {
-                kr.taksitTutu = (kr.kalanBorc / 48) * (typeof faizOranlari !== 'undefined' ? faizOranlari.krediKatsayi : 1.25);
-            }
-            if (typeof kr.ustUsteOdenmeyen !== 'number') {
-                kr.ustUsteOdenmeyen = 0;
-            }
-
-            let taksitMiktari = kr.taksitTutu;
-
-            // --- OTOMATİK NAKİT TAMAMLAMA (DÖVİZ, ALTIN VE VADELİ KONTROLÜ) ---
-
-            if (state.nakit < taksitMiktari) {
-
-    let eksikTutar = taksitMiktari - state.nakit;
-    let donusturulenAciklama = [];
-
-    // 1. Önce Dolar bozdur
-
-    if (eksikTutar > 0 && state.dolar > 0) {
-
-        let dolarSatisFiyati = (typeof kurlar !== 'undefined' && kurlar.dolar) ? kurlar.dolar.satis : 49;
-        let dolarTlKarsiligi = state.dolar * dolarSatisFiyati;
-
-        if (dolarTlKarsiligi >= eksikTutar) {
-
-            let harcananDolar = eksikTutar / dolarSatisFiyati;
-            state.dolar -= harcananDolar;
-            state.nakit += eksikTutar;
-            donusturulenAciklama.push(`${harcananDolar.toFixed(2)} Dolar bozduruldu`);
-            eksikTutar = 0;
-        } else {
-            state.nakit += dolarTlKarsiligi;
-            eksikTutar -= dolarTlKarsiligi;
-            state.dolar = 0;
-            donusturulenAciklama.push(`Tüm Dolar varlıklarınız bozduruldu (${dolarTlKarsiligi.toLocaleString()} TL)`);
-        }
+    if (typeof ilanlariGuncelle === 'function') { 
+        ilanlariGuncelle(); 
     }
-    // 2. Sonra Euro bozdur
-
-    if (eksikTutar > 0 && state.euro > 0) {
-
-        let euroSatisFiyati = (typeof kurlar !== 'undefined' && kurlar.euro) ? kurlar.euro.satis : 54;
-        let euroTlKarsiligi = state.euro * euroSatisFiyati;
-
-        if (euroTlKarsiligi >= eksikTutar) {
-            let harcananEuro = eksikTutar / euroSatisFiyati;
-            state.euro -= harcananEuro;
-            state.nakit += eksikTutar;
-            donusturulenAciklama.push(`${harcananEuro.toFixed(2)} Euro bozduruldu`);
-            eksikTutar = 0;
-        } else {
-            state.nakit += euroTlKarsiligi;
-            eksikTutar -= euroTlKarsiligi;
-            state.euro = 0;
-            donusturulenAciklama.push(`Tüm Euro varlıklarınız bozduruldu (${euroTlKarsiligi.toLocaleString()} TL)`);
-        }
-    }
-
-    // 3. Sonra Altın bozdur
-
-    if (eksikTutar > 0 && state.altin > 0) {
-
-        let altinSatisFiyati = (typeof kurlar !== 'undefined' && kurlar.altin) ? kurlar.altin.satis : 6000;
-        let altinTlKarsiligi = state.altin * altinSatisFiyati;
-
-        if (altinTlKarsiligi >= eksikTutar) {
-            let harcananGram = eksikTutar / altinSatisFiyati;
-            state.altin -= harcananGram;
-            state.nakit += eksikTutar;
-            donusturulenAciklama.push(`${harcananGram.toFixed(2)} gram altın bozduruldu`);
-            eksikTutar = 0;
-        } else {
-            state.nakit += altinTlKarsiligi;
-            eksikTutar -= altinTlKarsiligi;
-            state.altin = 0;
-            donusturulenAciklama.push(`Tüm altınlarınız bozduruldu (${altinTlKarsiligi.toLocaleString()} TL)`);
-        }
-    }
-
-    // 4. En son Vadeli Hesaptan çek
-
-    let vadeliDeger = state.vadeli || state.vadeliHesap || 0;
-    if (eksikTutar > 0 && vadeliDeger > 0) {
-        let cekilecek = Math.min(eksikTutar, vadeliDeger);
-        if (state.vadeli !== undefined) state.vadeli -= cekilecek;
-        if (state.vadeliHesap !== undefined) state.vadeliHesap -= cekilecek;
-        state.nakit += cekilecek;
-        eksikTutar -= cekilecek;
-        donusturulenAciklama.push(`Vadeli hesabınızdan ${cekilecek.toLocaleString()} TL çekildi`);
-    }
-    if (donusturulenAciklama.length > 0) {
-        bildirimler.push(`🔄 <b>OTOMATİK TAHSİLAT:</b> Nakdiniz yetmediği için ${donusturulenAciklama.join(', ')} ve taksit ödendi.`);
-    }
-}
-
-            // SENARYO A: Nakit artık yetiyor mu?
-
-            if (state.nakit >= taksitMiktari) {
-                state.nakit -= taksitMiktari;
-                kr.kalanBorc -= taksitMiktari;
-                if (kr.kalanBorc < 0) kr.kalanBorc = 0;
-                kr.ustUsteOdenmeyen = 0;
-
-                if (kr.kalanBorc === 0) {
-        let ilgiliVarlik = state.varliklar.find(v => v.krediID === kr.id);
-        if (ilgiliVarlik) {
-            ilgiliVarlik.bloke = false; // Bloke kalktı!
-            ilgiliVarlik.krediID = null; // Bağlantıyı temizle
-            bildirimler.push(`🔓 <b>KREDİ BİTTİ:</b> Borcunuz tamamen ödendiği için <b>${ilgiliVarlik.isim}</b> üzerindeki bloke kaldırıldı!`);
-        }
-    }
-            }
-            // SENARYO B: Her şeye rağmen Nakit YETMİYOR
-            else {
-                kr.ustUsteOdenmeyen++;
-
-                // Bu krediye bağlı varlığı bulalım
-
-                let ilgiliVarlik = state.varliklar.find(v => v.krediID === kr.id && v.bloke === true);
-                let varlikAdi = ilgiliVarlik ? ilgiliVarlik.isim : "Bir varlığınız";
-
-                // Eğer 3. taksit dolduysa İCRA İŞLEMİ
-
-                if (kr.ustUsteOdenmeyen >= 3) {
-
-                    if (ilgiliVarlik) {
-
-                        let satisFiyati = (satisFiyatlari && satisFiyatlari[ilgiliVarlik.isim]) ? satisFiyatlari[ilgiliVarlik.isim] : 10000000;
-
-                        // Varlığı sistemden kaldır
-
-                        state.varliklar = state.varliklar.filter(v => v.id !== ilgiliVarlik.id);
-
-                        let artisFarki = satisFiyati - kr.kalanBorc;
-
-                        if (artisFarki > 0) {
-                            state.nakit += artisFarki;
-                        }
-
-                        // İcra bildirimini listeye ekle
-
-                        bildirimler.push(`🚨 <b>İCRA:</b> 3 dönem ödenemeyen ve alternatif hesaplardan da karşılanamayan <b>${varlikAdi}</b> haczedilerek satıldı!`);
-                    }
-                    kr.silinecek = true;
-                } else {
-                    // Normal gecikme bildirimi (1. veya 2. taksit)
-
-                    bildirimler.push(`⚠️ <b>Gecikme:</b> Yeterli likidite bulunamadığından ${varlikAdi} için taksit ödenemedi (${kr.ustUsteOdenmeyen}/3).`);
-                }
-            }
-        });
-
-        // 3. taksiti dolup icralık olan kredileri listeden uçur
-
-        state.krediler = state.krediler.filter(kr => kr.kalanBorc > 0 && !kr.silinecek);
-
-        // Eğer bu turda herhangi bir uyarı/icra olunduysa, hepsini tek pencerede göster!
-        if (bildirimler.length > 0) {
-            modalGoster(`📋 <b>DÖNEMSEL FİNANSAL RAPOR</b><br><br>` + bildirimler.join('<br><br>'));
-        }
-
-        // Genel borç ve taksitleri güncelle
-
-        state.kredi = state.krediler.reduce((toplam, kr) => toplam + kr.kalanBorc, 0);
-        state.taksit = state.krediler.reduce((toplam, kr) => toplam + (kr.taksitTutu || 0), 0);
-
-        if (state.kredi <= 0) {
-            state.kredi = 0;
-            state.taksit = 0;
-            state.krediler = [];
-        }
-    }
-    sonTaksitZamani = simdiMs;
-    guncelle();
-    veriDegisti = true;
-}
- 
-// 5. Konut Kira Gelirleri
-if (simdiMs - sonKiraZamani >= window.oyunAyarlari.kiraSuresi) {
-    let konutSayisi = state.varliklar.filter(v => v.isim === 'Konut' && v.durum === 'sahip').length;
     
-    // 🌟 state yerine doğrudan anlık global ayardan okuyoruz
-    let guncelKiraGeliri = window.oyunAyar?.konutKiraGeliri ?? state.konutKiraGeliri ?? 0;
-    let toplamKira = konutSayisi * guncelKiraGeliri;
-
-    state.nakit += toplamKira;
-    sonKiraZamani = simdiMs;
-    guncelle();
-    veriDegisti = true;
-}
-
-// 6. Şirket Günlük Gelirleri
-if (simdiMs - sonSirketKazanci >= window.oyunAyarlari.sirketKazancSuresi) {
-    
-    // 🌟 state yerine doğrudan anlık global ayardan okuyoruz
-    let guncelGunlukGelir = window.oyunAyar?.gunlukGelir ?? state.gunlukGelir ?? 800000;
-
-    state.nakit += guncelGunlukGelir;
-    sonSirketKazanci = simdiMs;
-    guncelle();
-    veriDegisti = true;
-}
-
-    // 🌟 7. EN ÖNEMLİ HAMLE: Döngü içinde parada veya varlıkta bir değişiklik olduysa sunucuya kaydet!
-
-    if (veriDegisti) {
-        portfoyuSunucuyaKaydet(state);
-    }
-
-if (typeof maksimumIlanSiniri === 'undefined') { var maksimumIlanSiniri = window.oyunAyarlari.maksimumIlanSiniri; }
-
-    // 1. Bot İşlemleri (Her 8 saniyede bir botlar varlık alır veya para kazanır)
-
-    if (typeof sonBotZamani === 'undefined') { sonBotZamani = 0; }
-
-    if (simdiMs - sonBotZamani >= window.oyunAyarlari.botHizi) {
-
-        let gercekVarliklar = Object.keys(satisFiyatlari);
-
-        for (let i = 0; i < 5; i++) {
-
-            let rastgeleBot = botlar[Math.floor(Math.random() * botlar.length)];
-
-            if (!rastgeleBot.varliklar) rastgeleBot.varliklar = [];
-
-            if (Math.random() < 0.30) {
-                rastgeleBot.nakit += Math.floor(Math.random() * 200000000) + 50000000;
-            } else {
-                let secilenUrun = gercekVarliklar[Math.floor(Math.random() * gercekVarliklar.length)];
-                let bedel = satisFiyatlari[secilenUrun];
-
-                if (rastgeleBot.nakit >= bedel) {
-                    rastgeleBot.nakit -= bedel;
-                    rastgeleBot.varliklar.push({
-                        id: Date.now() + Math.random(),
-                        isim: secilenUrun,
-                        durum: 'sahip'
-                    });
-                }
-            }
-        }
-        if (typeof zenginlerListesiniGuncelle === 'function') {
-            zenginlerListesiniGuncelle();
-        }
-        sonBotZamani = simdiMs;
-    }
-
-    // 2. Bot İlan Açma Döngüsü (Her 15 saniyede bir - Global Ürün Başına Maksimum Sınır)
-   if (typeof sonBotIlanZamani === 'undefined') { sonBotIlanZamani = 0; }
-
-    if (simdiMs - sonBotIlanZamani >= window.oyunAyarlari.botIlanHizi) {
-
-        let aktifIlanSayilari = {};
-
-        botlar.forEach(b => {
-
-            if (b.varliklar) {
-                b.varliklar.forEach(v => {
-                    if (v.durum === 'ilan-aktif') {
-                        aktifIlanSayilari[v.isim] = (aktifIlanSayilari[v.isim] || 0) + 1;
-                    }
-                });
-            }
-        });
-
-        botlar.forEach(bot => {
-
-            if (bot.varliklar && bot.varliklar.length > 0) {
-
-                let sahipVarliklar = bot.varliklar.filter(v => v.durum === 'sahip');
-
-                if (sahipVarliklar.length > 0 && Math.random() < 0.30) {
-                    let uygunVarliklar = sahipVarliklar.filter(v => {
-                    let mevcutSayi = aktifIlanSayilari[v.isim] || 0;
-                        return mevcutSayi < maksimumIlanSiniri;
-                    });
-
-                    if (uygunVarliklar.length > 0) {
-                        uygunVarliklar.sort(() => Math.random() - 0.5);
-                        let secilenVarlik = uygunVarliklar[0];
-                    
-                        secilenVarlik.durum = 'ilan-aktif';
-                        secilenVarlik.ilanSahibi = bot.isim;
-                        secilenVarlik.ilanVerilisZamani = simdiMs;
-                        aktifIlanSayilari[secilenVarlik.isim] = (aktifIlanSayilari[secilenVarlik.isim] || 0) + 1;
-                    }
-                }
-            }
-        });
-
-        sonBotIlanZamani = simdiMs;
-    }
- // 3. Senin İlanlarını Kontrol Eden Mekanizma (Garanti Satış)
-
-botlar.forEach(bot => {
-    if (!bot.varliklar || !Array.isArray(bot.varliklar)) return;
-
-    bot.varliklar.forEach(varlik => {
-        // 🔥 BOT ENGELİNİ KALDIRAN FİLTRE:
-        if (varlik.durum !== 'ilan-aktif') return;
-        if (varlik.satinAlindi || varlik.islemde) return; 
-
-        // ... geri kalan 3 günlük bekleme süresi ve bot alım kodları burada devam eder ...
-    });
-});
-
-window.ilanZamanlari = window.ilanZamanlari || {};
-let beklemeSuresiMs = window.oyunAyar.GLOBAL_BEKLEME_SURESI;
-
-let satilikVarliklar = state.varliklar.filter(v => v.durum === 'ilan-aktif' && v.ilanSahibi === 'ben');
-
-if (satilikVarliklar.length > 0) {
-    satilikVarliklar.forEach(varlik => {
-        if (!varlik.ilanVerilisZamani) {
-            varlik.ilanVerilisZamani = simdiMs;
-        }
-
-        let gecenSure = simdiMs - varlik.ilanVerilisZamani;
-        if (gecenSure < beklemeSuresiMs) {
-            return;
-        }
-
-        let satisBedeli = (satisFiyatlari && satisFiyatlari[varlik.isim]) ? satisFiyatlari[varlik.isim] : 2000000;
-        let alabilecekBotlar = botlar.filter(b => b.nakit >= satisBedeli);
-        let aliciBot;
-
-        if (alabilecekBotlar.length > 0) {
-            aliciBot = alabilecekBotlar[Math.floor(Math.random() * alabilecekBotlar.length)];
-        } else {
-            aliciBot = botlar[Math.floor(Math.random() * botlar.length)];
-            aliciBot.nakit += satisBedeli + 5000000;
-        }
-
-        let dusulenBorc = 0;
-
-        if (varlik.bloke && varlik.krediID && state.krediler) {
-            let ilgiliKredi = state.krediler.find(kr => kr.id === varlik.krediID);
-
-            if (ilgiliKredi) {
-                dusulenBorc = ilgiliKredi.kalanBorc;
-                state.kredi = Math.max(0, state.kredi - dusulenBorc);
-                ilgiliKredi.kalanBorc = 0;
-                state.krediler = state.krediler.filter(kr => kr.kalanBorc > 0);
-
-                if (state.kredi <= 0) {
-                    state.kredi = 0;
-                    state.taksit = 0;
-                    state.krediler = [];
-                    if (Array.isArray(state.varliklar)) {
-                        state.varliklar.forEach(item => {
-                            item.bloke = false;
-                            item.krediID = null;
-                        });
-                    }
-                } else {
-                    let katsayi = (typeof faizOranlari !== 'undefined' && faizOranlari.krediKatsayi) ? faizOranlari.krediKatsayi : 1;
-                    state.taksit = (state.kredi / 48) * katsayi;
-                }
-            }
-        }
-        let netKazanc = satisBedeli - dusulenBorc;
-
-        aliciBot.nakit -= satisBedeli;
-        state.nakit += netKazanc;
-        varlik.durum = 'silinecek';
-
-        if (!aliciBot.varliklar) aliciBot.varliklar = [];
-        aliciBot.varliklar.push({
-            id: Date.now() + Math.random(),
-            isim: varlik.isim,
-            durum: 'sahip'
-        });
-
-        // 🔥 KRİTİK: Verinin değiştiğini işaretliyoruz ki sunucuya kaydedilebilsin!
-        if (typeof veriDegisti !== 'undefined') {
-            veriDegisti = true;
-        }
-
-        let mesaj = `Piyasa Hareketi (Süre Doldu):\n\n${aliciBot.isim}, ilanda bekleyen "${varlik.isim}" varlığını ${satisBedeli.toLocaleString()} TL ödeyerek satın aldı!`;
-        if (dusulenBorc > 0) {
-            mesaj += `\n\nKredi Borcu Kapandı: -${dusulenBorc.toLocaleString()} TL\nKasanıza Eklenen Net Tutar: ${netKazanc.toLocaleString()} TL`;
-        } else {
-            mesaj += `\nKasanıza Eklenen Tutar: ${satisBedeli.toLocaleString()} TL`;
-        }
-        
-        if (typeof onayModalGoster === 'function') {
-            onayModalGoster(mesaj, varlik);
-        } else if (typeof modalGoster === 'function') {
-            modalGoster(mesaj);
-        }
-    });
-
-    state.varliklar = state.varliklar.filter(v => v.durum !== 'silinecek');
-    
-    // 🔥 KRİTİK: Filtreleme yapıldıktan sonra da veri değişim bayrağını tetikliyoruz
-    if (typeof veriDegisti !== 'undefined') {
-        veriDegisti = true;
-    }
-}
-// 4. DİĞER BOTLARIN İLANLARININ SÜRESİ DOLUNCA BAŞKA BOTLAR TARAFINDAN ALINMASI VE TEMİZLENMESİ
-    botlar.forEach(tekilBot => { // Burada bot yerine 'tekilBot' gibi net bir isim verelim
-        if (!tekilBot.varliklar || !Array.isArray(tekilBot.varliklar)) return;
-
-        tekilBot.varliklar.forEach(varlik => {
-            // 🔥 BOT ENGELİNİ KALDIRAN FİLTRE (Doğru yeri burası):
-            if (varlik.durum !== 'ilan-aktif') return;
-            if (varlik.satinAlindi || varlik.islemde || varlik.durum === 'satildi-bekliyor' || varlik.durum === 'silinecek') return; 
-
-            // ... geri kalan 3 günlük bekleme süresi ve bot alım kodları burada devam eder ...
-            if (!varlik.ilanVerilisZamani) {
-                varlik.ilanVerilisZamani = simdiMs;
-                return;
-            }
-            
-            let gecenSure = simdiMs - varlik.ilanVerilisZamani;
-            if (gecenSure < beklemeSuresiMs) return;
-
-            let satisBedeli = (satisFiyatlari && satisFiyatlari[varlik.isim]) ? satisFiyatlari[varlik.isim] : 2000000;
-            let alabilecekBotlar = botlar.filter(b => b.isim !== tekilBot.isim && b.nakit >= satisBedeli);
-            let aliciBot;
-
-            if (alabilecekBotlar.length > 0) {
-                aliciBot = alabilecekBotlar[Math.floor(Math.random() * alabilecekBotlar.length)];
-            } else {
-                let digerBotlar = botlar.filter(b => b.isim !== tekilBot.isim);
-                if (digerBotlar.length > 0) {
-                    aliciBot = digerBotlar[Math.floor(Math.random() * digerBotlar.length)];
-                    aliciBot.nakit += satisBedeli + 5000000;
-                }
-            }
-
-            if (aliciBot) {
-                aliciBot.nakit -= satisBedeli;
-                tekilBot.nakit += satisBedeli;
-                varlik.durum = 'satildi_isaretle';
-
-                if (!aliciBot.varliklar) aliciBot.varliklar = [];
-                aliciBot.varliklar.push({
-                    id: Date.now() + Math.random(),
-                    isim: varlik.isim,
-                    durum: 'sahip'
-                });
-            }
-        });
-
-        tekilBot.varliklar = tekilBot.varliklar.filter(v => v.durum !== 'satildi_isaretle');
-    });
-    // 5. Arayüz ve Sunucu Güncellemeleri
-  guncelle();
-
-    if (typeof ilanlariGuncelle === 'function') { ilanlariGuncelle(); }
-    
-    // Sadece veri değiştiğinde sunucuya kaydet ki arkayı boğmasın!
-    if (typeof veriDegisti !== 'undefined' && veriDegisti && typeof portfoyuSunucuyaKaydet === 'function') {
+    if (veriDegisti && typeof portfoyuSunucuyaKaydet === 'function') {
         portfoyuSunucuyaKaydet(state);
     }
 }, 3000);
-
 // --- API Rotaları ---
 
 app.get('/api/ilanlar', (req, res) => {
