@@ -1048,7 +1048,6 @@ if (veriDegisti && typeof portfoyuSunucuyaKaydet === 'function') {
         portfoyuSunucuyaKaydet(state);
     }
 });
-}, 3000);
 // --- API Rotaları ---
 
 app.get('/api/ilanlar', (req, res) => {
