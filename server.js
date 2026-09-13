@@ -1033,7 +1033,7 @@ if (oyunAyarlari && oyunAyarlari.sureler && oyunAyarlari.sureler.botIlanHizi && 
 
                 tekilBot.varliklar = tekilBot.varliklar.filter(v => v.durum !== 'satildi_isaretle');
             });
-        }
+        
     
 
     if (typeof guncelle === 'function') {
@@ -1047,6 +1047,7 @@ if (oyunAyarlari && oyunAyarlari.sureler && oyunAyarlari.sureler.botIlanHizi && 
     if (veriDegisti && typeof portfoyuSunucuyaKaydet === 'function') {
         portfoyuSunucuyaKaydet(state);
     }
+}); 
 }, 3000);
 // --- API Rotaları ---
 
