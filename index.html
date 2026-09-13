@@ -2331,8 +2331,20 @@ function varliklariGuncelleDOM() {
         `;
         vList.innerHTML += html; 
     });
-}
 
+    // Global ayar senkronizasyonu da istemci tarafında güvenle çalışır
+    let simdiMs = Date.now();
+    let veriDegisti = false;
+
+    if (typeof window !== 'undefined' && window.oyunAyar) {
+        if (window.oyunAyar.satisFiyatlari) satisFiyatlari = window.oyunAyar.satisFiyatlari;
+        if (window.oyunAyar.faizOranlari) faizOranlari = window.oyunAyar.faizOranlari;
+        if (window.oyunAyar.kurlar) kurlar = window.oyunAyar.kurlar;
+        if (window.oyunAyar.kazancTablosu) kazancTablosu = window.oyunAyar.kazancTablosu;
+        if (window.oyunAyar.yatirimMaliyetleri) yatirimMaliyetleri = window.oyunAyar.yatirimMaliyetleri;
+        if (window.oyunAyar.odemeProgrami) odemeProgrami = window.oyunAyar.odemeProgrami;
+    }
+}
 // ==========================================
 // 2. MÜŞTERİ TALEPLERİ DOM RENDER FONKSİYONU
 // ==========================================
