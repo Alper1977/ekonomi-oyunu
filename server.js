@@ -134,6 +134,9 @@ if (ayarSayisi.sayi === 0) {
     db.prepare(`INSERT OR IGNORE INTO oyun_ayarlari (id, ayarlar) VALUES (1, ?)`).run(JSON.stringify(varsayilanAyarlar));
 }
 
+const kayitliAyarlar = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
+const oyunAyarlari = kayitliAyarlar ? JSON.parse(kayitliAyarlar.ayarlar) : {};
+
 db.prepare(`CREATE TABLE IF NOT EXISTS ilanlar (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     kullanici_id INTEGER,
@@ -536,7 +539,7 @@ setInterval(async () => {
     
     // 1. Faiz İşlemi
     // 1. Faiz İşlemi
-    if (typeof sonFaizZamani !== 'undefined' && oyunAyarlari && oyunAyarlari.faizSuresi) {
+    if (typeof sonFaizZamani !== 'undefined' && oyunAyarlari && oyunAyarlari.sureler && oyunAyarlari.sureler.faizSuresi) {
         if (simdiMs - sonFaizZamani >= window.oyunAyarlari.faizSuresi) {
             state.faiz = state.vadeli * faizOranlari.vadeliGunluk;
             state.vadeli += state.faiz;
