@@ -1563,7 +1563,6 @@ app.get('/api/kullanicilar-liste', (req, res) => {
         return res.status(500).json({ basari: false, mesaj: err.message });
     }
 });
-
 io.on('connection', (socket) => {
     console.log('Bir kullanıcı socket üzerinden bağlandı:', socket.id);
 
@@ -1574,7 +1573,7 @@ io.on('connection', (socket) => {
     socket.on('disconnect', () => {
         console.log('Bir kullanıcı socket bağlantısını kesti:', socket.id);
     });
-});
+}); // <-- BU KAPANACAK
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, '0.0.0.0', () => {
@@ -1582,4 +1581,5 @@ server.listen(PORT, '0.0.0.0', () => {
 }).on('error', (err) => {
     console.error("SUNUCU AÇILAMADI HATA ŞU:", err);
 });
+
 
