@@ -23,10 +23,12 @@ app.get('/', (req, res) => {
 const db = new Database('./database.db');
 console.log("SQLite veritabanına başarıyla bağlanıldı."); 
 
-let sonKiraZamani = Date.now();
-let sonFaizZamani = Date.now();
-let sonSirketKazanci = Date.now();
-let sonTaksitZamani = Date.now();
+ sonKiraZamani = Date.now();
+ sonFaizZamani = Date.now();
+ sonSirketKazanci = Date.now();
+ sonTaksitZamani = Date.now();
+const satisFiyatlari = oyunAyarlari.satisFiyatlari || {};
+
 
 // Oturumları çakışmayı önlemek için ayrı bir veritabanında (sessions.db) saklıyoruz
 app.use(session({
@@ -259,9 +261,7 @@ if (botSayisi.sayi === 0) {
     }));
 }
 
-// Arka plan sayaçları
-sonFaizZamani = Date.now();
-sonSirketKazanci = Date.now();
+
 
 // --- 🌟 ÇEVRİMİÇİ / ÇEVRİMDIŞI AKILLI EKONOMİ MOTORU (TAM KAPSAMLI) ---
 function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
