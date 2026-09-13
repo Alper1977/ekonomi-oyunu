@@ -858,7 +858,7 @@ if (oyunAyarlari && oyunAyarlari.sureler && oyunAyarlari.sureler.sirketKazancSur
 }
        if (typeof sonBotIlanZamani === 'undefined') { sonBotIlanZamani = 0; }
 
-const simdiMs = Date.now();
+
 let maksimumIlanSiniri = (typeof oyunAyarlari !== 'undefined' && oyunAyarlari.sureler) ? oyunAyarlari.sureler.maksimumIlanSiniri : 5;
 
 if (oyunAyarlari && oyunAyarlari.sureler && oyunAyarlari.sureler.botIlanHizi && (simdiMs - sonBotIlanZamani >= oyunAyarlari.sureler.botIlanHizi)) {
