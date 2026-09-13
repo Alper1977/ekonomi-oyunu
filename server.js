@@ -589,7 +589,7 @@ setInterval(async () => {
             `;
             vList.innerHTML += html; 
         });
-    }
+    
     
     let simdiMs = Date.now();
     let veriDegisti = false;
