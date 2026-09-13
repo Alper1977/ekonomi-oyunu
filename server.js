@@ -1034,7 +1034,7 @@ if (oyunAyarlari && oyunAyarlari.sureler && oyunAyarlari.sureler.botIlanHizi && 
                 tekilBot.varliklar = tekilBot.varliklar.filter(v => v.durum !== 'satildi_isaretle');
             });
         }
-    }
+    
 
     if (typeof guncelle === 'function') {
         guncelle();
