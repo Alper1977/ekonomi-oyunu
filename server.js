@@ -490,6 +490,7 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
 
     return portfoy;
   }   
+// Her 3 saniyede bir çalışacak ana döngü
 setInterval(async () => {
     try {
         let res = await fetch('/api/oyun-ayarlari');
@@ -510,7 +511,7 @@ setInterval(async () => {
 
     // 1. Sunucudan güncel portföyü çek
     try {
-        let res = await fetch('/api/portfoy-getir'); 
+        let res = await fetch('/api/portfoy-getir');  
         let data = await res.json();
         let portfoyVerisi = data.portfoy || data;
 
@@ -535,7 +536,7 @@ setInterval(async () => {
     } catch (e) {
         // Ağ hatası
     }
-    
+}, 3000);
     
     // 1. Faiz İşlemi
     // 1. Faiz İşlemi
