@@ -832,6 +832,7 @@ if (oyunAyarlari && oyunAyarlari.sureler && oyunAyarlari.sureler.sirketKazancSur
     const simdiMs = Date.now();
 
     if (oyunAyarlari && oyunAyarlari.sureler && oyunAyarlari.sureler.botHizi && (simdiMs - sonBotZamani >= oyunAyarlari.sureler.botHizi)) {
+        let satisFiyatlari = varsayilanAyarlar.satisFiyatlari;
         let gercekVarliklar = Object.keys(satisFiyatlari);
 
         for (let i = 0; i < 5; i++) {
