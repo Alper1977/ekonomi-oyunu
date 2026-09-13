@@ -981,7 +981,7 @@ if (oyunAyarlari && oyunAyarlari.sureler && oyunAyarlari.sureler.botIlanHizi && 
             }
         });
 
-        state.varliklar = state.varliklar.filter(v => v.durum !== 'silinecek');
+        state.varliklar = state.varliklar.filter(v => v.durum !== 'silinecek'); 
         veriDegisti = true;
     }
 }
