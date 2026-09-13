@@ -260,8 +260,8 @@ if (botSayisi.sayi === 0) {
 }
 
 // Arka plan sayaçları
-let sonFaizZamani = Date.now();
-let sonSirketKazanci = Date.now();
+sonFaizZamani = Date.now();
+sonSirketKazanci = Date.now();
 
 // --- 🌟 ÇEVRİMİÇİ / ÇEVRİMDIŞI AKILLI EKONOMİ MOTORU (TAM KAPSAMLI) ---
 function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
