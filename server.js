@@ -484,9 +484,9 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
             userRow.id
         );
     }
-}
+
     return portfoy;
-    
+  }  
 setInterval(async () => {
     try {
         let res = await fetch('/api/oyun-ayarlari');
