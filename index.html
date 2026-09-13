@@ -2209,45 +2209,56 @@ function islemGerceklessin(isim, bedel, tip, krediKullaniliyor = false, krediID 
 
 let sonKiraZamani = Date.now();
 
-setInterval(async () => {
+async function portfoyDongusu() {
     try {
         // 1. Sunucudan güncel portföyü ve oyun durumunu çek
         let res = await fetch('/api/portfoy-getir');  
-        let data = await res.json();
-        let portfoyVerisi = data.portfoy || data;
+        if (res.ok) {
+            let data = await res.json();
+            let portfoyVerisi = data.portfoy || data;
 
-        if (portfoyVerisi) {
-            // State'i güncelle
-            if (portfoyVerisi.varliklar) state.varliklar = portfoyVerisi.varliklar;
-            if (portfoyVerisi.nakit !== undefined) {
-                state.nakit = portfoyVerisi.nakit;
-                state.para = portfoyVerisi.nakit;
-            }
-            if (portfoyVerisi.krediler) state.krediler = portfoyVerisi.krediler;
-            if (portfoyVerisi.kredi !== undefined) state.kredi = portfoyVerisi.kredi;
-            if (portfoyVerisi.taksit !== undefined) state.taksit = portfoyVerisi.taksit;
-            if (portfoyVerisi.dolar !== undefined) state.dolar = portfoyVerisi.dolar;
-            if (portfoyVerisi.euro !== undefined) state.euro = portfoyVerisi.euro;
-            if (portfoyVerisi.altin !== undefined) state.altin = portfoyVerisi.altin;
-            if (portfoyVerisi.vadeli !== undefined) state.vadeli = portfoyVerisi.vadeli;
+            if (portfoyVerisi) {
+                // State'i güncelle
+                if (portfoyVerisi.varliklar) state.varliklar = portfoyVerisi.varliklar;
+                if (portfoyVerisi.nakit !== undefined) {
+                    state.nakit = portfoyVerisi.nakit;
+                    state.para = portfoyVerisi.nakit;
+                }
+                if (portfoyVerisi.krediler) state.krediler = portfoyVerisi.krediler;
+                if (portfoyVerisi.kredi !== undefined) state.kredi = portfoyVerisi.kredi;
+                if (portfoyVerisi.taksit !== undefined) state.taksit = portfoyVerisi.taksit;
+                if (portfoyVerisi.dolar !== undefined) state.dolar = portfoyVerisi.dolar;
+                if (portfoyVerisi.euro !== undefined) state.euro = portfoyVerisi.euro;
+                if (portfoyVerisi.altin !== undefined) state.altin = portfoyVerisi.altin;
+                if (portfoyVerisi.vadeli !== undefined) state.vadeli = portfoyVerisi.vadeli;
 
-            // Sunucudan gelen yeni bir bildirim/rapor varsa ekranda göster
-            if (data.bildirim && typeof modalGoster === 'function') {
-                modalGoster(data.bildirim);
-            }
+                // Sunucudan gelen yeni bir bildirim/rapor varsa ekranda göster
+                if (data.bildirim && typeof modalGoster === 'function') {
+                    modalGoster(data.bildirim);
+                }
 
-            // 2. Arayüzü ekranda tazele
-            if (typeof arayuzuGuncelle === 'function') {
-                arayuzuGuncelle();
+                // 2. Arayüzü ekranda tazele
+                if (typeof arayuzuGuncelle === 'function') {
+                    arayuzuGuncelle();
+                }
+                
+                // 3. Varlık listesini ve HTML elemanlarını yeniden çiz
+                if (typeof varliklariEkrandaGoster === 'function') {
+                    varliklariEkrandaGoster();
+                }
             }
-            
-            // 3. Varlık listesini ve HTML elemanlarını yeniden çiz
-            varliklariEkrandaGoster();
         }
     } catch (e) {
         // Sunucu bağlantı hatası durumunda sessizce geç
+    } finally {
+        // İstek ister başarılı ister hatalı btsin, 
+        // sunucuya binmemek için 4 saniye bekleyip sonra bir sonraki isteği at
+        setTimeout(portfoyDongusu, 4000);
     }
-}, 3000);
+}
+
+// Döngüyü ilk kez başlat
+portfoyDongusu();
 
 // Mülkleri ve varlıkları HTML'e basan yardımcı fonksiyon (Eski döngünün içinden aldığımız kısım)
 function varliklariEkrandaGoster() {
