@@ -540,7 +540,8 @@ setInterval(async () => {
     // 1. Faiz İşlemi
     // 1. Faiz İşlemi
     if (typeof sonFaizZamani !== 'undefined' && oyunAyarlari && oyunAyarlari.sureler && oyunAyarlari.sureler.faizSuresi) {
-        if (simdiMs - sonFaizZamani >= window.oyunAyarlari.faizSuresi) {
+        const simdiMs = Date.now();
+if (simdiMs - sonFaizZamani >= oyunAyarlari.sureler.faizSuresi) {
             state.faiz = state.vadeli * faizOranlari.vadeliGunluk;
             state.vadeli += state.faiz;
             sonFaizZamani = simdiMs;
