@@ -23,6 +23,11 @@ app.get('/', (req, res) => {
 const db = new Database('./database.db');
 console.log("SQLite veritabanına başarıyla bağlanıldı."); 
 
+let sonKiraZamani = Date.now();
+let sonFaizZamani = Date.now();
+let sonSirketKazanci = Date.now();
+let sonTaksitZamani = Date.now();
+
 // Oturumları çakışmayı önlemek için ayrı bir veritabanında (sessions.db) saklıyoruz
 app.use(session({
     store: new SQLiteStore({
