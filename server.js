@@ -536,7 +536,7 @@ setInterval(async () => {
     } catch (e) {
         // Ağ hatası
     }
-}, 3000);
+
     
     // 1. Faiz İşlemi
     // 1. Faiz İşlemi
