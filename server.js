@@ -1573,7 +1573,7 @@ io.on('connection', (socket) => {
     socket.on('disconnect', () => {
         console.log('Bir kullanıcı socket bağlantısını kesti:', socket.id);
     });
-}); // <-- BU KAPANACAK
+});
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, '0.0.0.0', () => {
