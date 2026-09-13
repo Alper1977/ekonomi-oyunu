@@ -1044,10 +1044,10 @@ if (oyunAyarlari && oyunAyarlari.sureler && oyunAyarlari.sureler.botIlanHizi && 
         ilanlariGuncelle(); 
     }
     
-    if (veriDegisti && typeof portfoyuSunucuyaKaydet === 'function') {
+if (veriDegisti && typeof portfoyuSunucuyaKaydet === 'function') {
         portfoyuSunucuyaKaydet(state);
     }
-}); 
+});
 }, 3000);
 // --- API Rotaları ---
 
