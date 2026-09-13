@@ -638,7 +638,11 @@ if (simdiMs - sonFaizZamani >= oyunAyarlari.sureler.faizSuresi) {
         if (typeof guncelle === 'function') guncelle();
     }
 
-if (typeof sonTaksitZamani === 'undefined') { sonTaksitZamani = simdiMs; } 
+const simdiMs = Date.now();
+
+if (typeof sonTaksitZamani === 'undefined') { 
+    sonTaksitZamani = simdiMs; 
+}
 
 if (oyunAyarlari && oyunAyarlari.sureler && oyunAyarlari.sureler.taksitSuresi && (simdiMs - sonTaksitZamani >= oyunAyarlari.sureler.taksitSuresi)) {
         if (state.krediler && state.krediler.length > 0) {
