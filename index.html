@@ -4943,7 +4943,7 @@ function socketDinleyicileriniBaslat() {
 
     socket.off('ayarlarDegisti');
     
-    socket.on('ayarlarDegisti', (gelenVeri) => {
+socket.on('ayarlarDegisti', (gelenVeri) => {
         console.log("🔥 SUNUCUDAN GELEN HAM AYARLAR:", gelenVeri);
         if (!gelenVeri) return;
 
@@ -5004,6 +5004,16 @@ function socketDinleyicileriniBaslat() {
                 kiraEl.innerText = yeniDeger.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
             }
         }, 30);
+
+        // 🌟 EKSTRA: Admin panelindeki input kutularının içindeki değerleri de anında güncelle (Eğer açık ve inputlar varsa)
+        document.querySelectorAll('input[name], input[id]').forEach(input => {
+            let anahtar = input.name || input.id;
+            if (window.oyunAyar[anahtar] !== undefined) {
+                input.value = window.oyunAyar[anahtar];
+            } else if (window.oyunAyarlari && window.oyunAyarlari[anahtar] !== undefined) {
+                input.value = window.oyunAyarlari[anahtar];
+            }
+        });
         
         console.log("Ayar değişikliği socket üzerinden yakalandı ve arayüz anında yenilendi.");
     });
