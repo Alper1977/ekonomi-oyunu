@@ -1022,38 +1022,37 @@ async function adminAyarlariniKaydet() {
     }
 
     // 3. Sunucudan gelen sonuca göre arayüzü güncelleme
-    if (sonuc && sonuc.basari) {
-        // 1. Kendi istemcimizdeki değişkenleri anında güncelle (Socket'i bekletme)
-        window.oyunAyar = window.oyunAyar;
-        if (typeof state !== 'undefined' && state) {
-            state.gunlukGelir = Number(window.oyunAyar.gunlukGelir);
-            state.konutKiraGeliri = Number(window.oyunAyar.konutKiraGeliri);
-        }
-        
-        // Kazanç tabloları vb. lokalde varsa anında eşitle
-        if (typeof kazancTablosu !== 'undefined') kazancTablosu = window.oyunAyar.kazancTablosu;
-        if (typeof kurlar !== 'undefined') kurlar = window.oyunAyar.kurlar;
-        if (typeof faizOranlari !== 'undefined') faizOranlari = window.oyunAyar.faizOranlari;
-        if (typeof satisFiyatlari !== 'undefined') satisFiyatlari = window.oyunAyar.satisFiyatlari;
-        if (typeof yatirimMaliyetleri !== 'undefined') yatirimMaliyetleri = window.oyunAyar.yatirimMaliyetleri;
+    
+if (sonuc && sonuc.basari) {
+    // Sunucuya gönderdiğimiz veriyi veya sonucun içindekini direkt anlık işleyelim
+    window.oyunAyar = { ...window.oyunAyar, ...ayarlar, sureler: sureler };
+    window.oyunAyarlari = sureler || window.oyunAyar.sureler;
 
-        // Arayüzü manuel tetikle
-        if (typeof guncelle === 'function') guncelle();
-        if (typeof yatirimlariGuncelle === 'function') yatirimlariGuncelle();
-        if (typeof kurlariGoster === 'function') kurlariGoster();
-        if (typeof piyasayiGuncelle === 'function') piyasayiGuncelle();
+    if (typeof state !== 'undefined' && state) {
+        if (window.oyunAyar.gunlukGelir !== undefined) state.gunlukGelir = Number(window.oyunAyar.gunlukGelir);
+        if (window.oyunAyar.konutKiraGeliri !== undefined) state.konutKiraGeliri = Number(window.oyunAyar.konutKiraGeliri);
+    }
 
-        // Socket üzerinden de diğer herkese haber uçurmaya devam et
-        if (typeof socket !== 'undefined' && socket) {
-            socket.emit('adminAyariGuncelle', {
-                ayarlar: window.oyunAyar,
-                sureler: window.oyunAyarlari
-            });
-        }
+    // Ekrandaki ilgili yazı alanlarını anında manuel tetikle ki sayfa yenilemek gerekliliğini ortadan kaldırsın
+    let gunlukGelirEl = document.getElementById('gunluk-gelir') || document.getElementById('yazi-gunluk-gelir');
+    if (gunlukGelirEl && window.oyunAyar.gunlukGelir !== undefined) {
+        gunlukGelirEl.innerText = Number(window.oyunAyar.gunlukGelir).toLocaleString() + " TL";
+    }
 
-        modalGoster("✅ Ayarlar ve süreler başarıyla güncellendi ve kaydedildi!",  
-            '<button onclick="document.getElementById(\'modal-overlay\').style.display=\'none\'; changePage(\'page-mali\');">TAMAM</button>');
-    } else {
+    let kiraGelirEl = document.getElementById('konut-kira-geliri') || document.getElementById('yazi-kira-geliri') || document.getElementById('val-kira');
+    if (kiraGelirEl && window.oyunAyar.konutKiraGeliri !== undefined) {
+        kiraGelirEl.innerText = Number(window.oyunAyar.konutKiraGeliri).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' TL';
+    }
+
+    // Tüm genel güncelleme fonksiyonlarını zorla tetikle
+    if (typeof guncelle === 'function') guncelle();
+    if (typeof yatirimlariGuncelle === 'function') yatirimlariGuncelle();
+    if (typeof kurlariGoster === 'function') kurlariGoster();
+    if (typeof piyasayiGuncelle === 'function') piyasayiGuncelle();
+
+    modalGoster("✅ Ayarlar ve süreler başarıyla güncellendi ve kaydedildi!",  
+        '<button onclick="document.getElementById(\'modal-overlay\').style.display=\'none\'; changePage(\'page-mali\');">TAMAM</button>');
+} else {
         modalGoster("⚠️ Hata: " + (sonuc?.mesaj || "Bilinmeyen sunucu hatası"));
     }
 }
