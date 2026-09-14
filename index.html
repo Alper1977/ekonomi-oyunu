@@ -1034,13 +1034,15 @@ async function adminAyarlariniKaydet() {
         if (typeof satisFiyatlari !== 'undefined') satisFiyatlari = window.oyunAyar.satisFiyatlari;
         if (typeof yatirimMaliyetleri !== 'undefined') yatirimMaliyetleri = window.oyunAyar.yatirimMaliyetleri;
         
-        if (typeof socket !== 'undefined' && socket) {
+    if (typeof socket !== 'undefined' && socket) {
             socket.emit('adminAyariGuncelle', {
                 ayarlar: window.oyunAyar,
                 sureler: window.oyunAyarlari
             });
         }
 
+        await oyunAyarlariniYukle(); 
+        
         if (typeof guncelle === 'function') {
             guncelle();
         }
@@ -1050,7 +1052,7 @@ async function adminAyarlariniKaydet() {
     } else {
         modalGoster("⚠️ Hata: " + (sonuc?.mesaj || "Bilinmeyen sunucu hatası"));
     }
-}   
+}
 
 // Tek ve kusursuz oyun ayarlarını yükleme fonksiyonu
 async function oyunAyarlariniYukle() {
@@ -4871,29 +4873,22 @@ sunucudanVerileriYukle();
 
 // 2. Portföy ve verileri periyodik çeken fonksiyon (Sunucu taşıması sonrası anlık yansıma için)
 async function portfoyDongusu() {
+    if (window.ayarGuncelleniyor) return; // Eğer admin ayarları değiştiriliyorsa döngü veriyi ezmesin!
+    
     try {
-        isSyncing = true; // Sunucuya otomatik kayıt yapılmasını kilitle
-        
-        let response = await fetch('/api/portfoy-getir', {
-            method: 'GET',
-            credentials: 'include'
-        });
-        
-        if (!response.ok) throw new Error('Portföy verisi alınamadı');
-        
+        isSyncing = true;
+        let response = await fetch('/api/portfoy-getir', { credentials: 'include' });
+        if (!response.ok) return;
         let data = await response.json();
         
-        if (data) {
+        if (data && !window.ayarGuncelleniyor) {
             Object.assign(state, data);
+            guncelle();
         }
-        
-        // Arayüzü anında güncelle
-        guncelle();
-        
     } catch (error) {
-        console.error("Portföy döngüsü hatası:", error);
+        console.error("Döngü hatası:", error);
     } finally {
-        isSyncing = false; // Kilidi kaldır
+        isSyncing = false;
     }
 }
 
