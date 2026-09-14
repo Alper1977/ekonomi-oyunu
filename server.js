@@ -1059,7 +1059,7 @@ if (oyunAyarlari && oyunAyarlari.sureler && oyunAyarlari.sureler.botIlanHizi && 
 if (veriDegisti && typeof portfoyuSunucuyaKaydet === 'function') {
         portfoyuSunucuyaKaydet(state);
     }
-}, 1000);
+
 // --- API Rotaları ---
 
 app.get('/api/ilanlar', (req, res) => {
