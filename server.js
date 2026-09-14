@@ -283,19 +283,9 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
     }
 
     const gecenSure = simdi - sonGuncelleme;
-    if (gecenSure < 5000) return portfoy; // 5 saniyeden kısa süreleri pas geç
-
-    const sureler = ayarlar.sureler || {};
-    const kiraPeriyodu = sureler.kiraSuresi || 86400000;    // 24 Saat (veya ayarlanan)
-    const faizPeriyodu = sureler.faizSuresi || 86400000;    // Vadeli faiz periyodu
-    const taksitPeriyodu = sureler.taksitSuresi || 86400000; // Kredi taksit periyodu
-    const kazancTablosu = ayarlar.kazancTablosu || {};
-    const faizOranlari = ayarlar.faizOranlari || { vadeliGunluk: 0.02, krediKatsayi: 1.25 };
-    const satisFiyatlari = ayarlar.satisFiyatlari || {};
-
     let degisiklikOldu = false;
 
-    // 🌟 İNŞAAT SÜRELERİNİ 5 SANİYE KURALINA TAKILMADAN HER AN KONTROL ET
+    // 🌟 İnşaat kontrolü (Tekrar tanımlama yapmadan mevcut gecenSure üstünde çalışır)
     if (portfoy.varliklar && Array.isArray(portfoy.varliklar)) {
         portfoy.varliklar.forEach(v => {
             if (v && v.durum === 'inşaat' && v.bitis && simdi >= v.bitis) {
@@ -305,9 +295,6 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
         });
     }
 
-    const gecenSure = simdi - sonGuncelleme;
-    
-    // Eğer süre 5 saniyeden azsa VE sadece inşaat durumu değiştiyse, hemen kaydet ve çık
     if (gecenSure < 5000) {
         if (degisiklikOldu) {
             db.prepare(`UPDATE kullanicilar SET portfoy = ? WHERE id = ?`).run(
@@ -315,7 +302,7 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
                 userRow.id
             );
         }
-        return portfoy; 
+        return portfoy; // 5 saniyeden kısa süre ama inşaat bittiyse kaydedip döner
     }
 
   // --- 1. KİRA / ŞİRKET GELİRLERİ ---
