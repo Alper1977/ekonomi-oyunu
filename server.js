@@ -7,7 +7,6 @@ const Database = require('better-sqlite3');
 const fs = require('fs'); 
 
 const app = express();
-app.set('trust proxy', 1);
 const server = http.createServer(app); 
 const io = new Server(server); 
 
@@ -1471,34 +1470,60 @@ app.post('/api/giris', (req, res) => {
 });
 
 app.get('/api/aktif-kullanici', (req, res) => {
-    if (!req.session || !req.session.kullaniciId) {
+
+    if (!req.session || !req.session.kullanici) {
+
         return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı" });
+
     }
 
+
+
     try {
-        const userId = req.session.kullaniciId;
+
+        const userId = req.session.kullanici.id;
+
         const dbUser = db.prepare(`SELECT * FROM kullanicilar WHERE id = ?`).get(userId);
+
         
+
         if (!dbUser) {
+
             return res.status(404).json({ basari: false, mesaj: "Kullanıcı bulunamadı" });
+
         }
 
-        // Güncel ayarları veritabanından taze çek
+
+
         const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
+
         const ayarlar = ayarKaydi ? JSON.parse(ayarKaydi.ayarlar) : {};
+
+
 
         const portfoyObj = kullaniciEkonomisiniIslet(dbUser, ayarlar) || JSON.parse(dbUser.portfoy || '{}');
 
+        req.session.kullanici.portfoy = portfoyObj;
+
+
+
         res.json({
+
             id: dbUser.id,
+
             adsoyad: dbUser.adsoyad,
-            portfoy: portfoyObj,
-            ayarlar: ayarlar // 🌟 Admin panelinden değişen tüm ayarları buraya ekledik
+
+            portfoy: portfoyObj
+
         });
+
     } catch (err) {
+
         res.status(500).json({ basari: false, mesaj: err.message });
+
     }
-});
+
+}); 
 app.post('/api/portfoy-guncelle', (req, res) => {
     if (!req.session || !req.session.kullanici) {
         return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı!" }); 
