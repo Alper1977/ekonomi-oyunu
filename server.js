@@ -1432,7 +1432,7 @@ app.get('/api/portfoy-getir', (req, res) => {
             konutKiraGeliri: guncelPortfoy.konutKiraGeliri || 0,
             botlar: typeof botlar !== 'undefined' ? botlar : [],
             oyunAyarlari: ayarlar,
-            sureler: ayarlar.sureler || ayarlar.surelerObjesi // Senin veritabanındaki yapına göre değişebilir
+            sureler: ayarlar.sureler || {}
         });
     } catch (err) {
         console.error("Portföy getirme hatası:", err.message);
