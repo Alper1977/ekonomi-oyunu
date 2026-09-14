@@ -549,7 +549,7 @@ let veriDegisti = false;
     // 1. Faiz İşlemi
     // 1. Faiz İşlemi
     if (typeof sonFaizZamani !== 'undefined' && oyunAyarlari && oyunAyarlari.sureler && oyunAyarlari.sureler.faizSuresi) {
-      const simdiMs = Date.now();  
+       
 if (simdiMs - sonFaizZamani >= oyunAyarlari.sureler.faizSuresi) {
             state.faiz = state.vadeli * faizOranlari.vadeliGunluk;
             state.vadeli += state.faiz;
@@ -653,7 +653,7 @@ if (simdiMs - sonFaizZamani >= oyunAyarlari.sureler.faizSuresi) {
 if (typeof sonTaksitZamani === 'undefined') { 
     sonTaksitZamani = simdiMs; 
 }
-const simdiMs = Date.now();
+
 if (oyunAyarlari && oyunAyarlari.sureler && oyunAyarlari.sureler.taksitSuresi && (simdiMs - sonTaksitZamani >= oyunAyarlari.sureler.taksitSuresi)) {
         if (state.krediler && state.krediler.length > 0) {
             let bildirimler = [];
