@@ -5059,30 +5059,43 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
- setInterval(async () => {
+setInterval(async () => {
     try {
         let res = await fetch('/api/portfoy-getir');
         let data = await res.json();
         
-        // Sunucudan gelen botları tarayıcıya işliyoruz
         if (data.botlar && Array.isArray(data.botlar)) {
             window.botlar = data.botlar;
         }
 
         if (data.basari) {
+            // Çakışmayı önlemek için senkronizasyon bayrağını açıyoruz
+            window.isSyncing = true;
+
             if (data.varliklar) state.varliklar = data.varliklar;
             if (data.nakit !== undefined) {
                 state.nakit = data.nakit;
                 state.para = data.nakit;
             }
+            if (data.gunlukGelir !== undefined) state.gunlukGelir = data.gunlukGelir;
+            if (data.konutKiraGeliri !== undefined) state.konutKiraGeliri = data.konutKiraGeliri;
 
-            // Arayüzü ve listeleri yenile
-            if (typeof guncelle === 'function') guncelle();
-            if (typeof zenginlerListesiniGuncelle === 'function') zenginlerListesiniGuncelle();
-            if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
+            // Arayüzü ve listeleri güncelle
+            if (typeof guncelle === 'function') {
+                await guncelle();
+            }
+            if (typeof zenginlerListesiniGuncelle === 'function') {
+                zenginlerListesiniGuncelle();
+            }
+            if (typeof ilanlariGuncelle === 'function') {
+                ilanlariGuncelle();
+            }
+
+            // İşlem bitti, kaydetme kilidini kaldırıyoruz
+            window.isSyncing = false;
         }
     } catch (e) {
-        // Sessiz geç
+        window.isSyncing = false;
     }
 }, 2000);
     
