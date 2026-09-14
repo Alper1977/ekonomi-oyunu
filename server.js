@@ -476,6 +476,16 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
         }
     }
 
+    // --- 4. İNŞAAT SÜRELERİNİN KONTROLÜ VE TAMAMLANMASI ---
+    if (portfoy.varliklar && Array.isArray(portfoy.varliklar)) {
+        portfoy.varliklar.forEach(v => {
+            if (v && v.durum === 'inşaat' && v.bitis && simdi >= v.bitis) {
+                v.durum = 'sahip';
+                degisiklikOldu = true;
+            }
+        });
+    }
+
     // Yeni son güncelleme zamanını hesaplanan periyotlar üzerinden ileri taşı
     const tuketilenPeriyot = Math.max(kiraPeriyotSayisi, faizPeriyotSayisi, taksitPeriyotSayisi);
     const bazSureMs = Math.min(kiraPeriyodu, faizPeriyodu, taksitPeriyodu);
