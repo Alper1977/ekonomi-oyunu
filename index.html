@@ -4959,14 +4959,26 @@ if (typeof socket !== 'undefined' && socket) {
     
     socket.off('ayarlarDegisti');
     
+if (typeof socket !== 'undefined' && socket) {
+    socket.off('ayarlarDegisti');
+    
     socket.on('ayarlarDegisti', (gelenVeri) => {
         console.log("🔥 SUNUCUDAN GELEN HAM AYARLAR:", gelenVeri);
-        if (!gelenVeri || !gelenVeri.ayarlar) return;
+        if (!gelenVeri) return;
 
-        // 🌟 TÜM AYARLARI MERKEZİ OLARAK GÜNCELLE
-        window.oyunAyar = gelenVeri.ayarlar;
-        window.oyunAyarlari = gelenVeri.sureler || gelenVeri.ayarlar.sureler || {};
+        // 🌟 TÜM AYARLARI MERKEZİ OLARAK GÜNCELLE (Eksik veya farklı gelen veri yapısına karşı esnek koruma)
+        window.oyunAyar = gelenVeri.ayarlar || gelenVeri;
+        
+        // Sureler nesnesini hem gelenVeri.sureler'den hem de oyunAyar içinden güvenle alalım
+        let yeniSureler = gelenVeri.sureler || window.oyunAyar.sureler;
+        if (yeniSureler) {
+            window.oyunAyarlari = yeniSureler;
+            window.oyunAyar.sureler = yeniSureler;
+        } else {
+            window.oyunAyarlari = window.oyunAyar.sureler || window.oyunAyarlari || {};
+        }
 
+        // Global değişkenleri güvenle güncelle
         if (typeof kazancTablosu !== 'undefined') kazancTablosu = window.oyunAyar.kazancTablosu || kazancTablosu;
         if (typeof kurlar !== 'undefined') kurlar = window.oyunAyar.kurlar || kurlar;
         if (typeof faizOranlari !== 'undefined') faizOranlari = window.oyunAyar.faizOranlari || faizOranlari;
