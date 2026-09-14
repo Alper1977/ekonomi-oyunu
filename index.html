@@ -1671,55 +1671,81 @@ async function zenginlerListesiniGuncelle() {
     }
 }
 
-async function portfoyuSenkronizeEt() {
-    try {
-        let response = await fetch('/api/aktif-kullanici', { credentials: 'include' });
-        if (response.ok) {
-            let data = await response.json();
-            
-            // 🌟 Admin panelinden gelen güncel ayarları anında uygula
-            if (data.ayarlar) {
-                window.oyunAyar = data.ayarlar;
-                if (data.ayarlar.kazancTablosu) kazancTablosu = data.ayarlar.kazancTablosu;
-                if (data.ayarlar.satisFiyatlari) satisFiyatlari = data.ayarlar.satisFiyatlari;
-            }
+async function portfoyuSunucuyaKaydet(yeniPortfoy) {
 
-            if (data && data.portfoy) {
-                let userPortfoy = data.portfoy;
-                
-                state.nakit = userPortfoy.nakit !== undefined ? Number(userPortfoy.nakit) : state.nakit;
-                state.gunlukGelir = Number(userPortfoy.gunlukGelir) || state.gunlukGelir;
-                
-                let sunucuVarliklar = userPortfoy.varliklar || [];
 
-                // İşlemde olan varlıkları koruma mantığı
-                let islemdekiVarliklar = state.varliklar.filter(v => v._islemde);
 
-                state.varliklar = sunucuVarliklar.map(sunucuV => {
-                    let lokalV = islemdekiVarliklar.find(iv => iv.id == sunucuV.id || iv.id == sunucuV.varlikId);
-                    if (lokalV) return lokalV;
-                    return sunucuV;
-                });
+    if (!yeniPortfoy || typeof state === 'undefined' || !state) {
 
-                islemdekiVarliklar.forEach(iv => {
-                    if (!state.varliklar.some(v => v.id == iv.id)) {
-                        state.varliklar.push(iv);
-                    }
-                });
-                
-                // DOM elementlerini ve arayüzü anında yenile
-                if (typeof varliklariGoster === 'function') {
-                    varliklariGoster();
-                } 
-                if (typeof guncelle === 'function') {
-                    guncelle();
-                }
-            }
-        }
-    } catch (err) {
-        console.error("Portföy senkronizasyon hatası:", err);
+        return;
+
     }
-}
+
+
+
+
+
+    if (!yeniPortfoy || (typeof girisYapildi !== 'undefined' && !girisYapildi)) {
+
+        return;
+
+    }
+
+
+
+    try {
+
+        let response = await fetch('/api/portfoy-guncelle', {
+
+            method: 'POST',
+
+            headers: { 'Content-Type': 'application/json' },
+
+            credentials: 'include', // 🌟 İŞTE BU KISIM EKSİK! Oturum çerezini sunucuya gönderir.
+
+            body: JSON.stringify({ portfoy: yeniPortfoy })
+
+        });
+
+
+
+        if (response.status === 401) {
+
+            console.warn("Oturum açık değil veya düşmüş, portföy sunucuya kaydedilemedi.");
+
+            return;
+
+        }
+
+
+
+        if (!response.ok) {
+
+            console.error("Sunucu hata kodu döndürdü:", response.status);
+
+            return;
+
+        }
+
+
+
+        let sonuc = await response.json();
+
+        if (!sonuc.basari) {
+
+            console.error("Portföy kaydedilemedi:", sonuc.mesaj);
+
+        }
+
+    } catch (err) {
+
+        console.error("Sunucu bağlantı veya JSON ayrıştırma hatası:", err);
+
+    }
+
+} 
+
+
 async function portfoyuSunucuyaKaydet(yeniPortfoy) {
 
     if (!yeniPortfoy || typeof state === 'undefined' || !state) {
@@ -5121,9 +5147,7 @@ setInterval(async () => {
         window.isSyncing = false;
     }
 
-if (typeof portfoyuSenkronizeEt === 'function') {
-        portfoyuSenkronizeEt();
-    }
+
     
 }, 3000);
     
