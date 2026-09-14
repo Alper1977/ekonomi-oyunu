@@ -1392,19 +1392,20 @@ app.post('/api/profil-guncelle', (req, res) => {
 });
 
 app.get('/api/portfoy-getir', (req, res) => {
-    if (!req.session.kullaniciId) {
+    // Oturum kontrolünü orijinal çalışan haline çekiyoruz
+    if (!req.session || (!req.session.kullaniciId && !req.session.kullanici)) {
         return res.status(401).json({ basari: false, mesaj: 'Oturum açılmadı' });
     }
 
-    let user = db.prepare(`SELECT * FROM kullanicilar WHERE id = ?`).get(req.session.kullaniciId);
+    let userId = req.session.kullaniciId || (req.session.kullanici && req.session.kullanici.id);
+
+    let user = db.prepare(`SELECT * FROM kullanicilar WHERE id = ?`).get(userId);
     if (!user) {
         return res.json({ basari: false });
     }
 
-    // 🌟 Ekonomi motorunu ve inşaat kontrolünü işleten ana fonksiyon
     let guncelPortfoy = kullaniciEkonomisiniIslet(user, oyunAyarlari) || JSON.parse(user.portfoy || '{}');
 
-    // Botları da güncel çekelim
     let guncelBotlar = db.prepare(`SELECT * FROM botlar`).all().map(b => ({
         ...b,
         varliklar: JSON.parse(b.varliklar || '[]')
@@ -1418,8 +1419,7 @@ app.get('/api/portfoy-getir', (req, res) => {
         konutKiraGeliri: oyunAyarlari.konutKiraGeliri,
         botlar: guncelBotlar
     });
-}); 
-
+});
 app.get('/api/cikis', (req, res) => {
     req.session.destroy((err) => {
         if (err) {
