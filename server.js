@@ -306,6 +306,7 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
     }
 
   // --- 1. KİRA / ŞİRKET GELİRLERİ ---
+    const kiraPeriyodu = (ayarlar && ayarlar.sureler && ayarlar.sureler.kiraSuresi) ? ayarlar.sureler.kiraSuresi : 86400000;
     const kiraPeriyotSayisi = Math.floor(gecenSure / kiraPeriyodu);
     if (kiraPeriyotSayisi > 0) {
         let toplamEklenenGelir = 0;
