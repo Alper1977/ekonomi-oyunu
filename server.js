@@ -1470,60 +1470,41 @@ app.post('/api/giris', (req, res) => {
 });
 
 app.get('/api/aktif-kullanici', (req, res) => {
-
     if (!req.session || !req.session.kullanici) {
-
         return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı" });
-
     }
-
-
 
     try {
-
         const userId = req.session.kullanici.id;
-
         const dbUser = db.prepare(`SELECT * FROM kullanicilar WHERE id = ?`).get(userId);
-
         
-
         if (!dbUser) {
-
             return res.status(404).json({ basari: false, mesaj: "Kullanıcı bulunamadı" });
-
         }
 
-
-
         const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
-
         const ayarlar = ayarKaydi ? JSON.parse(ayarKaydi.ayarlar) : {};
 
-
-
         const portfoyObj = kullaniciEkonomisiniIslet(dbUser, ayarlar) || JSON.parse(dbUser.portfoy || '{}');
-
         req.session.kullanici.portfoy = portfoyObj;
 
-
+        // Botları da buradan gönderiyoruz ki istemci güncel bot listesini alabilsin
+        const guncelBotlar = db.prepare(`SELECT * FROM botlar`).all().map(b => ({
+            ...b,
+            varliklar: JSON.parse(b.varliklar || '[]')
+        }));
 
         res.json({
-
+            basari: true,
             id: dbUser.id,
-
             adsoyad: dbUser.adsoyad,
-
-            portfoy: portfoyObj
-
+            portfoy: portfoyObj,
+            botlar: guncelBotlar
         });
-
     } catch (err) {
-
         res.status(500).json({ basari: false, mesaj: err.message });
-
     }
-
-}); 
+});
 app.post('/api/portfoy-guncelle', (req, res) => {
     if (!req.session || !req.session.kullanici) {
         return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı!" }); 
