@@ -1675,36 +1675,43 @@ async function portfoyuSenkronizeEt() {
     try {
         let response = await fetch('/api/aktif-kullanici', { credentials: 'include' });
         if (response.ok) {
-            let user = await response.json();
-            if (user && user.portfoy) {
-                // Nakiti güncelle
-                state.nakit = user.portfoy.nakit !== undefined ? user.portfoy.nakit : state.nakit;
-                
-                let sunucuVarliklar = user.portfoy.varliklar || [];
+            let data = await response.json();
+            
+            // 🌟 Admin panelinden gelen güncel ayarları anında uygula
+            if (data.ayarlar) {
+                window.oyunAyar = data.ayarlar;
+                if (data.ayarlar.kazancTablosu) kazancTablosu = data.ayarlar.kazancTablosu;
+                if (data.ayarlar.satisFiyatlari) satisFiyatlari = data.ayarlar.satisFiyatlari;
+            }
 
-                // İşlemde olan (lokal olarak güncellenmiş) varlıklarımızı koruyalım
+            if (data && data.portfoy) {
+                let userPortfoy = data.portfoy;
+                
+                state.nakit = userPortfoy.nakit !== undefined ? Number(userPortfoy.nakit) : state.nakit;
+                state.gunlukGelir = Number(userPortfoy.gunlukGelir) || state.gunlukGelir;
+                
+                let sunucuVarliklar = userPortfoy.varliklar || [];
+
+                // İşlemde olan varlıkları koruma mantığı
                 let islemdekiVarliklar = state.varliklar.filter(v => v._islemde);
 
-                // Sunucudan gelen listede olup işlemde olanları koruyarak state'i güncelleyelim
                 state.varliklar = sunucuVarliklar.map(sunucuV => {
                     let lokalV = islemdekiVarliklar.find(iv => iv.id == sunucuV.id || iv.id == sunucuV.varlikId);
-                    if (lokalV) {
-                        return lokalV; // Sunucu henüz haberdar değilse lokaldeki işlem halindeki halini tut
-                    }
+                    if (lokalV) return lokalV;
                     return sunucuV;
                 });
 
-                // Sunucu listesinde olmayan ama lokalde yeni işlemde kalmış olanları da kaybetmeyelim
                 islemdekiVarliklar.forEach(iv => {
                     if (!state.varliklar.some(v => v.id == iv.id)) {
                         state.varliklar.push(iv);
                     }
                 });
                 
-                // DOM elementlerini güncelle
+                // DOM elementlerini ve arayüzü anında yenile
                 if (typeof varliklariGoster === 'function') {
                     varliklariGoster();
-                } else if (typeof guncelle === 'function') {
+                } 
+                if (typeof guncelle === 'function') {
                     guncelle();
                 }
             }
@@ -1713,7 +1720,6 @@ async function portfoyuSenkronizeEt() {
         console.error("Portföy senkronizasyon hatası:", err);
     }
 }
-
 async function portfoyuSunucuyaKaydet(yeniPortfoy) {
 
     if (!yeniPortfoy || typeof state === 'undefined' || !state) {
