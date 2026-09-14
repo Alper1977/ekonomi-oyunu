@@ -1049,19 +1049,27 @@ if (sonuc && (sonuc.basari === true || sonuc.basari == "true")) {
     if (typeof kurlariGoster === 'function') kurlariGoster();
     if (typeof piyasayiGuncelle === 'function') piyasayiGuncelle();
 
-    // Senin projedeki orijinal modalGoster nasıl çalışıyorsa onu bozmayalım:
+    // Karmaşık HTML buton parametresini kaldırıp tek parametreyle çağırıyoruz
     if (typeof modalGoster === 'function') {
-        modalGoster("✅ Ayarlar başarıyla kaydedildi!");
+        modalGoster("✅ Ayarlar ve süreler başarıyla güncellendi ve kaydedildi!");
     } else {
-        alert("✅ Ayarlar başarıyla kaydedildi!");
+        alert("✅ Ayarlar ve süreler başarıyla güncellendi ve kaydedildi!");
     }
 
+    // Modal kapandıktan veya kullanıcı gördükten sonra sayfayı yönlendirmek istiyorsan 
+    // bunu setTimeout ile güvenli yapabiliriz ya da direkt sayfayı değiştirebiliriz:
+    setTimeout(() => {
+        if (typeof changePage === 'function') {
+            changePage('page-mali');
+        }
+    }, 1500); // 1.5 saniye sonra mali sayfaya atar
+
 } else {
-    let hataMesaji = sonuc ? (sonuc.mesaj || JSON.stringify(sonuc)) : "Sunucu yanıt vermedi";
+    let hataMesaji = sonuc ? (sonuc.mesaj || JSON.stringify(sonuc)) : "Bilinmeyen sunucu hatası";
     if (typeof modalGoster === 'function') {
         modalGoster("⚠️ Hata: " + hataMesaji);
     } else {
-        alert("⚠️ Hata: " + hataMesaji);
+        modalGoster("⚠️ Hata: " + hataMesaji);
     }
 }
 }
