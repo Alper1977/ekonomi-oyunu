@@ -1619,7 +1619,7 @@ io.on('connection', (socket) => {
     socket.on('adminAyariGuncelle', (veri) => {
         io.emit('ayarlarDegisti', veri);
     });
-
+ 
     socket.on('disconnect', () => {
         console.log('Bir kullanıcı socket bağlantısını kesti:', socket.id);
     });
