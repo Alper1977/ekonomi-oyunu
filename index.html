@@ -4960,6 +4960,7 @@ if (typeof socket !== 'undefined' && socket) {
         console.log("🔥 SUNUCUDAN GELEN HAM AYARLAR:", gelenVeri);
         if (!gelenVeri || !gelenVeri.ayarlar) return;
 
+        // 🌟 TÜM AYARLARI MERKEZİ OLARAK GÜNCELLE
         window.oyunAyar = gelenVeri.ayarlar;
         window.oyunAyarlari = gelenVeri.sureler || gelenVeri.ayarlar.sureler || {};
 
@@ -4968,7 +4969,9 @@ if (typeof socket !== 'undefined' && socket) {
         if (typeof faizOranlari !== 'undefined') faizOranlari = window.oyunAyar.faizOranlari || faizOranlari;
         if (typeof satisFiyatlari !== 'undefined') satisFiyatlari = window.oyunAyar.satisFiyatlari || satisFiyatlari;
         if (typeof yatirimMaliyetleri !== 'undefined') yatirimMaliyetleri = window.oyunAyar.yatirimMaliyetleri || yatirimMaliyetleri;
-        
+        if (typeof sureler !== 'undefined') sureler = window.oyunAyarlari;
+
+        // 🌟 STATE İÇİNDEKİ GELİR PARAMETRELERİNİ ANINDA GÜNCELLE
         if (typeof state !== 'undefined' && state) {
             if (window.oyunAyar.gunlukGelir !== undefined) {
                 state.gunlukGelir = Number(window.oyunAyar.gunlukGelir);
@@ -4978,6 +4981,7 @@ if (typeof socket !== 'undefined' && socket) {
             }
         }
         
+        // 🌟 EKRANDAKİ TÜM STATİK METİN VE DEĞERLERİ ANINDA TAZELE
         let gunlukGelirEl = document.getElementById('gunluk-gelir') || document.getElementById('yazi-gunluk-gelir');
         if (gunlukGelirEl && window.oyunAyar.gunlukGelir !== undefined) {
             gunlukGelirEl.innerText = Number(window.oyunAyar.gunlukGelir).toLocaleString() + " TL";
@@ -4991,9 +4995,14 @@ if (typeof socket !== 'undefined' && socket) {
             }) + ' TL';
         }
 
+        // 🌟 OYUNUN GENEL GÜNCELLEME VE ÇİZİM FONKSİYONLARINI TETİKLE
         if (typeof guncelle === 'function') guncelle();
         if (typeof yatirimlariGuncelle === 'function') yatirimlariGuncelle();
+        if (typeof kurlariGoster === 'function') kurlariGoster();
+        if (typeof piyasayiGuncelle === 'function') piyasayiGuncelle();
+        if (typeof tabloyuGuncelle === 'function') tabloyuGuncelle();
         
+        // Eğer o an admin panel açıksa paneli de canlı güncelle
         if (typeof adminPaneliniAc === 'function' && document.getElementById('page-admin')?.style.display !== 'none') {
             adminPaneliniAc();
         }
