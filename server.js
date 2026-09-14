@@ -544,7 +544,7 @@ let veriDegisti = false;
     } catch (e) {
         // Ağ hatası
     }
-});
+
     
     // 1. Faiz İşlemi
     // 1. Faiz İşlemi
@@ -653,7 +653,7 @@ if (simdiMs - sonFaizZamani >= oyunAyarlari.sureler.faizSuresi) {
 if (typeof sonTaksitZamani === 'undefined') { 
     sonTaksitZamani = simdiMs; 
 }
-
+const simdiMs = Date.now();
 if (oyunAyarlari && oyunAyarlari.sureler && oyunAyarlari.sureler.taksitSuresi && (simdiMs - sonTaksitZamani >= oyunAyarlari.sureler.taksitSuresi)) {
         if (state.krediler && state.krediler.length > 0) {
             let bildirimler = [];
@@ -1059,7 +1059,7 @@ if (oyunAyarlari && oyunAyarlari.sureler && oyunAyarlari.sureler.botIlanHizi && 
 if (veriDegisti && typeof portfoyuSunucuyaKaydet === 'function') {
         portfoyuSunucuyaKaydet(state);
     }
-
+}, 1000);
 // --- API Rotaları ---
 
 app.get('/api/ilanlar', (req, res) => {
