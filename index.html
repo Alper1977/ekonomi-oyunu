@@ -5058,6 +5058,33 @@ window.addEventListener('DOMContentLoaded', async () => {
         changePage('page-giris-yap');
     }
 });
+
+setInterval(async () => {
+    try {
+        let res = await fetch('/api/portfoy-getir');
+        let data = await res.json();
+        let portfoyVerisi = data.portfoy || data;
+
+        if (portfoyVerisi && typeof state !== 'undefined') {
+            if (portfoyVerisi.varliklar) state.varliklar = portfoyVerisi.varliklar;
+            if (portfoyVerisi.nakit !== undefined) {
+                state.nakit = portfoyVerisi.nakit;
+                state.para = portfoyVerisi.nakit;
+            }
+            if (portfoyVerisi.krediler) state.krediler = portfoyVerisi.krediler;
+            if (portfoyVerisi.kredi !== undefined) state.kredi = portfoyVerisi.kredi;
+            if (portfoyVerisi.taksit !== undefined) state.taksit = portfoyVerisi.taksit;
+
+            if (typeof guncelle === 'function') {
+                if (typeof isSyncing !== 'undefined') isSyncing = true;
+                await guncelle();
+                if (typeof isSyncing !== 'undefined') isSyncing = false;
+            }
+        }
+    } catch (e) {
+        // Sessiz geç
+    }
+}, 2000);    
 </script>
 </body>
 </html>
