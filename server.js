@@ -497,6 +497,9 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
   }   
 // Her 3 saniyede bir çalışacak ana döngü
 setInterval(async () => {
+const simdiMs = Date.now();
+let veriDegisti = false;
+    
     try {
         let res = await fetch('/api/oyun-ayarlari');
         let sonuc = await res.json();
@@ -546,7 +549,7 @@ setInterval(async () => {
     // 1. Faiz İşlemi
     // 1. Faiz İşlemi
     if (typeof sonFaizZamani !== 'undefined' && oyunAyarlari && oyunAyarlari.sureler && oyunAyarlari.sureler.faizSuresi) {
-        const simdiMs = Date.now();
+        
 if (simdiMs - sonFaizZamani >= oyunAyarlari.sureler.faizSuresi) {
             state.faiz = state.vadeli * faizOranlari.vadeliGunluk;
             state.vadeli += state.faiz;
@@ -598,7 +601,7 @@ if (simdiMs - sonFaizZamani >= oyunAyarlari.sureler.faizSuresi) {
         }
     });
 
-    // 3. İnşaat ve Varlık Bitişleri
+   // 3. İnşaat ve Varlık Bitişleri
     let degisiklikVar = false;
 
     state.varliklar.forEach(v => {
@@ -644,7 +647,8 @@ if (simdiMs - sonFaizZamani >= oyunAyarlari.sureler.faizSuresi) {
         if (typeof guncelle === 'function') guncelle();
     }
 
-const simdiMs = Date.now();
+
+
 
 if (typeof sonTaksitZamani === 'undefined') { 
     sonTaksitZamani = simdiMs; 
@@ -829,7 +833,7 @@ if (oyunAyarlari && oyunAyarlari.sureler && oyunAyarlari.sureler.sirketKazancSur
    if (typeof botlar !== 'undefined' && Array.isArray(botlar)) {
     if (typeof sonBotZamani === 'undefined') { sonBotZamani = 0; }
 
-    const simdiMs = Date.now();
+  
 
     if (oyunAyarlari && oyunAyarlari.sureler && oyunAyarlari.sureler.botHizi && (simdiMs - sonBotZamani >= oyunAyarlari.sureler.botHizi)) {
         const satisFiyatlari = oyunAyarlari.satisFiyatlari || {};
@@ -1042,7 +1046,7 @@ if (oyunAyarlari && oyunAyarlari.sureler && oyunAyarlari.sureler.botIlanHizi && 
                 tekilBot.varliklar = tekilBot.varliklar.filter(v => v.durum !== 'satildi_isaretle');
             });
         
- let veriDegisti = false;   
+    
 
     if (typeof guncelle === 'function') {
         guncelle();
@@ -1055,7 +1059,7 @@ if (oyunAyarlari && oyunAyarlari.sureler && oyunAyarlari.sureler.botIlanHizi && 
 if (veriDegisti && typeof portfoyuSunucuyaKaydet === 'function') {
         portfoyuSunucuyaKaydet(state);
     }
-
+}, 1000);
 // --- API Rotaları ---
 
 app.get('/api/ilanlar', (req, res) => {
