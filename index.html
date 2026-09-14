@@ -5101,7 +5101,7 @@ setInterval(async () => {
         let res = await fetch('/api/portfoy-getir');
         let data = await res.json();
         
-        if (data.botlar && Array.isArray(data.botlar)) {
+        if (data.botlar && Array.isArray(data.botlar)) { 
             window.botlar = data.botlar;
         }
 
