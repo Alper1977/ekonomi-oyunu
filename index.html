@@ -1050,19 +1050,8 @@ if (sonuc && (sonuc.basari === true || sonuc.basari == "true")) {
     if (typeof piyasayiGuncelle === 'function') piyasayiGuncelle();
 
     // Karmaşık HTML buton parametresini kaldırıp tek parametreyle çağırıyoruz
-    if (typeof modalGoster === 'function') {
-        modalGoster("✅ Ayarlar ve süreler başarıyla güncellendi ve kaydedildi!");
-    } else {
-        alert("✅ Ayarlar ve süreler başarıyla güncellendi ve kaydedildi!");
-    }
-
-    // Modal kapandıktan veya kullanıcı gördükten sonra sayfayı yönlendirmek istiyorsan 
-    // bunu setTimeout ile güvenli yapabiliriz ya da direkt sayfayı değiştirebiliriz:
-    setTimeout(() => {
-        if (typeof changePage === 'function') {
-            changePage('page-mali');
-        }
-    }, 1500); // 1.5 saniye sonra mali sayfaya atar
+     modalGoster("✅ Ayarlar ve süreler başarıyla güncellendi ve kaydedildi!",  
+        '<button onclick="document.getElementById(\'modal-overlay\').style.display=\'none\'; changePage(\'page-mali\');">TAMAM</button>');
 
 } else {
     let hataMesaji = sonuc ? (sonuc.mesaj || JSON.stringify(sonuc)) : "Bilinmeyen sunucu hatası";
