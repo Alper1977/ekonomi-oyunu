@@ -4947,7 +4947,6 @@ socket.on('ayarlarDegisti', (gelenVeri) => {
         console.log("🔥 SUNUCUDAN GELEN HAM AYARLAR:", gelenVeri);
         if (!gelenVeri) return;
 
-        // Gelen veriyi güvenli bir şekilde tek bir nesnede topla (katmanları düzleştir)
         const ham = gelenVeri.ayarlar || gelenVeri;
         window.oyunAyar = { ...window.oyunAyar, ...ham };
         
@@ -4966,7 +4965,6 @@ socket.on('ayarlarDegisti', (gelenVeri) => {
         if (typeof yatirimMaliyetleri !== 'undefined') yatirimMaliyetleri = window.oyunAyar.yatirimMaliyetleri || yatirimMaliyetleri;
         if (typeof sureler !== 'undefined') sureler = window.oyunAyarlari;
 
-        // State güncellemesi
         if (typeof state !== 'undefined' && state) {
             if (window.oyunAyar.gunlukGelir !== undefined) {
                 state.gunlukGelir = Number(window.oyunAyar.gunlukGelir);
@@ -4976,7 +4974,6 @@ socket.on('ayarlarDegisti', (gelenVeri) => {
             }
         }
         
-        // DOM Yazılarını Güncelle
         let gunlukGelirEl = document.getElementById('gunluk-gelir') || document.getElementById('yazi-gunluk-gelir');
         if (gunlukGelirEl && window.oyunAyar.gunlukGelir !== undefined) {
             gunlukGelirEl.innerText = Number(window.oyunAyar.gunlukGelir).toLocaleString() + " TL";
@@ -4990,7 +4987,6 @@ socket.on('ayarlarDegisti', (gelenVeri) => {
             }) + ' TL';
         }
 
-        // Tüm arayüz güncelleme fonksiyonlarını tetikle
         if (typeof guncelle === 'function') guncelle();
         if (typeof yatirimlariGuncelle === 'function') yatirimlariGuncelle();
         if (typeof kurlariGoster === 'function') kurlariGoster();
@@ -5009,7 +5005,6 @@ socket.on('ayarlarDegisti', (gelenVeri) => {
             }
         }, 30);
 
-        // Admin panelindeki inputları da anında yenile
         document.querySelectorAll('input[name], input[id]').forEach(input => {
             let anahtar = input.name || input.id;
             if (window.oyunAyar[anahtar] !== undefined) {
