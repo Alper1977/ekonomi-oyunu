@@ -1418,7 +1418,7 @@ app.get('/api/portfoy-getir', (req, res) => {
         konutKiraGeliri: oyunAyarlari.konutKiraGeliri,
         botlar: guncelBotlar
     });
-});
+}); 
 
 app.get('/api/cikis', (req, res) => {
     req.session.destroy((err) => {
