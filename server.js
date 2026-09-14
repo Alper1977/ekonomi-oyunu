@@ -1067,9 +1067,23 @@ if (oyunAyarlari && oyunAyarlari.sureler && oyunAyarlari.sureler.botIlanHizi && 
         ilanlariGuncelle(); 
     }
     
-if (veriDegisti && typeof portfoyuSunucuyaKaydet === 'function') {
+if (veriDegisti) {
+    // 1. Oyuncu state verisini kaydet
+    db.prepare(`UPDATE oyun_state SET veri = ? WHERE id = 1`).run(JSON.stringify(state));
+
+    // 2. Botların güncel hallerini veritabanına kalıcı olarak kaydet
+    const updateBot = db.prepare(`UPDATE botlar SET nakit = ?, vadeli = ?, altin = ?, dolar = ?, euro = ?, kredi = ?, varliklar = ? WHERE id = ?`);
+    const updateManyBotlar = db.transaction((botListesi) => {
+        for (let bot of botListesi) {
+            updateBot.run(bot.nakit, bot.vadeli || 0, bot.altin || 0, bot.dolar || 0, bot.euro || 0, bot.kredi || 0, JSON.stringify(bot.varliklar), bot.id);
+        }
+    });
+    updateManyBotlar(botlar);
+
+    if (typeof portfoyuSunucuyaKaydet === 'function') {
         portfoyuSunucuyaKaydet(state);
     }
+}
 }, 1000);
 // --- API Rotaları ---
 
