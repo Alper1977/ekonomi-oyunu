@@ -4876,6 +4876,9 @@ sunucudanVerileriYukle();
 // 2. Portföy ve verileri periyodik çeken fonksiyon (Sunucu taşıması sonrası anlık yansıma için)
     let isSyncing = false;
 async function portfoyDongusu() {
+
+    if (window.ayarGuncelleniyor) return;
+    
     // Eğer admin ayarları güncelleniyorsa VEYA şu an senkronizasyon kilitliyse döngüyü tamamen atla!
     if (window.ayarGuncelleniyor || isSyncing) return; 
     
