@@ -1510,9 +1510,11 @@ app.get('/api/detayli-oyun-ayarlari', (req, res) => {
         const kayit = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
         if (kayit && kayit.ayarlar) {
             const parsedAyarlar = JSON.parse(kayit.ayarlar);
+            
+            // Veri yapısı düz (flat) olduğu için doğrudan objenin içindekileri dağıtıyoruz:
             res.json({ 
                 basari: true, 
-                oyunAyar: parsedAyarlar.oyunAyar || {},
+                oyunAyar: parsedAyarlar, // Doğrudan ana objeyi veriyoruz
                 kurlar: parsedAyarlar.kurlar || {},
                 faizOranlari: parsedAyarlar.faizOranlari || {},
                 satisFiyatlari: parsedAyarlar.satisFiyatlari || {},
