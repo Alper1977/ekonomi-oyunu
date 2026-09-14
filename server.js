@@ -23,10 +23,10 @@ app.get('/', (req, res) => {
 const db = new Database('./database.db');
 console.log("SQLite veritabanına başarıyla bağlanıldı."); 
 
- sonKiraZamani = Date.now();
- sonFaizZamani = Date.now();
- sonSirketKazanci = Date.now();
- sonTaksitZamani = Date.now();
+let sonKiraZamani = Date.now();
+let sonFaizZamani = Date.now();
+let sonSirketKazanci = Date.now();
+let sonTaksitZamani = Date.now();
 
 
 
@@ -1391,35 +1391,32 @@ app.post('/api/profil-guncelle', (req, res) => {
 });
 
 app.get('/api/portfoy-getir', (req, res) => {
-    if (!req.session || !req.session.kullanici) {
-        return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı!" });
+    if (!req.session.kullaniciId) {
+        return res.status(401).json({ basari: false, mesaj: 'Oturum açılmadı' });
     }
 
-    try {
-        const userId = req.session.kullanici.id;
-        const user = db.prepare(`SELECT * FROM kullanicilar WHERE id = ?`).get(userId);
-        
-        if (!user) {
-            return res.status(404).json({ basari: false, mesaj: "Kullanıcı bulunamadı!" });
-        }
-
-        const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
-        const ayarlar = ayarKaydi ? JSON.parse(ayarKaydi.ayarlar) : {};
-
-        const guncelPortfoy = kullaniciEkonomisiniIslet(user, ayarlar) || JSON.parse(user.portfoy || '{}');
-
-        res.json({
-            basari: true,
-            nakit: guncelPortfoy.nakit !== undefined ? guncelPortfoy.nakit : (guncelPortfoy.para || 0),
-            varliklar: guncelPortfoy.varliklar || [],
-            gunlukGelir: guncelPortfoy.gunlukGelir || 0,
-            konutKiraGeliri: guncelPortfoy.konutKiraGeliri || 0,
-            botlar: typeof botlar !== 'undefined' ? botlar : [] // 🌟 Botları buraya ekledik!
-        });
-    } catch (err) {
-        console.error("Portföy getirme hatası:", err.message);
-        res.status(500).json({ basari: false, mesaj: err.message });
+    let user = db.prepare(`SELECT * FROM kullanicilar WHERE id = ?`).get(req.session.kullaniciId);
+    if (!user) {
+        return res.json({ basari: false });
     }
+
+    // 🌟 Ekonomi motorunu ve inşaat kontrolünü işleten ana fonksiyon
+    let guncelPortfoy = kullaniciEkonomisiniIslet(user, oyunAyarlari) || JSON.parse(user.portfoy || '{}');
+
+    // Botları da güncel çekelim
+    let guncelBotlar = db.prepare(`SELECT * FROM botlar`).all().map(b => ({
+        ...b,
+        varliklar: JSON.parse(b.varliklar || '[]')
+    }));
+
+    res.json({
+        basari: true,
+        nakit: guncelPortfoy.nakit,
+        varliklar: guncelPortfoy.varliklar,
+        gunlukGelir: guncelPortfoy.gunlukGelir || oyunAyarlari.gunlukGelir,
+        konutKiraGeliri: oyunAyarlari.konutKiraGeliri,
+        botlar: guncelBotlar
+    });
 });
 
 app.get('/api/cikis', (req, res) => {
