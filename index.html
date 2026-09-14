@@ -2193,41 +2193,7 @@ function islemGerceklessin(isim, bedel, tip, krediKullaniliyor = false, krediID 
         portfoyuSunucuyaKaydet(state);
     }
 }
-
-// Sunucu senkronizasyon durumunu takip eden bayrak (flag)
-let isSyncing = false;
-
-// ==========================================
-// 1. DÜZENLENEN PORTFÖY DÖNGÜSÜ
-// ==========================================
-async function portfoyDongusu() {
-    try {
-        isSyncing = true; // Senkronizasyon başladı, sunucuya otomatik kayıt yapılmasını kilitle
-        
-        let response = await fetch('/api/portfoy-getir', {
-            method: 'GET',
-            credentials: 'include'
-        });
-        
-        if (!response.ok) throw new Error('Portföy verisi alınamadı');
-        
-        let data = await response.json();
-        
-        // Gelen veriyi state'e işle (projenin yapısına göre buradaki atama değişiklik gösterebilir)
-        if (data) {
-            Object.assign(state, data);
-        }
-        
-        // Arayüzü güncelle (Bu esnada isSyncing true olduğu için sunucuya geri kayıt atılmayacak)
-        guncelle();
-        
-    } catch (error) {
-        console.error("Portföy döngüsü hatası:", error);
-    } finally {
-        isSyncing = false; // İşlem bitti, kilidi kaldır
-    }
-}
-    
+   
 // Mülkleri ve varlıkları HTML'e basan yardımcı fonksiyon (Eski döngünün içinden aldığımız kısım)
 function varliklariEkrandaGoster() {
     let vList = document.getElementById('varliklar-listesi');
@@ -4952,75 +4918,107 @@ async function sunucudanVerileriYukle() {
 // İlk çağrı
 sunucudanVerileriYukle();
 
-// 3. Socket dinleyicilerini başlatan ana fonksiyon
-function socketDinleyicileriniBaslat() {
-    if (typeof socket !== 'undefined' && socket) {
-        socket.off('ayarlarDegisti');
+// 2. Portföy ve verileri periyodik çeken fonksiyon (Sunucu taşıması sonrası anlık yansıma için)
+async function portfoyDongusu() {
+    try {
+        isSyncing = true; // Sunucuya otomatik kayıt yapılmasını kilitle
         
-        socket.on('ayarlarDegisti', (gelenVeri) => {
-            console.log("🔥 SUNUCUDAN GELEN HAM AYARLAR:", gelenVeri);
-            if (!gelenVeri) return;
-
-            window.oyunAyar = gelenVeri.ayarlar || gelenVeri;
-            
-            let yeniSureler = gelenVeri.sureler || window.oyunAyar.sureler;
-            if (yeniSureler) {
-                window.oyunAyarlari = yeniSureler;
-                window.oyunAyar.sureler = yeniSureler;
-            } else {
-                window.oyunAyarlari = window.oyunAyar.sureler || window.oyunAyarlari || {};
-            }
-
-            if (typeof kazancTablosu !== 'undefined') kazancTablosu = window.oyunAyar.kazancTablosu || kazancTablosu;
-            if (typeof kurlar !== 'undefined') kurlar = window.oyunAyar.kurlar || kurlar;
-            if (typeof faizOranlari !== 'undefined') faizOranlari = window.oyunAyar.faizOranlari || faizOranlari;
-            if (typeof satisFiyatlari !== 'undefined') satisFiyatlari = window.oyunAyar.satisFiyatlari || satisFiyatlari;
-            if (typeof yatirimMaliyetleri !== 'undefined') yatirimMaliyetleri = window.oyunAyar.yatirimMaliyetleri || yatirimMaliyetleri;
-            if (typeof sureler !== 'undefined') sureler = window.oyunAyarlari;
-
-            if (typeof state !== 'undefined' && state) {
-                if (window.oyunAyar.gunlukGelir !== undefined) {
-                    state.gunlukGelir = Number(window.oyunAyar.gunlukGelir);
-                }
-                if (window.oyunAyar.konutKiraGeliri !== undefined) {
-                    state.konutKiraGeliri = Number(window.oyunAyar.konutKiraGeliri);
-                }
-            }
-            
-            let gunlukGelirEl = document.getElementById('gunluk-gelir') || document.getElementById('yazi-gunluk-gelir');
-            if (gunlukGelirEl && window.oyunAyar.gunlukGelir !== undefined) {
-                gunlukGelirEl.innerText = Number(window.oyunAyar.gunlukGelir).toLocaleString() + " TL";
-            }
-
-            let kiraGelirEl = document.getElementById('konut-kira-geliri') || document.getElementById('yazi-kira-geliri') || document.getElementById('val-kira');
-            if (kiraGelirEl && window.oyunAyar.konutKiraGeliri !== undefined) {
-                kiraGelirEl.innerText = Number(window.oyunAyar.konutKiraGeliri).toLocaleString('tr-TR', { 
-                    minimumFractionDigits: 2, 
-                    maximumFractionDigits: 2 
-                }) + ' TL';
-            }
-
-            if (typeof guncelle === 'function') guncelle();
-            if (typeof yatirimlariGuncelle === 'function') yatirimlariGuncelle();
-            if (typeof kurlariGoster === 'function') kurlariGoster();
-            if (typeof piyasayiGuncelle === 'function') piyasayiGuncelle();
-            if (typeof tabloyuGuncelle === 'function') tabloyuGuncelle();
-            
-            if (typeof adminPaneliniAc === 'function' && document.getElementById('page-admin')?.style.display !== 'none') {
-                adminPaneliniAc();
-            }
-
-            setTimeout(() => {
-                let kiraEl = document.getElementById('val-kira');
-                if (kiraEl && window.oyunAyar && window.oyunAyar.konutKiraGeliri !== undefined) {
-                    let yeniDeger = Number(window.oyunAyar.konutKiraGeliri);
-                    kiraEl.innerText = yeniDeger.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
-                }
-            }, 30);
-            
-            console.log("Ayar değişikliği socket üzerinden yakalandı ve arayüz anında yenilendi.");
+        let response = await fetch('/api/portfoy-getir', {
+            method: 'GET',
+            credentials: 'include'
         });
+        
+        if (!response.ok) throw new Error('Portföy verisi alınamadı');
+        
+        let data = await response.json();
+        
+        if (data) {
+            Object.assign(state, data);
+        }
+        
+        // Arayüzü anında güncelle
+        guncelle();
+        
+    } catch (error) {
+        console.error("Portföy döngüsü hatası:", error);
+    } finally {
+        isSyncing = false; // Kilidi kaldır
     }
+}
+
+// 3. Socket dinleyicilerini başlatan fonksiyon (Admin veya sunucu ayar değiştirdiğinde anında yakalar)
+function socketDinleyicileriniBaslat() {
+    if (typeof socket === 'undefined' || !socket) {
+        setTimeout(socketDinleyicileriniBaslat, 1000);
+        return;
+    }
+
+    socket.off('ayarlarDegisti');
+    
+    socket.on('ayarlarDegisti', (gelenVeri) => {
+        console.log("🔥 SUNUCUDAN GELEN HAM AYARLAR:", gelenVeri);
+        if (!gelenVeri) return;
+
+        window.oyunAyar = gelenVeri.ayarlar || gelenVeri;
+        
+        let yeniSureler = gelenVeri.sureler || window.oyunAyar.sureler;
+        if (yeniSureler) {
+            window.oyunAyarlari = yeniSureler;
+            window.oyunAyar.sureler = yeniSureler;
+        } else {
+            window.oyunAyarlari = window.oyunAyar.sureler || window.oyunAyarlari || {};
+        }
+
+        if (typeof kazancTablosu !== 'undefined') kazancTablosu = window.oyunAyar.kazancTablosu || kazancTablosu;
+        if (typeof kurlar !== 'undefined') kurlar = window.oyunAyar.kurlar || kurlar;
+        if (typeof faizOranlari !== 'undefined') faizOranlari = window.oyunAyar.faizOranlari || faizOranlari;
+        if (typeof satisFiyatlari !== 'undefined') satisFiyatlari = window.oyunAyar.satisFiyatlari || satisFiyatlari;
+        if (typeof yatirimMaliyetleri !== 'undefined') yatirimMaliyetleri = window.oyunAyar.yatirimMaliyetleri || yatirimMaliyetleri;
+        if (typeof sureler !== 'undefined') sureler = window.oyunAyarlari;
+
+        if (typeof state !== 'undefined' && state) {
+            if (window.oyunAyar.gunlukGelir !== undefined) {
+                state.gunlukGelir = Number(window.oyunAyar.gunlukGelir);
+            }
+            if (window.oyunAyar.konutKiraGeliri !== undefined) {
+                state.konutKiraGeliri = Number(window.oyunAyar.konutKiraGeliri);
+            }
+        }
+        
+        let gunlukGelirEl = document.getElementById('gunluk-gelir') || document.getElementById('yazi-gunluk-gelir');
+        if (gunlukGelirEl && window.oyunAyar.gunlukGelir !== undefined) {
+            gunlukGelirEl.innerText = Number(window.oyunAyar.gunlukGelir).toLocaleString() + " TL";
+        }
+
+        let kiraGelirEl = document.getElementById('konut-kira-geliri') || document.getElementById('yazi-kira-geliri') || document.getElementById('val-kira');
+        if (kiraGelirEl && window.oyunAyar.konutKiraGeliri !== undefined) {
+            kiraGelirEl.innerText = Number(window.oyunAyar.konutKiraGeliri).toLocaleString('tr-TR', { 
+                minimumFractionDigits: 2, 
+                maximumFractionDigits: 2 
+            }) + ' TL';
+        }
+
+        // Tüm arayüz güncelleme fonksiyonlarını tetikle
+        if (typeof guncelle === 'function') guncelle();
+        if (typeof yatirimlariGuncelle === 'function') yatirimlariGuncelle();
+        if (typeof kurlariGoster === 'function') kurlariGoster();
+        if (typeof piyasayiGuncelle === 'function') piyasayiGuncelle();
+        if (typeof tabloyuGuncelle === 'function') tabloyuGuncelle();
+        
+        if (typeof adminPaneliniAc === 'function' && document.getElementById('page-admin')?.style.display !== 'none') {
+            adminPaneliniAc();
+        }
+
+        setTimeout(() => {
+            let kiraEl = document.getElementById('val-kira');
+            if (kiraEl && window.oyunAyar && window.oyunAyar.konutKiraGeliri !== undefined) {
+                let yeniDeger = Number(window.oyunAyar.konutKiraGeliri);
+                kiraEl.innerText = yeniDeger.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
+            }
+        }, 30);
+        
+        console.log("Ayar değişikliği socket üzerinden yakalandı ve arayüz anında yenilendi.");
+    });
 }
 
 // 4. Sayfa yüklenme kontrolü ve döngülerin başlatılması
@@ -5076,8 +5074,11 @@ window.addEventListener('DOMContentLoaded', async () => {
                     }
                 }
 
-                // Socket dinleyicisini burada güvenle tetikliyoruz
+                // Socket dinleyicisini ve portföy döngüsünü burada başlatıyoruz
                 socketDinleyicileriniBaslat();
+                
+                // Eğer portföy döngüsünü periyodik çalıştırmak istiyorsan (örneğin her 1 saniyede bir):
+                setInterval(portfoyDongusu, 1000);
 
                 changePage('page-mali');
                 guncelle(); 
@@ -5103,7 +5104,6 @@ window.addEventListener('DOMContentLoaded', async () => {
         changePage('page-giris-yap');
     }
 });
-
 </script>
 </body>
 </html>
