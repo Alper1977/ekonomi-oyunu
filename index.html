@@ -5094,25 +5094,21 @@ window.addEventListener('DOMContentLoaded', async () => {
 });
 
 setInterval(async () => {
+    // Eğer kullanıcı şu an bir modal (açılır pencere) dolduruyorsa veya inputa yazı yazıyorsa çakışmayı önle
     if (window.isSyncing) return;
 
     try {
         let res = await fetch('/api/portfoy-getir');
         let data = await res.json();
         
+        if (data.botlar && Array.isArray(data.botlar)) {
+            window.botlar = data.botlar;
+        }
+
         if (data.basari) {
             window.isSyncing = true;
 
-            // Botları global değişkene ata ve varsa ekrandaki fonksiyonu tetikle
-            if (data.botlar && Array.isArray(data.botlar)) {
-                window.botlar = data.botlar;
-                if (typeof botlariGoster === 'function') {
-                    botlariGoster();
-                } else if (typeof zenginlerListesiniGuncelle === 'function') {
-                    zenginlerListesiniGuncelle();
-                }
-            }
-
+            // State değerlerini taze verilerle güncelle
             if (data.varliklar && Array.isArray(data.varliklar)) {
                 state.varliklar = data.varliklar;
             }
@@ -5123,14 +5119,24 @@ setInterval(async () => {
             if (data.gunlukGelir !== undefined) state.gunlukGelir = data.gunlukGelir;
             if (data.konutKiraGeliri !== undefined) state.konutKiraGeliri = data.konutKiraGeliri;
 
+            // 🌟 SAYFAYI YENİLEMEDEN DOM'U CANLI GÜNCELLEYEN FONKSİYONLAR
+            
+            // 1. Varlıkları ve inşaatları ekranda güncelle
             if (typeof varliklariGuncelleDOM === 'function') {
                 varliklariGuncelleDOM();
             }
 
+            // 2. Nakit para, gelir ve genel arayüz yazılarını güncelle
             if (typeof guncelle === 'function') {
                 await guncelle();
             }
 
+            // 3. Zenginler listesini (sıralamayı) canlı güncelle
+            if (typeof zenginlerListesiniGuncelle === 'function') {
+                zenginlerListesiniGuncelle();
+            }
+
+            // 4. İlanları ve piyasayı canlı güncelle
             if (typeof ilanlariGuncelle === 'function') {
                 ilanlariGuncelle();
             }
