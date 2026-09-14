@@ -1026,41 +1026,37 @@ async function adminAyarlariniKaydet() {
 console.log("Sunucudan gelen sonuc:", sonuc); // Bakalım basari true mu dönüyor?
 
 if (sonuc && (sonuc.basari === true || sonuc.basari == "true")) {
-    window.oyunAyar = { ...window.oyunAyar, ...ayarlar, sureler: sureler };
-    window.oyunAyarlari = sureler || window.oyunAyar.sureler;
+        window.oyunAyar = { ...window.oyunAyar, ...ayarlar, sureler: sureler };
+        window.oyunAyarlari = sureler || window.oyunAyar.sureler;
 
-    if (typeof state !== 'undefined' && state) {
-        if (window.oyunAyar.gunlukGelir !== undefined) state.gunlukGelir = Number(window.oyunAyar.gunlukGelir);
-        if (window.oyunAyar.konutKiraGeliri !== undefined) state.konutKiraGeliri = Number(window.oyunAyar.konutKiraGeliri);
-    }
+        if (typeof state !== 'undefined' && state) {
+            if (window.oyunAyar.gunlukGelir !== undefined) state.gunlukGelir = Number(window.oyunAyar.gunlukGelir);
+            if (window.oyunAyar.konutKiraGeliri !== undefined) state.konutKiraGeliri = Number(window.oyunAyar.konutKiraGeliri);
+        }
 
-    let gunlukGelirEl = document.getElementById('gunluk-gelir') || document.getElementById('yazi-gunluk-gelir');
-    if (gunlukGelirEl && window.oyunAyar.gunlukGelir !== undefined) {
-        gunlukGelirEl.innerText = Number(window.oyunAyar.gunlukGelir).toLocaleString() + " TL";
-    }
+        let gunlukGelirEl = document.getElementById('gunluk-gelir') || document.getElementById('yazi-gunluk-gelir');
+        if (gunlukGelirEl && window.oyunAyar.gunlukGelir !== undefined) {
+            gunlukGelirEl.innerText = Number(window.oyunAyar.gunlukGelir).toLocaleString() + " TL";
+        }
 
-    let kiraGelirEl = document.getElementById('konut-kira-geliri') || document.getElementById('yazi-kira-geliri') || document.getElementById('val-kira');
-    if (kiraGelirEl && window.oyunAyar.konutKiraGeliri !== undefined) {
-        kiraGelirEl.innerText = Number(window.oyunAyar.konutKiraGeliri).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' TL';
-    }
+        let kiraGelirEl = document.getElementById('konut-kira-geliri') || document.getElementById('yazi-kira-geliri') || document.getElementById('val-kira');
+        if (kiraGelirEl && window.oyunAyar.konutKiraGeliri !== undefined) {
+            kiraGelirEl.innerText = Number(window.oyunAyar.konutKiraGeliri).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' TL';
+        }
 
-    if (typeof guncelle === 'function') guncelle();
-    if (typeof yatirimlariGuncelle === 'function') yatirimlariGuncelle();
-    if (typeof kurlariGoster === 'function') kurlariGoster();
-    if (typeof piyasayiGuncelle === 'function') piyasayiGuncelle();
+        if (typeof guncelle === 'function') guncelle();
+        if (typeof yatirimlariGuncelle === 'function') yatirimlariGuncelle();
+        if (typeof kurlariGoster === 'function') kurlariGoster();
+        if (typeof piyasayiGuncelle === 'function') piyasayiGuncelle();
 
-    // Karmaşık HTML buton parametresini kaldırıp tek parametreyle çağırıyoruz
-     modalGoster("✅ Ayarlar ve süreler başarıyla güncellendi ve kaydedildi!",  
-        '<button onclick="document.getElementById(\'modal-overlay\').style.display=\'none\'; changePage(\'page-mali\');">TAMAM</button>');
+        modalGoster("✅ Ayarlar ve süreler başarıyla güncellendi ve kaydedildi!",  
+            '<button onclick="document.getElementById(\'modal-overlay\').style.display=\'none\'; changePage(\'page-mali\');">TAMAM</button>');
 
-} else {
-    let hataMesaji = sonuc ? (sonuc.mesaj || JSON.stringify(sonuc)) : "Bilinmeyen sunucu hatası";
-    if (typeof modalGoster === 'function') {
-        modalGoster("⚠️ Hata: " + hataMesaji);
     } else {
+        let hataMesaji = sonuc ? (sonuc.mesaj || JSON.stringify(sonuc)) : "Bilinmeyen sunucu hatası";
         modalGoster("⚠️ Hata: " + hataMesaji);
     }
-}
+
 }
 
 // Tek ve kusursuz oyun ayarlarını yükleme fonksiyonu
