@@ -1,4 +1,5 @@
 const express = require('express');
+app.set('trust proxy', 1);
 const http = require('http'); 
 const { Server } = require('socket.io'); 
 const session = require('express-session');
