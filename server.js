@@ -1481,6 +1481,7 @@ app.get('/api/aktif-kullanici', (req, res) => {
             return res.status(404).json({ basari: false, mesaj: "Kullanıcı bulunamadı" });
         }
 
+        // Güncel ayarları veritabanından taze çek
         const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
         const ayarlar = ayarKaydi ? JSON.parse(ayarKaydi.ayarlar) : {};
 
@@ -1489,13 +1490,13 @@ app.get('/api/aktif-kullanici', (req, res) => {
         res.json({
             id: dbUser.id,
             adsoyad: dbUser.adsoyad,
-            portfoy: portfoyObj
+            portfoy: portfoyObj,
+            ayarlar: ayarlar // 🌟 Admin panelinden değişen tüm ayarları buraya ekledik
         });
     } catch (err) {
         res.status(500).json({ basari: false, mesaj: err.message });
     }
 });
-
 app.post('/api/portfoy-guncelle', (req, res) => {
     if (!req.session || !req.session.kullanici) {
         return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı!" }); 
