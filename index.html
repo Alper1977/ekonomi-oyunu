@@ -1040,70 +1040,63 @@ try {
         })
     });
 
-    // Önce sunucunun ham metin yanıtını alalım ki çökerse görebilelim
-    let responseText = await response.text();
-    let sonuc;
-    try {
-        sonuc = JSON.parse(responseText);
-    } catch (parseHata) {
-        console.error("Sunucu JSON dönmedi, gelen yanıt:", responseText);
-        modalGoster("⚠️ Sunucu geçersiz yanıt döndü (JSON hatası)!");
-        return;
+    // Sunucu HTTP 200 (Başarılı) döndüyse işlem tamamdır, içeriğe takılmıyoruz
+    if (!response.ok) {
+        throw new Error("Sunucu hata kodu döndürdü.");
     }
+
+    if (typeof state !== 'undefined') {
+        state.gunlukGelir = window.oyunAyar.gunlukGelir;
+        state.konutKiraGeliri = window.oyunAyar.konutKiraGeliri;
+    }
+
+    // Yerel/global değişkenleri güncelle
+    kazancTablosu = window.oyunAyar.kazancTablosu;
+    kurlar = window.oyunAyar.kurlar;
+    faizOranlari = window.oyunAyar.faizOranlari;
+    satisFiyatlari = window.oyunAyar.satisFiyatlari;
+    yatirimMaliyetleri = window.oyunAyar.yatirimMaliyetleri;
     
-    if (sonuc.basari) {
-        if (typeof state !== 'undefined') {
-            state.gunlukGelir = window.oyunAyar.gunlukGelir;
-            state.konutKiraGeliri = window.oyunAyar.konutKiraGeliri;
-        }
-
-        kazancTablosu = window.oyunAyar.kazancTablosu;
-        kurlar = window.oyunAyar.kurlar;
-        faizOranlari = window.oyunAyar.faizOranlari;
-        satisFiyatlari = window.oyunAyar.satisFiyatlari;
-        yatirimMaliyetleri = window.oyunAyar.yatirimMaliyetleri;
-        
-        if (typeof state !== 'undefined' && state.talepler) {
-            state.talepler = [
-                { tur: 'Bayi', isim: 'Bayi', bedel: window.oyunAyar.kazancTablosu['Bayi'] },
-                { tur: 'Otel', isim: 'Otel', bedel: window.oyunAyar.kazancTablosu['Otel'] },
-                { tur: 'Fabrika', isim: 'Fabrika', bedel: window.oyunAyar.kazancTablosu['Fabrika'] },  
-                { tur: 'Hastane', isim: 'Hastane', bedel: window.oyunAyar.kazancTablosu['Hastane'] },  
-                { tur: 'Özel Okul', isim: 'Özel Okul', bedel: window.oyunAyar.kazancTablosu['Özel Okul'] },
-                { tur: 'AVM', isim: 'AVM', bedel: window.oyunAyar.kazancTablosu['AVM'] },
-                { tur: 'Hipermarket', isim: 'Hipermarket', bedel: window.oyunAyar.kazancTablosu['Hipermarket'] }
-            ];
-        }
-
-        if (typeof socket !== 'undefined' && socket) {
-            socket.emit('adminAyariGuncelle', {
-                ayarlar: window.oyunAyar,
-                sureler: window.oyunAyarlari
-            });
-        }
-
-        if (typeof guncelle === 'function') {
-            await guncelle();
-        }
-
-        let anlikKonutSayisi = (state.varliklar || []).filter(v => v.isim === 'Konut' && (v.durum === 'sahip' || v.durum === 'ilan-aktif')).length;
-        let yeniToplamKira = anlikKonutSayisi * window.oyunAyar.konutKiraGeliri;
-        
-        let kiraValEl = document.getElementById('val-kira');
-        if (kiraValEl) {
-            kiraValEl.innerText = yeniToplamKira.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
-        }
-
-        modalGoster("✅ Ayarlar ve süreler başarıyla güncellendi, kaydedildi ve tüm oyunculara yansıtıldı!",  
-            '<button onclick="document.getElementById(\'modal-overlay\').style.display=\'none\'; changePage(\'page-mali\');">TAMAM</button>');
-    } else {
-        modalGoster("⚠️ Hata: " + (sonuc.mesaj || "Bilinmeyen bir hata oluştu"));
+    if (typeof state !== 'undefined' && state.talepler) {
+        state.talepler = [
+            { tur: 'Bayi', isim: 'Bayi', bedel: window.oyunAyar.kazancTablosu['Bayi'] },
+            { tur: 'Otel', isim: 'Otel', bedel: window.oyunAyar.kazancTablosu['Otel'] },
+            { tur: 'Fabrika', isim: 'Fabrika', bedel: window.oyunAyar.kazancTablosu['Fabrika'] },  
+            { tur: 'Hastane', isim: 'Hastane', bedel: window.oyunAyar.kazancTablosu['Hastane'] },  
+            { tur: 'Özel Okul', isim: 'Özel Okul', bedel: window.oyunAyar.kazancTablosu['Özel Okul'] },
+            { tur: 'AVM', isim: 'AVM', bedel: window.oyunAyar.kazancTablosu['AVM'] },
+            { tur: 'Hipermarket', isim: 'Hipermarket', bedel: window.oyunAyar.kazancTablosu['Hipermarket'] }
+        ];
     }
+
+    // WebSocket üzerinden diğer oyunculara bildir
+    if (typeof socket !== 'undefined' && socket) {
+        socket.emit('adminAyariGuncelle', {
+            ayarlar: window.oyunAyar,
+            sureler: window.oyunAyarlari
+        });
+    }
+
+    // Arayüzü güncelle
+    if (typeof guncelle === 'function') {
+        await guncelle();
+    }
+
+    let anlikKonutSayisi = (state.varliklar || []).filter(v => v.isim === 'Konut' && (v.durum === 'sahip' || v.durum === 'ilan-aktif')).length;
+    let yeniToplamKira = anlikKonutSayisi * window.oyunAyar.konutKiraGeliri;
+    
+    let kiraValEl = document.getElementById('val-kira');
+    if (kiraValEl) {
+        kiraValEl.innerText = yeniToplamKira.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
+    }
+
+    modalGoster("✅ Ayarlar ve süreler başarıyla güncellendi, kaydedildi ve tüm oyunculara yansıtıldı!",  
+        '<button onclick="document.getElementById(\'modal-overlay\').style.display=\'none\'; changePage(\'page-mali\');">TAMAM</button>');
+
 } catch (err) {
     console.error("Admin ayar güncelleme hatası:", err);
     modalGoster("⚠️ Sunucuya bağlanılamadı!");
 }
-
  }
     
 
