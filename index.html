@@ -4954,6 +4954,9 @@ sunucudanVerileriYukle();
 
 // 3. Socket dinleyicisi (Anlık ayar güncelleme köprüsü)
 if (typeof socket !== 'undefined' && socket) {
+
+
+    
     socket.off('ayarlarDegisti');
     
     socket.on('ayarlarDegisti', (gelenVeri) => {
