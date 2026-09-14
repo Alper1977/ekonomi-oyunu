@@ -4878,7 +4878,8 @@ sunucudanVerileriYukle();
 
 // 2. Portföy ve verileri periyodik çeken fonksiyon (Sunucu taşıması sonrası anlık yansıma için)
 async function portfoyDongusu() {
-    if (window.ayarGuncelleniyor) return; // Eğer admin ayarları değiştiriliyorsa döngü veriyi ezmesin!
+    // Eğer admin ayarları güncelleniyorsa VEYA şu an senkronizasyon kilitliyse döngüyü tamamen atla!
+    if (window.ayarGuncelleniyor || isSyncing) return; 
     
     try {
         isSyncing = true;
@@ -4886,6 +4887,7 @@ async function portfoyDongusu() {
         if (!response.ok) return;
         let data = await response.json();
         
+        // window.ayarGuncelleniyor bayrağı aktifse gelen veriyi state'e kesinlikle yazdırma!
         if (data && !window.ayarGuncelleniyor) {
             Object.assign(state, data);
             guncelle();
