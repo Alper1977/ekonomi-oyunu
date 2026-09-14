@@ -1424,13 +1424,15 @@ app.get('/api/portfoy-getir', (req, res) => {
 
         const guncelPortfoy = kullaniciEkonomisiniIslet(user, ayarlar) || JSON.parse(user.portfoy || '{}');
 
-        res.json({
+       res.json({
             basari: true,
             nakit: guncelPortfoy.nakit !== undefined ? guncelPortfoy.nakit : (guncelPortfoy.para || 0),
             varliklar: guncelPortfoy.varliklar || [],
             gunlukGelir: guncelPortfoy.gunlukGelir || 0,
             konutKiraGeliri: guncelPortfoy.konutKiraGeliri || 0,
-            botlar: typeof botlar !== 'undefined' ? botlar : [] // 🌟 Botları buraya ekledik!
+            botlar: typeof botlar !== 'undefined' ? botlar : [],
+            oyunAyarlari: ayarlar,
+            sureler: ayarlar.sureler || ayarlar.surelerObjesi // Senin veritabanındaki yapına göre değişebilir
         });
     } catch (err) {
         console.error("Portföy getirme hatası:", err.message);
