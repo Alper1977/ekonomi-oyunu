@@ -4947,9 +4947,11 @@ socket.on('ayarlarDegisti', (gelenVeri) => {
         console.log("🔥 SUNUCUDAN GELEN HAM AYARLAR:", gelenVeri);
         if (!gelenVeri) return;
 
-        window.oyunAyar = gelenVeri.ayarlar || gelenVeri;
+        // Gelen veriyi güvenli bir şekilde tek bir nesnede topla (katmanları düzleştir)
+        const ham = gelenVeri.ayarlar || gelenVeri;
+        window.oyunAyar = { ...window.oyunAyar, ...ham };
         
-        let yeniSureler = gelenVeri.sureler || window.oyunAyar.sureler;
+        let yeniSureler = gelenVeri.sureler || ham.sureler || window.oyunAyar.sureler;
         if (yeniSureler) {
             window.oyunAyarlari = yeniSureler;
             window.oyunAyar.sureler = yeniSureler;
@@ -4964,6 +4966,7 @@ socket.on('ayarlarDegisti', (gelenVeri) => {
         if (typeof yatirimMaliyetleri !== 'undefined') yatirimMaliyetleri = window.oyunAyar.yatirimMaliyetleri || yatirimMaliyetleri;
         if (typeof sureler !== 'undefined') sureler = window.oyunAyarlari;
 
+        // State güncellemesi
         if (typeof state !== 'undefined' && state) {
             if (window.oyunAyar.gunlukGelir !== undefined) {
                 state.gunlukGelir = Number(window.oyunAyar.gunlukGelir);
@@ -4973,6 +4976,7 @@ socket.on('ayarlarDegisti', (gelenVeri) => {
             }
         }
         
+        // DOM Yazılarını Güncelle
         let gunlukGelirEl = document.getElementById('gunluk-gelir') || document.getElementById('yazi-gunluk-gelir');
         if (gunlukGelirEl && window.oyunAyar.gunlukGelir !== undefined) {
             gunlukGelirEl.innerText = Number(window.oyunAyar.gunlukGelir).toLocaleString() + " TL";
@@ -5005,7 +5009,7 @@ socket.on('ayarlarDegisti', (gelenVeri) => {
             }
         }, 30);
 
-        // 🌟 EKSTRA: Admin panelindeki input kutularının içindeki değerleri de anında güncelle (Eğer açık ve inputlar varsa)
+        // Admin panelindeki inputları da anında yenile
         document.querySelectorAll('input[name], input[id]').forEach(input => {
             let anahtar = input.name || input.id;
             if (window.oyunAyar[anahtar] !== undefined) {
@@ -5017,7 +5021,6 @@ socket.on('ayarlarDegisti', (gelenVeri) => {
         
         console.log("Ayar değişikliği socket üzerinden yakalandı ve arayüz anında yenilendi.");
     });
-}
 
 // 4. Sayfa yüklenme kontrolü ve döngülerin başlatılması
 window.addEventListener('DOMContentLoaded', async () => {
