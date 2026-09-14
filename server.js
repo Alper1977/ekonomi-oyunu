@@ -1406,20 +1406,19 @@ app.post('/api/profil-guncelle', (req, res) => {
 });
 
 app.get('/api/portfoy-getir', (req, res) => {
-    // Oturum kontrolünü orijinal çalışan haline çekiyoruz
-    if (!req.session || (!req.session.kullaniciId && !req.session.kullanici)) {
+    if (!req.session.kullaniciId) {
         return res.status(401).json({ basari: false, mesaj: 'Oturum açılmadı' });
     }
 
-    let userId = req.session.kullaniciId || (req.session.kullanici && req.session.kullanici.id);
-
-    let user = db.prepare(`SELECT * FROM kullanicilar WHERE id = ?`).get(userId);
+    let user = db.prepare(`SELECT * FROM kullanicilar WHERE id = ?`).get(req.session.kullaniciId);
     if (!user) {
         return res.json({ basari: false });
     }
 
+    // 🌟 Ekonomi motorunu ve inşaat kontrolünü işleten ana fonksiyon
     let guncelPortfoy = kullaniciEkonomisiniIslet(user, oyunAyarlari) || JSON.parse(user.portfoy || '{}');
 
+    // Botları da güncel çekelim
     let guncelBotlar = db.prepare(`SELECT * FROM botlar`).all().map(b => ({
         ...b,
         varliklar: JSON.parse(b.varliklar || '[]')
@@ -1487,33 +1486,20 @@ app.get('/api/aktif-kullanici', (req, res) => {
     if (!req.session || !req.session.kullanici) {
         return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı" });
     }
-
     try {
         const userId = req.session.kullanici.id;
         const dbUser = db.prepare(`SELECT * FROM kullanicilar WHERE id = ?`).get(userId);
-        
         if (!dbUser) {
-            return res.status(404).json({ basari: false, mesaj: "Kullanıcı bulunamadı" });
+           return res.status(404).json({ basari: false, mesaj: "Kullanıcı bulunamadı" });
         }
-
         const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
         const ayarlar = ayarKaydi ? JSON.parse(ayarKaydi.ayarlar) : {};
-
         const portfoyObj = kullaniciEkonomisiniIslet(dbUser, ayarlar) || JSON.parse(dbUser.portfoy || '{}');
         req.session.kullanici.portfoy = portfoyObj;
-
-        // Botları da buradan gönderiyoruz ki istemci güncel bot listesini alabilsin
-        const guncelBotlar = db.prepare(`SELECT * FROM botlar`).all().map(b => ({
-            ...b,
-            varliklar: JSON.parse(b.varliklar || '[]')
-        }));
-
-        res.json({
-            basari: true,
+     res.json({
             id: dbUser.id,
             adsoyad: dbUser.adsoyad,
-            portfoy: portfoyObj,
-            botlar: guncelBotlar
+            portfoy: portfoyObj
         });
     } catch (err) {
         res.status(500).json({ basari: false, mesaj: err.message });
