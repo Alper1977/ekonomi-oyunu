@@ -732,7 +732,21 @@
 </div>
 
 <script>
-let state = {};
+let state = {
+    nakit: 0,
+    dolar: 0,
+    euro: 0,
+    altin: 0,
+    vadeli: 0,
+    faiz: 0,
+    kredi: 0,
+    taksit: 0,
+    krediLimiti: 0,
+    krediler: [],
+    varliklar: [],
+    talepler: []
+};
+
 let sirketGrafigiObjesi = null;
 
 // Grafiği ilk kez oluşturan fonksiyon (Mali Tablo sayfası açıldığında veya oyun başladığında çağrılır)
