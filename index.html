@@ -5059,32 +5059,33 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
-setInterval(async () => {
+ setInterval(async () => {
     try {
         let res = await fetch('/api/portfoy-getir');
         let data = await res.json();
-        let portfoyVerisi = data.portfoy || data;
+        
+        // Sunucudan gelen botları tarayıcıya işliyoruz
+        if (data.botlar && Array.isArray(data.botlar)) {
+            window.botlar = data.botlar;
+        }
 
-        if (portfoyVerisi && typeof state !== 'undefined') {
-            if (portfoyVerisi.varliklar) state.varliklar = portfoyVerisi.varliklar;
-            if (portfoyVerisi.nakit !== undefined) {
-                state.nakit = portfoyVerisi.nakit;
-                state.para = portfoyVerisi.nakit;
+        if (data.basari) {
+            if (data.varliklar) state.varliklar = data.varliklar;
+            if (data.nakit !== undefined) {
+                state.nakit = data.nakit;
+                state.para = data.nakit;
             }
-            if (portfoyVerisi.krediler) state.krediler = portfoyVerisi.krediler;
-            if (portfoyVerisi.kredi !== undefined) state.kredi = portfoyVerisi.kredi;
-            if (portfoyVerisi.taksit !== undefined) state.taksit = portfoyVerisi.taksit;
 
-            if (typeof guncelle === 'function') {
-                if (typeof isSyncing !== 'undefined') isSyncing = true;
-                await guncelle();
-                if (typeof isSyncing !== 'undefined') isSyncing = false;
-            }
+            // Arayüzü ve listeleri yenile
+            if (typeof guncelle === 'function') guncelle();
+            if (typeof zenginlerListesiniGuncelle === 'function') zenginlerListesiniGuncelle();
+            if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
         }
     } catch (e) {
         // Sessiz geç
     }
-}, 2000);    
+}, 2000);
+    
 </script>
 </body>
 </html>
