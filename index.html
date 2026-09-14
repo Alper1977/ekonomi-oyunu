@@ -4958,6 +4958,11 @@ function socketDinleyicileriniBaslat() {
             window.oyunAyarlari = window.oyunAyar.sureler || window.oyunAyarlari || {};
         }
 
+        // Taksit periyodu hatasını kökten kesen güvenli tanımlama
+        if (typeof taksitPeriyodu === 'undefined' || window.taksitPeriyodu) {
+            window.taksitPeriyodu = window.oyunAyar.taksitPeriyodu || window.oyunAyarlari.taksitPeriyodu || 1000;
+        }
+
         if (typeof kazancTablosu !== 'undefined') kazancTablosu = window.oyunAyar.kazancTablosu || kazancTablosu;
         if (typeof kurlar !== 'undefined') kurlar = window.oyunAyar.kurlar || kurlar;
         if (typeof faizOranlari !== 'undefined') faizOranlari = window.oyunAyar.faizOranlari || faizOranlari;
