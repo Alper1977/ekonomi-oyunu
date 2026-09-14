@@ -1023,28 +1023,32 @@ async function adminAyarlariniKaydet() {
 
     // 3. Sunucudan gelen sonuca göre arayüzü güncelleme
     if (sonuc && sonuc.basari) {
+        // 1. Kendi istemcimizdeki değişkenleri anında güncelle (Socket'i bekletme)
+        window.oyunAyar = window.oyunAyar;
         if (typeof state !== 'undefined' && state) {
-            state.gunlukGelir = window.oyunAyar.gunlukGelir;
-            state.konutKiraGeliri = window.oyunAyar.konutKiraGeliri;
+            state.gunlukGelir = Number(window.oyunAyar.gunlukGelir);
+            state.konutKiraGeliri = Number(window.oyunAyar.konutKiraGeliri);
         }
-
+        
+        // Kazanç tabloları vb. lokalde varsa anında eşitle
         if (typeof kazancTablosu !== 'undefined') kazancTablosu = window.oyunAyar.kazancTablosu;
         if (typeof kurlar !== 'undefined') kurlar = window.oyunAyar.kurlar;
         if (typeof faizOranlari !== 'undefined') faizOranlari = window.oyunAyar.faizOranlari;
         if (typeof satisFiyatlari !== 'undefined') satisFiyatlari = window.oyunAyar.satisFiyatlari;
         if (typeof yatirimMaliyetleri !== 'undefined') yatirimMaliyetleri = window.oyunAyar.yatirimMaliyetleri;
-        
-    if (typeof socket !== 'undefined' && socket) {
+
+        // Arayüzü manuel tetikle
+        if (typeof guncelle === 'function') guncelle();
+        if (typeof yatirimlariGuncelle === 'function') yatirimlariGuncelle();
+        if (typeof kurlariGoster === 'function') kurlariGoster();
+        if (typeof piyasayiGuncelle === 'function') piyasayiGuncelle();
+
+        // Socket üzerinden de diğer herkese haber uçurmaya devam et
+        if (typeof socket !== 'undefined' && socket) {
             socket.emit('adminAyariGuncelle', {
                 ayarlar: window.oyunAyar,
                 sureler: window.oyunAyarlari
             });
-        }
-
-        await oyunAyarlariniYukle(); 
-        
-        if (typeof guncelle === 'function') {
-            guncelle();
         }
 
         modalGoster("✅ Ayarlar ve süreler başarıyla güncellendi ve kaydedildi!",  
