@@ -4943,7 +4943,7 @@ function socketDinleyicileriniBaslat() {
 
     socket.off('ayarlarDegisti');
     
-socket.on('ayarlarDegisti', (gelenVeri) => {
+    socket.on('ayarlarDegisti', (gelenVeri) => {
         console.log("🔥 SUNUCUDAN GELEN HAM AYARLAR:", gelenVeri);
         if (!gelenVeri) return;
 
@@ -5016,6 +5016,7 @@ socket.on('ayarlarDegisti', (gelenVeri) => {
         
         console.log("Ayar değişikliği socket üzerinden yakalandı ve arayüz anında yenilendi.");
     });
+}
 
 // 4. Sayfa yüklenme kontrolü ve döngülerin başlatılması
 window.addEventListener('DOMContentLoaded', async () => {
