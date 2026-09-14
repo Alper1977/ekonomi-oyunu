@@ -295,6 +295,29 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
 
     let degisiklikOldu = false;
 
+    // 🌟 İNŞAAT SÜRELERİNİ 5 SANİYE KURALINA TAKILMADAN HER AN KONTROL ET
+    if (portfoy.varliklar && Array.isArray(portfoy.varliklar)) {
+        portfoy.varliklar.forEach(v => {
+            if (v && v.durum === 'inşaat' && v.bitis && simdi >= v.bitis) {
+                v.durum = 'sahip';
+                degisiklikOldu = true;
+            }
+        });
+    }
+
+    const gecenSure = simdi - sonGuncelleme;
+    
+    // Eğer süre 5 saniyeden azsa VE sadece inşaat durumu değiştiyse, hemen kaydet ve çık
+    if (gecenSure < 5000) {
+        if (degisiklikOldu) {
+            db.prepare(`UPDATE kullanicilar SET portfoy = ? WHERE id = ?`).run(
+                JSON.stringify(portfoy),
+                userRow.id
+            );
+        }
+        return portfoy; 
+    }
+
   // --- 1. KİRA / ŞİRKET GELİRLERİ ---
     const kiraPeriyotSayisi = Math.floor(gecenSure / kiraPeriyodu);
     if (kiraPeriyotSayisi > 0) {
@@ -474,16 +497,6 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
             portfoy.taksit = 0;
             portfoy.krediler = [];
         }
-    }
-
-    // --- 4. İNŞAAT SÜRELERİNİN KONTROLÜ VE TAMAMLANMASI ---
-    if (portfoy.varliklar && Array.isArray(portfoy.varliklar)) {
-        portfoy.varliklar.forEach(v => {
-            if (v && v.durum === 'inşaat' && v.bitis && simdi >= v.bitis) {
-                v.durum = 'sahip';
-                degisiklikOldu = true;
-            }
-        });
     }
 
     // Yeni son güncelleme zamanını hesaplanan periyotlar üzerinden ileri taşı
