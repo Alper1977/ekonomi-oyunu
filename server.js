@@ -336,7 +336,8 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
     }
 
     // --- 2. VADELİ HESAP / FAİZ GELİRLERİ ---
-    const faizPeriyotSayisi = Math.floor(gecenSure / faizPeriyodu);
+  let faizPeriyodu = (typeof oyunAyarlari !== 'undefined' && oyunAyarlari.sureler && oyunAyarlari.sureler.faizPeriyodu) ? oyunAyarlari.sureler.faizPeriyodu : 60000; // Varsayılan örneğin 60 saniye
+  const faizPeriyotSayisi = Math.floor(gecenSure / faizPeriyodu);
     let vadeliDeger = Number(portfoy.vadeli) || 0;
     
     if (faizPeriyotSayisi > 0 && vadeliDeger > 0) {
