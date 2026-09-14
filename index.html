@@ -1023,8 +1023,9 @@ async function adminAyarlariniKaydet() {
 
     // 3. Sunucudan gelen sonuca göre arayüzü güncelleme
     
-if (sonuc && sonuc.basari) {
-    // Sunucuya gönderdiğimiz veriyi veya sonucun içindekini direkt anlık işleyelim
+console.log("Sunucudan gelen sonuc:", sonuc); // Bakalım basari true mu dönüyor?
+
+if (sonuc && (sonuc.basari === true || sonuc.basari == "true")) {
     window.oyunAyar = { ...window.oyunAyar, ...ayarlar, sureler: sureler };
     window.oyunAyarlari = sureler || window.oyunAyar.sureler;
 
@@ -1033,7 +1034,6 @@ if (sonuc && sonuc.basari) {
         if (window.oyunAyar.konutKiraGeliri !== undefined) state.konutKiraGeliri = Number(window.oyunAyar.konutKiraGeliri);
     }
 
-    // Ekrandaki ilgili yazı alanlarını anında manuel tetikle ki sayfa yenilemek gerekliliğini ortadan kaldırsın
     let gunlukGelirEl = document.getElementById('gunluk-gelir') || document.getElementById('yazi-gunluk-gelir');
     if (gunlukGelirEl && window.oyunAyar.gunlukGelir !== undefined) {
         gunlukGelirEl.innerText = Number(window.oyunAyar.gunlukGelir).toLocaleString() + " TL";
@@ -1044,17 +1044,26 @@ if (sonuc && sonuc.basari) {
         kiraGelirEl.innerText = Number(window.oyunAyar.konutKiraGeliri).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' TL';
     }
 
-    // Tüm genel güncelleme fonksiyonlarını zorla tetikle
     if (typeof guncelle === 'function') guncelle();
     if (typeof yatirimlariGuncelle === 'function') yatirimlariGuncelle();
     if (typeof kurlariGoster === 'function') kurlariGoster();
     if (typeof piyasayiGuncelle === 'function') piyasayiGuncelle();
 
-    modalGoster("✅ Ayarlar ve süreler başarıyla güncellendi ve kaydedildi!",  
-        '<button onclick="document.getElementById(\'modal-overlay\').style.display=\'none\'; changePage(\'page-mali\');">TAMAM</button>');
-} else {
-        modalGoster("⚠️ Hata: " + (sonuc?.mesaj || "Bilinmeyen sunucu hatası"));
+    // Senin projedeki orijinal modalGoster nasıl çalışıyorsa onu bozmayalım:
+    if (typeof modalGoster === 'function') {
+        modalGoster("✅ Ayarlar başarıyla kaydedildi!");
+    } else {
+        alert("✅ Ayarlar başarıyla kaydedildi!");
     }
+
+} else {
+    let hataMesaji = sonuc ? (sonuc.mesaj || JSON.stringify(sonuc)) : "Sunucu yanıt vermedi";
+    if (typeof modalGoster === 'function') {
+        modalGoster("⚠️ Hata: " + hataMesaji);
+    } else {
+        alert("⚠️ Hata: " + hataMesaji);
+    }
+}
 }
 
 // Tek ve kusursuz oyun ayarlarını yükleme fonksiyonu
