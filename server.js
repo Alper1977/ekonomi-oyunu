@@ -1396,7 +1396,6 @@ app.get('/api/portfoy-getir', (req, res) => {
         const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
         const ayarlar = ayarKaydi ? JSON.parse(ayarKaydi.ayarlar) : {};
 
-        // 🌟 Çevrimdışı geçen süredeki gelirleri hesaba kat!
         const guncelPortfoy = kullaniciEkonomisiniIslet(user, ayarlar) || JSON.parse(user.portfoy || '{}');
 
         res.json({
@@ -1404,7 +1403,8 @@ app.get('/api/portfoy-getir', (req, res) => {
             nakit: guncelPortfoy.nakit !== undefined ? guncelPortfoy.nakit : (guncelPortfoy.para || 0),
             varliklar: guncelPortfoy.varliklar || [],
             gunlukGelir: guncelPortfoy.gunlukGelir || 0,
-            konutKiraGeliri: guncelPortfoy.konutKiraGeliri || 0 
+            konutKiraGeliri: guncelPortfoy.konutKiraGeliri || 0,
+            botlar: typeof botlar !== 'undefined' ? botlar : [] // 🌟 Botları buraya ekledik!
         });
     } catch (err) {
         console.error("Portföy getirme hatası:", err.message);
