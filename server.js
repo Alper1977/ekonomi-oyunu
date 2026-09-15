@@ -385,35 +385,6 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
     return portfoy;
 }
 
-setInterval(() => {
-    try {
-        const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
-        if (!ayarKaydi) return;
-        const ayarlar = JSON.parse(ayarKaydi.ayarlari);
-
-        // Canlı kurları veritabanından çekiyoruz
-        const kurlarKaydi = db.prepare(`SELECT kurlar FROM oyun_kurlari WHERE id = 1`).get();
-        const kurlar = kurlarKaydi ? JSON.parse(kurlarKaydi.kurlar) : { dolar: {satis: 49}, euro: {satis: 54}, altin: {satis: 6000} };
-
-        const kullanicilar = db.prepare(`SELECT id, portfoy, son_guncelleme FROM kullanicilar`).all();
-        
-        // Her kullanıcıyı kendi bağımsız transaction ve try-catch bloğuna alıyoruz
-        kullanicilar.forEach(user => {
-            try {
-                const userTransaction = db.transaction(() => {
-                    kullaniciEkonomisiniIslet(user, ayarlar, kurlar);
-                });
-                userTransaction();
-            } catch (userErr) {
-                console.error(`Kullanıcı ID ${user.id} ekonomi işletilirken hata oluştu:`, userErr.message);
-                // Bu kullanıcı patlasa bile diğer kullanıcıların parası, dövizi, kredisi etkilenmez
-            }
-        });
-
-    } catch (err) {
-        console.error("Arka plan oyun döngüsü genel hata:", err.message);
-    }
-}, 30000);
 
 // --- API Rotaları ---
 
