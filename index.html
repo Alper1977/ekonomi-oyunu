@@ -4969,7 +4969,7 @@ async function portfoyDongusu() {
         isSyncing = false;
     }
 }
-// 3. Socket dinleyicilerini başlatan fonksiyon (Admin veya sunucu ayar değiştirdiğinde anında yakalar)
+
 
 function socketDinleyicileriniBaslat() {
     if (typeof socket === 'undefined' || !socket) {
@@ -4979,7 +4979,7 @@ function socketDinleyicileriniBaslat() {
 
     socket.off('ayarlarDegisti');
     
-    socket.on('ayarDegisti', async (gelenVeri) => {
+    socket.on('ayarlarDegisti', async (gelenVeri) => {
         window.ayarGuncelleniyor = true; // Periyodik döngülerin araya girip veriyi ezmesini kilitliyoruz
         console.log("🔥 SUNUCUDAN GELEN HAM AYARLAR:", gelenVeri);
         if (!gelenVeri) return;
