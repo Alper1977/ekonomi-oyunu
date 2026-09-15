@@ -1021,10 +1021,8 @@ async function adminAyarlariniKaydet() {
     console.log("Sunucudan gelen sonuc:", sonuc);
 
     if (sonuc && (sonuc.basari === true || sonuc.basari == "true")) {
-        if (typeof state !== 'undefined' && state) {
-            if (oyunAyarlari.gunlukGelir !== undefined) state.gunlukGelir = Number(oyunAyarlari.gunlukGelir);
-            if (oyunAyarlari.konutKiraGeliri !== undefined) state.konutKiraGeliri = Number(oyunAyarlari.konutKiraGeliri);
-        }
+        // 🌟 DİKKAT: Burada kullanıcı portföyünü (state) bozan tehlikeli atamalar tamamen kaldırıldı!
+        // Ayarlar sadece oyun içi görünürlüğü etkiler, kişisel cüzdanı asla ezmez.
 
         let gunlukGelirEl = document.getElementById('gunluk-gelir') || document.getElementById('yazi-gunluk-gelir');
         if (gunlukGelirEl && oyunAyarlari.gunlukGelir !== undefined) {
