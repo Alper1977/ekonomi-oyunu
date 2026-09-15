@@ -2506,8 +2506,14 @@ async function guncelle() {
     if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
     if (typeof zenginlerListesiniGuncelle === 'function') await zenginlerListesiniGuncelle();
 
-    if (!isSyncing && typeof portfoyuSunucuyaKaydet === 'function') {
-        portfoyuSunucuyaKaydet(state);
+    if (!isSyncing) {
+        if (typeof portfoyuSunucuyaKaydet === 'function') {
+            portfoyuSunucuyaKaydet(state);
+        }
+        
+        if (typeof stateiDuzenliKaydet === 'function') {
+            stateiDuzenliKaydet(state, window.botlar);
+        }
     }
 }
     
