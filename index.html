@@ -5121,6 +5121,18 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
+// Her 5 veya 10 saniyede bir sadece ekrandaki veriyi tazele
+setInterval(async () => {
+    try {
+        let res = await fetch('/api/portfoy-getir'); // Senin endpoint adın neyse
+        let data = await res.json();
+        // Gelen veriyi arayüze bas
+        arayuzuGuncelle(data);
+    } catch (e) {
+        // Sessizce geç
+    }
+}, 5000);    
+
 </script>
 </body>
 </html>
