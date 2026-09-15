@@ -1551,7 +1551,7 @@ app.get('/api/detayli-oyun-ayarlari', (req, res) => {
     } catch (err) {
         res.status(500).json({ basari: false, mesaj: err.message });
     }
-});
+}); 
 
 // --- OYUN DURUMUNU (STATE VE BOTLAR) SUNUCUDAN SUNMA ---
 app.get('/api/oyun-durumu', (req, res) => {
