@@ -4947,9 +4947,13 @@ function socketDinleyicileriniBaslat() {
         console.log("🔥 SUNUCUDAN GELEN HAM AYARLAR:", gelenVeri);
         if (!gelenVeri) return;
 
+        // Sunucudan gelen paket doğrudan "ayarlar" objesini (ve içinde sureler'i) içeriyor
         const ham = gelenVeri.ayarlar || gelenVeri;
+        
+        // window.oyunAyar'ı doğrudan sunucudan gelen paketle güncelliyoruz
         window.oyunAyar = { ...window.oyunAyar, ...ham };
         
+        // Sureler alanını güvenle ayırıyoruz
         let yeniSureler = gelenVeri.sureler || ham.sureler || window.oyunAyar.sureler;
         if (yeniSureler) {
             window.oyunAyarlari = yeniSureler;
@@ -4958,7 +4962,7 @@ function socketDinleyicileriniBaslat() {
             window.oyunAyarlari = window.oyunAyar.sureler || window.oyunAyarlari || {};
         }
 
-        // Taksit periyodu güvenli tanımlama (Düzeltildi)
+        // Taksit periyodu güvenli tanımlama
         if (typeof taksitPeriyodu === 'undefined' || !window.taksitPeriyodu) {
             window.taksitPeriyodu = window.oyunAyar.taksitPeriyodu || window.oyunAyarlari.taksitPeriyodu || 1000;
         }
