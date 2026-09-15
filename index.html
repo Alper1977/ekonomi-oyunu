@@ -4970,6 +4970,11 @@ async function portfoyDongusu() {
     }
 }
 // 3. Socket dinleyicilerini başlatan fonksiyon (Admin veya sunucu ayar değiştirdiğinde anında yakalar)
+İstediğin gibi senin yazdığın o kusursuz yapıyı, referans atamalarını (Object.assign) ve tüm sigortalarını hiç bozmadan ve eksiltmeden, sadece sunucudan gelen verilerin içindeki alt objelerin (kazancTablosu, kurlar, faizOranlari, vb.) referanslarını güncelleyecek güvenli atamaları ekleyerek düzenledim.
+
+İşte tam uyumlu ve kararlı nihai hali:
+
+JavaScript
 function socketDinleyicileriniBaslat() {
     if (typeof socket === 'undefined' || !socket) {
         setTimeout(socketDinleyicileriniBaslat, 1000);
@@ -4998,14 +5003,27 @@ function socketDinleyicileriniBaslat() {
             window.taksitPeriyodu = window.oyunAyar.taksitPeriyodu || window.oyunAyarlari.taksitPeriyodu || 1000;
         }
 
-        if (typeof kazancTablosu !== 'undefined') kazancTablosu = window.oyunAyar.kazancTablosu || kazancTablosu;
-        if (typeof kurlar !== 'undefined') kurlar = window.oyunAyar.kurlar || kurlar;
-        if (typeof faizOranlari !== 'undefined') faizOranlari = window.oyunAyar.faizOranlari || faizOranlari;
-        if (typeof satisFiyatlari !== 'undefined') satisFiyatlari = window.oyunAyar.satisFiyatlari || satisFiyatlari;
-        if (typeof yatirimMaliyetleri !== 'undefined') yatirimMaliyetleri = window.oyunAyar.yatirimMaliyetleri || yatirimMaliyetleri;
-        if (typeof sureler !== 'undefined') sureler = window.oyunAyarlari;
+        // 🌟 GÜVENLİ REFERANS GÜNCELLEMESİ (Mevcut yapı korundu, içleri Object.assign ile taze veriye basıldı)
+        if (typeof kazancTablosu !== 'undefined' && (window.oyunAyar.kazancTablosu || ham.kazancTablosu)) {
+            Object.assign(kazancTablosu, window.oyunAyar.kazancTablosu || ham.kazancTablosu);
+        }
+        if (typeof kurlar !== 'undefined' && (window.oyunAyar.kurlar || ham.kurlar)) {
+            Object.assign(kurlar, window.oyunAyar.kurlar || ham.kurlar);
+        }
+        if (typeof faizOranlari !== 'undefined' && (window.oyunAyar.faizOranlari || ham.faizOranlari)) {
+            Object.assign(faizOranlari, window.oyunAyar.faizOranlari || ham.faizOranlari);
+        }
+        if (typeof satisFiyatlari !== 'undefined' && (window.oyunAyar.satisFiyatlari || ham.satisFiyatlari)) {
+            Object.assign(satisFiyatlari, window.oyunAyar.satisFiyatlari || ham.satisFiyatlari);
+        }
+        if (typeof yatirimMaliyetleri !== 'undefined' && (window.oyunAyar.yatirimMaliyetleri || ham.yatirimMaliyetleri)) {
+            Object.assign(yatirimMaliyetleri, window.oyunAyar.yatirimMaliyetleri || ham.yatirimMaliyetleri);
+        }
+        if (typeof sureler !== 'undefined') {
+            sureler = window.oyunAyarlari;
+        }
 
-        // 🌟 KRİTİK EKLEME: Socket tetiklendiği an sunucudan en güncel portföyü de çekip state'e işliyoruz ki bakiyeler güncel kalsın
+        // KRİTİK EKLEME: Socket tetiklendiği an sunucudan en güncel portföyü de çekip state'e işliyoruz ki bakiyeler güncel kalsın
         try {
             let res = await fetch('/api/portfoy-getir', { credentials: 'include' });
             if (res.ok) {
@@ -5075,8 +5093,6 @@ function socketDinleyicileriniBaslat() {
         
         console.log("Ayar değişikliği socket üzerinden yakalandı ve arayüz anında yenilendi.");
     });
-}
-
 // 4. Sayfa yüklenme kontrolü ve döngülerin başlatılması
 window.addEventListener('DOMContentLoaded', async () => {
     document.addEventListener('click', (e) => {
