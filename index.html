@@ -4958,8 +4958,8 @@ function socketDinleyicileriniBaslat() {
             window.oyunAyarlari = window.oyunAyar.sureler || window.oyunAyarlari || {};
         }
 
-        // Taksit periyodu hatasını kökten kesen güvenli tanımlama
-        if (typeof taksitPeriyodu === 'undefined' || window.taksitPeriyodu) {
+        // Taksit periyodu güvenli tanımlama (Düzeltildi)
+        if (typeof taksitPeriyodu === 'undefined' || !window.taksitPeriyodu) {
             window.taksitPeriyodu = window.oyunAyar.taksitPeriyodu || window.oyunAyarlari.taksitPeriyodu || 1000;
         }
 
