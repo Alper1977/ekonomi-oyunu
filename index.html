@@ -4970,11 +4970,7 @@ async function portfoyDongusu() {
     }
 }
 // 3. Socket dinleyicilerini başlatan fonksiyon (Admin veya sunucu ayar değiştirdiğinde anında yakalar)
-İstediğin gibi senin yazdığın o kusursuz yapıyı, referans atamalarını (Object.assign) ve tüm sigortalarını hiç bozmadan ve eksiltmeden, sadece sunucudan gelen verilerin içindeki alt objelerin (kazancTablosu, kurlar, faizOranlari, vb.) referanslarını güncelleyecek güvenli atamaları ekleyerek düzenledim.
 
-İşte tam uyumlu ve kararlı nihai hali:
-
-JavaScript
 function socketDinleyicileriniBaslat() {
     if (typeof socket === 'undefined' || !socket) {
         setTimeout(socketDinleyicileriniBaslat, 1000);
