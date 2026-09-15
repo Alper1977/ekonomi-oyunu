@@ -4911,16 +4911,23 @@ sunucudanVerileriYukle();
 let isSyncing = false;
 
 async function portfoyDongusu() {
-    // Eğer socket üzerinden bir ayar güncelleniyorsa veya şu an istek atılıyorsa KESİNLİKLE çık!
     if (window.ayarGuncelleniyor || isSyncing) return; 
     
     try {
         isSyncing = true;
         let response = await fetch('/api/portfoy-getir', { credentials: 'include' });
-        if (!response.ok) return;
+        
+        // 1. Sunucu HTTP 200 (başarılı) dönüyor mu kontrol edelim:
+        if (!response.ok) {
+            console.warn("⚠️ Portföy getir isteği başarısız oldu, HTTP Kod:", response.status);
+            return;
+        }
+
         let data = await response.json();
         
-        // ÇOK ÖNEMLİ: İstek yoldayken arada socket güncellemesi başladıysa veya bittiyse veriyi ASLA yazdırma!
+        // 2. Sunucudan gerçekten veri geliyor mu konsola yazdıralım:
+        console.log("📥 Sunucudan gelen portföy verisi:", data);
+
         if (window.ayarGuncelleniyor) {
             return; 
         }
@@ -4935,7 +4942,6 @@ async function portfoyDongusu() {
         isSyncing = false;
     }
 }
-
 // 3. Socket dinleyicilerini başlatan fonksiyon (Admin veya sunucu ayar değiştirdiğinde anında yakalar)
 function socketDinleyicileriniBaslat() {
     if (typeof socket === 'undefined' || !socket) {
