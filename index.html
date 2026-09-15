@@ -3136,7 +3136,7 @@ async function islemKesinOnayla(isim, bedel, tip, ilanId) {
     }
 
     // 3. Süreler (Bayi için 3 gün, diğerleri için 12 gün - Milisaniye cinsinden)
-    let sure = (isim === 'Bayi') ? window.oyunAyarlari.insaatSuresiBayi : window.oyunAyarlari.insaatSuresiDiger;
+    let sure = (isim === 'Bayi') ? oyunAyarlari.insaatSuresiBayi : oyunAyarlari.insaatSuresiDiger;
 
     // 4. Yeni varlığı ekle
     let yeniVarlik = {
@@ -3593,11 +3593,13 @@ async function siralamayiGuncelle() {
                 let sirketAdi = (uye.adsoyad || 'ŞİRKET').toUpperCase() + " A.Ş.";
                 let servet = typeof hesaplaServet === 'function' ? hesaplaServet(uye.portfoy || {}) : 0;
                 
-                // Eğer bu kayıt sunucudaki oturum sahibi ile eşleşiyorsa veya genel kontrol
+                let benimKullaniciAdi = (typeof aktifKullaniciAdi !== 'undefined') ? aktifKullaniciAdi : "";
+                let benMi = (uye.adsoyad === benimKullaniciAdi);
+
                 tumSiralama.push({
                     isim: sirketAdi,
                     nakit: servet,
-                    benim: false // Aşağıda güncellenecek
+                    benMi: benMi
                 });
             });
         }
@@ -3605,10 +3607,12 @@ async function siralamayiGuncelle() {
         console.error("Gerçek üyeler çekilemedi:", e);
     }
 
-    // 4. Kendi servetini hesapla ve listeye ekle
-    let toplamServetim = state.nakit + (state.vadeli || 0) + (state.altin || 0) * 3000 + (state.dolar || 0) * 35; 
+    // 4. Kendi servetini hesapla ve listeye ekle (Çarpanlar oyunAyarlari nesnesinden alınır)
+    let altinFiyati = (typeof oyunAyarlari !== 'undefined' && oyunAyarlari.altinSatisFiyati) ? oyunAyarlari.altinSatisFiyati : 3000;
+    let dolarFiyati = (typeof oyunAyarlari !== 'undefined' && oyunAyarlari.dolarSatisFiyati) ? oyunAyarlari.dolarSatisFiyati : 35;
+
+    let toplamServetim = state.nakit + (state.vadeli || 0) + (state.altin || 0) * altinFiyati + (state.dolar || 0) * dolarFiyati; 
     
-    // Aktif kullanıcının adını HTML'den veya session'dan al
     let sirketBaslik = document.getElementById('sirket-adi-mali');
     let aktifIsim = (sirketBaslik && sirketBaslik.innerText && !sirketBaslik.innerText.includes("Yükleniyor")) 
         ? sirketBaslik.innerText 
@@ -3617,7 +3621,7 @@ async function siralamayiGuncelle() {
     tumSiralama.push({
         isim: aktifIsim,
         nakit: toplamServetim,
-        benim: true
+        benMi: true
     });
 
     // 5. Büyükten küçüğe sırala
@@ -3676,7 +3680,8 @@ function botIlaniniKrediliAl(varlikId, botIsmi, varlikIsmi, bedel) {
         return;
     }
 
-    let katsayi = (typeof faizOranlari !== 'undefined' && faizOranlari.krediKatsayi) ? faizOranlari.krediKatsayi : 1.05;
+    // 🌟 DÜZELTME: Katsayı artık oyunAyarlari nesnesinden okunuyor
+    let katsayi = (typeof oyunAyarlari !== 'undefined' && oyunAyarlari.krediKatsayi) ? oyunAyarlari.krediKatsayi : 1.05;
     let toplamGeriOdeme = cekilmekIstenenKredi * katsayi;
     let aylikTaksit = toplamGeriOdeme / vade;
 
@@ -3727,10 +3732,10 @@ function botIlaniniKrediliAl(varlikId, botIsmi, varlikIsmi, bedel) {
         ilanlariGuncelle();
     }
 
+    // Modalı sadece bilgilendirme ve kapatma amaçlı düzenliyoruz
     modalGoster(
-        "İşlem Başarılı!\n\nVarlık satın alımı gerçekleştirildi.",
-        '<button onclick="islemiIptalEt()" style="background-color: #d9534f; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; margin-right: 10px;">Vazgeç</button>' +
-        '<button onclick="kesinSatinAlVeKapat()" style="background-color: #28a745; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer;">Onayla</button>'
+        "İşlem Başarılı!\n\nVarlık kredili olarak satın alındı.",
+        '<button onclick="document.getElementById(\'modal-overlay\').style.display=\'none\'" style="background-color: #28a745; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer;">Tamam</button>'
     );
 
     if (typeof portfoyuSunucuyaKaydet === 'function') {
@@ -3770,7 +3775,10 @@ function botlarIlanlariSatinAl() {
             // Bot kendi ilanını satın almaya çalışmasın!
             if (satanBot.id === alanBot.id) return;
 
-            let satisBedeli = (satisFiyatlari && satisFiyatlari[varlik.isim]) ? satisFiyatlari[varlik.isim] : (varlik.bedel || 2000000);
+            // Fiyatı oyunAyarlari veya varlık bedelinden alıyoruz
+            let satisBedeli = (typeof oyunAyarlari !== 'undefined' && oyunAyarlari.satisFiyatlari && oyunAyarlari.satisFiyatlari[varlik.isim]) 
+                ? oyunAyarlari.satisFiyatlari[varlik.isim] 
+                : (varlik.bedel || 2000000);
 
             // Alan botun nakiti bu ilanı almaya yetiyor mu?
             if (alanBot.nakit >= satisBedeli) {
@@ -3809,11 +3817,10 @@ function botlarIlanlariSatinAl() {
         zenginlerListesiniGuncelle();
     }
 }
-
-
 function botlarIlanlariKontrolEt() {
     let simdiMs = Date.now();
-    let beklemeSuresiMs = (window.oyunAyar && window.oyunAyar.GLOBAL_BEKLEME_SURESI) || (3 * 24 * 60 * 60 * 1000);
+    // 🌟 DÜZELTME: window.oyunAyar yerine standart oyunAyarlari nesnesi kullanıldı
+    let beklemeSuresiMs = (typeof oyunAyarlari !== 'undefined' && oyunAyarlari.GLOBAL_BEKLEME_SURESI) || (3 * 24 * 60 * 60 * 1000);
 
     if (typeof maksimumIlanSiniri === 'undefined') { var maksimumIlanSiniri = 3; }
     if (typeof sonBotZamani === 'undefined') { sonBotZamani = 0; }
@@ -3981,7 +3988,6 @@ function botlarIlanlariKontrolEt() {
     if (typeof portfoyuSunucuyaKaydet === 'function') { portfoyuSunucuyaKaydet(state); }
 }
 
-
 function changePage(p) {
     let hedefSayfa = document.getElementById(p);
     if (!hedefSayfa) {
@@ -4018,7 +4024,7 @@ function changePage(p) {
 
 
 function krediIslem(inputId, vadeInputId, isim, bedel, kapsam, ilanId = null) {
-    // 🌟 DÜZELTME BURADA: Sadece taksiti geciken (ustUsteOdenmeyen > 0) veya icradan dolayı kalıntı borcu olan durumlarda engelle. 
+    // 🌟 Sadece taksiti geciken veya icradan kalıntı borcu olan durumlarda engelle. 
     // Normal, düzenli ödenen aktif krediler yeni kredi çekmeye engel DEĞİLDİR.
     let sorunluKrediVar = state.krediler && state.krediler.some(kr => (kr.ustUsteOdenmeyen || 0) > 0 || (kr.icradanKalanBorc === true));
     if (sorunluKrediVar) {
@@ -4051,8 +4057,10 @@ function krediIslem(inputId, vadeInputId, isim, bedel, kapsam, ilanId = null) {
     if (faizInput && !isNaN(faizInput.value) && faizInput.value !== "") {
         let f = Number(faizInput.value);
         aylikFaizOrani = f > 1 ? f / 100 : f;
-    } else if (typeof window.oyunAyar !== 'undefined' && window.oyunAyar.faizOranlari && window.oyunAyar.faizOranlari.yatirimKredisiYuzde) {
-        let f = window.oyunAyar.faizOranlari.yatirimKredisiYuzde;
+    } 
+    // 🌟 DÜZELTME: window.oyunAyar yerine standart oyunAyarlari nesnesi kullanıldı
+    else if (typeof oyunAyarlari !== 'undefined' && oyunAyarlari.faizOranlari && oyunAyarlari.faizOranlari.yatirimKredisiYuzde) {
+        let f = oyunAyarlari.faizOranlari.yatirimKredisiYuzde;
         aylikFaizOrani = f > 1 ? f / 100 : f;
     } else if (typeof faizOranlari !== 'undefined' && faizOranlari.yatirimKredisiYuzde) {
         let f = faizOranlari.yatirimKredisiYuzde;
@@ -4266,7 +4274,7 @@ function krediyiKesinOnayla() {
     
 function krediyiOnaylaVeUygula(inputId, vadeInputId, isim, bedel, kapsam, miktar, vade) {
     
-    // 🌟 YENİ EKLEDİĞİMİZ KONTROL: Gecikmiş kredi varsa bu yolla da krediyi engelle
+    // Gecikmiş kredi varsa bu yolla da krediyi engelle
     let gecikmedeKrediVar = state.krediler && state.krediler.find(kr => kr.ustUsteOdenmeyen > 0);
     if (gecikmedeKrediVar) {
         let miktarInput = document.getElementById(inputId);
@@ -4275,7 +4283,6 @@ function krediyiOnaylaVeUygula(inputId, vadeInputId, isim, bedel, kapsam, miktar
         modalGoster(`⚠️ <b>KREDİ UYARISI</b><br><br>Kredi taksit ödemeleriniz düzenli değil! Gecikmiş ödemeleriniz bulunduğu için <b>kredi borcunuzu kapatmadan</b> yeni kredi kullanamazsınız.`);
         return;
     }
-    // -----------------------------------------------------------------
 
     let islemTipi = (kapsam === 'ilan' ? 'al' : 'yap');
     
@@ -4291,23 +4298,27 @@ function krediyiOnaylaVeUygula(inputId, vadeInputId, isim, bedel, kapsam, miktar
     let miktarInput = document.getElementById(inputId);
     let vadeSelect = document.getElementById(vadeInputId);
 
-let katsayi = (typeof faizOranlari !== 'undefined' && faizOranlari.krediKatsayi) ? faizOranlari.krediKatsayi : 1.2;
-let toplamGeriOdeme = miktar * katsayi;
-let aylikTaksit = toplamGeriOdeme / vade;
+    // 🌟 DÜZELTME: Katsayı standart oyunAyarlari nesnesinden okunuyor
+    let katsayi = (typeof oyunAyarlari !== 'undefined' && oyunAyarlari.krediKatsayi) 
+        ? oyunAyarlari.krediKatsayi 
+        : ((typeof faizOranlari !== 'undefined' && faizOranlari.krediKatsayi) ? faizOranlari.krediKatsayi : 1.2);
 
-state.kredi += toplamGeriOdeme;
-state.taksit += aylikTaksit;
-state.nakit -= (bedel - miktar);
+    let toplamGeriOdeme = miktar * katsayi;
+    let aylikTaksit = toplamGeriOdeme / vade;
 
-if (!state.krediler) state.krediler = [];
-let yeniKrediID = Date.now() + Math.random(); 
+    state.kredi += toplamGeriOdeme;
+    state.taksit += aylikTaksit;
+    state.nakit -= (bedel - miktar);
 
-state.krediler.push({
-    id: yeniKrediID,
-    isim: isim,
-    kalanBorc: toplamGeriOdeme, // Doğrusu bu olmalı
-    taksit: aylikTaksit
-});
+    if (!state.krediler) state.krediler = [];
+    let yeniKrediID = Date.now() + Math.random(); 
+
+    state.krediler.push({
+        id: yeniKrediID,
+        isim: isim,
+        kalanBorc: toplamGeriOdeme,
+        taksit: aylikTaksit
+    });
 
     if (typeof islemGerceklessin === 'function') {
         islemGerceklessin(isim, bedel, islemTipi, true, yeniKrediID);
@@ -4325,8 +4336,6 @@ state.krediler.push({
 function islemiIptalEt() {
     tempIslem = null; // Bekleyen geçici işlemi sıfırla
     
-    // Projende modalın ID'si muhtemelen 'modal-overlay' veya benzeridir, 
-    // her ihtimale karşı yaygın olanları kapatalım:
     let modalOverlay = document.getElementById('modal-overlay');
     if (modalOverlay) modalOverlay.style.display = 'none';
     
@@ -4365,6 +4374,11 @@ function krediOde() {
 
     state.nakit -= miktar;
 
+    // Ortak katsayı okuma fonksiyonu standardı
+    let aktifKatsayi = (typeof oyunAyarlari !== 'undefined' && oyunAyarlari.krediKatsayi) 
+        ? oyunAyarlari.krediKatsayi 
+        : ((typeof faizOranlari !== 'undefined' && faizOranlari.krediKatsayi) ? faizOranlari.krediKatsayi : 1.25);
+
     if (!state.krediler || state.krediler.length === 0) {
         state.kredi = Math.max(0, state.kredi - miktar);
         
@@ -4377,7 +4391,7 @@ function krediOde() {
                 });
             }
         } else {
-            state.taksit = (state.kredi / 48) * (typeof faizOranlari !== 'undefined' ? faizOranlari.krediKatsayi : 1.25);
+            state.taksit = (state.kredi / 48) * aktifKatsayi;
         }
 
         input.value = '';
@@ -4427,8 +4441,7 @@ function krediOde() {
     if (state.kredi > 0) {
         state.taksit = state.krediler.reduce((toplam, kr) => {
             let kalanVade = kr.vade || 48;
-            let katsayi = (typeof faizOranlari !== 'undefined' && faizOranlari.krediKatsayi) ? faizOranlari.krediKatsayi : 1.25;
-            kr.taksitTutu = (kr.kalanBorc / kalanVade) * katsayi;
+            kr.taksitTutu = (kr.kalanBorc / kalanVade) * aktifKatsayi;
             return toplam + kr.taksitTutu;
         }, 0);
     } else {
@@ -4549,28 +4562,23 @@ function taksitleriOdeVeyaKontrolEt() {
             state.krediler = state.krediler.filter(kr => kr.kalanBorc > 0 || kr.icradanKalanBorc);
             state.kredi = state.krediler.reduce((toplam, kr) => toplam + (kr.kalanBorc || 0), 0);
         }
-   } else {
-        // 🚨 TAKSİT ÖDENEMEDİ: ÖNCE BLOKELİLER, SONRA DİĞER VARLIKLAR ZİNCİRLEME HACİZ
+    } else {
+        // 🚨 TAKSİT ÖDENEMEDİ: ZİNCİRLEME HACİZ
         if (state.krediler && Array.isArray(state.krediler) && state.krediler.length > 0) {
             let yapilanIslemler = [];
             let toplamBorc = state.krediler.reduce((t, k) => t + (k.kalanBorc || 0), 0);
 
-            // ZİNCİRLEME HACİZ DÖNGÜSÜ
             while (toplamBorc > 0) {
-                // 1. ÖNCELİK: Önce blokeli varlıkları sırayla tüket
                 let ilgiliVarlik = state.varliklar.find(v => v.bloke === true);
                 
-                // 2. ÖNCELİK: Blokeli varlık kalmadıysa, serbest (blokeli olmayan) varlıklara geç
                 if (!ilgiliVarlik) {
                     ilgiliVarlik = state.varliklar.find(v => v.bloke === false || v.durum === 'sahip' || v.durum === undefined);
                 }
 
-                // Elimizde satılacak hiçbir mülk kalmadıysa döngüyü kır
                 if (!ilgiliVarlik) break;
 
                 let satisFiyati = (satisFiyatlari && satisFiyatlari[ilgiliVarlik.isim]) ? satisFiyatlari[ilgiliVarlik.isim] : (ilgiliVarlik.fiyat || 12000000);
                 
-                // Varlığı envanterden düş
                 state.varliklar = state.varliklar.filter(v => v.id !== ilgiliVarlik.id);
 
                 if (satisFiyati >= toplamBorc) {
@@ -4585,16 +4593,15 @@ function taksitleriOdeVeyaKontrolEt() {
                 }
             }
 
-            // Hacizler bitti, eğer hâlâ borç kaldıysa bakiye borç olarak kilitliyoruz
             if (toplamBorc > 0) {
                 state.krediler = [{
                     id: 'icra_bakiye_' + Date.now(),
                     kalanBorc: toplamBorc,
-                    icradanKalanBorc: true, // Yeni kredi çekmeyi kesin engeller
+                    icradanKalanBorc: true,
                     taksitTutu: 0
                 }];
                 state.kredi = toplamBorc;
-                state.nakit = 0; // Kasadaki para da haczedilir
+                state.nakit = 0; 
                 yapilanIslemler.push(`🚨 <b>Haczedilecek başka mülk kalmadı!</b> Tüm varlıklar tükendi. Kalan <b>${toplamBorc.toLocaleString()} TL</b> bakiye borç olarak bırakıldı. Yeni kredi çekilemez.`);
             } else {
                 state.kredi = 0;
@@ -4609,7 +4616,6 @@ function taksitleriOdeVeyaKontrolEt() {
             }
     
         } else {
-            // Krediler dizisi yoksa direkt dışarıdan tetikle
             state.ustUsteOdenmeyenTaksit = (state.ustUsteOdenmeyenTaksit || 0) + 1;
             if (state.ustUsteOdenmeyenTaksit >= 3 && typeof zorunluVarlikSatisiAndKapatma === 'function') {
                 zorunluVarlikSatisiAndKapatma();
@@ -4618,10 +4624,10 @@ function taksitleriOdeVeyaKontrolEt() {
         }
     }
 
-    // 🌟 DEMİR KURAL: Kasaya giren her kuruş doğrudan bakiye borçtan düşer, asla silinmez!
-    if (state.nakit > 0 && state.krediler && state.krediler.length > 0) {
+    // Demir Kural: Sadece icradan kalan bakiye borç varsa kasadaki parayı oraya yönlendir
+    if (state.nakit > 0 && state.krediler && state.krediler.some(kr => kr.icradanKalanBorc)) {
         state.krediler.forEach(kr => {
-            if (kr.kalanBorc > 0 && state.nakit > 0) {
+            if (kr.kalanBorc > 0 && state.nakit > 0 && kr.icradanKalanBorc) {
                 let odenen = Math.min(state.nakit, kr.kalanBorc);
                 state.nakit -= odenen;
                 kr.kalanBorc -= odenen;
@@ -4643,7 +4649,6 @@ function taksitleriOdeVeyaKontrolEt() {
 }
 
 function kalanBorclariOtomatikOde() {
-    // Toplam borcu her zaman hem krediler dizisinden hem de state.kredi'den ortak ve güvenli hesapla
     let toplamBorc = 0;
     if (state.krediler && state.krediler.length > 0) {
         toplamBorc = state.krediler.reduce((t, k) => t + (k.kalanBorc || 0), 0);
@@ -4681,7 +4686,6 @@ function kalanBorclariOtomatikOde() {
                 state.krediler = state.krediler.filter(kr => kr.kalanBorc > 0 || kr.icradanKalanBorc);
             }
             
-            // Kalan borcu hem diziden tekrar toplayarak hem de state.kredi'ye eşitleyerek kesin olarak kilitliyoruz
             let yeniKalan = state.krediler && state.krediler.length > 0 
                 ? state.krediler.reduce((t, k) => t + (k.kalanBorc || 0), 0) 
                 : Math.max(0, toplamBorc - odenenMiktar);
@@ -4701,29 +4705,24 @@ function zorunluVarlikSatisiAndKapatma() {
 
     let yapilanIslemler = [];
 
-    // ZİNCİRLEME İCRA DÖNGÜSÜ: Borç bitene kadar durmaksızın varlıkları tüketir
     while (toplamKrediBorcu > 0) {
-        // ÖNCE TÜM BLOKELİ VARLIKLARI SIRAYLA BUL VE TÜKET
         let satilacakVarlik = state.varliklar.find(v => v.bloke === true);
         
-        // Blokeli varlıklar tamamen bittiyse serbest varlıklara geç
         if (!satilacakVarlik) {
             satilacakVarlik = state.varliklar.find(v => v.durum === 'sahip' || v.bloke === false || v.durum === undefined);
         }
 
-        // Satılacak hiç mal kalmadıysa döngüyü kır
         if (!satilacakVarlik) break; 
 
         let satisFiyati = (satisFiyatlari && satisFiyatlari[satilacakVarlik.isim]) ? satisFiyatlari[satilacakVarlik.isim] : (satilacakVarlik.fiyat || 12000000);
         
-        // Varlığı envanterden düş
         state.varliklar = state.varliklar.filter(v => v.id !== satilacakVarlik.id);
 
         if (satisFiyati >= toplamKrediBorcu) {
             let artisFarki = satisFiyati - toplamKrediBorcu;
             state.nakit += artisFarki;
             
-            yapilanIslemler.push(`<b>${satilacakVarlik.isim}</b> (${satilacakVarlik.bloke ? 'Blokeli' : 'Serbest'}) haczedilerek satıldı (${satisFiyati.toLocaleString()} TL). Borç tamamen kapandı, artan <b>${artisFarki.toLocaleString()} TL</b> nakite eklendi.`);
+            yapilanIslemler.push(`<b>${satilacakVarlik.isim}</b> (${satilacakVarlik.bloke ? 'Blokeli' : 'Serbest'}) haczedilerek satıldı (${satisFiyati.toLocaleString('tr-TR')} TL). Borç tamamen kapandı, artan <b>${artisFarki.toLocaleString('tr-TR')} TL</b> nakite eklendi.`);
             
             toplamKrediBorcu = 0;
             state.krediler = [];
@@ -4732,9 +4731,8 @@ function zorunluVarlikSatisiAndKapatma() {
             break;
         } else {
             toplamKrediBorcu -= satisFiyati;
-            yapilanIslemler.push(`<b>${satilacakVarlik.isim}</b> (${satilacakVarlik.bloke ? 'Blokeli' : 'Serbest'}) haczedilerek satıldı (${satisFiyati.toLocaleString()} TL), yetmedi. Kalan borç: <b>${toplamKrediBorcu.toLocaleString()} TL</b>.`);
+            yapilanIslemler.push(`<b>${satilacakVarlik.isim}</b> (${satilacakVarlik.bloke ? 'Bloke' : 'Serbest'}) haczedilerek satıldı (${satisFiyati.toLocaleString('tr-TR')} TL), yetmedi. Kalan borç: <b>${toplamKrediBorcu.toLocaleString('tr-TR')} TL</b>.`);
             
-            // Kredilerden düş
             if (state.krediler && state.krediler.length > 0) {
                 let kalanDusulecek = satisFiyati;
                 state.krediler.forEach(kr => {
@@ -4749,7 +4747,6 @@ function zorunluVarlikSatisiAndKapatma() {
         }
     }
 
-    // DÖNGÜ BİTTİ: Mallar bittiği halde hala borç varsa, bakiye borcu kesin olarak sabitliyoruz
     if (toplamKrediBorcu > 0) {
         state.krediler = [{
             id: 'icra_bakiye_' + Date.now(),
@@ -4760,7 +4757,7 @@ function zorunluVarlikSatisiAndKapatma() {
         state.kredi = toplamKrediBorcu;
         state.taksit = 0;
         state.nakit = 0; 
-        yapilanIslemler.push(`🚨 <b>Haczedilecek başka mülk kalmadı!</b> Tüm varlıklar tükendi. Kalan <b>${toplamKrediBorcu.toLocaleString()} TL</b> bakiye kredi borcu olarak bırakıldı.`);
+        yapilanIslemler.push(`🚨 <b>Haczedilecek başka mülk kalmadı!</b> Tüm varlıklar tükendi. Kalan <b>${toplamKrediBorcu.toLocaleString('tr-TR')} TL</b> bakiye kredi borcu olarak bırakıldı.`);
     } else {
         state.kredi = 0;
         state.krediler = [];
@@ -4856,9 +4853,13 @@ function varlikSat(varlikId) {
     }
 }
 
-
 function faizOranlariniGuncelle() {
-    let faizMetni = `Yatırım Kredisi Aylık Faiz Oranı %${faizOranlari.yatirimKredisiYuzde}`;
+    // oyunAyarlari uyarlaması
+    let yatirimFaizi = (typeof oyunAyarlari !== 'undefined' && oyunAyarlari.yatirimKredisiYuzde !== undefined) 
+        ? oyunAyarlari.yatirimKredisiYuzde 
+        : (typeof faizOranlari !== 'undefined' ? faizOranlari.yatirimKredisiYuzde : 0);
+
+    let faizMetni = `Yatırım Kredisi Aylık Faiz Oranı %${yatirimFaizi}`;
     
     let faizElementleri = document.querySelectorAll('.faiz-mavi');
     faizElementleri.forEach(element => {
@@ -4888,7 +4889,11 @@ async function sunucudanVerileriYukle() {
         
         if (ayarVerisi.basari) {
             window.kurlar = ayarVerisi.kurlar;
-            window.oyunAyar = ayarVerisi.oyunAyar;
+            
+            // oyunAyarlari standardına geçiş ve eski oyunAyar geriye dönük desteği
+            window.oyunAyarlari = ayarVerisi.oyunAyarlari || ayarVerisi.oyunAyar;
+            window.oyunAyar = window.oyunAyarlari; // Eski kalıntılar patlamasın diye yedek köprü
+            
             window.faizOranlari = ayarVerisi.faizOranlari;
         }
 
@@ -4915,7 +4920,7 @@ sunucudanVerileriYukle();
 
 // 2. Portföy ve verileri periyodik çeken fonksiyon (Sunucu taşıması sonrası anlık yansıma için)
 let isSyncing = false;
-
+    
 async function portfoyDongusu() {
     if (window.ayarGuncelleniyor || isSyncing) return; 
     
@@ -4961,43 +4966,42 @@ function socketDinleyicileriniBaslat() {
     socket.off('ayarlarDegisti');
     
     socket.on('ayarlarDegisti', async (gelenVeri) => {
-        window.ayarGuncelleniyor = true; // Periyodik döngülerin araya girip veriyi ezmesini kilitliyoruz
+        ayarGuncelleniyor = true; // Periyodik döngülerin araya girip veriyi ezmesini kilitliyoruz
         console.log("🔥 SUNUCUDAN GELEN HAM AYARLAR:", gelenVeri);
         if (!gelenVeri) return;
 
         const ham = gelenVeri.ayarlar || gelenVeri;
-        window.oyunAyar = { ...window.oyunAyar, ...ham };
         
-        let yeniSureler = gelenVeri.sureler || ham.sureler || window.oyunAyar.sureler;
-        if (yeniSureler) {
-            window.oyunAyarlari = yeniSureler;
-            window.oyunAyar.sureler = yeniSureler;
-        } else {
-            window.oyunAyarlari = window.oyunAyar.sureler || window.oyunAyarlari || {};
+        // Doğrudan standart oyunAyarlari değişkenine atanıyor
+        oyunAyarlari = ham;
+        
+        // Eğer gelen veride özel süreler alanı varsa entegre ediyoruz
+        if (gelenVeri.sureler || ham.sureler) {
+            oyunAyarlari.sureler = gelenVeri.sureler || ham.sureler;
         }
 
-        if (typeof taksitPeriyodu === 'undefined' || !window.taksitPeriyodu) {
-            window.taksitPeriyodu = window.oyunAyar.taksitPeriyodu || window.oyunAyarlari.taksitPeriyodu || 1000;
+        if (typeof taksitPeriyodu === 'undefined' || !taksitPeriyodu) {
+            taksitPeriyodu = oyunAyarlari.taksitPeriyodu || 1000;
         }
 
-        // 🌟 GÜVENLİ REFERANS GÜNCELLEMESİ (Mevcut yapı korundu, içleri Object.assign ile taze veriye basıldı)
-        if (typeof kazancTablosu !== 'undefined' && (window.oyunAyar.kazancTablosu || ham.kazancTablosu)) {
-            Object.assign(kazancTablosu, window.oyunAyar.kazancTablosu || ham.kazancTablosu);
+        // 🌟 GÜVENLİ REFERANS GÜNCELLEMESİ
+        if (typeof kazancTablosu !== 'undefined' && (oyunAyarlari.kazancTablosu || ham.kazancTablosu)) {
+            Object.assign(kazancTablosu, oyunAyarlari.kazancTablosu || ham.kazancTablosu);
         }
-        if (typeof kurlar !== 'undefined' && (window.oyunAyar.kurlar || ham.kurlar)) {
-            Object.assign(kurlar, window.oyunAyar.kurlar || ham.kurlar);
+        if (typeof kurlar !== 'undefined' && (oyunAyarlari.kurlar || ham.kurlar)) {
+            Object.assign(kurlar, oyunAyarlari.kurlar || ham.kurlar);
         }
-        if (typeof faizOranlari !== 'undefined' && (window.oyunAyar.faizOranlari || ham.faizOranlari)) {
-            Object.assign(faizOranlari, window.oyunAyar.faizOranlari || ham.faizOranlari);
+        if (typeof faizOranlari !== 'undefined' && (oyunAyarlari.faizOranlari || ham.faizOranlari)) {
+            Object.assign(faizOranlari, oyunAyarlari.faizOranlari || ham.faizOranlari);
         }
-        if (typeof satisFiyatlari !== 'undefined' && (window.oyunAyar.satisFiyatlari || ham.satisFiyatlari)) {
-            Object.assign(satisFiyatlari, window.oyunAyar.satisFiyatlari || ham.satisFiyatlari);
+        if (typeof satisFiyatlari !== 'undefined' && (oyunAyarlari.satisFiyatlari || ham.satisFiyatlari)) {
+            Object.assign(satisFiyatlari, oyunAyarlari.satisFiyatlari || ham.satisFiyatlari);
         }
-        if (typeof yatirimMaliyetleri !== 'undefined' && (window.oyunAyar.yatirimMaliyetleri || ham.yatirimMaliyetleri)) {
-            Object.assign(yatirimMaliyetleri, window.oyunAyar.yatirimMaliyetleri || ham.yatirimMaliyetleri);
+        if (typeof yatirimMaliyetleri !== 'undefined' && (oyunAyarlari.yatirimMaliyetleri || ham.yatirimMaliyetleri)) {
+            Object.assign(yatirimMaliyetleri, oyunAyarlari.yatirimMaliyetleri || ham.yatirimMaliyetleri);
         }
         if (typeof sureler !== 'undefined') {
-            sureler = window.oyunAyarlari;
+            sureler = oyunAyarlari.sureler || oyunAyarlari;
         }
 
         // KRİTİK EKLEME: Socket tetiklendiği an sunucudan en güncel portföyü de çekip state'e işliyoruz ki bakiyeler güncel kalsın
@@ -5014,22 +5018,22 @@ function socketDinleyicileriniBaslat() {
         }
 
         if (typeof state !== 'undefined' && state) {
-            if (window.oyunAyar.gunlukGelir !== undefined) {
-                state.gunlukGelir = Number(window.oyunAyar.gunlukGelir);
+            if (oyunAyarlari.gunlukGelir !== undefined) {
+                state.gunlukGelir = Number(oyunAyarlari.gunlukGelir);
             }
-            if (window.oyunAyar.konutKiraGeliri !== undefined) {
-                state.konutKiraGeliri = Number(window.oyunAyar.konutKiraGeliri);
+            if (oyunAyarlari.konutKiraGeliri !== undefined) {
+                state.konutKiraGeliri = Number(oyunAyarlari.konutKiraGeliri);
             }
         }
         
         let gunlukGelirEl = document.getElementById('gunluk-gelir') || document.getElementById('yazi-gunluk-gelir');
-        if (gunlukGelirEl && window.oyunAyar.gunlukGelir !== undefined) {
-            gunlukGelirEl.innerText = Number(window.oyunAyar.gunlukGelir).toLocaleString() + " TL";
+        if (gunlukGelirEl && oyunAyarlari.gunlukGelir !== undefined) {
+            gunlukGelirEl.innerText = Number(oyunAyarlari.gunlukGelir).toLocaleString() + " TL";
         }
 
         let kiraGelirEl = document.getElementById('konut-kira-geliri') || document.getElementById('yazi-kira-geliri') || document.getElementById('val-kira');
-        if (kiraGelirEl && window.oyunAyar.konutKiraGeliri !== undefined) {
-            kiraGelirEl.innerText = Number(window.oyunAyar.konutKiraGeliri).toLocaleString('tr-TR', { 
+        if (kiraGelirEl && oyunAyarlari.konutKiraGeliri !== undefined) {
+            kiraGelirEl.innerText = Number(oyunAyarlari.konutKiraGeliri).toLocaleString('tr-TR', { 
                 minimumFractionDigits: 2, 
                 maximumFractionDigits: 2 
             }) + ' TL';
@@ -5045,32 +5049,31 @@ function socketDinleyicileriniBaslat() {
             adminPaneliniAc();
         }
 
-        // Senin eklediğin o hayat kurtaran DOM gecikmeli sigortası:
+        // DOM gecikmeli sigortası:
         setTimeout(() => {
             let kiraEl = document.getElementById('val-kira');
-            if (kiraEl && window.oyunAyar && window.oyunAyar.konutKiraGeliri !== undefined) {
-                let yeniDeger = Number(window.oyunAyar.konutKiraGeliri);
+            if (kiraEl && oyunAyarlari && oyunAyarlari.konutKiraGeliri !== undefined) {
+                let yeniDeger = Number(oyunAyarlari.konutKiraGeliri);
                 kiraEl.innerText = yeniDeger.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
             }
         }, 30);
 
         document.querySelectorAll('input[name], input[id]').forEach(input => {
             let anahtar = input.name || input.id;
-            if (window.oyunAyar[anahtar] !== undefined) {
-                input.value = window.oyunAyar[anahtar];
-            } else if (window.oyunAyarlari && window.oyunAyarlari[anahtar] !== undefined) {
-                input.value = window.oyunAyarlari[anahtar];
+            if (oyunAyarlari[anahtar] !== undefined) {
+                input.value = oyunAyarlari[anahtar];
             }
         });
 
         // İşlemler bittikten yarım saniye sonra periyodik döngü kilidini kaldırıyoruz
         setTimeout(() => {
-            window.ayarGuncelleniyor = false;
+            ayarGuncelleniyor = false;
         }, 500);
         
         console.log("Ayar değişikliği socket üzerinden yakalandı ve arayüz anında yenilendi.");
     });
 }
+
 // 4. Sayfa yüklenme kontrolü ve döngülerin başlatılması
 window.addEventListener('DOMContentLoaded', async () => {
     document.addEventListener('click', (e) => {
@@ -5115,12 +5118,11 @@ window.addEventListener('DOMContentLoaded', async () => {
                 let ayarRes = await fetch('/api/oyun-ayarlari');
                 let ayarSonuc = await ayarRes.json();
                 if (ayarSonuc.basari && ayarSonuc.ayarlar) {
-                    window.oyunAyar = ayarSonuc.ayarlar;
-                    window.oyunAyarlari = ayarSonuc.ayarlar.sureler || ayarSonuc.sureler || {};
+                    oyunAyarlari = ayarSonuc.ayarlar;
                     
                     if (typeof state !== 'undefined' && state) {
-                        state.gunlukGelir = window.oyunAyar.gunlukGelir !== undefined ? Number(window.oyunAyar.gunlukGelir) : (state.gunlukGelir || 800000);
-                        state.konutKiraGeliri = window.oyunAyar.konutKiraGeliri !== undefined ? Number(window.oyunAyar.konutKiraGeliri) : (state.konutKiraGeliri || 0);
+                        state.gunlukGelir = oyunAyarlari.gunlukGelir !== undefined ? Number(oyunAyarlari.gunlukGelir) : (state.gunlukGelir || 800000);
+                        state.konutKiraGeliri = oyunAyarlari.konutKiraGeliri !== undefined ? Number(oyunAyarlari.konutKiraGeliri) : (state.konutKiraGeliri || 0);
                     }
                 }
 
@@ -5154,7 +5156,6 @@ window.addEventListener('DOMContentLoaded', async () => {
         changePage('page-giris-yap');
     }
 });
-
 setInterval(async () => {
     // Eğer kullanıcı şu an bir modal (açılır pencere) dolduruyorsa veya inputa yazı yazıyorsa çakışmayı önle
     if (window.isSyncing) return;
