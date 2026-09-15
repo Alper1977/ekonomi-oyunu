@@ -4917,17 +4917,16 @@ async function portfoyDongusu() {
         isSyncing = true;
         let response = await fetch('/api/portfoy-getir', { credentials: 'include' });
         
-        // 1. Sunucu HTTP 200 (başarılı) dönüyor mu kontrol edelim:
-        if (!response.ok) {
-            console.warn("⚠️ Portföy getir isteği başarısız oldu, HTTP Kod:", response.status);
+        // Eğer oturum düşmüşse (401 hatası) kullanıcıyı yormadan yakalayalım:
+        if (response.status === 401) {
+            console.warn("⚠️ Oturum süresi dolmuş, yeniden giriş yapılması gerekiyor.");
+            // İsteğe bağlı: changePage('page-giris-yap'); ile giriş sayfasına atabilirsin
             return;
         }
 
+        if (!response.ok) return;
         let data = await response.json();
         
-        // 2. Sunucudan gerçekten veri geliyor mu konsola yazdıralım:
-        console.log("📥 Sunucudan gelen portföy verisi:", data);
-
         if (window.ayarGuncelleniyor) {
             return; 
         }
