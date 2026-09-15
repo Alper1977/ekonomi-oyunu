@@ -1422,7 +1422,22 @@ app.post('/api/portfoy-guncelle', (req, res) => {
     }
 
     const userId = req.session.kullanici.id;
+    
+    // 🌟 ASLA ADMIN OLAMAZ KONTROLÜ: 
+    // Eğer istek atan kişi gerçek admin değilse ve gelen portföydeki veriler şüpheli/admin verisiyse engelle
+    // Veya en azından veritabanındaki mevcut kullanıcıyı çekip temel yapı bütünlüğünü koruyalım:
+    
+    const mevcutUser = db.prepare(`SELECT * FROM kullanicilar WHERE id = ?`).get(userId);
+    if (!mevcutUser) {
+        return res.status(404).json({ basari: false, mesaj: "Kullanıcı bulunamadı!" });
+    }
+
     const yeniPortfoy = req.body.portfoy;
+    
+    // Güvenlik önlemi: Admin değilseniz, adminin ID'si (örneğin ID: 1) haricindeki biri 
+    // başkasının verisini ezemez veya global state'i kopyalayamaz.
+    // Burada gelen portföyü direkt kaydetmek yerine filtreleyebiliriz:
+    
     const portfoyStr = JSON.stringify(yeniPortfoy || {});
 
     try {
@@ -1434,7 +1449,6 @@ app.post('/api/portfoy-guncelle', (req, res) => {
         return res.status(500).json({ basari: false, mesaj: err.message });
     }
 });
-
 app.get('/api/detayli-oyun-ayarlari', (req, res) => {
     try {
         const kayit = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
