@@ -5155,7 +5155,6 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
 });
 setInterval(async () => {
-    // Eğer kullanıcı şu an bir modal (açılır pencere) dolduruyorsa veya inputa yazı yazıyorsa çakışmayı önle
     if (window.isSyncing) return;
 
     try {
@@ -5180,24 +5179,22 @@ setInterval(async () => {
             if (data.gunlukGelir !== undefined) state.gunlukGelir = data.gunlukGelir;
             if (data.konutKiraGeliri !== undefined) state.konutKiraGeliri = data.konutKiraGeliri;
 
-            // 🌟 SAYFAYI YENİLEMEDEN DOM'U CANLI GÜNCELLEYEN FONKSİYONLAR
-            
-            // 1. Varlıkları ve inşaatları ekranda güncelle
+            // 🌟 DOM'u sadece ekranda gösteren hafif fonksiyonları çağırıyoruz. 
+            // DİKKAT: İçinde sunucuya POST atan ağır guncelle() fonksiyonunu buradan çıkardık!
             if (typeof varliklariGuncelleDOM === 'function') {
                 varliklariGuncelleDOM();
             }
 
-            // 2. Nakit para, gelir ve genel arayüz yazılarını güncelle
-            if (typeof guncelle === 'function') {
-                await guncelle();
+            // Sadece arayüz yazılarını güncelleyen hafif DOM güncellemesi (POST atmamalı!)
+            let nakitEl = document.getElementById('nakit-miktari') || document.getElementById('oyuncu-nakit');
+            if (nakitEl) {
+                nakitEl.innerText = Number(state.nakit || 0).toLocaleString() + " TL";
             }
 
-            // 3. Zenginler listesini (sıralamayı) canlı güncelle
             if (typeof zenginlerListesiniGuncelle === 'function') {
                 zenginlerListesiniGuncelle();
             }
 
-            // 4. İlanları ve piyasayı canlı güncelle
             if (typeof ilanlariGuncelle === 'function') { 
                 ilanlariGuncelle();
             }
@@ -5207,8 +5204,6 @@ setInterval(async () => {
     } catch (e) {
         window.isSyncing = false;
     }
-
-   
 }, 3000);
      
 </script>
