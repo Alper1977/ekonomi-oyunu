@@ -4882,6 +4882,19 @@ function faizOranlariniGuncelle() {
     });
 }
 
+async function stateiDuzenliKaydet(guncelState, guncelBotlar) {
+    try {
+        await fetch('/api/oyun-durumu-guncelle', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ state: guncelState, botlar: guncelBotlar })
+        });
+    } catch (err) {
+        console.error("State sunucuya kaydedilemedi:", err);
+    }
+}  
+
 // 1. Sunucu verilerini çeken ana fonksiyon
 async function sunucudanVerileriYukle() {
     try {
