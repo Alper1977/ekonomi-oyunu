@@ -5004,17 +5004,19 @@ function socketDinleyicileriniBaslat() {
 
         // KRİTİK EKLEME: Socket tetiklendiği an sunucudan en güncel portföyü de çekip state'e işliyoruz ki bakiyeler güncel kalsın
         try {
-            let res = await fetch('/api/portfoy-getir', { credentials: 'include' });
-            if (res.ok) {
-                let guncelPortfoy = await res.json();
-                if (guncelPortfoy && typeof state !== 'undefined') {
-                    Object.assign(state, guncelPortfoy);
-                }
-            }
-        } catch (err) {
-            console.error("Socket içi portföy tazeleme hatası:", err);
+    let res = await fetch('/api/portfoy-getir', { credentials: 'include' });
+    if (res.ok) {
+        let guncelPortfoy = await res.json();
+        if (guncelPortfoy && typeof state !== 'undefined') {
+            // Sadece cüzdan/portföy alanlarını güvenle alıyoruz, tüm objeyi ezmiyoruz:
+            if (guncelPortfoy.nakit !== undefined) state.nakit = guncelPortfoy.nakit;
+            if (guncelPortfoy.para !== undefined) state.para = guncelPortfoy.para;
+            if (guncelPortfoy.varliklar) state.varliklar = guncelPortfoy.varliklar;
         }
-
+    }
+} catch (err) {
+    console.error("Socket içi portföy tazeleme hatası:", err);
+}
         if (typeof state !== 'undefined' && state) {
             if (oyunAyarlari.gunlukGelir !== undefined) {
                 state.gunlukGelir = Number(oyunAyarlari.gunlukGelir);
