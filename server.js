@@ -1616,10 +1616,6 @@ app.get('/api/kullanicilar-liste', (req, res) => {
 io.on('connection', (socket) => {
     console.log('Bir kullanıcı socket üzerinden bağlandı:', socket.id);
 
-    socket.on('adminAyariGuncelle', (veri) => {
-        io.emit('ayarlarDegisti', veri);
-    });
- 
     socket.on('disconnect', () => {
         console.log('Bir kullanıcı socket bağlantısını kesti:', socket.id);
     });
