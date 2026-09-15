@@ -5060,7 +5060,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     }, true);
     
     try {
-        let response = await fetch('/api/aktif-kullanici');
+        let response = await fetch('/api/aktif-kullanici', { credentials: 'include' });
         if (response.ok) {
             let data = await response.json();
             
