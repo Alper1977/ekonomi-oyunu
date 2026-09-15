@@ -269,6 +269,11 @@ if (botSayisi.sayi === 0) {
 function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
     if (!userRow || !userRow.portfoy) return null;
 
+    // 🌟 BURAYA EKLENECEK (Global değişken bağımlılığını kesiyoruz):
+    const kazancTablosu = (ayarlar && ayarlar.kazancTablosu) ? ayarlar.kazancTablosu : {};
+    const satisFiyatlari = (ayarlar && ayarlar.satisFiyatlari) ? ayarlar.satisFiyatlari : {};
+    const faizOranlari = (ayarlar && ayarlar.faizOranlari) ? ayarlar.faizOranlari : {};
+
     let portfoy;
     try {
         portfoy = JSON.parse(userRow.portfoy);
@@ -1309,7 +1314,8 @@ app.get('/api/portfoy-getir', (req, res) => {
         const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
         const ayarlar = ayarKaydi ? JSON.parse(ayarKaydi.ayarlar) : {};
 
-        const guncelPortfoy = kullaniciEkonomisiniIslet(user, ayarlar) || JSON.parse(user.portfoy || '{}');
+        // 🌟 BURASI DEĞİŞECEK (kurlar parametresi eklendi):
+        const guncelPortfoy = kullaniciEkonomisiniIslet(user, ayarlar, ayarlar.kurlar) || JSON.parse(user.portfoy || '{}');
 
        res.json({
             basari: true,
