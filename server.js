@@ -1311,7 +1311,7 @@ app.post('/api/admin/ayar-guncelle', (req, res) => {
     } catch (err) {
         res.status(500).json({ basari: false, mesaj: err.message });
     }
-});
+}); 
 
 app.post('/api/kayit', (req, res) => {
     const { kadi, email, sifre, adsoyad, portfoy } = req.body; 
