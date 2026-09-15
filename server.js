@@ -10,7 +10,10 @@ const app = express();
 const server = http.createServer(app); 
 const io = new Server(server); 
 
-app.use(express.json());
+// 🌟 İŞTE BURASI: Büyük JSON ve form verilerinin 413 hatası vermesini önlemek için limit ekliyoruz
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
 app.use(express.static(__dirname));  
 
 console.log("Klasördeki dosyalar:", fs.readdirSync(__dirname));  
@@ -21,7 +24,7 @@ app.get('/', (req, res) => {
 
 // Ana oyun veritabanı (better-sqlite3 senkron yapısı)
 const db = new Database('./database.db');
-console.log("SQLite veritabanına başarıyla bağlanıldı."); 
+console.log("SQLite veritabanına başarıyla bağlanıldı.");
 
 let sonKiraZamani = Date.now();
 let sonFaizZamani = Date.now();
