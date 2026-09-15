@@ -4885,19 +4885,28 @@ function faizOranlariniGuncelle() {
 // 1. Sunucu verilerini çeken ana fonksiyon
 async function sunucudanVerileriYukle() {
     try {
-        const ayarRes = await fetch('/api/detayli-oyun-ayarlari');
+        const ayarRes = await fetch('/api/detayli-oyun-ayarlari', { credentials: 'include' });
+        if (!ayarRes.ok) return;
         const ayarVerisi = await ayarRes.json();
+        
         if (ayarVerisi.basari) {
             window.kurlar = ayarVerisi.kurlar;
             window.oyunAyar = ayarVerisi.oyunAyar;
             window.faizOranlari = ayarVerisi.faizOranlari;
         }
 
-        const durumRes = await fetch('/api/oyun-durumu');
+        const durumRes = await fetch('/api/oyun-durumu', { credentials: 'include' });
+        if (!durumRes.ok) return;
         const durumVerisi = await durumRes.json();
+        
         if (durumVerisi.basari) {
             window.botlar = durumVerisi.botlar;
-            window.gameState = durumVerisi.state;
+            
+            // ÇOK ÖNEMLİ: gameState yerine global 'state' değişkenine aktarıyoruz ki diğer fonksiyonlar bozmasın!
+            if (typeof state !== 'undefined' && durumVerisi.state) {
+                Object.assign(state, durumVerisi.state);
+            }
+            window.gameState = durumVerisi.state; // Yedek olarak dursun
         }
     } catch (hata) {
         console.error("Sunucu verileri yüklenirken hata oluştu:", hata);
