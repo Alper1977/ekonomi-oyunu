@@ -4979,7 +4979,7 @@ function socketDinleyicileriniBaslat() {
 
     socket.off('ayarlarDegisti');
     
-    socket.on('ayarlarDegisti', async (gelenVeri) => {
+    socket.on('ayarDegisti', async (gelenVeri) => {
         window.ayarGuncelleniyor = true; // Periyodik döngülerin araya girip veriyi ezmesini kilitliyoruz
         console.log("🔥 SUNUCUDAN GELEN HAM AYARLAR:", gelenVeri);
         if (!gelenVeri) return;
