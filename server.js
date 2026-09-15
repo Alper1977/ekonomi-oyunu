@@ -1510,7 +1510,7 @@ app.get('/api/aktif-kullanici', (req, res) => {
     } catch (err) {
         res.status(500).json({ basari: false, mesaj: err.message });
     }
-});
+}); 
 app.post('/api/portfoy-guncelle', (req, res) => {
     if (!req.session || !req.session.kullanici) {
         return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı!" }); 
