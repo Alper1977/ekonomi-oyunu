@@ -722,8 +722,12 @@ app.get('/api/portfoy-getir', (req, res) => {
         const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
         const ayarlar = ayarKaydi ? JSON.parse(ayarKaydi.ayarlar) : {};
 
-        // 🌟 Çevrimdışı geçen süredeki gelirleri hesaba kat!
-        const guncelPortfoy = kullaniciEkonomisiniIslet(user, ayarlar) || JSON.parse(user.portfoy || '{}');
+        // Canlı kurları çekiyoruz
+        const kurlarKaydi = db.prepare(`SELECT kurlar FROM oyun_kurlari WHERE id = 1`).get();
+        const kurlar = kurlarKaydi ? JSON.parse(kurlarKaydi.kurlar) : { dolar: {satis: 49}, euro: {satis: 54}, altin: {satis: 6000} };
+
+        // 🌟 Çevrimdışı geçen süredeki gelirleri ve kur dönüşümlerini hesaba kat!
+        const guncelPortfoy = kullaniciEkonomisiniIslet(user, ayarlar, kurlar) || JSON.parse(user.portfoy || '{}');
 
         res.json({
             basari: true,
@@ -803,7 +807,11 @@ app.get('/api/aktif-kullanici', (req, res) => {
         const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
         const ayarlar = ayarKaydi ? JSON.parse(ayarKaydi.ayarlar) : {};
 
-        const portfoyObj = kullaniciEkonomisiniIslet(dbUser, ayarlar) || JSON.parse(dbUser.portfoy || '{}');
+        // Canlı kurları çekiyoruz
+        const kurlarKaydi = db.prepare(`SELECT kurlar FROM oyun_kurlari WHERE id = 1`).get();
+        const kurlar = kurlarKaydi ? JSON.parse(kurlarKaydi.kurlar) : { dolar: {satis: 49}, euro: {satis: 54}, altin: {satis: 6000} };
+
+        const portfoyObj = kullaniciEkonomisiniIslet(dbUser, ayarlar, kurlar) || JSON.parse(dbUser.portfoy || '{}');
         req.session.kullanici.portfoy = portfoyObj;
 
         res.json({
