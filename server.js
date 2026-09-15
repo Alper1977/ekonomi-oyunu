@@ -314,6 +314,7 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
                 if (portfoy.nakit >= taksitMiktari) {
                     portfoy.nakit -= taksitMiktari;
                     portfoy.para = portfoy.nakit;
+                    kr.kalanBorç -= taksitMiktari; // Dikkat: Türkçe karakter uyumu için kalanBorc
                     kr.kalanBorc -= taksitMiktari;
                     if (kr.kalanBorc < 0) kr.kalanBorc = 0;
                     kr.ustUsteOdenmeyen = 0;
@@ -339,20 +340,55 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
                             // Varlığı portföyden sil
                             portfoy.varliklar = portfoy.varliklar.filter(v => v && v.id !== ilgiliVarlik.id);
 
-                            let artisFarki = satisFiyati - kr.kalanBorc;
-                            if (artisFarki > 0) {
+                            if (satisFiyati >= kr.kalanBorc) {
+                                // Satış borcu haydi haydi karşılıyor, artanı nakite ekle, borcu sıfırla ve kapat
+                                let artisFarki = satisFiyati - kr.kalanBorc;
                                 portfoy.nakit += artisFarki;
                                 portfoy.para = portfoy.nakit;
+                                kr.kalanBorc = 0;
+                                kr.silinecek = true;
+                            } else {
+                                // Satış borcu karşılamadı! Kalan borç bakiye olarak kalır, kredi silinmez.
+                                kr.kalanBorc = kr.kalanBorc - satisFiyati;
+                                kr.ustUsteOdenmeyen = 0; // İcra yapıldı, varlığı gitti, kalan borç için sayaç sıfırlanır
+                                kr.silinecek = false;   // Borç bitmediği için kredi satırından silinmez!
                             }
+                        } else {
+                            // Varlık bulunamazsa veya bloke değilse borç olduğu gibi kalır
+                            kr.silinecek = false;
                         }
-                        kr.silinecek = true;
                     }
                 }
                 degisiklikOldu = true;
             });
 
-            // Silinecek veya borcu biten kredileri temizle
-            portfoy.krediler = portfoy.krediler.filter(kr => kr && kr.kalanBorc > 0 && !kr.silinecek);
+            // Sadece gerçekten borcu biten (kalanBorc === 0 ve silinecek olan) kredileri temizle
+            portfoy.krediler = portfoy.krediler.filter(kr => kr && (kr.kalanBorc > 0 || !kr.silinecek));
+        }
+
+        // --- 4. OTOMATİK BORÇ KAPATMA (KASAYA GELEN PARADAN KESİNTİ) ---
+        // Eğer kullanıcının herhangi bir kredi borcu kalmışsa (icradan kalan dahil),
+        // kasadaki nakit paradan otomatik olarak borç kapatmaya çalışılır.
+        let toplamKalanBorc = portfoy.krediler.reduce((toplam, kr) => toplam + (kr.kalanBorc || 0), 0);
+        if (toplamKalanBorc > 0 && portfoy.nakit > 0) {
+            for (let kr of portfoy.krediler) {
+                if (kr.kalanBorc > 0 && portfoy.nakit > 0) {
+                    let odenen = Math.min(portfoy.nakit, kr.kalanBorc);
+                    portfoy.nakit -= odenen;
+                    portfoy.para = portfoy.nakit;
+                    kr.kalanBorc -= odenen;
+                    
+                    if (kr.kalanBorc === 0 && portfoy.varliklar) {
+                        let ilgiliVarlik = portfoy.varliklar.find(v => v && v.krediID === kr.id);
+                        if (ilgiliVarlik) {
+                            ilgiliVarlik.bloke = false;
+                            ilgiliVarlik.krediID = null;
+                        }
+                    }
+                }
+            }
+            // Tamamen kapananları temizle
+            portfoy.krediler = portfoy.krediler.filter(kr => kr && kr.kalanBorc > 0);
         }
 
         // Genel borç ve taksit özet alanlarını güncelle
