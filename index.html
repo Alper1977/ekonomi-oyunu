@@ -4944,16 +4944,13 @@ function socketDinleyicileriniBaslat() {
     socket.off('ayarlarDegisti');
     
     socket.on('ayarlarDegisti', (gelenVeri) => {
+        window.ayarGuncelleniyor = true; // Periyodik döngülerin araya girip veriyi ezmesini kilitliyoruz
         console.log("🔥 SUNUCUDAN GELEN HAM AYARLAR:", gelenVeri);
         if (!gelenVeri) return;
 
-        // Sunucudan gelen paket doğrudan "ayarlar" objesini (ve içinde sureler'i) içeriyor
         const ham = gelenVeri.ayarlar || gelenVeri;
-        
-        // window.oyunAyar'ı doğrudan sunucudan gelen paketle güncelliyoruz
         window.oyunAyar = { ...window.oyunAyar, ...ham };
         
-        // Sureler alanını güvenle ayırıyoruz
         let yeniSureler = gelenVeri.sureler || ham.sureler || window.oyunAyar.sureler;
         if (yeniSureler) {
             window.oyunAyarlari = yeniSureler;
@@ -4962,7 +4959,6 @@ function socketDinleyicileriniBaslat() {
             window.oyunAyarlari = window.oyunAyar.sureler || window.oyunAyarlari || {};
         }
 
-        // Taksit periyodu güvenli tanımlama
         if (typeof taksitPeriyodu === 'undefined' || !window.taksitPeriyodu) {
             window.taksitPeriyodu = window.oyunAyar.taksitPeriyodu || window.oyunAyarlari.taksitPeriyodu || 1000;
         }
@@ -5006,6 +5002,7 @@ function socketDinleyicileriniBaslat() {
             adminPaneliniAc();
         }
 
+        // Senin eklediğin o hayat kurtaran DOM gecikmeli sigortası:
         setTimeout(() => {
             let kiraEl = document.getElementById('val-kira');
             if (kiraEl && window.oyunAyar && window.oyunAyar.konutKiraGeliri !== undefined) {
@@ -5022,6 +5019,11 @@ function socketDinleyicileriniBaslat() {
                 input.value = window.oyunAyarlari[anahtar];
             }
         });
+
+        // İşlemler bittikten yarım saniye sonra periyodik döngü kilidini kaldırıyoruz
+        setTimeout(() => {
+            window.ayarGuncelleniyor = false;
+        }, 500);
         
         console.log("Ayar değişikliği socket üzerinden yakalandı ve arayüz anında yenilendi.");
     });
