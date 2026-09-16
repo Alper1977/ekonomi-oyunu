@@ -658,10 +658,10 @@ app.post('/api/ilan-sil', (req, res) => {
             // 2. Kullanıcının portföyündeki ilgili mülkün durumunu tekrar 'sahip' yap
             const userRow = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(userId);
             if (userRow && userRow.portfoy) {
-                let portfoyObj = JSON.parse(userRow.portfoy);
-                if (portfoyObj && portfoyObj.varliklar) {
+                let portfoyObj = typeof userRow.portfoy === 'string' ? JSON.parse(userRow.portfoy) : userRow.portfoy;
+                
+                if (portfoyObj && portfoyObj.varliklar && Array.isArray(portfoyObj.varliklar)) {
                     portfoyObj.varliklar.forEach(v => {
-                        // ID veya sunucu ilan ID eşleşiyorsa ya da isimden bulduysak serbest bırak
                         if (v.id == id || v.sunucuIlanId == silinecekId || (ilan_tipi && v.isim === ilan_tipi && v.durum === 'ilan-aktif')) {
                             v.durum = 'sahip';
                             v.ilanSahibi = null;
@@ -670,7 +670,8 @@ app.post('/api/ilan-sil', (req, res) => {
                         }
                     });
 
-                    db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`).run(JSON.parse(JSON.stringify(portfoyObj)), Date.now(), userId);
+                    // Veritabanına metin (string) olarak kaydediliyor
+                    db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`).run(JSON.stringify(portfoyObj), Date.now(), userId);
                     req.session.kullanici.portfoy = portfoyObj;
                 }
             }
@@ -679,7 +680,7 @@ app.post('/api/ilan-sil', (req, res) => {
         transaction();
         res.json({ basari: true, mesaj: "İlan başarıyla kaldırıldı." });
     } catch (err) {
-        console.error("İlan silme hatası:", err.message);
+        console.error("İlan silme hatası detayı:", err);
         res.status(500).json({ basari: false, mesaj: err.message });
     }
 });
