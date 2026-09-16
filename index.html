@@ -3218,7 +3218,7 @@ let konutSayisi = state.varliklar.filter(v => v.isim === 'Konut' && (v.durum ===
                 sagButonlarHTML += `<span style="color:#ffcc00; font-size:11px;">İnşaat: ${kalanGun} gün</span>`;
           } else if (v.durum === 'ilan-aktif') {
     sagButonlarHTML += `<span style="color:#ff4444; font-size:13px; font-weight:bold;">SATIŞTA</span> 
-                         <button onclick="vazgec(${v.id})" class="btn-red" style="margin-top: 4px; width: 100%; box-sizing: border-box;">Vazgeç</button>`;
+                         <button onclick="vazgec('${v.id}')" class="btn-red" style="margin-top: 4px; width: 100%; box-sizing: border-box;">Vazgeç</button>`;
 }
 
             let goruntuleBtnVarlik = arsaMi ? `<button onclick="arsaKonumGoster('${v.isim}', '${v.atananKonum}')" style="background:#3498db; color:#fff; border:none; border-radius:4px; font-weight:bold; cursor:pointer; width: 100%; margin-top: 4px; box-sizing: border-box;">Görüntüle</button>` : '';
@@ -4296,6 +4296,25 @@ function ilanaCikar(id) {
 }
     
 async function vazgec(uniqueId) {
+    // 1. BEKLEMEDEN ANINDA DEĞİŞTİR: Tarayıcının yerel hafızasını hemen güncelle
+    if (typeof state !== 'undefined' && state.varliklar && Array.isArray(state.varliklar)) {
+        let varlik = state.varliklar.find(v => v.id == uniqueId || v.sunucuIlanId == uniqueId);
+        if (varlik) {
+            varlik.durum = 'sahip';
+            varlik.ilanSahibi = null;
+            varlik.sunucuIlanId = null;
+        }
+    }
+
+    // 2. ARAYÜZÜ ANINDA YENİDEN ÇİZ: Sfır gecikmeyle "Sat" butonuna dönüştür
+    if (typeof portfoyuGuncelle === 'function') {
+        portfoyuGuncelle();
+    }
+    if (typeof ilanlariGuncelle === 'function') {
+        ilanlariGuncelle();
+    }
+
+    // 3. SUNUCU İSTEĞİNİ ARKADA YAP: Kullanıcı bunu hiç hissetmez
     try {
         let response = await fetch('/api/ilan-sil', {
             method: 'POST',
@@ -4304,29 +4323,13 @@ async function vazgec(uniqueId) {
             },
             body: JSON.stringify({ id: uniqueId, sunucuIlanId: uniqueId })
         });
+
         let data = await response.json();
-        if (data.basari) {
-            // Tarayıcının hafızasındaki local state'i hemen güncelle
-            if (typeof state !== 'undefined' && state.varliklar && Array.isArray(state.varliklar)) {
-                let varlik = state.varliklar.find(v => v.id == uniqueId || v.sunucuIlanId == uniqueId);
-                if (varlik) {
-                    varlik.durum = 'sahip';
-                    varlik.ilanSahibi = null;
-                    varlik.sunucuIlanId = null;
-                }
-            }
-            // Sayfaları ve listeleri anında yeniden çiz
-            if (typeof ilanlariGuncelle === 'function') {
-                await ilanlariGuncelle();
-            }
-            if (typeof portfoyuGuncelle === 'function') {
-                portfoyuGuncelle();
-            }
-        } else {
-            console.error("Hata: " + (data.mesaj || "İlan kaldırılamadı."));
+        if (!data.basari) {
+            console.error("Arka plan silme uyarısı:", data.mesaj);
         }
     } catch (err) {
-       console.error("İlan silme isteği başarısız:", err);
+        console.error("İlan silme isteği başarısız:", err);
     }
 }
     
