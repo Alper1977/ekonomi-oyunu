@@ -4296,10 +4296,6 @@ function ilanaCikar(id) {
 }
     
 async function vazgec(uniqueId) {
-    if (!confirm("Bu ilanı yayından kaldırmak (vazgeçmek) istediğinize emin misiniz?")) {
-        return;
-    }
-
     try {
         let response = await fetch('/api/ilan-sil', {
             method: 'POST',
@@ -4312,7 +4308,7 @@ async function vazgec(uniqueId) {
         let data = await response.json();
 
         if (data.basari) {
-            // 1. ANLIK ÇÖZÜM: Tarayıcının hafızasındaki local state'i hemen güncelle ki ekranda 'Satışta' takılı kalmasın!
+            // Tarayıcının hafızasındaki local state'i hemen güncelle
             if (typeof state !== 'undefined' && state.varliklar && Array.isArray(state.varliklar)) {
                 let varlik = state.varliklar.find(v => v.id == uniqueId || v.sunucuIlanId == uniqueId);
                 if (varlik) {
@@ -4322,21 +4318,18 @@ async function vazgec(uniqueId) {
                 }
             }
 
-            // 2. Sayfaları ve listeleri anında yeniden çiz
+            // Sayfaları ve listeleri anında yeniden çiz
             if (typeof ilanlariGuncelle === 'function') {
                 await ilanlariGuncelle();
             }
             if (typeof portfoyuGuncelle === 'function') {
                 portfoyuGuncelle();
             }
-
-            alert(data.mesaj || "İlan başarıyla kaldırıldı.");
         } else {
-            alert("Hata: " + (data.mesaj || "İlan kaldırılamadı."));
+            console.error("Hata: " + (data.mesaj || "İlan kaldırılamadı."));
         }
     } catch (err) {
         console.error("İlan silme isteği başarısız:", err);
-        alert("Bir bağlantı hatası oluştu.");
     }
 }
     
