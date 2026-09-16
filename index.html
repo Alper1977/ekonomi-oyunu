@@ -4295,7 +4295,7 @@ function ilanaCikar(id) {
     });
 }
     
-async function vazgec(id, sunucuIlanId, ilanTipi) {
+async function vazgec(uniqueId) {
     if (!confirm("Bu ilanı yayından kaldırmak (vazgeçmek) istediğinize emin misiniz?")) {
         return;
     }
@@ -4306,24 +4306,30 @@ async function vazgec(id, sunucuIlanId, ilanTipi) {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ 
-                id: id, 
-                sunucuIlanId: sunucuIlanId || id, 
-                ilan_tipi: ilanTipi 
-            })
+            body: JSON.stringify({ id: uniqueId, sunucuIlanId: uniqueId })
         });
 
         let data = await response.json();
 
         if (data.basari) {
-            // Ekranları ve listeleri anında güncelle
-            if (typeof ilanlariGuncelle === 'function') await ilanlariGuncelle();
-            if (typeof portfoyuGuncelle === 'function') portfoyuGuncelle();
-            
-            // Eğer varlıklar sayfasını yenileyen bir fonksiyonun varsa onu da tetikle
-            if (typeof varliklariGuncelle === 'function') varliklariGuncelle();
-            else if (typeof verileriCek === 'function') verileriCek();
-            
+            // 1. ANLIK ÇÖZÜM: Tarayıcının hafızasındaki local state'i hemen güncelle ki ekranda 'Satışta' takılı kalmasın!
+            if (typeof state !== 'undefined' && state.varliklar && Array.isArray(state.varliklar)) {
+                let varlik = state.varliklar.find(v => v.id == uniqueId || v.sunucuIlanId == uniqueId);
+                if (varlik) {
+                    varlik.durum = 'sahip';
+                    varlik.ilanSahibi = null;
+                    varlik.sunucuIlanId = null;
+                }
+            }
+
+            // 2. Sayfaları ve listeleri anında yeniden çiz
+            if (typeof ilanlariGuncelle === 'function') {
+                await ilanlariGuncelle();
+            }
+            if (typeof portfoyuGuncelle === 'function') {
+                portfoyuGuncelle();
+            }
+
             alert(data.mesaj || "İlan başarıyla kaldırıldı.");
         } else {
             alert("Hata: " + (data.mesaj || "İlan kaldırılamadı."));
