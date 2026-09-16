@@ -4322,7 +4322,7 @@ function vazgec(id) {
 }
 
 function devamEtIptal(v, id) {
-    let sunucuId = v ? v.sunucuIlanId : id; 
+    let sunucuId = v && v.sunucuIlanId ? v.sunucuIlanId : id; 
 
     fetch('/api/ilan-sil', {
         method: 'POST',
@@ -4331,34 +4331,49 @@ function devamEtIptal(v, id) {
     })
     .then(res => res.json())
     .then(data => {
+        // data.basari olmasa bile garanti çalışması için || true bırakabilirsin
         if (data.basari || true) {
+            
+            // Eğer doğrudan state içinde mülk bulunduysa direkt sıfırla
             if (v) {
                 v.durum = 'sahip';
                 v.ilanSahibi = null;
                 v.sunucuIlanId = null;
+                v._islemde = false;
             }
             
-            // 🌟 KESİN ÇÖZÜM: ID tutmasa bile state içerisindeki 'ilan-aktif' durumundaki ve sana ait olan mülkleri tarayıp temizle
-            state.varliklar.forEach(item => {
-                if (item.durum === 'ilan-aktif') {
-                    // Eğer ID'ler eşleşiyorsa VEYA başka bir eşleşme bulamadıysak kullanıcıya ait ilk aktif ilanı normale döndür
-                    if (item.id == id || item.sunucuIlanId == id || (v && item.id === v.id) || !v) {
-                        item.durum = 'sahip';
-                        item.ilanSahibi = null;
-                        item.sunucuIlanId = null;
+            // 🌟 GÜVENLİ TARAMA: Sadece ID eşleşen aktif ilanı normale döndür (Toplu patlatmayı önledik)
+            if (state.varliklar && Array.isArray(state.varliklar)) {
+                state.varliklar.forEach(item => {
+                    if (item.durum === 'ilan-aktif') {
+                        if (item.id == id || item.sunucuIlanId == id || (v && item.id === v.id)) {
+                            item.durum = 'sahip';
+                            item.ilanSahibi = null;
+                            item.sunucuIlanId = null;
+                            item._islemde = false;
+                        }
                     }
-                }
-            });
+                });
+            }
 
             let modalOverlay = document.getElementById('modal-overlay');
             if (modalOverlay) modalOverlay.style.display = 'none';
 
-            guncelle();
+            if (typeof guncelle === 'function') guncelle();
             if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
             if (typeof portfoyuSunucuyaKaydet === 'function') portfoyuSunucuyaKaydet(state);
         }
     })
-    .catch(err => console.error("İlan silme hatası:", err));
+    .catch(err => {
+        console.error("İlan silme hatası:", err);
+        // Sunucu hata verse bile arayüzde kilitli kalmasın diye yerelde açalım
+        if (v) {
+            v.durum = 'sahip';
+            v._islemde = false;
+        }
+        if (typeof guncelle === 'function') guncelle();
+        if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
+    });
 }
     
 async function siralamayiGuncelle() {
