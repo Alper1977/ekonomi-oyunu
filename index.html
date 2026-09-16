@@ -3210,7 +3210,7 @@ let konutSayisi = state.varliklar.filter(v => v.isim === 'Konut' && (v.durum ===
 
             if (v.durum === 'sahip') {
                 if (v.isim !== 'Bayi') {
-                    sagButonlarHTML += `<button onclick="ilanaCikar(${v.id})" style="width: 100%; box-sizing: border-box;">SAT</button>`;
+                    sagButonlarHTML += `<button onclick="ilanaCikar('${v.id}')" style="width: 100%; box-sizing: border-box;">SAT</button>`;
                 }
             } else if (v.durum === 'inşaat') {
                 let kalanMs = v.bitis - Date.now();
