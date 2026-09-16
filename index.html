@@ -5478,7 +5478,6 @@ function taksitleriOdeVeyaKontrolEt() {
 }
 
 function kalanBorclariOtomatikOde() {
-    // Toplam borcu her zaman hem krediler dizisinden hem de state.kredi'den ortak ve güvenli hesapla
     let toplamBorc = 0;
     if (state.krediler && state.krediler.length > 0) {
         toplamBorc = state.krediler.reduce((t, k) => t + (k.kalanBorc || 0), 0);
@@ -5516,7 +5515,6 @@ function kalanBorclariOtomatikOde() {
                 state.krediler = state.krediler.filter(kr => kr.kalanBorc > 0 || kr.icradanKalanBorc);
             }
             
-            // Kalan borcu hem diziden tekrar toplayarak hem de state.kredi'ye eşitleyerek kesin olarak kilitliyoruz
             let yeniKalan = state.krediler && state.krediler.length > 0 
                 ? state.krediler.reduce((t, k) => t + (k.kalanBorc || 0), 0) 
                 : Math.max(0, toplamBorc - odenenMiktar);
@@ -5526,7 +5524,6 @@ function kalanBorclariOtomatikOde() {
         }
     }
 }
-
 function zorunluVarlikSatisiAndKapatma() {
     let toplamKrediBorcu = state.krediler && state.krediler.length > 0 
         ? state.krediler.reduce((t, k) => t + (k.kalanBorc || 0), 0) 
