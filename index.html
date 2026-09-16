@@ -3216,10 +3216,10 @@ let konutSayisi = state.varliklar.filter(v => v.isim === 'Konut' && (v.durum ===
                 let kalanMs = v.bitis - Date.now();
                 let kalanGun = Math.max(0, Math.ceil(kalanMs / (1000 * 60 * 60 * 24)));
                 sagButonlarHTML += `<span style="color:#ffcc00; font-size:11px;">İnşaat: ${kalanGun} gün</span>`;
-            } else if (v.durum === 'ilan-aktif') {
-                sagButonlarHTML += `<span style="color:#ff4444; font-size:13px; font-weight:bold;">SATIŞTA</span>
-                                     <button onclick="vazgec(${v.id})" class="btn-red" style="margin-top: 4px; width: 100%; box-sizing: border-box;">Vazgeç</button>`;
-            }
+           } else if (v.durum === 'ilan-aktif') {
+               sagButonlarHTML += `<span style="color:#ff4444; font-size:13px; font-weight:bold;">SATIŞTA</span>
+                         <button onclick="vazgec('${v.id}', '${v.sunucuIlanId || ''}', '${v.isim}')" class="btn-red" style="margin-top: 4px; width: 100%; box-sizing: border-box;">Vazgeç</button>`;
+           }
 
             let goruntuleBtnVarlik = arsaMi ? `<button onclick="arsaKonumGoster('${v.isim}', '${v.atananKonum}')" style="background:#3498db; color:#fff; border:none; border-radius:4px; font-weight:bold; cursor:pointer; width: 100%; margin-top: 4px; box-sizing: border-box;">Görüntüle</button>` : '';
 
@@ -4295,7 +4295,7 @@ function ilanaCikar(id) {
     });
 }
     
-async function vazgec(uniqueId) {
+async function vazgec(id, sunucuIlanId, ilanTipi) {
     if (!confirm("Bu ilanı yayından kaldırmak (vazgeçmek) istediğinize emin misiniz?")) {
         return;
     }
@@ -4306,19 +4306,24 @@ async function vazgec(uniqueId) {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ id: uniqueId, sunucuIlanId: uniqueId })
+            body: JSON.stringify({ 
+                id: id, 
+                sunucuIlanId: sunucuIlanId || id, 
+                ilan_tipi: ilanTipi 
+            })
         });
 
         let data = await response.json();
 
         if (data.basari) {
-            // İlan başarıyla silindi, ekranı hemen güncelle
-            if (typeof ilanlariGuncelle === 'function') {
-                await ilanlariGuncelle();
-            }
-            if (typeof portfoyuGuncelle === 'function') {
-                portfoyuGuncelle(); // Kullanıcının portföy görünümünü de güncellemek istiyorsan
-            }
+            // Ekranları ve listeleri anında güncelle
+            if (typeof ilanlariGuncelle === 'function') await ilanlariGuncelle();
+            if (typeof portfoyuGuncelle === 'function') portfoyuGuncelle();
+            
+            // Eğer varlıklar sayfasını yenileyen bir fonksiyonun varsa onu da tetikle
+            if (typeof varliklariGuncelle === 'function') varliklariGuncelle();
+            else if (typeof verileriCek === 'function') verileriCek();
+            
             alert(data.mesaj || "İlan başarıyla kaldırıldı.");
         } else {
             alert("Hata: " + (data.mesaj || "İlan kaldırılamadı."));
