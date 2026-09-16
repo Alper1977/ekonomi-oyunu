@@ -5027,8 +5027,10 @@ function krediyiKesinOnayla() {
         isim: isim,
         kalanBorc: toplamGeriOdeme,
         taksit: aylikTaksit,
+        taksitTutu: aylikTaksit,
+        aylikTaksit: aylikTaksit,
         ustUsteOdenmeyen: 0,
-        icradanKalanBorc: false // Sağlıklı yeni kredi olarak başlar
+        icradanKalanBorc: false
     });
 
     let islemTipi = (kapsam === 'ilan') ? 'al' : 'yap';
@@ -5113,10 +5115,8 @@ function krediyiKesinOnayla() {
 
     tempIslem = null;
 }
-    
+
 function krediyiOnaylaVeUygula(inputId, vadeInputId, isim, bedel, kapsam, miktar, vade) {
-    
-    // 🌟 YENİ EKLEDİĞİMİZ KONTROL: Gecikmiş kredi varsa bu yolla da krediyi engelle
     let gecikmedeKrediVar = state.krediler && state.krediler.find(kr => kr.ustUsteOdenmeyen > 0);
     if (gecikmedeKrediVar) {
         let miktarInput = document.getElementById(inputId);
@@ -5125,7 +5125,6 @@ function krediyiOnaylaVeUygula(inputId, vadeInputId, isim, bedel, kapsam, miktar
         modalGoster(`⚠️ <b>KREDİ UYARISI</b><br><br>Kredi taksit ödemeleriniz düzenli değil! Gecikmiş ödemeleriniz bulunduğu için <b>kredi borcunuzu kapatmadan</b> yeni kredi kullanamazsınız.`);
         return;
     }
-    // -----------------------------------------------------------------
 
     let islemTipi = (kapsam === 'ilan' ? 'al' : 'yap');
     
@@ -5141,23 +5140,25 @@ function krediyiOnaylaVeUygula(inputId, vadeInputId, isim, bedel, kapsam, miktar
     let miktarInput = document.getElementById(inputId);
     let vadeSelect = document.getElementById(vadeInputId);
 
-let katsayi = (typeof faizOranlari !== 'undefined' && faizOranlari.krediKatsayi) ? faizOranlari.krediKatsayi : 1.2;
-let toplamGeriOdeme = miktar * katsayi;
-let aylikTaksit = toplamGeriOdeme / vade;
+    let katsayi = (typeof faizOranlari !== 'undefined' && faizOranlari.krediKatsayi) ? faizOranlari.krediKatsayi : 1.2;
+    let toplamGeriOdeme = miktar * katsayi;
+    let aylikTaksit = toplamGeriOdeme / vade;
 
-state.kredi += toplamGeriOdeme;
-state.taksit += aylikTaksit;
-state.nakit -= (bedel - miktar);
+    state.kredi += toplamGeriOdeme;
+    state.taksit += aylikTaksit;
+    state.nakit -= (bedel - miktar);
 
-if (!state.krediler) state.krediler = [];
-let yeniKrediID = Date.now() + Math.random(); 
+    if (!state.krediler) state.krediler = [];
+    let yeniKrediID = Date.now() + Math.random(); 
 
-state.krediler.push({
-    id: yeniKrediID,
-    isim: isim,
-    kalanBorc: toplamGeriOdeme, // Doğrusu bu olmalı
-    taksit: aylikTaksit
-});
+    state.krediler.push({
+        id: yeniKrediID,
+        isim: isim,
+        kalanBorc: toplamGeriOdeme,
+        taksit: aylikTaksit,
+        taksitTutu: aylikTaksit,
+        aylikTaksit: aylikTaksit
+    });
 
     if (typeof islemGerceklessin === 'function') {
         islemGerceklessin(isim, bedel, islemTipi, true, yeniKrediID);
@@ -5170,18 +5171,6 @@ state.krediler.push({
     if (typeof portfoyuSunucuyaKaydet === 'function') {
         portfoyuSunucuyaKaydet(state);
     }
-}
-    
-function islemiIptalEt() {
-    tempIslem = null; // Bekleyen geçici işlemi sıfırla
-    
-    // Projende modalın ID'si muhtemelen 'modal-overlay' veya benzeridir, 
-    // her ihtimale karşı yaygın olanları kapatalım:
-    let modalOverlay = document.getElementById('modal-overlay');
-    if (modalOverlay) modalOverlay.style.display = 'none';
-    
-    let modal = document.getElementById('modal');
-    if (modal) modal.style.display = 'none';
 }
     
 function krediOde() {
