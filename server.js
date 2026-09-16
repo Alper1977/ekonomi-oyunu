@@ -646,72 +646,62 @@ app.post('/api/ilan-sil', (req, res) => {
 
     const userId = req.session.kullanici.id;
     const { id, sunucuIlanId, ilan_tipi } = req.body;
-    const hedefId = id || sunucuIlanId;
 
     try {
-        // 1. Önce ilanlar tablosundan bu ilanı bulalım ki hangi mülk olduğunu (adını/tipini) öğrenelim
-        let ilanRow = null;
-        if (hedefId) {
-            ilanRow = db.prepare(`SELECT * FROM ilanlar WHERE id = ? AND kullanici_id = ?`).get(hedefId, userId);
-        }
-        if (!ilanRow && sunucuIlanId) {
-            ilanRow = db.prepare(`SELECT * FROM ilanlar WHERE id = ? AND kullanici_id = ?`).get(sunucuIlanId, userId);
-        }
+        const transaction = db.transaction(() => {
+            // 1. Kullanıcının portföyünden mülkü bulup durumunu 'sahip' yapalım 
+            // ve varsa veritabanındaki eşleşen ilan ID'sini yakalayalım
+            const userRow = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(userId);
+            let silinecekIlanIds = [];
+            if (id) silinecekIlanIds.push(id);
+            if (sunucuIlanId) silinecekIlanIds.push(sunucuIlanId);
 
-        // İlandan veya gelen istekten mülk adını kesin olarak yakala
-        let mülkAdi = ilan_tipi || (ilanRow ? (ilanRow.ilan_tipi || ilanRow.baslik) : null);
-
-        // 2. Kullanıcının portföyünü güncelle ve mülkü 'sahip' yap
-        const userRow = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(userId);
-        if (userRow && userRow.portfoy) {
-            let portfoyObj = typeof userRow.portfoy === 'string' ? JSON.parse(userRow.portfoy) : userRow.portfoy;
-            
-            if (portfoyObj && portfoyObj.varliklar && Array.isArray(portfoyObj.varliklar)) {
-                portfoyObj.varliklar.forEach(v => {
-                    let eslesti = false;
-                    
-                    // ID eşleşmesi
-                    if (hedefId && (v.id == hedefId || v.sunucuIlanId == hedefId)) eslesti = true;
-                    if (sunucuIlanId && (v.id == sunucuIlanId || v.sunucuIlanId == sunucuIlanId)) eslesti = true;
-                    
-                    // İsim / Mülk Tipi eşleşmesi (ID'ler farklı olsa bile ismi tutuyorsa yakala)
-                    if (mülkAdi && v.isim && (v.isim == mülkAdi || mülkAdi.includes(v.isim) || v.isim.includes(mülkAdi))) {
-                        if (v.durum === 'ilan-aktif' || v.durum === 'satista') {
-                            eslesti = true;
+            if (userRow && userRow.portfoy) {
+                let portfoyObj = typeof userRow.portfoy === 'string' ? JSON.parse(userRow.portfoy) : userRow.portfoy;
+                
+                if (portfoyObj && portfoyObj.varliklar && Array.isArray(portfoyObj.varliklar)) {
+                    portfoyObj.varliklar.forEach(v => {
+                        // Varlık ID'si veya sunucuIlanId eşleşiyorsa
+                        if (
+                            (id && (v.id == id || v.sunucuIlanId == id)) || 
+                            (sunucuIlanId && (v.id == sunucuIlanId || v.sunucuIlanId == sunucuIlanId))
+                        ) {
+                            if (v.sunucuIlanId) {
+                                silinecekIlanIds.push(v.sunucuIlanId);
+                            }
+                            v.durum = 'sahip';
+                            v.ilanSahibi = null;
+                            v.sunucuIlanId = null;
+                            if (v._islemde) delete v._islemde;
                         }
-                    }
+                    });
 
-                    if (eslesti) {
-                        v.durum = 'sahip';
-                        v.ilanSahibi = null;
-                        v.sunucuIlanId = null;
-                        if (v._islemde) delete v._islemde;
-                    }
-                });
-
-                db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`)
-                  .run(JSON.stringify(portfoyObj), Date.now(), userId);
-                req.session.kullanici.portfoy = portfoyObj;
+                    db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`)
+                      .run(JSON.stringify(portfoyObj), Date.now(), userId);
+                    req.session.kullanici.portfoy = portfoyObj;
+                }
             }
-        }
 
-        // 3. İlanlar tablosundaki kaydı tamamen temizle
-        if (hedefId) {
-            db.prepare(`DELETE FROM ilanlar WHERE kullanici_id = ? AND (id = ? OR id = ?)`).run(userId, hedefId, sunucuIlanId);
-        }
-        if (mülkAdi) {
-            db.prepare(`DELETE FROM ilanlar WHERE kullanici_id = ? AND (ilan_tipi = ? OR baslik LIKE ?)`).run(userId, mülkAdi, `%${mülkAdi}%`);
-        }
-        if (id) {
-            db.prepare(`DELETE FROM ilanlar WHERE kullanici_id = ? AND id = ?`).run(userId, id);
-        }
+            // 2. Toplanan tüm olası ilan ID'lerine göre ilanlar tablosunu tertemiz sil
+            if (silinecekIlanIds.length > 0) {
+                const placeholders = silinecekIlanIds.map(() => '?').join(',');
+                db.prepare(`DELETE FROM ilanlar WHERE kullanici_id = ? AND id IN (${placeholders})`).run(userId, ...silinecekIlanIds);
+            }
 
+            // Ek güvenlik: Eğer ilan_tipi gönderildiyse isme göre de kalıntı bırakma
+            if (ilan_tipi) {
+                db.prepare(`DELETE FROM ilanlar WHERE kullanici_id = ? AND (ilan_tipi = ? OR baslik LIKE ?)`).run(userId, ilan_tipi, `%${ilan_tipi}%`);
+            }
+        });
+
+        transaction();
         res.json({ basari: true, mesaj: "İlan başarıyla kaldırıldı." });
     } catch (err) {
-        console.error("İlan silme hatası detayı:", err);
+        console.error("İlan silme hatası:", err);
         res.status(500).json({ basari: false, mesaj: err.message });
     }
 });
+
 app.get('/api/oyun-ayarlari', (req, res) => {
     try {
         const kayit = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
