@@ -649,20 +649,32 @@ app.post('/api/ilan-sil', (req, res) => {
 
     try {
         const transaction = db.transaction(() => {
-            // 1. İlanlar tablosundan güvenli silme (ID veya sunucuIlanId eşleşmesine göre)
-            if (sunucuIlanId) {
-                db.prepare(`DELETE FROM ilanlar WHERE kullanici_id = ? AND (id = ? OR id = ?)`).run(userId, id, sunucuIlanId);
-            } else if (id) {
-                db.prepare(`DELETE FROM ilanlar WHERE kullanici_id = ? AND (id = ?)`).run(userId, id);
-            }
-            
-            // Eğer ilan_tipi gönderildiyse isme göre de temizlik yapalım
-            if (ilan_tipi) {
-                db.prepare(`DELETE FROM ilanlar WHERE kullanici_id = ? AND (ilan_tipi = ? OR baslik LIKE ?)`).run(userId, ilan_tipi, `%${ilan_tipi}%`);
+            // 1. Önce kullanıcının portföyünden bu ID'ye karşılık gelen mülkün adını (isim) bulalım
+            const userRow = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(userId);
+            let mulkAdi = ilan_tipi || null;
+
+            if (userRow && userRow.portfoy) {
+                let portfoyObj = typeof userRow.portfoy === 'string' ? JSON.parse(userRow.portfoy) : userRow.portfoy;
+                if (portfoyObj && portfoyObj.varliklar && Array.isArray(portfoyObj.varliklar)) {
+                    let bulunanVarlik = portfoyObj.varliklar.find(v => v.id == id || v.sunucuIlanId == id);
+                    if (bulunanVarlik) {
+                        mulkAdi = bulunanVarlik.isim;
+                    }
+                }
             }
 
-            // 2. Kullanıcının portföyündeki mülk durumunu 'sahip' yap
-            const userRow = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(userId);
+            // 2. İlanlar tablosundan ister ID ile ister mülk adına (ilan_tipi) göre ilanı kesin olarak sil
+            db.prepare(`
+                DELETE FROM ilanlar 
+                WHERE kullanici_id = ? AND (
+                    id = ? 
+                    OR id = ? 
+                    OR (? IS NOT NULL AND ilan_tipi = ?) 
+                    OR (? IS NOT NULL AND baslik LIKE ?)
+                )
+            `).run(userId, id, sunucuIlanId, mulkAdi, mulkAdi, mulkAdi, `%${mulkAdi}%`);
+
+            // 3. Kullanıcının portföyündeki mülkün durumunu tekrar 'sahip' yap
             if (userRow && userRow.portfoy) {
                 let portfoyObj = typeof userRow.portfoy === 'string' ? JSON.parse(userRow.portfoy) : userRow.portfoy;
                 
@@ -671,7 +683,7 @@ app.post('/api/ilan-sil', (req, res) => {
                         let eslesti = false;
                         if (id && (v.id == id || v.sunucuIlanId == id)) eslesti = true;
                         if (sunucuIlanId && (v.id == sunucuIlanId || v.sunucuIlanId == sunucuIlanId)) eslesti = true;
-                        if (ilan_tipi && v.isim === ilan_tipi) eslesti = true;
+                        if (mulkAdi && v.isim === mulkAdi) eslesti = true;
 
                         if (eslesti) {
                             v.durum = 'sahip';
@@ -694,6 +706,7 @@ app.post('/api/ilan-sil', (req, res) => {
         res.status(500).json({ basari: false, mesaj: err.message });
     }
 });
+
 app.get('/api/oyun-ayarlari', (req, res) => {
     try {
         const kayit = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
