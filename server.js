@@ -639,6 +639,51 @@ app.post('/api/ilan-satin-al', (req, res) => {
     }
 });
 
+app.post('/api/ilan-sil', (req, res) => {
+    if (!req.session || !req.session.kullanici) {
+        return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı!" });
+    }
+
+    const userId = req.session.kullanici.id;
+    const { id, sunucuIlanId, ilan_tipi } = req.body;
+    const silinecekId = sunucuIlanId || id;
+
+    try {
+        const transaction = db.transaction(() => {
+            // 1. İlanı veritabanından sil
+            if (silinecekId) {
+                db.prepare(`DELETE FROM ilanlar WHERE id = ? AND kullanici_id = ?`).run(silinecekId, userId);
+            }
+
+            // 2. Kullanıcının portföyündeki ilgili mülkün durumunu tekrar 'sahip' yap
+            const userRow = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(userId);
+            if (userRow && userRow.portfoy) {
+                let portfoyObj = JSON.parse(userRow.portfoy);
+                if (portfoyObj && portfoyObj.varliklar) {
+                    portfoyObj.varliklar.forEach(v => {
+                        // ID veya sunucu ilan ID eşleşiyorsa ya da isimden bulduysak serbest bırak
+                        if (v.id == id || v.sunucuIlanId == silinecekId || (ilan_tipi && v.isim === ilan_tipi && v.durum === 'ilan-aktif')) {
+                            v.durum = 'sahip';
+                            v.ilanSahibi = null;
+                            v.sunucuIlanId = null;
+                            if (v._islemde) delete v._islemde;
+                        }
+                    });
+
+                    db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`).run(JSON.parse(JSON.stringify(portfoyObj)), Date.now(), userId);
+                    req.session.kullanici.portfoy = portfoyObj;
+                }
+            }
+        });
+
+        transaction();
+        res.json({ basari: true, mesaj: "İlan başarıyla kaldırıldı." });
+    } catch (err) {
+        console.error("İlan silme hatası:", err.message);
+        res.status(500).json({ basari: false, mesaj: err.message });
+    }
+});
+
 app.get('/api/oyun-ayarlari', (req, res) => {
     try {
         const kayit = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
