@@ -4295,68 +4295,38 @@ function ilanaCikar(id) {
     });
 }
     
-function vazgec(id) {
-    let v = state.varliklar.find(x => x.id == id || x.sunucuIlanId == id);
-    
-    // Sunucuya ilanı silmesi için hem id, hem sunucuIlanId, hem de varsa mülk adını gönderiyoruz
-    let gonderilecekVeri = {
-        id: id,
-        sunucuIlanId: v ? v.sunucuIlanId : null,
-        ilan_tipi: v ? v.isim : null
-    };
+async function vazgec(uniqueId) {
+    if (!confirm("Bu ilanı yayından kaldırmak (vazgeçmek) istediğinize emin misiniz?")) {
+        return;
+    }
 
-    fetch('/api/ilan-sil', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(gonderilecekVeri)
-    })
-    .then(res => res.json())
-    .then(data => {
-        // Yerelde mülkü kesin olarak 'sahip' yap ve ID/Sunucu ID bağlarını kopar
-        if (v) {
-            v.durum = 'sahip';
-            v.ilanSahibi = null;
-            v.sunucuIlanId = null;
-            v._islemde = false;
-        }
+    try {
+        let response = await fetch('/api/ilan-sil', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ id: uniqueId, sunucuIlanId: uniqueId })
+        });
 
-        // State içindeki eşleşen tüm aktif ilanları temizle
-        if (state.varliklar && Array.isArray(state.varliklar)) {
-            state.varliklar.forEach(item => {
-                if (item.id == id || item.sunucuIlanId == id || (v && item.isim === v.isim)) {
-                    if (item.durum === 'ilan-aktif') {
-                        item.durum = 'sahip';
-                        item.ilanSahibi = null;
-                        item.sunucuIlanId = null;
-                        item._islemde = false;
-                    }
-                }
-            });
-        }
+        let data = await response.json();
 
-        // Arayüzleri ve veriyi güncelle
-        if (typeof guncelle === 'function') guncelle();
-        
-        // İlanlar sayfasını yenile (Eğer ilanlar listesi başka bir fonksiyondan çekiliyorsa taze listeyi getirir)
-        if (typeof ilanlariGuncelle === 'function') {
-            ilanlariGuncelle();
+        if (data.basari) {
+            // İlan başarıyla silindi, ekranı hemen güncelle
+            if (typeof ilanlariGuncelle === 'function') {
+                await ilanlariGuncelle();
+            }
+            if (typeof portfoyuGuncelle === 'function') {
+                portfoyuGuncelle(); // Kullanıcının portföy görünümünü de güncellemek istiyorsan
+            }
+            alert(data.mesaj || "İlan başarıyla kaldırıldı.");
         } else {
-            // Sunucu listesinin DOM'dan tamamen temizlenmesini garanti etmek için kısa bir gecikmeyle sayfayı yenileyebiliriz
-            setTimeout(() => { location.reload(); }, 200);
+            alert("Hata: " + (data.mesaj || "İlan kaldırılamadı."));
         }
-        
-        if (typeof portfoyuSunucuyaKaydet === 'function') {
-            portfoyuSunucuyaKaydet(state);
-        }
-    })
-    .catch(err => {
-        console.error("Vazgeçme hatası:", err);
-        if (v) {
-            v.durum = 'sahip';
-            v._islemde = false;
-            if (typeof guncelle === 'function') guncelle();
-        }
-    });
+    } catch (err) {
+        console.error("İlan silme isteği başarısız:", err);
+        alert("Bir bağlantı hatası oluştu.");
+    }
 }
     
 async function siralamayiGuncelle() {
