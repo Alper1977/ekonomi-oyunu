@@ -4331,10 +4331,9 @@ function devamEtIptal(v, id) {
     })
     .then(res => res.json())
     .then(data => {
-        // data.basari olmasa bile garanti çalışması için || true bırakabilirsin
         if (data.basari || true) {
             
-            // Eğer doğrudan state içinde mülk bulunduysa direkt sıfırla
+            // 1. Yerel mülk durumunu 'sahip' yap
             if (v) {
                 v.durum = 'sahip';
                 v.ilanSahibi = null;
@@ -4342,7 +4341,6 @@ function devamEtIptal(v, id) {
                 v._islemde = false;
             }
             
-            // 🌟 GÜVENLİ TARAMA: Sadece ID eşleşen aktif ilanı normale döndür (Toplu patlatmayı önledik)
             if (state.varliklar && Array.isArray(state.varliklar)) {
                 state.varliklar.forEach(item => {
                     if (item.durum === 'ilan-aktif') {
@@ -4359,21 +4357,20 @@ function devamEtIptal(v, id) {
             let modalOverlay = document.getElementById('modal-overlay');
             if (modalOverlay) modalOverlay.style.display = 'none';
 
+            // 2. Arayüzleri ve portföyü güncelle
             if (typeof guncelle === 'function') guncelle();
-            if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
             if (typeof portfoyuSunucuyaKaydet === 'function') portfoyuSunucuyaKaydet(state);
+
+            // 🌟 3. İLANLAR SAYFASINI ANINDA YENİDEN ÇEK (Kayıp/Gitmeme sorununu çözen kritik nokta)
+            if (typeof ilanlariGuncelle === 'function') {
+                ilanlariGuncelle();
+            } else {
+                // Eğer fonksiyon adın farklıysa ya da sayfayı tazelemek gerekirse:
+                location.reload(); // En keskin çözüm olarak sunucudan güncel listeyi çeker
+            }
         }
     })
-    .catch(err => {
-        console.error("İlan silme hatası:", err);
-        // Sunucu hata verse bile arayüzde kilitli kalmasın diye yerelde açalım
-        if (v) {
-            v.durum = 'sahip';
-            v._islemde = false;
-        }
-        if (typeof guncelle === 'function') guncelle();
-        if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
-    });
+    .catch(err => console.error("İlan silme hatası:", err));
 }
     
 async function siralamayiGuncelle() {
