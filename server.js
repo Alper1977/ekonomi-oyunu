@@ -649,14 +649,14 @@ app.post('/api/ilan-sil', (req, res) => {
     const hedefId = id || sunucuIlanId;
 
     try {
-        // 1. Önce ilanlar tablosundan ilgili ilanı bulup mülk adını (ilan_tipi) öğrenelim
+        // 1. Önce ilanlar tablosundan bu ID'ye ait ilan var mı bakalım, varsa mülk adını öğrenelim
         let ilanRow = null;
         if (hedefId) {
             ilanRow = db.prepare(`SELECT * FROM ilanlar WHERE (id = ? OR sunucuIlanId = ?) AND kullanici_id = ?`).get(hedefId, hedefId, userId);
         }
-        let mülkAdi = ilan_tipi || (ilanRow ? (ilanRow.ilan_tipi || ilanRow.baslik) : null);
+        let mulkAdi = ilan_tipi || (ilanRow ? (ilanRow.ilan_tipi || ilanRow.baslik) : null);
 
-        // 2. Kullanıcının portföyünü güncelle ve mülkü 'sahip' yap
+        // 2. Kullanıcının portföyündeki mülkü bul ve durumunu kesinlikle 'sahip' yap
         const userRow = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(userId);
         if (userRow && userRow.portfoy) {
             let portfoyObj = typeof userRow.portfoy === 'string' ? JSON.parse(userRow.portfoy) : userRow.portfoy;
@@ -665,10 +665,10 @@ app.post('/api/ilan-sil', (req, res) => {
                 portfoyObj.varliklar.forEach(v => {
                     let eslesti = false;
                     
-                    // Varlık ID'si veya ilan ID'si eşleşmesi
+                    // Varlık ID'si veya gelen ID portföydeki mülkle tutuyorsa
                     if (hedefId && (v.id == hedefId || v.sunucuIlanId == hedefId)) eslesti = true;
-                    // İsim eşleşmesi (Varlık adıyla ilan tipi tutuyorsa)
-                    if (mülkAdi && v.isim && v.isim.toLowerCase() === mülkAdi.toLowerCase()) eslesti = true;
+                    // Eğer ilan tablosundan mülk adını bulduysak isme göre de eşleştir
+                    if (mulkAdi && v.isim && v.isim.toLowerCase() === mulkAdi.toLowerCase()) eslesti = true;
 
                     if (eslesti) {
                         v.durum = 'sahip';
@@ -688,8 +688,11 @@ app.post('/api/ilan-sil', (req, res) => {
         if (hedefId) {
             db.prepare(`DELETE FROM ilanlar WHERE kullanici_id = ? AND (id = ? OR sunucuIlanId = ?)`).run(userId, hedefId, hedefId);
         }
-        if (mülkAdi) {
-            db.prepare(`DELETE FROM ilanlar WHERE kullanici_id = ? AND (ilan_tipi = ? OR baslik LIKE ?)`).run(userId, mülkAdi, `%${mülkAdi}%`);
+        if (mulkAdi) {
+            db.prepare(`DELETE FROM ilanlar WHERE kullanici_id = ? AND (ilan_tipi = ? OR baslik LIKE ?)`).run(userId, mulkAdi, `%${mulkAdi}%`);
+        }
+        if (id) {
+            db.prepare(`DELETE FROM ilanlar WHERE kullanici_id = ? AND id = ?`).run(userId, id);
         }
 
         res.json({ basari: true, mesaj: "İlan başarıyla kaldırıldı." });
@@ -698,7 +701,6 @@ app.post('/api/ilan-sil', (req, res) => {
         res.status(500).json({ basari: false, mesaj: err.message });
     }
 });
-
 app.get('/api/oyun-ayarlari', (req, res) => {
     try {
         const kayit = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
