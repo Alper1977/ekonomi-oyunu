@@ -4296,81 +4296,59 @@ function ilanaCikar(id) {
 }
     
 function vazgec(id) {
-    // 1. Önce doğrudan state.varliklar içinde id veya sunucuIlanId eşleşmesi arayalım
+    // 1. Önce state içinden mülkü bulmaya çalış
     let v = state.varliklar.find(x => x.id == id || x.sunucuIlanId == id);
-    
-    // Eğer state içinde bulamadıysak, sunucudan gelen ilan ID'si ile eşleşen mülkü bulmaya çalışalım
-    if (!v) {
-        // İlanlarda bu ID'ye sahip mülkün adını bulup state'den eşleştirebiliriz
-        fetch('/api/ilanlar')
-            .then(res => res.json())
-            .then(data => {
-                if (data.basari && Array.isArray(data.ilanlar)) {
-                    let bulunanIlan = data.ilanlar.find(ilan => ilan.id == id);
-                    if (bulunanIlan) {
-                        // Varlık ismine ve 'ilan-aktif' durumuna göre eşleşeni bul
-                        v = state.varliklar.find(x => x.isim === bulunanIlan.ilan_tipi && x.durum === 'ilan-aktif');
-                    }
-                }
-                devamEtIptal(v, id);
-            })
-            .catch(() => devamEtIptal(null, id));
-        return;
-    }
+    let sunucuId = v && v.sunucuIlanId ? v.sunucuIlanId : id;
 
-    devamEtIptal(v, id);
-}
-
-function devamEtIptal(v, id) {
-    let sunucuId = v && v.sunucuIlanId ? v.sunucuIlanId : id; 
-
+    // 2. Sunucuya silme isteği at
     fetch('/api/ilan-sil', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: sunucuId || id })
+        body: JSON.stringify({ id: sunucuId })
     })
     .then(res => res.json())
     .then(data => {
-        if (data.basari || true) {
-            
-            // 1. Yerel mülk durumunu 'sahip' yap
-            if (v) {
-                v.durum = 'sahip';
-                v.ilanSahibi = null;
-                v.sunucuIlanId = null;
-                v._islemde = false;
-            }
-            
-            if (state.varliklar && Array.isArray(state.varliklar)) {
-                state.varliklar.forEach(item => {
-                    if (item.durum === 'ilan-aktif') {
-                        if (item.id == id || item.sunucuIlanId == id || (v && item.id === v.id)) {
-                            item.durum = 'sahip';
-                            item.ilanSahibi = null;
-                            item.sunucuIlanId = null;
-                            item._islemde = false;
-                        }
-                    }
-                });
-            }
+        // Sunucu yanıt versin vermesin yerelde mülkü kurtarıyoruz
+        if (v) {
+            v.durum = 'sahip';
+            v.ilanSahibi = null;
+            v.sunucuIlanId = null;
+            v._islemde = false;
+        }
 
-            let modalOverlay = document.getElementById('modal-overlay');
-            if (modalOverlay) modalOverlay.style.display = 'none';
+        // State içindeki o ID'ye ait ne var ne yoksa 'sahip' yap
+        if (state.varliklar && Array.isArray(state.varliklar)) {
+            state.varliklar.forEach(item => {
+                if (item.id == id || item.sunucuIlanId == id) {
+                    item.durum = 'sahip';
+                    item.ilanSahibi = null;
+                    item.sunucuIlanId = null;
+                    item._islemde = false;
+                }
+            });
+        }
 
-            // 2. Arayüzleri ve portföyü güncelle
-            if (typeof guncelle === 'function') guncelle();
-            if (typeof portfoyuSunucuyaKaydet === 'function') portfoyuSunucuyaKaydet(state);
-
-            // 🌟 3. İLANLAR SAYFASINI ANINDA YENİDEN ÇEK (Kayıp/Gitmeme sorununu çözen kritik nokta)
-            if (typeof ilanlariGuncelle === 'function') {
-                ilanlariGuncelle();
-            } else {
-                // Eğer fonksiyon adın farklıysa ya da sayfayı tazelemek gerekirse:
-                location.reload(); // En keskin çözüm olarak sunucudan güncel listeyi çeker
-            }
+        // Arayüzleri güncelle ve kaydet
+        if (typeof guncelle === 'function') guncelle();
+        if (typeof ilanlariGuncelle === 'function') {
+            ilanlariGuncelle();
+        } else {
+            location.reload(); // İlanlar fonksiyonu bulunamazsa sayfayı yenileyip tertemiz getirir
+        }
+        
+        if (typeof portfoyuSunucuyaKaydet === 'function') {
+            portfoyuSunucuyaKaydet(state);
         }
     })
-    .catch(err => console.error("İlan silme hatası:", err));
+    .catch(err => {
+        console.error("Vazgeçme hatası:", err);
+        // Hata olsa bile yerelde kilidi açalım ki kullanıcı mağdur olmasın
+        if (v) {
+            v.durum = 'sahip';
+            v._islemde = false;
+            if (typeof guncelle === 'function') guncelle();
+        }
+    });
 }
     
 async function siralamayiGuncelle() {
