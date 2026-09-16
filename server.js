@@ -646,14 +646,17 @@ app.post('/api/ilan-sil', (req, res) => {
 
     const userId = req.session.kullanici.id;
     const { id, sunucuIlanId, ilan_tipi } = req.body;
-    const silinecekId = sunucuIlanId || id;
 
     try {
         const transaction = db.transaction(() => {
-            // 1. İlanı veritabanından sil
-            if (silinecekId) {
-                db.prepare(`DELETE FROM ilanlar WHERE id = ? AND kullanici_id = ?`).run(silinecekId, userId);
-            }
+            // 1. İlanlar tablosundan hem varlık ID'sine hem de ilan ID'sine göre temizlik yap
+            db.prepare(`
+                DELETE FROM ilanlar 
+                WHERE kullanici_id = ? AND (id = ? OR id = ? OR ilan_tipi = (SELECT isim FROM json_each(?) WHERE value = ?))
+            `).run(userId, id, sunucuIlanId, JSON.stringify([ilan_tipi]), ilan_tipi);
+
+            // Daha garanti olması için doğrudan ID ve satici eşleşmesine göre de silelim:
+            db.prepare(`DELETE FROM ilanlar WHERE kullanici_id = ? AND (id = ? OR id = ?)`).run(userId, id, sunucuIlanId);
 
             // 2. Kullanıcının portföyündeki ilgili mülkün durumunu tekrar 'sahip' yap
             const userRow = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(userId);
@@ -662,7 +665,7 @@ app.post('/api/ilan-sil', (req, res) => {
                 
                 if (portfoyObj && portfoyObj.varliklar && Array.isArray(portfoyObj.varliklar)) {
                     portfoyObj.varliklar.forEach(v => {
-                        if (v.id == id || v.sunucuIlanId == silinecekId || (ilan_tipi && v.isim === ilan_tipi && v.durum === 'ilan-aktif')) {
+                        if (v.id == id || v.id == sunucuIlanId || v.sunucuIlanId == id || v.sunucuIlanId == sunucuIlanId || (ilan_tipi && v.isim === ilan_tipi && v.durum === 'ilan-aktif')) {
                             v.durum = 'sahip';
                             v.ilanSahibi = null;
                             v.sunucuIlanId = null;
@@ -670,7 +673,6 @@ app.post('/api/ilan-sil', (req, res) => {
                         }
                     });
 
-                    // Veritabanına metin (string) olarak kaydediliyor
                     db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`).run(JSON.stringify(portfoyObj), Date.now(), userId);
                     req.session.kullanici.portfoy = portfoyObj;
                 }
