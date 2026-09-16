@@ -4296,19 +4296,23 @@ function ilanaCikar(id) {
 }
     
 function vazgec(id) {
-    // 1. Önce state içinden mülkü bulmaya çalış
     let v = state.varliklar.find(x => x.id == id || x.sunucuIlanId == id);
-    let sunucuId = v && v.sunucuIlanId ? v.sunucuIlanId : id;
+    
+    // Sunucuya ilanı silmesi için hem id, hem sunucuIlanId, hem de varsa mülk adını gönderiyoruz
+    let gonderilecekVeri = {
+        id: id,
+        sunucuIlanId: v ? v.sunucuIlanId : null,
+        ilan_tipi: v ? v.isim : null
+    };
 
-    // 2. Sunucuya silme isteği at
     fetch('/api/ilan-sil', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: sunucuId })
+        body: JSON.stringify(gonderilecekVeri)
     })
     .then(res => res.json())
     .then(data => {
-        // Sunucu yanıt versin vermesin yerelde mülkü kurtarıyoruz
+        // Yerelde mülkü kesin olarak 'sahip' yap ve ID/Sunucu ID bağlarını kopar
         if (v) {
             v.durum = 'sahip';
             v.ilanSahibi = null;
@@ -4316,24 +4320,29 @@ function vazgec(id) {
             v._islemde = false;
         }
 
-        // State içindeki o ID'ye ait ne var ne yoksa 'sahip' yap
+        // State içindeki eşleşen tüm aktif ilanları temizle
         if (state.varliklar && Array.isArray(state.varliklar)) {
             state.varliklar.forEach(item => {
-                if (item.id == id || item.sunucuIlanId == id) {
-                    item.durum = 'sahip';
-                    item.ilanSahibi = null;
-                    item.sunucuIlanId = null;
-                    item._islemde = false;
+                if (item.id == id || item.sunucuIlanId == id || (v && item.isim === v.isim)) {
+                    if (item.durum === 'ilan-aktif') {
+                        item.durum = 'sahip';
+                        item.ilanSahibi = null;
+                        item.sunucuIlanId = null;
+                        item._islemde = false;
+                    }
                 }
             });
         }
 
-        // Arayüzleri güncelle ve kaydet
+        // Arayüzleri ve veriyi güncelle
         if (typeof guncelle === 'function') guncelle();
+        
+        // İlanlar sayfasını yenile (Eğer ilanlar listesi başka bir fonksiyondan çekiliyorsa taze listeyi getirir)
         if (typeof ilanlariGuncelle === 'function') {
             ilanlariGuncelle();
         } else {
-            location.reload(); // İlanlar fonksiyonu bulunamazsa sayfayı yenileyip tertemiz getirir
+            // Sunucu listesinin DOM'dan tamamen temizlenmesini garanti etmek için kısa bir gecikmeyle sayfayı yenileyebiliriz
+            setTimeout(() => { location.reload(); }, 200);
         }
         
         if (typeof portfoyuSunucuyaKaydet === 'function') {
@@ -4342,7 +4351,6 @@ function vazgec(id) {
     })
     .catch(err => {
         console.error("Vazgeçme hatası:", err);
-        // Hata olsa bile yerelde kilidi açalım ki kullanıcı mağdur olmasın
         if (v) {
             v.durum = 'sahip';
             v._islemde = false;
