@@ -3216,10 +3216,10 @@ let konutSayisi = state.varliklar.filter(v => v.isim === 'Konut' && (v.durum ===
                 let kalanMs = v.bitis - Date.now();
                 let kalanGun = Math.max(0, Math.ceil(kalanMs / (1000 * 60 * 60 * 24)));
                 sagButonlarHTML += `<span style="color:#ffcc00; font-size:11px;">İnşaat: ${kalanGun} gün</span>`;
-           } else if (v.durum === 'ilan-aktif') {
-               sagButonlarHTML += `<span style="color:#ff4444; font-size:13px; font-weight:bold;">SATIŞTA</span>
-                         <button onclick="vazgec('${v.id}', '${v.sunucuIlanId || ''}', '${v.isim}')" class="btn-red" style="margin-top: 4px; width: 100%; box-sizing: border-box;">Vazgeç</button>`;
-           }
+          } else if (v.durum === 'ilan-aktif') {
+    sagButonlarHTML += `<span style="color:#ff4444; font-size:13px; font-weight:bold;">SATIŞTA</span>
+                         <button onclick="vazgec(${v.id})" class="btn-red" style="margin-top: 4px; width: 100%; box-sizing: border-box;">Vazgeç</button>`;
+}
 
             let goruntuleBtnVarlik = arsaMi ? `<button onclick="arsaKonumGoster('${v.isim}', '${v.atananKonum}')" style="background:#3498db; color:#fff; border:none; border-radius:4px; font-weight:bold; cursor:pointer; width: 100%; margin-top: 4px; box-sizing: border-box;">Görüntüle</button>` : '';
 
