@@ -1692,7 +1692,7 @@ async function zenginlerListesiniGuncelle() {
             }
             let benMi = o.benim;
             return `
-                <div class="zengin-item-box ${benMi ? 'highlight-me' : ''}" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; margin-bottom: 6px; background: #1a1a1a; border: 1px solid #333; border-radius: 6px; font-size: 13px; color: ${benMi ? '#fff' : '#ddd'}; ${benMi ? 'border: 2px solid gold; background: rgba(255,215,0,0.1);' : ''}">
+                <div class="zengin-item-box ${benMi ? 'highlight-me' : ''}" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; margin-bottom: 6px; background: #1a1a1a; border: 1px solid #333; border-radius: 6px; font-size: 11px; color: ${benMi ? '#fff' : '#ddd'}; ${benMi ? 'border: 2px solid gold; background: rgba(255,215,0,0.1);' : ''}">
                     <span>${o.gercekIndex}. ${o.isim}</span>
                     <span style="color: ${benMi ? 'gold' : '#00c853'};">${Math.floor(o.servet).toLocaleString()} TL</span>
                 </div>
