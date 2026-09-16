@@ -3217,7 +3217,7 @@ let konutSayisi = state.varliklar.filter(v => v.isim === 'Konut' && (v.durum ===
                 let kalanGun = Math.max(0, Math.ceil(kalanMs / (1000 * 60 * 60 * 24)));
                 sagButonlarHTML += `<span style="color:#ffcc00; font-size:11px;">İnşaat: ${kalanGun} gün</span>`;
           } else if (v.durum === 'ilan-aktif') {
-    sagButonlarHTML += `<span style="color:#ff4444; font-size:13px; font-weight:bold;">SATIŞTA</span>
+    sagButonlarHTML += `<span style="color:#ff4444; font-size:13px; font-weight:bold;">SATIŞTA</span> 
                          <button onclick="vazgec(${v.id})" class="btn-red" style="margin-top: 4px; width: 100%; box-sizing: border-box;">Vazgeç</button>`;
 }
 
