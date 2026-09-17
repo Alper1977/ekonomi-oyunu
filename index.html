@@ -3415,7 +3415,7 @@ function yatirimlariGuncelle() {
 
         let itemBox = document.createElement('div');
         itemBox.className = 'item-box';
-       itemBox.innerHTML = `
+ itemBox.innerHTML = `
             <div style="display: flex; justify-content: space-between; align-items: flex-start; width: 100%; margin-bottom: 5px;">
                 <div style="display: flex; flex-direction: column;">
                     <span class="item-ilan-veren" style="text-align: left; font-weight: bold;">${urun.etiket}</span>
@@ -3423,12 +3423,6 @@ function yatirimlariGuncelle() {
                 </div>
                 <div class="item-bedel" style="text-align: right; font-weight: bold;">${maliyet.toLocaleString()} TL</div>
             </div>
-            <div class="action-group">
-                ${goruntuleBtnHTML}
-                ${ortaAlanHTML}
-            </div>
-        `;
-           
             <div class="action-group">
                 <div class="kredi-group">
                     <input type="text" id="${inputId}" placeholder="Kredi Tutarı" oninput="parayiFormatlaMetin(this)" value="">
