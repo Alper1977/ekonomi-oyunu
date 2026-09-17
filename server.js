@@ -227,7 +227,7 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
         }
     }
 
-    // --- 3. KREDİ TAKSİTLERİ VE İCRA KONTROLÜ ---
+    // --- 3. KREDİ TAKSİTLERİ VE İCRA KONTROLÜ (Normal periyodik akış) ---
     const taksitPeriyotSayisi = Math.floor(gecenSure / taksitPeriyodu);
     if (taksitPeriyotSayisi > 0 && portfoy.krediler && Array.isArray(portfoy.krediler) && portfoy.krediler.length > 0) {
         
@@ -346,6 +346,8 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
                                 kr.kalanBorc = 0;
                                 kr.silinecek = true;
                             } else {
+                                // İCRA SONRASI KALAN BAKİYE BORÇ DURUMU:
+                                // Varlık satıldı ama borcu karşılamadı. Kalan borç bakiyeye dönüştü.
                                 kr.kalanBorc = kr.kalanBorc - satisFiyati;
                                 kr.ustUsteOdenmeyen = 0; 
                                 kr.silinecek = false;   
@@ -362,31 +364,21 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
         }
     }
 
-    // --- 4. ANLIK OTOMATİK BORÇ KAPATMA (TAKSİT SAATİNİ BEKLEMEDEN KASADAN DÜŞME) ---
-    // Kullanıcının ne zaman kasasına para gelse veya fonksiyon ne zaman tetiklense,
-    // taksit periyoduna bakılmaksızın kasadaki nakit doğrudan kalan borçtan düşer.
+    // --- 4. İCRA SONRASI KALAN BAKİYE BORÇLAR İÇİN ANLIK KAPATMA ---
+    // Normal krediler kendi periyodunda taksit taksit ödenirken; 
+    // icra sonrası kalan (veya varlığı kalmamış/bakiye kalmış) borçlar, kasada para olduğunda anında erir.
     if (portfoy.krediler && Array.isArray(portfoy.krediler) && portfoy.krediler.length > 0) {
-        let toplamKalanBorc = portfoy.krediler.reduce((toplam, kr) => toplam + (kr.kalanBorc || 0), 0);
-        if (toplamKalanBorc > 0 && portfoy.nakit > 0) {
-            for (let kr of portfoy.krediler) {
-                if (kr.kalanBorc > 0 && portfoy.nakit > 0) {
-                    let odenen = Math.min(portfoy.nakit, kr.kalanBorc);
-                    portfoy.nakit -= odenen;
-                    portfoy.para = portfoy.nakit;
-                    kr.kalanBorc -= odenen;
-                    
-                    if (kr.kalanBorc === 0 && portfoy.varliklar) {
-                        let ilgiliVarlik = portfoy.varliklar.find(v => v && v.krediID === kr.id);
-                        if (ilgiliVarlik) {
-                            ilgiliVarlik.bloke = false;
-                            ilgiliVarlik.krediID = null;
-                        }
-                    }
-                }
+        portfoy.krediler.forEach(kr => {
+            // Eğer bu kredi icra görmüş ve bakiye borç bırakmışsa (veya varlığı silinmişse) anında kasadan düş
+            if (kr && kr.kalanBorc > 0 && portfoy.nakit > 0 && (!kr.taksitTutu || kr.bloke === false || !portfoy.varliklar.some(v => v && v.krediID === kr.id))) {
+                let odenen = Math.min(portfoy.nakit, kr.kalanBorc);
+                portfoy.nakit -= odenen;
+                portfoy.para = portfoy.nakit;
+                kr.kalanBorc -= odenen;
+                degisiklikOldu = true;
             }
-            portfoy.krediler = portfoy.krediler.filter(kr => kr && kr.kalanBorc > 0);
-            degisiklikOldu = true;
-        }
+        });
+        portfoy.krediler = portfoy.krediler.filter(kr => kr && kr.kalanBorc > 0);
     }
 
     // Genel borç ve taksit özet alanlarını güncelle
