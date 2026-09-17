@@ -227,7 +227,7 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
         }
     }
 
-    // --- 3. KREDİ TAKSİTLERİ VE OTOMATİK TAHSİLAT (NORMAL PERİYOT) ---
+    // --- 3. KREDİ TAKSİTLERİ VE OTOMATİK TAHSİLAT (DÖVİZ/ALTIN/VADELİ BOZMA & İCRA) ---
     const taksitPeriyotSayisi = Math.floor(gecenSure / taksitPeriyodu);
     if (taksitPeriyotSayisi > 0 && portfoy.krediler && Array.isArray(portfoy.krediler) && portfoy.krediler.length > 0) {
         
@@ -314,10 +314,12 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
                 if (portfoy.nakit >= taksitMiktari) {
                     portfoy.nakit -= taksitMiktari;
                     portfoy.para = portfoy.nakit;
+                    kr.kalanBorç -= taksitMiktari; // Dikkat: Türkçe karakter uyumu için kalanBorc
                     kr.kalanBorc -= taksitMiktari;
                     if (kr.kalanBorc < 0) kr.kalanBorc = 0;
                     kr.ustUsteOdenmeyen = 0;
 
+                    // Borç bittiyse blokesini kaldır
                     if (kr.kalanBorc === 0 && portfoy.varliklar) {
                         let ilgiliVarlik = portfoy.varliklar.find(v => v && v.krediID === kr.id);
                         if (ilgiliVarlik) {
@@ -335,20 +337,24 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
                         if (ilgiliVarlik) {
                             let satisFiyati = (satisFiyatlari && satisFiyatlari[ilgiliVarlik.isim]) ? satisFiyatlari[ilgiliVarlik.isim] : 10000000;
                             
+                            // Varlığı portföyden sil
                             portfoy.varliklar = portfoy.varliklar.filter(v => v && v.id !== ilgiliVarlik.id);
 
                             if (satisFiyati >= kr.kalanBorc) {
+                                // Satış borcu haydi haydi karşılıyor, artanı nakite ekle, borcu sıfırla ve kapat
                                 let artisFarki = satisFiyati - kr.kalanBorc;
                                 portfoy.nakit += artisFarki;
                                 portfoy.para = portfoy.nakit;
                                 kr.kalanBorc = 0;
                                 kr.silinecek = true;
                             } else {
+                                // Satış borcu karşılamadı! Kalan borç bakiye olarak kalır, kredi silinmez.
                                 kr.kalanBorc = kr.kalanBorc - satisFiyati;
-                                kr.ustUsteOdenmeyen = 0; 
-                                kr.silinecek = false;   
+                                kr.ustUsteOdenmeyen = 0; // İcra yapıldı, varlığı gitti, kalan borç için sayaç sıfırlanır
+                                kr.silinecek = false;   // Borç bitmediği için kredi satırından silinmez!
                             }
                         } else {
+                            // Varlık bulunamazsa veya bloke değilse borç olduğu gibi kalır
                             kr.silinecek = false;
                         }
                     }
@@ -356,89 +362,17 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
                 degisiklikOldu = true;
             });
 
+            // Sadece gerçekten borcu biten (kalanBorc === 0 ve silinecek olan) kredileri temizle
             portfoy.krediler = portfoy.krediler.filter(kr => kr && (kr.kalanBorc > 0 || !kr.silinecek));
         }
-    }
 
-    // --- 4. ANLIK TAHSİLAT: KREDİ BOZULDUKTAN SONRAKİ KALAN BAKİYE İÇİN ZAMAN BEKLEMEYEN SİSTEM ---
-    // Eğer kredi patlamış ve geriye kalan bakiye borç kalmışsa; taksit süresini BEKLEMEDEN, 
-    // kasada, dövizde, altında veya vadeli hesapta ne zaman para görülürse anında parçalayıp borçtan düşer.
-    if (portfoy.krediler && Array.isArray(portfoy.krediler) && portfoy.krediler.length > 0) {
+        // --- 4. OTOMATİK BORÇ KAPATMA (KASAYA GELEN PARADAN KESİNTİ) ---
+        // Eğer kullanıcının herhangi bir kredi borcu kalmışsa (icradan kalan dahil),
+        // kasadaki nakit paradan otomatik olarak borç kapatmaya çalışılır.
         let toplamKalanBorc = portfoy.krediler.reduce((toplam, kr) => toplam + (kr.kalanBorc || 0), 0);
-        
-        if (toplamKalanBorc > 0) {
+        if (toplamKalanBorc > 0 && portfoy.nakit > 0) {
             for (let kr of portfoy.krediler) {
-                if (!kr || kr.kalanBorc <= 0) continue;
-
-                let mevcutNakit = portfoy.nakit !== undefined ? Number(portfoy.nakit) : (portfoy.para !== undefined ? Number(portfoy.para) : 0);
-
-                // Eğer nakit borca yetmiyorsa, anında döviz/altın/vadeli varlıkları bozup paraya çevir
-                if (mevcutNakit < kr.kalanBorc) {
-                    let eksikTutar = kr.kalanBorc - mevcutNakit;
-
-                    // 1. Dolar Bozdur
-                    if (eksikTutar > 0 && portfoy.dolar > 0) {
-                        let dolarSatis = (kurlar && kurlar.dolar) ? kurlar.dolar.satis : 49;
-                        let dolarTl = portfoy.dolar * dolarSatis;
-                        if (dolarTl >= eksikTutar) {
-                            portfoy.dolar -= (eksikTutar / dolarSatis);
-                            mevcutNakit += eksikTutar;
-                            eksikTutar = 0;
-                        } else {
-                            mevcutNakit += dolarTl;
-                            eksikTutar -= dolarTl;
-                            portfoy.dolar = 0;
-                        }
-                    }
-
-                    // 2. Euro Bozdur
-                    if (eksikTutar > 0 && portfoy.euro > 0) {
-                        let euroSatis = (kurlar && kurlar.euro) ? kurlar.euro.satis : 54;
-                        let euroTl = portfoy.euro * euroSatis;
-                        if (euroTl >= eksikTutar) {
-                            portfoy.euro -= (eksikTutar / euroSatis);
-                            mevcutNakit += eksikTutar;
-                            eksikTutar = 0;
-                        } else {
-                            mevcutNakit += euroTl;
-                            eksikTutar -= euroTl;
-                            portfoy.euro = 0;
-                        }
-                    }
-
-                    // 3. Altın Bozdur
-                    if (eksikTutar > 0 && portfoy.altin > 0) {
-                        let altinSatis = (kurlar && kurlar.altin) ? kurlar.altin.satis : 6000;
-                        let altinTl = portfoy.altin * altinSatis;
-                        if (altinTl >= eksikTutar) {
-                            portfoy.altin -= (eksikTutar / altinSatis);
-                            mevcutNakit += eksikTutar;
-                            eksikTutar = 0;
-                        } else {
-                            mevcutNakit += altinTl;
-                            eksikTutar -= altinTl;
-                            portfoy.altin = 0;
-                        }
-                    }
-
-                    // 4. Vadeli Hesaptan Çek
-                    let guncelVadeli = portfoy.vadeli !== undefined ? Number(portfoy.vadeli) : (portfoy.vadeliHesap !== undefined ? Number(portfoy.vadeliHesap) : 0);
-                    if (eksikTutar > 0 && guncelVadeli > 0) {
-                        let cekilecek = Math.min(eksikTutar, guncelVadeli);
-                        guncelVadeli -= cekilecek;
-                        mevcutNakit += cekilecek;
-                        eksikTutar -= cekilecek;
-                        
-                        portfoy.vadeli = guncelVadeli;
-                        portfoy.vadeliHesap = guncelVadeli;
-                    }
-
-                    portfoy.nakit = mevcutNakit;
-                    portfoy.para = mevcutNakit;
-                }
-
-                // Kasada (veya dönüştürülen nakitte) para varsa anında borçtan düş
-                if (portfoy.nakit > 0) {
+                if (kr.kalanBorc > 0 && portfoy.nakit > 0) {
                     let odenen = Math.min(portfoy.nakit, kr.kalanBorc);
                     portfoy.nakit -= odenen;
                     portfoy.para = portfoy.nakit;
@@ -451,21 +385,20 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
                             ilgiliVarlik.krediID = null;
                         }
                     }
-                    degisiklikOldu = true;
                 }
             }
             // Tamamen kapananları temizle
             portfoy.krediler = portfoy.krediler.filter(kr => kr && kr.kalanBorc > 0);
         }
-    }
 
-    // Genel borç ve taksit özet alanlarını güncelle
-    portfoy.kredi = portfoy.krediler.reduce((toplam, kr) => toplam + (kr.kalanBorc || 0), 0);
-    portfoy.taksit = portfoy.krediler.reduce((toplam, kr) => toplam + (kr.taksitTutu || 0), 0);
-    if (portfoy.kredi <= 0) {
-        portfoy.kredi = 0;
-        portfoy.taksit = 0;
-        portfoy.krediler = [];
+        // Genel borç ve taksit özet alanlarını güncelle
+        portfoy.kredi = portfoy.krediler.reduce((toplam, kr) => toplam + (kr.kalanBorc || 0), 0);
+        portfoy.taksit = portfoy.krediler.reduce((toplam, kr) => toplam + (kr.taksitTutu || 0), 0);
+        if (portfoy.kredi <= 0) {
+            portfoy.kredi = 0;
+            portfoy.taksit = 0;
+            portfoy.krediler = [];
+        }
     }
 
     // Yeni son güncelleme zamanını hesaplanan periyotlar üzerinden ileri taşı
@@ -487,6 +420,7 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
 
     return portfoy;
 }
+
 setInterval(() => {
     try {
         const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
