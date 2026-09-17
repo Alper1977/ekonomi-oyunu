@@ -462,29 +462,16 @@
 
 
 <div id="page-mali" class="page">
-    <div class="content">
-
-        <button id="admin-panel-buton" onclick="adminPaneliniAc()" style="display: none; background: #dc3545; color: white; border: none; padding: 8px 15px; border-radius: 5px; font-weight: bold; cursor: pointer; margin-left: 10px;">🛡️ Admin Paneli</button>
-        
-        <!-- Oyun Kuralları Banner -->
-        <div style="background: linear-gradient(135deg, #f39c12, #d35400); color: white; padding: 14px 20px; border-radius: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 15px rgba(243, 156, 18, 0.3);">
-            <div>
-                <h3 style="margin: 0; font-size: 16px; display: flex; align-items: center; gap: 8px;">📜 Oyun Kuralları</h3>
-            </div>
-            <button onclick="changePage('page-kurallar')" style="background: #fff; color: #d35400; border: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: 0.2s;">
-                Oku ➔
-            </button>
-        </div> 
-
-        <!-- Şirket Başlığı ve Çıkış -->
-        <div class="header-brand" style="display: flex; justify-content: space-between; align-items: center; padding: 0 10px; margin-bottom: 15px;">
+ <button id="admin-panel-buton" onclick="adminPaneliniAc()" style="display: none; background: #dc3545; color: white; border: none; padding: 8px 15px; border-radius: 5px; font-weight: bold; cursor: pointer; margin-left: 10px;">🛡️ Admin Paneli</button>
+ <div class="header-brand" style="display: flex; justify-content: space-between; align-items: center; padding: 0 10px; margin-bottom: 15px;">
             <span id="sirket-adi-mali" style="font-weight: bold;">STRATEJİK HOLDİNG A.Ş.</span>
             <button onclick="sistemdenCikisYap()" style="padding: 6px 12px; background: #ff4444; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold;">
                 Çıkış
             </button>
         </div>
-
-        <!-- Şirket Unvanı Güncelleme -->
+    
+    <div class="content">
+  <!-- Şirket Unvanı Güncelleme -->
         <div class="item-box" style="flex-direction: column; align-items: stretch; gap: 6px; margin-bottom: 15px;">
             <span style="font-weight: bold; font-size: 14px; color: #b0b0b0;">👤 Şirket Unvanı / Ad Soyad Güncelle</span>
             <div style="display: flex; gap: 6px; width: 100%;">
@@ -499,6 +486,18 @@
             <span id="siralama-bilgisi" style="color: black; font-weight: bold; display: block; margin-bottom: 6px;">Zenginler Sıralamasında hesaplanıyor...</span>
             <button onclick="changePage('page-liste')" style="padding: 6px 12px; background: #333; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Zenginler Listesine Git</button>
         </div>
+       
+        
+        <!-- Oyun Kuralları Banner -->
+        <div style="background: linear-gradient(135deg, #f39c12, #d35400); color: white; padding: 14px 20px; border-radius: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 15px rgba(243, 156, 18, 0.3);">
+            <div>
+                <h3 style="margin: 0; font-size: 16px; display: flex; align-items: center; gap: 8px;">📜 Oyun Kuralları</h3>
+            </div>
+            <button onclick="changePage('page-kurallar')" style="background: #fff; color: #d35400; border: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: 0.2s;">
+                Oku ➔
+            </button>
+        </div> 
+
 
         <!-- Nakit Rezervleri -->
         <h2>Nakit Rezervleri</h2>
@@ -3397,14 +3396,14 @@ function yatirimlariGuncelle() {
     kapsayici.innerHTML = '';
 
     let yatirimUrunleri = [
-        { isim: 'Bayi', etiket: 'Bayi Aç', varsayilanMaliyet: 25000000 },
-        { isim: 'Otel', etiket: 'Otel Yap', varsayilanMaliyet: 600000000 },
-        { isim: 'Fabrika', etiket: 'Fabrika Yap', varsayilanMaliyet: 125000000 },
-        { isim: 'Hastane', etiket: 'Hastane Yap', varsayilanMaliyet: 500000000 },
-        { isim: 'Özel Okul', etiket: 'Özel Okul Yap', varsayilanMaliyet: 100000000 },
-        { isim: 'Konut', etiket: 'Konut Yap (30 Daire)', varsayilanMaliyet: 250000000 },
-        { isim: 'AVM', etiket: 'AVM Yap', varsayilanMaliyet: 300000000 },
-        { isim: 'Hipermarket', etiket: 'Hipermarket Yap', varsayilanMaliyet: 75000000 }
+        { isim: 'Bayi', etiket: 'Bayi Yatırımı yap', varsayilanMaliyet: 25000000 },
+        { isim: 'Otel', etiket: 'Otel Yatırımı Yap', varsayilanMaliyet: 600000000 },
+        { isim: 'Fabrika', etiket: 'Fabrika Yatırımı Yap', varsayilanMaliyet: 125000000 },
+        { isim: 'Hastane', etiket: 'Hastane Yatırımı Yap', varsayilanMaliyet: 500000000 },
+        { isim: 'Özel Okul', etiket: 'Okul Yatırımı Yap', varsayilanMaliyet: 100000000 },
+        { isim: 'Konut', etiket: 'Konut Yatırımı Yap (30 Daire)', varsayilanMaliyet: 250000000 },
+        { isim: 'AVM', etiket: 'AVM YatırımıYap', varsayilanMaliyet: 300000000 },
+        { isim: 'Hipermarket', etiket: 'Hipermarket Yatırımı Yap', varsayilanMaliyet: 75000000 }
     ];
 
     yatirimUrunleri.forEach(urun => {
@@ -3419,7 +3418,7 @@ itemBox.innerHTML = `
             <div style="display: flex; flex-direction: column; width: 100%; margin-bottom: 5px;">
                 <span class="item-ilan-veren" style="text-align: left; font-weight: bold; margin-bottom: 4px;">${urun.etiket}</span>
                 <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                    <span style="text-align: left; font-size: 16px; opacity: 0.8;">Maliyeti</span>
+                    <span style="text-align: left; font-size: 20px; opacity: 0.8;">Maliyeti</span>
                     <span class="item-bedel" style="text-align: right; font-weight: bold;">${maliyet.toLocaleString()} TL</span>
                 </div>
             </div>
@@ -3698,7 +3697,7 @@ async function ilanlariGuncelle() {
         { isim: 'Otel', varsayilanFiyat: 1000000000 },
         { isim: 'Fabrika', varsayilanFiyat: 425000000 },
         { isim: 'Hastane', varsayilanFiyat: 650000000 },
-        { isim: 'Özel Okul', varsayilanFiyat: 150000000 },
+        { isim: 'Okul', varsayilanFiyat: 150000000 },
         { isim: 'Konut', varsayilanFiyat: 12000000 },
         { isim: 'AVM', varsayilanFiyat: 750000000 },
         { isim: 'Hipermarket', varsayilanFiyat: 200000000 },
@@ -3706,7 +3705,7 @@ async function ilanlariGuncelle() {
         { isim: 'Fabrika Arsası', varsayilanFiyat: 300000000 },
         { isim: 'Otel Arsası', varsayilanFiyat: 400000000 },
         { isim: 'Hastane Arsası', varsayilanFiyat: 150000000 },
-        { isim: 'Özel Okul Arsası', varsayilanFiyat: 50000000 },
+        { isim: 'Okul Arsası', varsayilanFiyat: 50000000 },
         { isim: 'AVM Arsası', varsayilanFiyat: 450000000 },
         { isim: 'Hipermarket Arsası', varsayilanFiyat: 125000000 }
     ];
