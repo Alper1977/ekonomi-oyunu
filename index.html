@@ -3672,7 +3672,7 @@ async function ilanlariGuncelle() {
 
     // Kendi adımızla ilandaki satıcı adı aynı mı diye kesin olarak kıyaslıyoruz:
     let benimKullaniciAdim = (typeof aktifKullaniciAdi !== 'undefined' && aktifKullaniciAdi) ? aktifKullaniciAdi : '';
-    let benimIlanimMi = (ilan.satici_adsoyad === benimKullaniciAdim) || ilan.benim_mi;
+    let benimIlanimMi = ilan.benim_mi === true;
 
     let veriObj = { 
         // Eğer ilan bizimse kesinlikle 'BEN' yazacak, başkasınınsa onun şirket adını yazacak:
@@ -4314,9 +4314,7 @@ function ilanaCikar(id) {
     }
     
     let atananKonumVal = v.atananKonum || null;
-   let saticiAdi = (typeof aktifKullaniciAdi !== 'undefined' && aktifKullaniciAdi && aktifKullaniciAdi !== 'Ben') 
-    ? aktifKullaniciAdi 
-    : 'D A.Ş.';
+   let gorunenIsim = (ilan.satici_adsoyad === aktifKullaniciAdi) ? 'BEN' : ilan.satici_adsoyad;
 
     // Sunucuya gönder
     fetch('/api/ilan-ekle', {
@@ -4333,7 +4331,7 @@ function ilanaCikar(id) {
     .then(data => {
         v._islemde = false; // İşlem bitti, kilidi aç
         if (data.basari) {
-            v.ilanSahibi = 'ben';  
+            v.ilanSahibi = 'BEN';  
             v.ilanZamanKaydi = Date.now();
             v.sunucuIlanId = data.id;
 
