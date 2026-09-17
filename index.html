@@ -3415,12 +3415,19 @@ function yatirimlariGuncelle() {
 
         let itemBox = document.createElement('div');
         itemBox.className = 'item-box';
-        itemBox.innerHTML = `
-        <div class="item-header-row" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                <span class="item-ilan-veren" style="text-align: left;">Maliyeti</span>
-                <span class="item-tur" style="text-align: right;">${urun.etiket}</span>
+       itemBox.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; width: 100%; margin-bottom: 5px;">
+                <div style="display: flex; flex-direction: column;">
+                    <span class="item-ilan-veren" style="text-align: left; font-weight: bold;">${urun.etiket}</span>
+                    <span style="text-align: left; font-size: 13px; opacity: 0.8;">Maliyeti</span>
+                </div>
+                <div class="item-bedel" style="text-align: right; font-weight: bold;">${maliyet.toLocaleString()} TL</div>
             </div>
-            <div class="item-bedel" style="text-align: right; width: 100%;">${maliyet.toLocaleString()} TL</div>
+            <div class="action-group">
+                ${goruntuleBtnHTML}
+                ${ortaAlanHTML}
+            </div>
+        `;
            
             <div class="action-group">
                 <div class="kredi-group">
