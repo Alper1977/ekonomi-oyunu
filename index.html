@@ -3396,14 +3396,14 @@ function yatirimlariGuncelle() {
     kapsayici.innerHTML = '';
 
     let yatirimUrunleri = [
-        { isim: 'Bayi', etiket: 'Bayi Yatırımı Yap', varsayilanMaliyet: 25000000 },
-        { isim: 'Otel', etiket: 'Otel Yatırımı Yap', varsayilanMaliyet: 600000000 },
-        { isim: 'Fabrika', etiket: 'Fabrika Yatırımı Yap', varsayilanMaliyet: 125000000 },
-        { isim: 'Hastane', etiket: 'Hastane Yatırımı Yap', varsayilanMaliyet: 500000000 },
-        { isim: 'Özel Okul', etiket: 'Okul Yatırımı Yap', varsayilanMaliyet: 100000000 },
-        { isim: 'Konut', etiket: 'Konut Yatırımı Yap (30 Daire)', varsayilanMaliyet: 250000000 },
-        { isim: 'AVM', etiket: 'AVM Yatırımı Yap', varsayilanMaliyet: 300000000 },
-        { isim: 'Hipermarket', etiket: 'Hipermarket Yatırımı Yap', varsayilanMaliyet: 75000000 }
+        { isim: 'Bayi', etiket: 'BAYİ YATIRIMI YAP', varsayilanMaliyet: 25000000 },
+        { isim: 'Otel', etiket: 'OTEL YATIRIMI YAP', varsayilanMaliyet: 600000000 },
+        { isim: 'Fabrika', etiket: 'FABRİKA YATIRIMI YAP', varsayilanMaliyet: 125000000 },
+        { isim: 'Hastane', etiket: 'HASTANE YATIRIMI YAP', varsayilanMaliyet: 500000000 },
+        { isim: 'Özel Okul', etiket: 'OKUL YATIRIMI YAP', varsayilanMaliyet: 100000000 },
+        { isim: 'Konut', etiket: 'KONUT YATIRIMI YAP (30 Daire)', varsayilanMaliyet: 250000000 },
+        { isim: 'AVM', etiket: 'AVM YATIRIMI YAP', varsayilanMaliyet: 300000000 },
+        { isim: 'Hipermarket', etiket: 'HİPERMARKET YATIRIMI YAP', varsayilanMaliyet: 75000000 }
     ];
 
     yatirimUrunleri.forEach(urun => {
@@ -3760,7 +3760,7 @@ async function ilanlariGuncelle() {
             arsaIcerikDiv.appendChild(kutu);
         });
         kamuArsaListesi.forEach(item => {
-            let kutu = kartHtmlUret('Kamu Satışı', '', item.urun.isim, item.satisBedeli, null, item.inputId, item.vadeInputId, item.arsaMi, item.kamuKonumu, 'kamu');
+            let kutu = kartHtmlUret('BANKA İCRA SATIŞI', '', item.urun.isim, item.satisBedeli, null, item.inputId, item.vadeInputId, item.arsaMi, item.kamuKonumu, 'kamu');
             arsaIcerikDiv.appendChild(kutu);
         });
     }
