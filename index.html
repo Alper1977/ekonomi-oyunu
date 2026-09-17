@@ -5417,54 +5417,51 @@ function taksitleriOdeVeyaKontrolEt() {
 }
 
 function kalanBorclariOtomatikOde() {
-    // Toplam borcu her zaman hem krediler dizisinden hem de state.kredi'den ortak ve güvenli hesapla
-    let toplamBorc = 0;
-    if (state.krediler && state.krediler.length > 0) {
-        toplamBorc = state.krediler.reduce((t, k) => t + (k.kalanBorc || 0), 0);
-    } else {
-        toplamBorc = state.kredi || 0;
-    }
+    // Sadece İCRADAN kalan bakiye borçlar için anında ödeme yapsın. 
+    // Normal kredileri kendi periyoduna bırakıyoruz, buraya asla karışmıyor!
+    if (!state.krediler || !Array.isArray(state.krediler) || state.krediler.length === 0) return;
+    
+    // Sadece icradan kalan borç var mı diye bakıyoruz
+    let icraKalanlariVarMi = state.krediler.some(kr => kr.icradanKalanBorc === true && kr.kalanBorc > 0);
+    if (!icraKalanlariVarMi || state.nakit <= 0) return;
+
+    let toplamBorc = state.krediler
+        .filter(kr => kr.icradanKalanBorc === true)
+        .reduce((t, k) => t + (k.kalanBorc || 0), 0);
 
     if (toplamBorc <= 0) return;
 
-    if (state.nakit > 0) {
-        let odenenMiktar = state.nakit;
+    let odenenMiktar = state.nakit;
+    
+    if (odenenMiktar >= toplamBorc) {
+        state.nakit -= toplamBorc;
+        // Sadece icra borçlarını temizle, normal kredilere dokunma
+        state.krediler = state.krediler.filter(kr => kr.icradanKalanBorc !== true);
+    } else {
+        state.nakit = 0; 
+        let kalanDusulecek = odenenMiktar;
         
-        if (odenenMiktar >= toplamBorc) {
-            state.nakit -= toplamBorc;
-            state.krediler = [];
-            state.kredi = 0;
-            state.taksit = 0;
-        } else {
-            state.nakit = 0; 
-            
-            if (state.krediler && state.krediler.length > 0) {
-                let kalanDusulecek = odenenMiktar;
-                state.krediler.forEach(kr => {
-                    if (kalanDusulecek > 0 && kr.kalanBorc > 0) {
-                        let dusulen = Math.min(kalanDusulecek, kr.kalanBorc);
-                        kr.kalanBorc -= dusulen;
-                        kalanDusulecek -= dusulen;
-                    }
-                    if (kr.kalanBorc > 0) {
-                        kr.icradanKalanBorc = true; 
-                    } else {
-                        kr.icradanKalanBorc = false;
-                    }
-                });
-                state.krediler = state.krediler.filter(kr => kr.kalanBorc > 0 || kr.icradanKalanBorc);
+        state.krediler.forEach(kr => {
+            if (kr.icradanKalanBorc === true && kalanDusulecek > 0 && kr.kalanBorc > 0) {
+                let dusulen = Math.min(kalanDusulecek, kr.kalanBorc);
+                kr.kalanBorc -= dusulen;
+                kalanDusulecek -= dusulen;
             }
-            
-            // Kalan borcu hem diziden tekrar toplayarak hem de state.kredi'ye eşitleyerek kesin olarak kilitliyoruz
-            let yeniKalan = state.krediler && state.krediler.length > 0 
-                ? state.krediler.reduce((t, k) => t + (k.kalanBorc || 0), 0) 
-                : Math.max(0, toplamBorc - odenenMiktar);
-                
-            state.kredi = yeniKalan;
-            state.taksit = 0;
-        }
+            if (kr.icradanKalanBorc === true) {
+                if (kr.kalanBorc > 0) {
+                    kr.icradanKalanBorc = true; 
+                } else {
+                    kr.icradanKalanBorc = false;
+                }
+            }
+        });
+        
+        state.krediler = state.krediler.filter(kr => kr.kalanBorc > 0 || kr.icradanKalanBorc);
     }
-} 
+
+    // Genel borç toplamını güvenli bir şekilde güncelle
+    state.kredi = state.krediler.reduce((t, k) => t + (k.kalanBorc || 0), 0);
+}
 
 function zorunluVarlikSatisiAndKapatma() {
     let toplamKrediBorcu = state.krediler && state.krediler.length > 0 
