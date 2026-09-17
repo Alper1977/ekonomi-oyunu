@@ -3278,7 +3278,7 @@ let konutSayisi = state.varliklar.filter(v => v.isim === 'Konut' && (v.durum ===
                 }
                 
                 let aktifOdeme = odemeProgrami[siraIndex];
-                let basSaat = String(aktifOdeme.saat).padStart(2, '0') + ':' + String(aktifOdeme.dakika).padStart(2, '0');
+                let basSaat = String(aktifOdeme.saat).padStart(2, '0') + ':' + String(aktifOdeme.dakika).padStart(2, '0'); 
                 
                 let bitSaatSaat = aktifOdeme.saat + 1;
                 if (bitSaatSaat >= 24) bitSaatSaat = 0;
