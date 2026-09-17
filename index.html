@@ -3670,20 +3670,23 @@ async function ilanlariGuncelle() {
                 let arsaMi = haritalanabilirMulkler.some(tur => ilan.ilan_tipi.toLowerCase().includes(tur));
                 let konum = ilan.detaylar?.atananKonum || '';
 
-                let benimIlanimMi = ilan.benim_mi; 
+               let benimIlanimMi = ilan.benim_mi; 
 
-                let veriObj = { 
-                    baslikMetni: benimIlanimMi ? 'Ben' : (ilan.satici_adsoyad || 'Oyuncu'), 
-                    botIsmi: ilan.satici_adsoyad, 
-                    varlikIsmi: ilan.ilan_tipi, 
-                    satisBedeli, 
-                    uniqueId, 
-                    inputId, 
-                    vadeInputId, 
-                    arsaMi, 
-                    atananKonum: konum, 
-                    tipKyn: benimIlanimMi ? 'benim-ilanim' : 'diger-oyuncu' 
-                };
+let veriObj = { 
+    // Kendi ekranında kendi ilanına bakan kişi her zaman 'BEN' görür:
+    baslikMetni: benimIlanimMi ? 'BEN' : (ilan.satici_adsoyad || 'Oyuncu'), 
+    
+    // Başkaları ise ilanı veren kişinin gerçek şirket adını (örn. D A.Ş.) görür:
+    botIsmi: ilan.satici_adsoyad, 
+    varlikIsmi: ilan.ilan_tipi, 
+    satisBedeli, 
+    uniqueId, 
+    inputId, 
+    vadeInputId, 
+    arsaMi, 
+    atananKonum: konum, 
+    tipKyn: benimIlanimMi ? 'benim-ilanim' : 'diger-oyuncu' 
+};
 
                 if (ilan.ilan_tipi.toLowerCase().includes('arsa')) {
                     oyuncuArsaListesi.push(veriObj);
