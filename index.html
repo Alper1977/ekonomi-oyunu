@@ -463,28 +463,19 @@
 
 <div id="page-mali" class="page">
     <div class="content">
+       <button id="admin-panel-buton" onclick="adminPaneliniAc()" style="display: none; background: #dc3545; color: white; border: none; padding: 8px 15px; border-radius: 5px; font-weight: bold; cursor: pointer; margin-left: 10px;">🛡️ Admin Paneli</button> 
 
-        <button id="admin-panel-buton" onclick="adminPaneliniAc()" style="display: none; background: #dc3545; color: white; border: none; padding: 8px 15px; border-radius: 5px; font-weight: bold; cursor: pointer; margin-left: 10px;">🛡️ Admin Paneli</button>
-        
-        <!-- Oyun Kuralları Banner -->
-        <div style="background: linear-gradient(135deg, #f39c12, #d35400); color: white; padding: 14px 20px; border-radius: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 15px rgba(243, 156, 18, 0.3);">
-            <div>
-                <h3 style="margin: 0; font-size: 16px; display: flex; align-items: center; gap: 8px;">📜 Oyun Kuralları</h3>
-            </div>
-            <button onclick="changePage('page-kurallar')" style="background: #fff; color: #d35400; border: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: 0.2s;">
-                Oku ➔
-            </button>
-        </div> 
-
-        <!-- Şirket Başlığı ve Çıkış -->
+      <!-- Şirket Başlığı ve Çıkış -->
         <div class="header-brand" style="display: flex; justify-content: space-between; align-items: center; padding: 0 10px; margin-bottom: 15px;">
             <span id="sirket-adi-mali" style="font-weight: bold;">STRATEJİK HOLDİNG A.Ş.</span>
             <button onclick="sistemdenCikisYap()" style="padding: 6px 12px; background: #ff4444; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold;">
                 Çıkış
             </button>
         </div>
+    
+    </div> <!-- /.content kapanışı -->
 
-        <!-- Şirket Unvanı Güncelleme -->
+     <!-- Şirket Unvanı Güncelleme -->
         <div class="item-box" style="flex-direction: column; align-items: stretch; gap: 6px; margin-bottom: 15px;">
             <span style="font-weight: bold; font-size: 14px; color: #b0b0b0;">👤 Şirket Unvanı / Ad Soyad Güncelle</span>
             <div style="display: flex; gap: 6px; width: 100%;">
@@ -499,6 +490,21 @@
             <span id="siralama-bilgisi" style="color: black; font-weight: bold; display: block; margin-bottom: 6px;">Zenginler Sıralamasında hesaplanıyor...</span>
             <button onclick="changePage('page-liste')" style="padding: 6px 12px; background: #333; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Zenginler Listesine Git</button>
         </div>
+        
+        
+        <!-- Oyun Kuralları Banner -->
+        <div style="background: linear-gradient(135deg, #f39c12, #d35400); color: white; padding: 14px 20px; border-radius: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 15px rgba(243, 156, 18, 0.3);">
+            <div>
+                <h3 style="margin: 0; font-size: 16px; display: flex; align-items: center; gap: 8px;">📜 Oyun Kuralları</h3>
+            </div>
+            <button onclick="changePage('page-kurallar')" style="background: #fff; color: #d35400; border: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: 0.2s;">
+                Oku ➔
+            </button>
+        </div> 
+
+      
+
+       
 
         <!-- Nakit Rezervleri -->
         <h2>Nakit Rezervleri</h2>
@@ -572,7 +578,7 @@
         </div>
 
 
-    </div> <!-- /.content kapanışı -->
+    
 
     <!-- Alt Navigasyon Barı -->
     <div class="nav-bar">
