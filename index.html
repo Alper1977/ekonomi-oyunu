@@ -3418,7 +3418,7 @@ itemBox.innerHTML = `
             <div style="display: flex; flex-direction: column; width: 100%; margin-bottom: 5px;">
                 <span class="item-ilan-veren" style="text-align: left; font-weight: bold; margin-bottom: 4px;">${urun.etiket}</span>
                 <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                    <span style="text-align: left; font-size: 20px; opacity: 0.8;">Maliyeti</span>
+                    <span style="text-align: left; font-weight: bold; font-size: inherit; color: inherit;">Maliyeti</span>
                     <span class="item-bedel" style="text-align: right; font-weight: bold;">${maliyet.toLocaleString()} TL</span>
                 </div>
             </div>
@@ -3441,7 +3441,6 @@ itemBox.innerHTML = `
         kapsayici.appendChild(itemBox);
     });
 }
-
 
 
 async function ilanlariGuncelle() {
