@@ -4584,22 +4584,18 @@ function botlarIlanlariSatinAl() {
 
     // 2. Her bot için rastgele bir satın alma hamlesi simüle et
     botlar.forEach(alanBot => {
-        // Her botun her döngüde %15 ihtimalle satın alma hamlesi yapma şansı olsun (oyunu çok hızlı tüketmemesi için)
         if (Math.random() < 0.15 && aktifIlanlar.length > 0) {
             
-            // Rastgele bir ilan seç
             let randomIndex = Math.floor(Math.random() * aktifIlanlar.length);
             let ilanData = aktifIlanlar[randomIndex];
 
             let satanBot = ilanData.bot;
             let varlik = ilanData.varlik;
 
-            // Bot kendi ilanını satın almaya çalışmasın!
             if (satanBot.id === alanBot.id) return;
 
             let satisBedeli = (satisFiyatlari && satisFiyatlari[varlik.isim]) ? satisFiyatlari[varlik.isim] : (varlik.bedel || 2000000);
 
-            // Alan botun nakiti bu ilanı almaya yetiyor mu?
             if (alanBot.nakit >= satisBedeli) {
                 // Para transferi
                 alanBot.nakit -= satisBedeli;
@@ -4608,6 +4604,8 @@ function botlarIlanlariSatinAl() {
                 // Varlığı satan botun ilanlarından / envanterinden çıkar
                 let index = satanBot.varliklar.findIndex(v => v.id === varlik.id);
                 if (index !== -1) {
+                    // Satan bottan silinmeden önce durumunu 'sahip' yapalım ki havuzda ilan olarak kalmasın
+                    varlik.durum = 'sahip'; 
                     satanBot.varliklar.splice(index, 1);
 
                     // Varlığı alan botun envanterine 'sahip' olarak ekle
@@ -4619,7 +4617,15 @@ function botlarIlanlariSatinAl() {
                         krediID: null
                     });
 
-                    // Başarıyla satıldığı için havuzdan da çıkar ki aynı turda başka bot alamayınca hata olmasın
+                    // 🌟 EĞER GLOBAL BİR İLANLAR DİZİN VARSA ORADAN DA TEMİZLE:
+                    if (typeof window !== 'undefined' && Array.isArray(window.ilanlar)) {
+                        window.ilanlar = window.ilanlar.filter(il => il.id !== varlik.id);
+                    }
+                    if (typeof globalIlanlar !== 'undefined' && Array.isArray(globalIlanlar)) {
+                        globalIlanlar = globalIlanlar.filter(il => il.id !== varlik.id);
+                    }
+
+                    // Başarıyla satıldığı için havuzdan da çıkar
                     aktifIlanlar.splice(randomIndex, 1);
 
                     console.log(`🤖 ${alanBot.isim}, ${satanBot.isim} kişisinden ${varlik.isim} varlığını ${satisBedeli.toLocaleString()} TL'ye satın aldı!`);
@@ -4636,7 +4642,6 @@ function botlarIlanlariSatinAl() {
         zenginlerListesiniGuncelle();
     }
 }
-
 
 function botlarIlanlariKontrolEt() {
     let simdiMs = Date.now();
