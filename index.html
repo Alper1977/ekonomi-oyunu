@@ -3417,10 +3417,12 @@ function yatirimlariGuncelle() {
         itemBox.className = 'item-box';
         itemBox.innerHTML = `
             <div class="item-header-row">
-                <span class="item-ilan-veren">Maliyet</span>
                 <span class="item-tur">${urun.etiket}</span>
             </div>
-            <div class="item-bedel">${maliyet.toLocaleString()} TL</div>
+            <div>
+             <span class="item-ilan-veren">Maliyeti</span>
+             <span class="item-bedel">${maliyet.toLocaleString()} TL</span>
+             </div>
             <div class="action-group">
                 <div class="kredi-group">
                     <input type="text" id="${inputId}" placeholder="Kredi Tutarı" oninput="parayiFormatlaMetin(this)" value="">
