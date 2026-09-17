@@ -2933,17 +2933,27 @@ if (satilikVarliklar.length > 0) {
             }
         }
         
-        let netKazanc = satisBedeli - dusulenBorc;
+       let netKazanc = satisBedeli - dusulenBorc;
 
         aliciBot.nakit -= satisBedeli;
         state.nakit += netKazanc;
         varlik.durum = 'silinecek';
 
-        // Sunucudaki oyuncu ilanını temizle
+        // 🔍 SUNUCU SİLME İSTEĞİNİ DETAYLI LOGLAYALIM
         try {
-            fetch(`/api/ilanlar/${varlik.id}`, { method: 'DELETE' }).catch(err => console.log("İlan sunucudan silinemedi:", err));
+            console.log("Sunucudan silinmeye çalışılan ilan ID:", varlik.id);
+            
+            fetch(`/api/ilanlar/${varlik.id}`, { method: 'DELETE' })
+                .then(async response => {
+                    let sonucText = await response.text();
+                    console.log("Sunucu DELETE yanıtı:", response.status, sonucText);
+                    if (response.ok && typeof ilanlariGuncelle === 'function') {
+                        ilanlariGuncelle(); // Başarılı silinirse ekranı hemen güncelle
+                    }
+                })
+                .catch(err => console.log("İlan sunucudan silinemedi (Fetch Hatası):", err));
         } catch (e) {
-            console.error("Sunucu silme isteği hatası:", e);
+            console.error("Sunucu silme isteği try-catch hatası:", e);
         }
 
         if (!aliciBot.varliklar) aliciBot.varliklar = [];
