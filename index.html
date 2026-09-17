@@ -3787,6 +3787,12 @@ function talepAl(id) {
     state.nakit += t.bedel; 
     v.talepAktif = false; 
     v.talepBaslangic = -1; 
+
+    // 🌟 İŞTE KRİTİK NOKTA BURASI: Para kasaya girdiği an borcu anında tetikle!
+    if (typeof kalanBorclariOtomatikOde === 'function') {
+        kalanBorclariOtomatikOde();
+    }
+
     guncelle(); 
 }
 
