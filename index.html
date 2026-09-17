@@ -3661,32 +3661,32 @@ async function ilanlariGuncelle() {
         
         if (data.basari && Array.isArray(data.ilanlar)) {
             data.ilanlar.forEach(ilan => {
-                let satisBedeli = ilan.fiyat;
-                let uniqueId = ilan.id;
-                let inputId = `in-kredi-oyuncu-${uniqueId}`;
-                let vadeInputId = `vade-kredi-oyuncu-${uniqueId}`;
+    let satisBedeli = ilan.fiyat;
+    let uniqueId = ilan.id;
+    let inputId = `in-kredi-oyuncu-${uniqueId}`;
+    let vadeInputId = `vade-kredi-oyuncu-${uniqueId}`;
 
-                let haritalanabilirMulkler = ['arsası', 'otel', 'fabrika', 'hastane', 'okul', 'avm', 'hipermarket', 'konut'];
-                let arsaMi = haritalanabilirMulkler.some(tur => ilan.ilan_tipi.toLowerCase().includes(tur));
-                let konum = ilan.detaylar?.atananKonum || '';
+    let haritalanabilirMulkler = ['arsası', 'otel', 'fabrika', 'hastane', 'okul', 'avm', 'hipermarket', 'konut'];
+    let arsaMi = haritalanabilirMulkler.some(tur => ilan.ilan_tipi.toLowerCase().includes(tur));
+    let konum = ilan.detaylar?.atananKonum || '';
 
-               let benimIlanimMi = ilan.benim_mi; 
+    // Kendi adımızla ilandaki satıcı adı aynı mı diye kesin olarak kıyaslıyoruz:
+    let benimKullaniciAdim = (typeof aktifKullaniciAdi !== 'undefined' && aktifKullaniciAdi) ? aktifKullaniciAdi : '';
+    let benimIlanimMi = (ilan.satici_adsoyad === benimKullaniciAdim) || ilan.benim_mi;
 
-let veriObj = { 
-    // Kendi ekranında kendi ilanına bakan kişi her zaman 'BEN' görür:
-    baslikMetni: benimIlanimMi ? 'BEN' : (ilan.satici_adsoyad || 'Oyuncu'), 
-    
-    // Başkaları ise ilanı veren kişinin gerçek şirket adını (örn. D A.Ş.) görür:
-    botIsmi: ilan.satici_adsoyad, 
-    varlikIsmi: ilan.ilan_tipi, 
-    satisBedeli, 
-    uniqueId, 
-    inputId, 
-    vadeInputId, 
-    arsaMi, 
-    atananKonum: konum, 
-    tipKyn: benimIlanimMi ? 'benim-ilanim' : 'diger-oyuncu' 
-};
+    let veriObj = { 
+        // Eğer ilan bizimse kesinlikle 'BEN' yazacak, başkasınınsa onun şirket adını yazacak:
+        baslikMetni: benimIlanimMi ? 'BEN' : (ilan.satici_adsoyad || 'Oyuncu A.Ş.'), 
+        botIsmi: ilan.satici_adsoyad, 
+        varlikIsmi: ilan.ilan_tipi, 
+        satisBedeli, 
+        uniqueId, 
+        inputId, 
+        vadeInputId, 
+        arsaMi, 
+        atananKonum: konum, 
+        tipKyn: benimIlanimMi ? 'benim-ilanim' : 'diger-oyuncu' 
+    };
 
                 if (ilan.ilan_tipi.toLowerCase().includes('arsa')) {
                     oyuncuArsaListesi.push(veriObj);
