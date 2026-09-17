@@ -227,7 +227,7 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
         }
     }
 
-    // --- 3. KREDİ TAKSİTLERİ VE OTOMATİK TAHSİLAT (DÖVİZ/ALTIN/VADELİ BOZMA & İCRA) ---
+    // --- 3. KREDİ TAKSİTLERİ VE İCRA KONTROLÜ ---
     const taksitPeriyotSayisi = Math.floor(gecenSure / taksitPeriyodu);
     if (taksitPeriyotSayisi > 0 && portfoy.krediler && Array.isArray(portfoy.krediler) && portfoy.krediler.length > 0) {
         
@@ -314,8 +314,7 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
                 if (portfoy.nakit >= taksitMiktari) {
                     portfoy.nakit -= taksitMiktari;
                     portfoy.para = portfoy.nakit;
-                    kr.kalanBorç -= taksitMiktari; // Dikkat: Türkçe karakter uyumu için kalanBorc
-                    kr.kalanBorc -= taksitMiktari;
+                    kr.kalanBorc -= taksitMiktari; 
                     if (kr.kalanBorc < 0) kr.kalanBorc = 0;
                     kr.ustUsteOdenmeyen = 0;
 
@@ -341,20 +340,17 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
                             portfoy.varliklar = portfoy.varliklar.filter(v => v && v.id !== ilgiliVarlik.id);
 
                             if (satisFiyati >= kr.kalanBorc) {
-                                // Satış borcu haydi haydi karşılıyor, artanı nakite ekle, borcu sıfırla ve kapat
                                 let artisFarki = satisFiyati - kr.kalanBorc;
                                 portfoy.nakit += artisFarki;
                                 portfoy.para = portfoy.nakit;
                                 kr.kalanBorc = 0;
                                 kr.silinecek = true;
                             } else {
-                                // Satış borcu karşılamadı! Kalan borç bakiye olarak kalır, kredi silinmez.
                                 kr.kalanBorc = kr.kalanBorc - satisFiyati;
-                                kr.ustUsteOdenmeyen = 0; // İcra yapıldı, varlığı gitti, kalan borç için sayaç sıfırlanır
-                                kr.silinecek = false;   // Borç bitmediği için kredi satırından silinmez!
+                                kr.ustUsteOdenmeyen = 0; 
+                                kr.silinecek = false;   
                             }
                         } else {
-                            // Varlık bulunamazsa veya bloke değilse borç olduğu gibi kalır
                             kr.silinecek = false;
                         }
                     }
@@ -362,13 +358,14 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
                 degisiklikOldu = true;
             });
 
-            // Sadece gerçekten borcu biten (kalanBorc === 0 ve silinecek olan) kredileri temizle
             portfoy.krediler = portfoy.krediler.filter(kr => kr && (kr.kalanBorc > 0 || !kr.silinecek));
         }
+    }
 
-        // --- 4. OTOMATİK BORÇ KAPATMA (KASAYA GELEN PARADAN KESİNTİ) ---
-        // Eğer kullanıcının herhangi bir kredi borcu kalmışsa (icradan kalan dahil),
-        // kasadaki nakit paradan otomatik olarak borç kapatmaya çalışılır.
+    // --- 4. ANLIK OTOMATİK BORÇ KAPATMA (TAKSİT SAATİNİ BEKLEMEDEN KASADAN DÜŞME) ---
+    // Kullanıcının ne zaman kasasına para gelse veya fonksiyon ne zaman tetiklense,
+    // taksit periyoduna bakılmaksızın kasadaki nakit doğrudan kalan borçtan düşer.
+    if (portfoy.krediler && Array.isArray(portfoy.krediler) && portfoy.krediler.length > 0) {
         let toplamKalanBorc = portfoy.krediler.reduce((toplam, kr) => toplam + (kr.kalanBorc || 0), 0);
         if (toplamKalanBorc > 0 && portfoy.nakit > 0) {
             for (let kr of portfoy.krediler) {
@@ -387,18 +384,25 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
                     }
                 }
             }
-            // Tamamen kapananları temizle
             portfoy.krediler = portfoy.krediler.filter(kr => kr && kr.kalanBorc > 0);
+            degisiklikOldu = true;
         }
+    }
 
-        // Genel borç ve taksit özet alanlarını güncelle
+    // Genel borç ve taksit özet alanlarını güncelle
+    if (portfoy.krediler && Array.isArray(portfoy.krediler)) {
         portfoy.kredi = portfoy.krediler.reduce((toplam, kr) => toplam + (kr.kalanBorc || 0), 0);
         portfoy.taksit = portfoy.krediler.reduce((toplam, kr) => toplam + (kr.taksitTutu || 0), 0);
-        if (portfoy.kredi <= 0) {
-            portfoy.kredi = 0;
-            portfoy.taksit = 0;
-            portfoy.krediler = [];
-        }
+    } else {
+        portfoy.kredi = 0;
+        portfoy.taksit = 0;
+        portfoy.krediler = [];
+    }
+
+    if (portfoy.kredi <= 0) {
+        portfoy.kredi = 0;
+        portfoy.taksit = 0;
+        portfoy.krediler = [];
     }
 
     // Yeni son güncelleme zamanını hesaplanan periyotlar üzerinden ileri taşı
@@ -420,7 +424,6 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
 
     return portfoy;
 }
-
 setInterval(() => {
     try {
         const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
