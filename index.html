@@ -4311,7 +4311,7 @@ function ilanaCikar(id) {
     }
     
     let atananKonumVal = v.atananKonum || null;
-    let saticiAdi = (typeof state !== 'undefined' && state.sirketAdi) ? state.sirketAdi : 'Firma A.Ş.';
+   let saticiAdi = (typeof aktifKullaniciAdi !== 'undefined' && aktifKullaniciAdi) ? aktifKullaniciAdi : 'Şirket';
 
     // Sunucuya gönder
     fetch('/api/ilan-ekle', {
