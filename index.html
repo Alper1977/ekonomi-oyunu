@@ -3596,21 +3596,22 @@ async function ilanlariGuncelle() {
             `;
         }
 
-        let itemBox = document.createElement('div');
-        itemBox.className = 'item-box';
-        itemBox.innerHTML = `
-            <div class="item-header-row">
-                <span class="item-ilan-veren">${baslikMetni}</span>
-                <span class="item-tur">${varlikIsmi}</span>
+      let itemBox = document.createElement('div');
+    itemBox.className = 'item-box';
+    itemBox.innerHTML = `
+        <div style="display: flex; flex-direction: column; width: 100%; margin-bottom: 5px;">
+            <span class="item-ilan-veren" style="text-align: left; font-weight: bold; margin-bottom: 4px;">${baslikMetni}</span>
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                <span class="item-bedel" style="text-align: left; font-weight: bold;">${varlikIsmi}</span>
+                <span class="item-bedel" style="text-align: right; font-weight: bold;">${satisBedeli.toLocaleString()} TL</span>
             </div>
-            <div class="item-bedel">${satisBedeli.toLocaleString()} TL</div>
-            <div class="action-group">
-                ${goruntuleBtnHTML}
-                ${ortaAlanHTML}
-            </div>
-        `;
-        return itemBox;
-    }
+        </div>
+        <div class="action-group">
+            ${goruntuleBtnHTML}
+            ${ortaAlanHTML}
+        </div>
+    `;
+    return itemBox;
     
     let botMulkListesi = [];
     let botArsaListesi = [];
