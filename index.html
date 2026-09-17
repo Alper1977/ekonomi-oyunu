@@ -2941,15 +2941,15 @@ if (satilikVarliklar.length > 0) {
         state.nakit += netKazanc;
         varlik.durum = 'silinecek';
 
-        try {  
-            fetch(`/api/ilan-sil-bot`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ilanId: varlik.id })
-            });
-        } catch (e) {
-            console.error("Bot ilan silme hatası:", e);
-        }
+        try {
+    fetch('/api/ilan-sil', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: varlik.id, sunucuIlanId: varlik.sunucuIlanId })
+    });
+} catch (e) {
+    console.error("İlan veritabanından silinemedi:", e);
+}
 
         if (!aliciBot.varliklar) aliciBot.varliklar = [];
         aliciBot.varliklar.push({
