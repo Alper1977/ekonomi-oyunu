@@ -2935,24 +2935,20 @@ if (satilikVarliklar.length > 0) {
         
       console.log("🔥 BOT OYUNCU İLANINI SATIN ALMA KODU TETİKLENDİ! İlan ID:", varlik.id);
         
-        let netKazanc = satisBedeli - dusulenBorc;
+      let netKazanc = satisBedeli - dusulenBorc;
 
         aliciBot.nakit -= satisBedeli;
         state.nakit += netKazanc;
         varlik.durum = 'silinecek';
 
-        try {
-            fetch(`/api/ilanlar/${varlik.id}`, { method: 'DELETE' })
-                .then(async response => {
-                    let sonucText = await response.text();
-                    console.log("Sunucu DELETE yanıtı:", response.status, sonucText);
-                    if (response.ok && typeof ilanlariGuncelle === 'function') {
-                        ilanlariGuncelle();
-                    }
-                })
-                .catch(err => console.log("İlan sunucudan silinemedi:", err));
+        try {  
+            fetch(`/api/ilan-sil-bot`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ilanId: varlik.id })
+            });
         } catch (e) {
-            console.error("Sunucu silme isteği hatası:", e);
+            console.error("Bot ilan silme hatası:", e);
         }
 
         if (!aliciBot.varliklar) aliciBot.varliklar = [];
