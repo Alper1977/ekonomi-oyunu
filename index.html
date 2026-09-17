@@ -3784,13 +3784,47 @@ function talepAl(id) {
         return;
     }
 
+    // Parayı kasaya ekle
     state.nakit += t.bedel; 
     v.talepAktif = false; 
     v.talepBaslangic = -1; 
 
-    // 🌟 İŞTE KRİTİK NOKTA BURASI: Para kasaya girdiği an borcu anında tetikle!
-    if (typeof kalanBorclariOtomatikOde === 'function') {
-        kalanBorclariOtomatikOde();
+    // 🌟 ANINDA BORÇ DÜŞME MEKANİZMASI
+    let toplamBorc = 0;
+    if (state.krediler && state.krediler.length > 0) {
+        toplamBorc = state.krediler.reduce((acc, k) => acc + (k.kalanBorc || 0), 0);
+    } else {
+        toplamBorc = state.kredi || 0;
+    }
+
+    // Eğer borç varsa ve kasada para varsa, saniyesinde borçtan düş
+    if (toplamBorc > 0 && state.nakit > 0) {
+        if (state.nakit >= toplamBorc) {
+            state.nakit -= toplamBorc;
+            state.krediler = [];
+            state.kredi = 0;
+            state.taksit = 0;
+        } else {
+            let harcananNakit = state.nakit;
+            state.nakit = 0;
+            
+            if (state.krediler && state.krediler.length > 0) {
+                let kalanDusulecek = harcananNakit;
+                state.krediler.forEach(kr => {
+                    if (kalanDusulecek > 0 && kr.kalanBorc > 0) {
+                        let dusulen = Math.min(kalanDusulecek, kr.kalanBorc);
+                        kr.kalanBorc -= dusulen;
+                        kalanDusulecek -= dusulen;
+                    }
+                    kr.icradanKalanBorc = (kr.kalanBorc > 0);
+                });
+                state.krediler = state.krediler.filter(kr => kr.kalanBorc > 0 || kr.icradanKalanBorc);
+                state.kredi = state.krediler.reduce((acc, k) => acc + (k.kalanBorc || 0), 0);
+            } else {
+                state.kredi = Math.max(0, state.kredi - harcananNakit);
+            }
+            state.taksit = 0;
+        }
     }
 
     guncelle(); 
