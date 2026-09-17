@@ -2957,6 +2957,10 @@ if (satilikVarliklar.length > 0) {
             veriDegisti = true;
         }
 
+        if (typeof ilanlariGuncelle === 'function') {
+            ilanlariGuncelle();
+        }
+
         let mesaj = `Piyasa Hareketi (Süre Doldu):\n\n${aliciBot.isim}, ilanda bekleyen "${varlik.isim}" varlığını ${satisBedeli.toLocaleString()} TL ödeyerek satın aldı!`;
         if (dusulenBorc > 0) {
             mesaj += `\n\nKredi Borcu Kapandı: -${dusulenBorc.toLocaleString()} TL\nKasanıza Eklenen Net Tutar: ${netKazanc.toLocaleString()} TL`;
