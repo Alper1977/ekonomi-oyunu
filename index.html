@@ -2951,11 +2951,20 @@ if (satilikVarliklar.length > 0) {
                 }
             }
         }
-        let netKazanc = satisBedeli - dusulenBorc;
+       let netKazanc = satisBedeli - dusulenBorc;
 
         aliciBot.nakit -= satisBedeli;
         state.nakit += netKazanc;
         varlik.durum = 'silinecek';
+
+        // 🌟 SUNUCUDAKİ İLANI DA TEMİZLEMEK İÇİN İSTEK ATALIM:
+        try {
+            fetch(`/api/ilanlar/${varlik.id}`, {
+                method: 'DELETE'
+            }).catch(err => console.log("İlan sunucudan silinemedi:", err));
+        } catch (e) {
+            console.error("Sunucu silme isteği hatası:", e);
+        }
 
         if (!aliciBot.varliklar) aliciBot.varliklar = [];
         aliciBot.varliklar.push({
