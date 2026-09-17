@@ -3666,18 +3666,19 @@ async function ilanlariGuncelle() {
 
                 let benimIlanimMi = ilan.benim_mi; 
 
-                let veriObj = { 
-                    baslikMetni: benimIlanimMi ? 'Ben' : (ilan.satici_adsoyad || 'Oyuncu'), 
-                    botIsmi: ilan.satici_adsoyad, 
-                    varlikIsmi: ilan.ilan_tipi, 
-                    satisBedeli, 
-                    uniqueId, 
-                    inputId, 
-                    vadeInputId, 
-                    arsaMi, 
-                    atananKonum: konum, 
-                    tipKyn: benimIlanimMi ? 'benim-ilanim' : 'diger-oyuncu' 
-                };
+               let veriObj = { 
+        // Eğer ilan bizimse 'BEN', başkasınınsa şirket adının TÜM HARFLERİ BÜYÜK olack şekilde ayarlanır:
+        baslikMetni: benimIlanimMi ? 'BEN' : (ilan.satici_adsoyad ? ilan.satici_adsoyad.toLocaleUpperCase('tr-TR') : 'OYUNCU A.Ş.'), 
+        botIsmi: ilan.satici_adsoyad ? ilan.satici_adsoyad.toLocaleUpperCase('tr-TR') : '', 
+        varlikIsmi: ilan.ilan_tipi, 
+        satisBedeli, 
+        uniqueId, 
+        inputId, 
+        vadeInputId, 
+        arsaMi, 
+        atananKonum: konum, 
+        tipKyn: benimIlanimMi ? 'benim-ilanim' : 'diger-oyuncu' 
+    };
 
                 if (ilan.ilan_tipi.toLowerCase().includes('arsa')) {
                     oyuncuArsaListesi.push(veriObj);
