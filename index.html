@@ -5458,12 +5458,17 @@ function taksitleriOdeVeyaKontrolEt() {
         state.krediler = state.krediler.filter(kr => kr.kalanBorc > 0 || kr.icradanKalanBorc);
         state.kredi = state.krediler.reduce((toplam, kr) => toplam + (kr.kalanBorc || 0), 0);
         
-        // 🌟 ÇÖZÜM: Kalan aktif kredilerin taksitlerini yeniden hesapla, hiç kredi kalmadıysa taksiti 0 yap!
-        state.taksit = state.krediler.reduce((toplam, kr) => toplam + (kr.taksitTutu || kr.aylikTaksit || 0), 0);
+        // Doğru anahtar adı (kr.taksit) ile kalan taksitleri topluyoruz
+        state.taksit = state.krediler.reduce((toplam, kr) => toplam + (kr.taksit || 0), 0);
     } else {
         state.kredi = 0;
         state.taksit = 0;
         state.krediler = [];
+    }
+
+    // Listede hiç kredi kalmadıysa state.taksit'i kesinlikle 0 yap
+    if (!state.krediler || state.krediler.length === 0) {
+        state.taksit = 0;
     }
 
     guncelle();
