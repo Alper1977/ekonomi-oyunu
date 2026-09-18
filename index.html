@@ -5394,7 +5394,7 @@ function taksitleriOdeVeyaKontrolEt() {
         if (state.krediler && Array.isArray(state.krediler)) {
             state.krediler.forEach(kr => {
                 let taksitMiktari = kr.taksitTutu || kr.aylikTaksit || 0;
-                if (kr.kalanBorc > 0) {
+                if (kr.kalanBorc > 0 && !kr.icradanKalanBorc) {
                     kr.kalanBorc = Math.max(0, kr.kalanBorc - taksitMiktari);
                     if (kr.kalanBorc === 0) {
                         kr.icradanKalanBorc = false;
@@ -5434,7 +5434,6 @@ function taksitleriOdeVeyaKontrolEt() {
                 }
             }
 
-            // Mülkler bitti ama hâlâ borç varsa -> SİLİNMEZ, bakiye borç olarak kalır!
             if (toplamBorc > 0) {
                 state.krediler = [{
                     id: 'icra_bakiye_' + Date.now(),
@@ -5445,7 +5444,6 @@ function taksitleriOdeVeyaKontrolEt() {
                 state.nakit = 0; 
                 yapilanIslemler.push(`🚨 <b>Başka mülk kalmadı!</b> Kalan <b>${toplamBorc.toLocaleString()} TL</b> bakiye borç olarak bırakıldı.`);
             } else {
-                // Borç tamamen bittiyse kredileri temizle
                 state.krediler = state.krediler.filter(kr => kr.kalanBorc > 0);
             }
 
@@ -5456,10 +5454,10 @@ function taksitleriOdeVeyaKontrolEt() {
         }
     }
 
-    // 4. ADIM (DEMİR KURAL): Kasaya giren her kuruş doğrudan bakiye borçtan düşer, asla silinmez!
+    // 4. ADIM (DÜZELTİLDİ): Sadece İCRADAN kalan bakiye borçlar kasadaki fazla nakitten düşer!
     if (state.nakit > 0 && state.krediler && state.krediler.length > 0) {
         state.krediler.forEach(kr => {
-            if (kr.kalanBorc > 0 && state.nakit > 0) {
+            if (kr.kalanBorc > 0 && state.nakit > 0 && kr.icradanKalanBorc === true) {
                 let odenen = Math.min(state.nakit, kr.kalanBorc);
                 state.nakit -= odenen;
                 kr.kalanBorc -= odenen;
@@ -5472,7 +5470,7 @@ function taksitleriOdeVeyaKontrolEt() {
 
     // Temizlik ve Güncellemeler
     if (state.krediler && Array.isArray(state.krediler)) {
-        state.krediler = state.krediler.filter(kr => kr.kalanBorc > 0);
+        state.krediler = state.krediler.filter(kr => kr.kalanBorc > 0 || kr.icradanKalanBorc);
         state.kredi = state.krediler.reduce((toplam, kr) => toplam + (kr.kalanBorc || 0), 0);
     } else {
         state.kredi = 0;
