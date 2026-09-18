@@ -5421,14 +5421,15 @@ function taksitleriOdeVeyaKontrolEt() {
                 }
             }
 
-            if (toplamBorc > 0) {
+           if (toplamBorc > 0) {
                 state.krediler = [{
                     id: 'icra_bakiye_' + Date.now(),
                     kalanBorc: toplamBorc,
                     icradanKalanBorc: true,
-                    taksit: 0 // İcradan kalan bakiye için yeni taksit üretilmez
+                    taksit: 0 // <--- İcradan sonra asla yeni taksit uydurulmuyor, taksit 0 oluyor!
                 }];
                 state.nakit = 0; 
+                state.taksit = 0; // <--- Genel taksit yükü de sıfırlanıyor ki ekranda taksit yazmasın
                 yapilanIslemler.push(`🚨 <b>Başka mülk kalmadı!</b> Kalan <b>${toplamBorc.toLocaleString()} TL</b> bakiye borç olarak bırakıldı.`);
             } else {
                 state.krediler = state.krediler.filter(kr => kr.kalanBorc > 0);
@@ -5453,7 +5454,7 @@ function taksitleriOdeVeyaKontrolEt() {
     }
 
     // 5. ADIM: Kesin Temizlik (Borç bittiyse hem borç hem taksit satırını tamamen uçur)
-    if (state.krediler && Array.isArray(state.krediler)) {
+   if (state.krediler && Array.isArray(state.krediler)) {
         state.krediler = state.krediler.filter(kr => (kr.kalanBorc || 0) > 0);
         state.kredi = state.krediler.reduce((toplam, kr) => toplam + (kr.kalanBorc || 0), 0);
         
@@ -5461,7 +5462,8 @@ function taksitleriOdeVeyaKontrolEt() {
             state.kredi = 0;
             state.taksit = 0;
         } else {
-            state.taksit = state.krediler.reduce((toplam, kr) => toplam + (kr.taksit || 0), 0);
+            // Eğer hala icra bakiyesi duruyorsa taksiti 0 sabitle, normal kredi varsa onların toplamını al
+            state.taksit = state.krediler.reduce((toplam, kr) => toplam + (kr.icradanKalanBorc ? 0 : (kr.taksit || 0)), 0);
         }
     } else {
         state.kredi = 0;
