@@ -4845,6 +4845,8 @@ function changePage(p) {
 
 
 function krediIslem(inputId, vadeInputId, isim, bedel, kapsam, ilanId = null) {
+    // 🌟 DÜZELTME BURADA: Sadece taksiti geciken (ustUsteOdenmeyen > 0) veya icradan dolayı kalıntı borcu olan durumlarda engelle. 
+    // Normal, düzenli ödenen aktif krediler yeni kredi çekmeye engel DEĞİLDİR.
     let sorunluKrediVar = state.krediler && state.krediler.some(kr => (kr.ustUsteOdenmeyen || 0) > 0 || (kr.icradanKalanBorc === true));
     if (sorunluKrediVar) {
         modalGoster(`⚠️ <b>KREDİ REDDEDİLDİ</b><br><br>Gecikmiş taksitleriniz veya icradan kalan ödenmemiş borcunuz bulunuyor. Borcunuzu tamamen kapatana kadar yeni kredi kullanamazsınız!`);
