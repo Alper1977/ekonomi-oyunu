@@ -4845,8 +4845,6 @@ function changePage(p) {
 
 
 function krediIslem(inputId, vadeInputId, isim, bedel, kapsam, ilanId = null) {
-    // 🌟 DÜZELTME BURADA: Sadece taksiti geciken (ustUsteOdenmeyen > 0) veya icradan dolayı kalıntı borcu olan durumlarda engelle. 
-    // Normal, düzenli ödenen aktif krediler yeni kredi çekmeye engel DEĞİLDİR.
     let sorunluKrediVar = state.krediler && state.krediler.some(kr => (kr.ustUsteOdenmeyen || 0) > 0 || (kr.icradanKalanBorc === true));
     if (sorunluKrediVar) {
         modalGoster(`⚠️ <b>KREDİ REDDEDİLDİ</b><br><br>Gecikmiş taksitleriniz veya icradan kalan ödenmemiş borcunuz bulunuyor. Borcunuzu tamamen kapatana kadar yeni kredi kullanamazsınız!`);
@@ -4897,6 +4895,25 @@ function krediIslem(inputId, vadeInputId, isim, bedel, kapsam, ilanId = null) {
         toplamGeriOdeme = aylikTaksit * n;
     }
 
+    // --- 🌟 VADEYE GÖRE ÖDEME GÜCÜ KONTROLÜ ---
+    // Limit 48 aya göre hesaplandığı için baz alacağımız maksimum aylık ödeme kapasitesi:
+    let bazVade = 48;
+    let maxIzinVerilenAylikTaksit;
+    if (aylikFaizOrani === 0) {
+        maxIzinVerilenAylikTaksit = maxLimit / bazVade;
+    } else {
+        let i = aylikFaizOrani;
+        maxIzinVerilenAylikTaksit = maxLimit * (i * Math.pow(1 + i, bazVade)) / (Math.pow(1 + i, bazVade) - 1);
+    }
+
+    if (aylikTaksit > maxIzinVerilenAylikTaksit) {
+        if (miktarInput) miktarInput.value = '';
+        if (vadeSelect) vadeSelect.value = "48";
+        modalGoster(`⚠️ <b>ÖDEME GÜCÜ YETERSİZ</b><br><br>Seçtiğiniz ${vade} aylık vade ile aylık taksitiniz (${Math.round(aylikTaksit).toLocaleString()} TL), 48 aylık baz ödeme kapasitenizi (${Math.round(maxIzinVerilenAylikTaksit).toLocaleString()} TL) aşıyor!<br><br>Bu vadeye ödeme gücünüz yetmiyor, lütfen <b>daha yüksek bir vade</b> seçin veya kredi miktarını düşürün.`);
+        return;
+    }
+    // ------------------------------------------
+
     tempIslem = {
         inputId: inputId,
         vadeInputId: vadeInputId,
@@ -4933,6 +4950,27 @@ function krediyiKesinOnayla() {
     let { inputId, vadeInputId, isim, bedel, kapsam, ilanId, miktar, vade, toplamGeriOdeme, aylikTaksit } = tempIslem;
     let miktarInput = document.getElementById(inputId);
     let vadeSelect = document.getElementById(vadeInputId);
+
+    // --- 🌟 KESİN ONAY AŞAMASINDA EK GÜVENLİK KİLİDİ ---
+    let maxLimit = (typeof state !== 'undefined' && state.krediLimiti) ? state.krediLimiti : 0;
+    let bazVade = 48;
+    let aylikFaizOrani = 0.05; // Varsayılan faiz oranı
+    let faizInput = document.getElementById('adm-faiz-yatirim');
+    if (faizInput && !isNaN(faizInput.value) && faizInput.value !== "") {
+        let f = Number(faizInput.value);
+        aylikFaizOrani = f > 1 ? f / 100 : f;
+    }
+
+    let maxIzinVerilenAylikTaksit = aylikFaizOrani === 0 ? maxLimit / bazVade : maxLimit * (aylikFaizOrani * Math.pow(1 + aylikFaizOrani, bazVade)) / (Math.pow(1 + aylikFaizOrani, bazVade) - 1);
+
+    if (aylikTaksit > maxIzinVerilenAylikTaksit) {
+        if (miktarInput) miktarInput.value = '';
+        if (vadeSelect) vadeSelect.value = "48";
+        tempIslem = null;
+        modalGoster(`⚠️ <b>ÖDEME GÜCÜ YETERSİZ</b><br><br>Seçtiğiniz vade ile aylık taksitiniz ödeme kapasitenizi aşıyor! Bu vadeye ödeme gücünüz yetmiyor.`);
+        return;
+    }
+    // ----------------------------------------------------
 
     if (miktar > bedel) {
         if (miktarInput) miktarInput.value = '';
@@ -5005,7 +5043,7 @@ function krediyiKesinOnayla() {
         kalanBorc: toplamGeriOdeme,
         taksit: aylikTaksit,
         ustUsteOdenmeyen: 0,
-        icradanKalanBorc: false // Sağlıklı yeni kredi olarak başlar
+        icradanKalanBorc: false
     });
 
     let islemTipi = (kapsam === 'ilan') ? 'al' : 'yap';
