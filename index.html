@@ -4886,7 +4886,7 @@ function krediIslem(inputId, vadeInputId, isim, bedel, kapsam, ilanId = null) {
         aylikFaizOrani = f > 1 ? f / 100 : f;
     }
 
-    let toplamGeriOdeme, aylikTaksit;
+let toplamGeriOdeme, aylikTaksit;
     if (aylikFaizOrani === 0) {
         toplamGeriOdeme = miktar;
         aylikTaksit = miktar / vade;
@@ -4896,14 +4896,16 @@ function krediIslem(inputId, vadeInputId, isim, bedel, kapsam, ilanId = null) {
         aylikTaksit = miktar * (i * Math.pow(1 + i, n)) / (Math.pow(1 + i, n) - 1);
         toplamGeriOdeme = aylikTaksit * n;
     }
-let aylikGelir = (typeof state !== 'undefined' && state.aylikGelir) ? state.aylikGelir : 
+
+    // --- 🌟 ÖDEME GÜCÜ KONTROLÜ (DÜZELTİLDİ) ---
+    let aylikGelir = (typeof state !== 'undefined' && state.aylikGelir) ? state.aylikGelir : 
                      ((typeof window.oyunAyar !== 'undefined' && window.oyunAyar.gunlukGelir) ? window.oyunAyar.gunlukGelir * 30 : 24000000);
 
-    
-    let izin verilenMaxTaksit = aylikGelir * 0.70; 
+    // Değişken adındaki boşluk kaldırıldı (izinVerilenMaxTaksit)
+    let izinVerilenMaxTaksit = aylikGelir * 0.70; 
 
-    if (aylikTaksit > izin verilenMaxTaksit) {
-        modalGoster(`⚠️ <b>ÖDEME GÜCÜ YETERSİZ</b><br><br>Seçtiğiniz ${vade} aylık vade ile aylık taksitiniz (${Math.round(aylikTaksit).toLocaleString()} TL) gelirinizi aşıyor!<br><br>Bu vadeye ödeme gücünüz yetmiyor, lütfen <b>daha yüksek bir vade</b> (örn. 36 veya 48 ay) seçin veya kredi miktarını düşürün.`);
+    if (aylikTaksit > izinVerilenMaxTaksit) {
+        modalGoster(`⚠️ <b>ÖDEME GÜCÜ YETERSİZ</b><br><br>Seçtiğiniz ${vade} aylık vade ile aylık taksitiniz (${Math.round(aylikTaksit).toLocaleString()} TL) gelirinizi aşıyor!<br><br>Bu vadeye ödeme gücünüz yetmiyor, lütfen <b>daha yüksek bir vade</b> seçin veya kredi miktarını düşürün.`);
         return;
     }
     tempIslem = {
