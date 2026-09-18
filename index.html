@@ -2580,14 +2580,16 @@ if (simdiMs - sonTaksitZamani >= window.oyunAyarlari.taksitSuresi) {
         state.krediler.forEach(kr => {
             if (!kr || kr.kalanBorc <= 0) return;
 
-            if (!kr.taksitTutu) {
-                kr.taksitTutu = (kr.kalanBorc / 48) * (typeof faizOranlari !== 'undefined' ? faizOranlari.krediKatsayi : 1.25);
+            // --- 🌟 TAKSİT MİKTARI GÜVENCESİ ---
+            let taksitMiktari = kr.taksit !== undefined ? kr.taksit : kr.taksitTutu;
+            if (!taksitMiktari) {
+                taksitMiktari = (kr.kalanBorc / 48) * (typeof faizOranlari !== 'undefined' ? faizOranlari.krediKatsayi : 1.25);
+                kr.taksit = taksitMiktari;
             }
+
             if (typeof kr.ustUsteOdenmeyen !== 'number') {
                 kr.ustUsteOdenmeyen = 0;
             }
-
-            let taksitMiktari = kr.taksitTutu;
 
             // --- OTOMATİK NAKİT TAMAMLAMA (DÖVİZ, ALTIN VE VADELİ KONTROLÜ) ---
             if (state.nakit < taksitMiktari) {
@@ -2710,10 +2712,11 @@ if (simdiMs - sonTaksitZamani >= window.oyunAyarlari.taksitSuresi) {
                             // Satış borcu KARŞILAMADI! Kalan miktar bakiye olarak kalır, kredi silinmez.
                             kr.kalanBorc = kr.kalanBorc - satisFiyati;
                             kr.ustUsteOdenmeyen = 0; // Sayaç sıfırlanır, yeni kalan borç için süreç başlar
+                            kr.icradanKalanBorc = true; // --- 🌟 İCRA KALINTISI OLARak İŞARETLENDİ ---
+                            kr.taksit = 0;
                             bildirimler.push(`🚨 <b>İCRA (BAKİYE KALDI):</b> 3 dönem ödenemeyen <b>${varlikAdi}</b> haczedilip satıldı ancak satış tutarı borcu tam kapatamadı! Kalan ${kr.kalanBorc.toLocaleString()} TL borç bakiyesi hesabınıza yansıtıldı.`);
                         }
                     } else {
-                        // Varlık bulunamadıysa bile sayaç sıfırlanır, borç kalır
                         kr.ustUsteOdenmeyen = 0;
                     }
                 } else {
@@ -2723,23 +2726,13 @@ if (simdiMs - sonTaksitZamani >= window.oyunAyarlari.taksitSuresi) {
             }
         });
 
-        // --- OTOMATİK BORÇ KAPATMA (KASADAKİ NAKİTTEN KESİNTİ) ---
-        // Kasada para varsa ve aktif kalan bir borç varsa otomatik düşülür
-        let toplamKalanBorc = state.krediler.reduce((toplam, kr) => toplam + (kr.kalanBorc || 0), 0);
-        if (toplamKalanBorc > 0 && state.nakit > 0) {
+        // --- 🌟 DÜZELTİLDİ: SADECE İCRADAN KALAN BAKİYE BORÇLAR ANINDA KAPANIR ---
+        if (state.nakit > 0) {
             state.krediler.forEach(kr => {
-                if (kr.kalanBorc > 0 && state.nakit > 0) {
+                if (kr && kr.kalanBorc > 0 && state.nakit > 0 && kr.icradanKalanBorc === true) {
                     let odenen = Math.min(state.nakit, kr.kalanBorc);
                     state.nakit -= odenen;
                     kr.kalanBorc -= odenen;
-
-                    if (kr.kalanBorc === 0 && state.varliklar) {
-                        let ilgiliVarlik = state.varliklar.find(v => v && v.krediID === kr.id);
-                        if (ilgiliVarlik) {
-                            ilgiliVarlik.bloke = false;
-                            ilgiliVarlik.krediID = null;
-                        }
-                    }
                 }
             });
         }
@@ -2754,7 +2747,7 @@ if (simdiMs - sonTaksitZamani >= window.oyunAyarlari.taksitSuresi) {
 
         // Genel borç ve taksitleri güncelle
         state.kredi = state.krediler.reduce((toplam, kr) => toplam + (kr.kalanBorc || 0), 0);
-        state.taksit = state.krediler.reduce((toplam, kr) => toplam + (kr.taksitTutu || 0), 0);
+        state.taksit = state.krediler.reduce((toplam, kr) => toplam + (kr.taksit || kr.taksitTutu || 0), 0);
 
         if (state.kredi <= 0) {
             state.kredi = 0;
@@ -2765,7 +2758,7 @@ if (simdiMs - sonTaksitZamani >= window.oyunAyarlari.taksitSuresi) {
     sonTaksitZamani = simdiMs;
     guncelle();
     veriDegisti = true;
-} 
+}
  
 // 5. Konut Kira Gelirleri
 if (simdiMs - sonKiraZamani >= window.oyunAyarlari.kiraSuresi) {
