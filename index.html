@@ -5255,10 +5255,11 @@ function krediOde() {
         if (odenecekKalan >= kr.kalanBorc) {
             odenecekKalan -= kr.kalanBorc;
             kr.kalanBorc = 0; 
-            kr.icradanKalanBorc = false; // Borç bittiyse kilit kalkar
+            kr.icradanKalanBorc = false;
 
             if (state.varliklar) {
-                let ilgiliVarlik = state.varliklar.find(v => v.krediID === kr.id);
+                // Hem ID eşleşmesine hem de genel blokelilere bakarak kaçırmayalım
+                let ilgiliVarlik = state.varliklar.find(v => v.krediID === kr.id) || state.varliklar.find(v => v.bloke === true);
                 if (ilgiliVarlik) {
                     ilgiliVarlik.bloke = false;
                     ilgiliVarlik.krediID = null; 
@@ -5272,7 +5273,6 @@ function krediOde() {
         }
     }
 
-    // Tamamen bitenleri temizle ama icradan kalan borcu varsa bayrağına göre tut
     state.krediler = state.krediler.filter(kr => kr.kalanBorc > 0 || kr.icradanKalanBorc);
     state.kredi = state.krediler.reduce((toplam, kr) => toplam + (kr.kalanBorc || 0), 0);
 
@@ -5287,12 +5287,17 @@ function krediOde() {
         state.kredi = 0;
         state.taksit = 0;
         state.krediler = [];
-        if (state.varliklar) {
-            state.varliklar.forEach(v => {
+    }
+
+    // 🌟 GÜVENCE: Eğer toplam borç bittiyse (kredi kalmadıysa), ID bağına bakılmaksızın blokeli TÜM varlıklar serbest kalır!
+    if (state.kredi === 0 && state.varliklar) {
+        state.varliklar.forEach(v => {
+            if (v.bloke) {
                 v.bloke = false;
                 v.krediID = null;
-            });
-        }
+                kalkanBlokeSayisi++;
+            }
+        });
     }
 
     input.value = '';
