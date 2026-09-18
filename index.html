@@ -2580,12 +2580,16 @@ if (simdiMs - sonTaksitZamani >= window.oyunAyarlari.taksitSuresi) {
         state.krediler.forEach(kr => {
             if (!kr || kr.kalanBorc <= 0) return;
 
-            // --- 🌟 TAKSİT MİKTARI GÜVENCESİ ---
-            let taksitMiktari = kr.taksit !== undefined ? kr.taksit : kr.taksitTutu;
-            if (!taksitMiktari) {
-                taksitMiktari = (kr.kalanBorc / 48) * (typeof faizOranlari !== 'undefined' ? faizOranlari.krediKatsayi : 1.25);
-                kr.taksit = taksitMiktari;
-            }
+           
+           // --- 🌟 TAKSİT MİKTARI GÜVENCESİ ---
+let taksitMiktari = kr.taksit !== undefined ? kr.taksit : kr.taksitTutu;
+if (kr.icradanKalanBorc) {
+    taksitMiktari = 0;
+    kr.taksit = 0;
+} else if (!taksitMiktari) {
+    taksitMiktari = (kr.kalanBorc / 48) * (typeof faizOranlari !== 'undefined' ? faizOranlari.krediKatsayi : 1.25);
+    kr.taksit = taksitMiktari;
+}
 
             if (typeof kr.ustUsteOdenmeyen !== 'number') {
                 kr.ustUsteOdenmeyen = 0;
@@ -2746,14 +2750,19 @@ if (simdiMs - sonTaksitZamani >= window.oyunAyarlari.taksitSuresi) {
         }
 
         // Genel borç ve taksitleri güncelle
-        state.kredi = state.krediler.reduce((toplam, kr) => toplam + (kr.kalanBorc || 0), 0);
-        state.taksit = state.krediler.reduce((toplam, kr) => toplam + (kr.taksit || kr.taksitTutu || 0), 0);
+    state.kredi = state.krediler.reduce((toplam, kr) => toplam + (kr.kalanBorc || 0), 0);
 
-        if (state.kredi <= 0) {
-            state.kredi = 0;
-            state.taksit = 0;
-            state.krediler = [];
-        }
+// 🌟 İcradan kalan borçların taksitleri 0 kabul edilir, genel aylık taksite eklenmez
+state.taksit = state.krediler.reduce((toplam, kr) => {
+    if (kr.icradanKalanBorc) return toplam;
+    return toplam + (kr.taksit || kr.taksitTutu || 0);
+}, 0);
+
+if (state.kredi <= 0) {
+    state.kredi = 0;
+    state.taksit = 0;
+    state.krediler = [];
+}
     }
     sonTaksitZamani = simdiMs;
     guncelle();
