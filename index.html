@@ -4897,15 +4897,21 @@ let toplamGeriOdeme, aylikTaksit;
         toplamGeriOdeme = aylikTaksit * n;
     }
 
-    // --- 🌟 ÖDEME GÜCÜ KONTROLÜ (DÜZELTİLDİ) ---
-    let aylikGelir = (typeof state !== 'undefined' && state.aylikGelir) ? state.aylikGelir : 
-                     ((typeof window.oyunAyar !== 'undefined' && window.oyunAyar.gunlukGelir) ? window.oyunAyar.gunlukGelir * 30 : 24000000);
+    // --- 🌟 SENİN ÖDEME KAPASİTESİ FORMÜLÜN ---
+    // Gerekli gelir ve mevcut taksit değişkenlerinin senin kodundaki karşılıklarını buraya bağlıyoruz:
+    let gGelir = (typeof state !== 'undefined' && state.gunlukGelir) ? state.gunlukGelir : ((typeof window.oyunAyar !== 'undefined' && window.oyunAyar.gunlukGelir) ? window.oyunAyar.gunlukGelir : 800000);
+    let kGelir = (typeof state !== 'undefined' && state.konutKiraGeliri) ? state.konutKiraGeliri : 0;
+    let tGelir = (typeof state !== 'undefined' && state.sirketGeliri) ? state.sirketGeliri : 0;
+    
+    // Aktif ödenen diğer taksitlerin toplamı (state içinde tutuluyorsa oradan çekilir, yoksa 0 alınır)
+    let mevcutTaksit = (typeof state !== 'undefined' && state.toplamAylikTaksitlerim) ? state.toplamAylikTaksitlerim : 0;
 
-    // Değişken adındaki boşluk kaldırıldı (izinVerilenMaxTaksit)
-    let izinVerilenMaxTaksit = aylikGelir * 0.70; 
+    // Senin yazdığın kapasite formülü:
+    let aylikTaksitKapasitesi = (gGelir + kGelir + (tGelir * 3) - mevcutTaksit) * 0.60;
 
-    if (aylikTaksit > izinVerilenMaxTaksit) {
-        modalGoster(`⚠️ <b>ÖDEME GÜCÜ YETERSİZ</b><br><br>Seçtiğiniz ${vade} aylık vade ile aylık taksitiniz (${Math.round(aylikTaksit).toLocaleString()} TL) gelirinizi aşıyor!<br><br>Bu vadeye ödeme gücünüz yetmiyor, lütfen <b>daha yüksek bir vade</b> seçin veya kredi miktarını düşürün.`);
+    // Eğer çekilmek istenen kredinin aylık taksiti, bu kapasiteden büyükse:
+    if (aylikTaksit > aylikTaksitKapasitesi) {
+        modalGoster(`⚠️ <b>ÖDEME GÜCÜ YETERSİZ</b><br><br>Seçtiğiniz vade ile aylık taksitiniz (${Math.round(aylikTaksit).toLocaleString()} TL), gelir ve mevcut taksit durumunuza göre hesaplanan ödeme kapasitenizi (${Math.round(aylikTaksitKapasitesi).toLocaleString()} TL) aşıyor!<br><br>Bu vadeye ödeme gücünüz yetmiyor, lütfen <b>daha yüksek bir vade</b> seçin.`);
         return;
     }
     tempIslem = {
