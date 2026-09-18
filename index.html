@@ -2749,8 +2749,8 @@ if (kr.icradanKalanBorc) {
             modalGoster(`📋 <b>DÖNEMSEL FİNANSAL RAPOR</b><br><br>` + bildirimler.join('<br><br>'));
         }
 
-        // Genel borç ve taksitleri güncelle
-    state.kredi = state.krediler.reduce((toplam, kr) => toplam + (kr.kalanBorc || 0), 0);
+  // Genel borç ve taksitleri güncelle
+state.kredi = state.krediler.reduce((toplam, kr) => toplam + (kr.kalanBorc || 0), 0);
 
 // 🌟 İcradan kalan borçların taksitleri 0 kabul edilir, genel aylık taksite eklenmez
 state.taksit = state.krediler.reduce((toplam, kr) => {
@@ -2763,12 +2763,17 @@ if (state.kredi <= 0) {
     state.taksit = 0;
     state.krediler = [];
 }
-    }
-    sonTaksitZamani = simdiMs;
-    guncelle();
-    veriDegisti = true;
+
+// 🌟 GÜVENLİK AĞI: Toplam borç 0landıysa, aktif kredi kalmadıysa sistemdeki TÜM blokeleri kaldır!
+if (state.kredi === 0 && state.varliklar && Array.isArray(state.varliklar)) {
+    state.varliklar.forEach(v => {
+        if (v && v.bloke) {
+            v.bloke = false;
+            v.krediID = null;
+            veriDegisti = true;
+        }
+    });
 }
- 
 // 5. Konut Kira Gelirleri
 if (simdiMs - sonKiraZamani >= window.oyunAyarlari.kiraSuresi) {
     let konutSayisi = state.varliklar.filter(v => v.isim === 'Konut' && v.durum === 'sahip').length;
