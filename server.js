@@ -389,7 +389,7 @@ if (kr.icradanKalanBorc) {
         portfoy.krediler = portfoy.krediler.filter(kr => kr && kr.kalanBorc > 0);
     }
 
-    // Genel borç ve taksit özet alanlarını güncelle
+// Genel borç ve taksit özet alanlarını güncelle
 if (portfoy.krediler && Array.isArray(portfoy.krediler)) {
     portfoy.kredi = portfoy.krediler.reduce((toplam, kr) => toplam + (kr.kalanBorc || 0), 0);
     
@@ -408,6 +408,18 @@ if (portfoy.krediler && Array.isArray(portfoy.krediler)) {
         portfoy.kredi = 0;
         portfoy.taksit = 0;
         portfoy.krediler = [];
+    }
+
+    // 🌟 KESİN ÇÖZÜM: Toplam borç 0 ise (veya kredi kalmadıysa) sunucu tarafında 
+    // ID bağına bakılmaksızın tüm varlıkların blokesini ve kredi bağlantısını temizle!
+    if (portfoy.kredi === 0 && portfoy.varliklar && Array.isArray(portfoy.varliklar)) {
+        portfoy.varliklar.forEach(v => {
+            if (v && v.bloke) {
+                v.bloke = false;
+                v.krediID = null;
+                degisiklikOldu = true; // Değişiklik olduğunu işaretle ki veritabanına yazılsın!
+            }
+        });
     }
 
     // Yeni son güncelleme zamanını hesaplanan periyotlar üzerinden ileri taşı
