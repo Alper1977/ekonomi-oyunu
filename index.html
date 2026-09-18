@@ -5454,22 +5454,26 @@ function taksitleriOdeVeyaKontrolEt() {
         });
     }
 
- // Temizlik ve Güncellemeler
+// Borcu biten veya kapanan tüm kredileri ve taksitlerini tamamen temizliyoruz
     if (state.krediler && Array.isArray(state.krediler)) {
-        state.krediler = state.krediler.filter(kr => kr.kalanBorc > 0 || kr.icradanKalanBorc);
+        // Sadece kalan borcu olanları tut, borcu bitenleri uçur
+        state.krediler = state.krediler.filter(kr => kr.kalanBorc > 0);
+        
+        // Kalan toplam borcu güncelle
         state.kredi = state.krediler.reduce((toplam, kr) => toplam + (kr.kalanBorc || 0), 0);
         
-        // Doğru anahtar adı (kr.taksit) ile kalan taksitleri topluyoruz
-        state.taksit = state.krediler.reduce((toplam, kr) => toplam + (kr.taksit || 0), 0);
+        // Eğer hiç aktif kredi kalmadıysa taksit de kredi satırı da tamamen 0 olur ve silinir
+        if (state.krediler.length === 0) {
+            state.kredi = 0;
+            state.taksit = 0;
+        } else {
+            // Aktif kredi varsa onların taksitleri alt alta toplanır
+            state.taksit = state.krediler.reduce((toplam, kr) => toplam + (kr.taksit || 0), 0);
+        }
     } else {
         state.kredi = 0;
         state.taksit = 0;
         state.krediler = [];
-    }
-
-    // Listede hiç kredi kalmadıysa state.taksit'i kesinlikle 0 yap
-    if (!state.krediler || state.krediler.length === 0) {
-        state.taksit = 0;
     }
 
     guncelle();
