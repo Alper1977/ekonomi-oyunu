@@ -5305,9 +5305,10 @@ function krediOde() {
 
 
 function taksitleriOdeVeyaKontrolEt() {
-    let toplamAylikTaksit = 0;
+ let toplamAylikTaksit = 0;
     if (state.krediler && Array.isArray(state.krediler) && state.krediler.length > 0) {
-        toplamAylikTaksit = state.krediler.reduce((toplam, kr) => toplam + (kr.taksitTutu || kr.aylikTaksit || 0), 0);
+        // Doğru anahtar olan "kr.taksit" kullanılıyor
+        toplamAylikTaksit = state.krediler.reduce((toplam, kr) => toplam + (kr.taksit || 0), 0);
     } else {
         toplamAylikTaksit = state.taksit || 0;
     }
