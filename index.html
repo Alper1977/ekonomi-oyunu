@@ -5453,22 +5453,23 @@ function taksitleriOdeVeyaKontrolEt() {
         });
     }
 
-    // Temizlik ve Güncellemeler
+ // Temizlik ve Güncellemeler
     if (state.krediler && Array.isArray(state.krediler)) {
         state.krediler = state.krediler.filter(kr => kr.kalanBorc > 0 || kr.icradanKalanBorc);
         state.kredi = state.krediler.reduce((toplam, kr) => toplam + (kr.kalanBorc || 0), 0);
+        
+        // 🌟 ÇÖZÜM: Kalan aktif kredilerin taksitlerini yeniden hesapla, hiç kredi kalmadıysa taksiti 0 yap!
+        state.taksit = state.krediler.reduce((toplam, kr) => toplam + (kr.taksitTutu || kr.aylikTaksit || 0), 0);
     } else {
         state.kredi = 0;
+        state.taksit = 0;
         state.krediler = [];
     }
-
-    state.taksit = toplamAylikTaksit;
 
     guncelle();
     if (typeof portfoyuSunucuyaKaydet === 'function') {
         portfoyuSunucuyaKaydet(state);
     }
-}
 
 function kalanBorclariOtomatikOde() {
     // Sadece İCRADAN kalan bakiye borçlar için anında ödeme yapsın. 
