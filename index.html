@@ -5299,12 +5299,15 @@ function krediOde() {
         state.krediler = [];
     }
 
-    // 🌟 GÜVENCE: Eğer toplam borç bittiyse (kredi kalmadıysa), ID bağına bakılmaksızın blokeli TÜM varlıklar serbest kalır!
+  // 🌟 KESİN ÇÖZÜM: Borç bittiği an blokeli ve satışta olan tüm varlıkları serbest bırak
     if (state.kredi === 0 && state.varliklar) {
         state.varliklar.forEach(v => {
-            if (v.bloke) {
+            if (v.bloke || v.durum === 'ilan-aktif') {
                 v.bloke = false;
                 v.krediID = null;
+                if (v.durum === 'ilan-aktif') {
+                    v.durum = 'sahip'; // Eğer satışta kaldıysa tekrar normal sahip pozisyonuna getirir
+                }
                 kalkanBlokeSayisi++;
             }
         });
