@@ -5420,14 +5420,15 @@ function taksitleriOdeVeyaKontrolEt() {
                 }
             }
 
-            if (toplamBorc > 0) {
+           if (toplamBorc > 0) {
                 state.krediler = [{
                     id: 'icra_bakiye_' + Date.now(),
                     kalanBorc: toplamBorc,
                     icradanKalanBorc: true,
-                    taksitTutu: 0
+                    taksit: 0 // <--- Burası 0 olacak ki yeni taksit yazılmasın
                 }];
                 state.nakit = 0; 
+                state.taksit = 0; // <--- Genel taksit yükünü de anında sıfırlıyoruz ki ekranda asılı kalmasın
                 yapilanIslemler.push(`🚨 <b>Başka mülk kalmadı!</b> Kalan <b>${toplamBorc.toLocaleString()} TL</b> bakiye borç olarak bırakıldı.`);
             } else {
                 state.krediler = state.krediler.filter(kr => kr.kalanBorc > 0);
@@ -5454,23 +5455,37 @@ function taksitleriOdeVeyaKontrolEt() {
         });
     }
 
-// Borcu biten veya kapanan tüm kredileri ve taksitlerini tamamen temizliyoruz
+// İcrada kalan bakiye borcun kasadaki nakitten düşülmesi
+    if (state.nakit > 0 && state.krediler && state.krediler.length > 0) {
+        state.krediler.forEach(kr => {
+            if (kr.kalanBorc > 0 && state.nakit > 0 && kr.icradanKalanBorc === true) {
+                let odenen = Math.min(state.nakit, kr.kalanBorc);
+                state.nakit -= odenen;
+                kr.kalanBorc -= odenen;
+                if (kr.kalanBorc <= 0) {
+                    kr.icradanKalanBorc = false; 
+                    kr.taksit = 0;
+                }
+            }
+        });
+    }
+
+    // 🌟 KESİN TEMİZLİK: Kalan borcu 0 olanları (icra dahil) diziden tamamen uçuruyoruz!
     if (state.krediler && Array.isArray(state.krediler)) {
-        // Sadece kalan borcu olanları tut, borcu bitenleri uçur
-        state.krediler = state.krediler.filter(kr => kr.kalanBorc > 0);
+        // Sadece kalan borcu 0'dan büyük olanlar kalır, bitenler silinir.
+        state.krediler = state.krediler.filter(kr => (kr.kalanBorc || 0) > 0);
         
-        // Kalan toplam borcu güncelle
+        // Toplam borç ve toplam taksit güncellenir
         state.kredi = state.krediler.reduce((toplam, kr) => toplam + (kr.kalanBorc || 0), 0);
-        
-        // Eğer hiç aktif kredi kalmadıysa taksit de kredi satırı da tamamen 0 olur ve silinir
-        if (state.krediler.length === 0) {
-            state.kredi = 0;
-            state.taksit = 0;
-        } else {
-            // Aktif kredi varsa onların taksitleri alt alta toplanır
-            state.taksit = state.krediler.reduce((toplam, kr) => toplam + (kr.taksit || 0), 0);
-        }
+        state.taksit = state.krediler.reduce((toplam, kr) => toplam + (kr.taksit || 0), 0);
     } else {
+        state.kredi = 0;
+        state.taksit = 0;
+        state.krediler = [];
+    }
+
+    // Eğer liste tamamen boşaldıysa ikisi de yüzde yüz 0 olur
+    if (!state.krediler || state.krediler.length === 0) {
         state.kredi = 0;
         state.taksit = 0;
         state.krediler = [];
