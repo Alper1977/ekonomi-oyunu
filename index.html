@@ -4845,8 +4845,6 @@ function changePage(p) {
 
 
 function krediIslem(inputId, vadeInputId, isim, bedel, kapsam, ilanId = null) {
-    // 🌟 DÜZELTME BURADA: Sadece taksiti geciken (ustUsteOdenmeyen > 0) veya icradan dolayı kalıntı borcu olan durumlarda engelle. 
-    // Normal, düzenli ödenen aktif krediler yeni kredi çekmeye engel DEĞİLDİR.
     let sorunluKrediVar = state.krediler && state.krediler.some(kr => (kr.ustUsteOdenmeyen || 0) > 0 || (kr.icradanKalanBorc === true));
     if (sorunluKrediVar) {
         modalGoster(`⚠️ <b>KREDİ REDDEDİLDİ</b><br><br>Gecikmiş taksitleriniz veya icradan kalan ödenmemiş borcunuz bulunuyor. Borcunuzu tamamen kapatana kadar yeni kredi kullanamazsınız!`);
@@ -4886,7 +4884,7 @@ function krediIslem(inputId, vadeInputId, isim, bedel, kapsam, ilanId = null) {
         aylikFaizOrani = f > 1 ? f / 100 : f;
     }
 
-let toplamGeriOdeme, aylikTaksit;
+    let toplamGeriOdeme, aylikTaksit;
     if (aylikFaizOrani === 0) {
         toplamGeriOdeme = miktar;
         aylikTaksit = miktar / vade;
@@ -4897,23 +4895,6 @@ let toplamGeriOdeme, aylikTaksit;
         toplamGeriOdeme = aylikTaksit * n;
     }
 
-    // --- 🌟 SENİN ÖDEME KAPASİTESİ FORMÜLÜN ---
-    // Gerekli gelir ve mevcut taksit değişkenlerinin senin kodundaki karşılıklarını buraya bağlıyoruz:
-    let gGelir = (typeof state !== 'undefined' && state.gunlukGelir) ? state.gunlukGelir : ((typeof window.oyunAyar !== 'undefined' && window.oyunAyar.gunlukGelir) ? window.oyunAyar.gunlukGelir : 800000);
-    let kGelir = (typeof state !== 'undefined' && state.konutKiraGeliri) ? state.konutKiraGeliri : 0;
-    let tGelir = (typeof state !== 'undefined' && state.sirketGeliri) ? state.sirketGeliri : 0;
-    
-    // Aktif ödenen diğer taksitlerin toplamı (state içinde tutuluyorsa oradan çekilir, yoksa 0 alınır)
-    let mevcutTaksit = (typeof state !== 'undefined' && state.toplamAylikTaksitlerim) ? state.toplamAylikTaksitlerim : 0;
-
-    // Senin yazdığın kapasite formülü:
-    let aylikTaksitKapasitesi = (gGelir + kGelir + (tGelir * 3) - mevcutTaksit) * 0.60;
-
-    // Eğer çekilmek istenen kredinin aylık taksiti, bu kapasiteden büyükse:
-    if (aylikTaksit > aylikTaksitKapasitesi) {
-        modalGoster(`⚠️ <b>ÖDEME GÜCÜ YETERSİZ</b><br><br>Seçtiğiniz vade ile aylık taksitiniz (${Math.round(aylikTaksit).toLocaleString()} TL), gelir ve mevcut taksit durumunuza göre hesaplanan ödeme kapasitenizi (${Math.round(aylikTaksitKapasitesi).toLocaleString()} TL) aşıyor!<br><br>Bu vadeye ödeme gücünüz yetmiyor, lütfen <b>daha yüksek bir vade</b> seçin.`);
-        return;
-    }
     tempIslem = {
         inputId: inputId,
         vadeInputId: vadeInputId,
