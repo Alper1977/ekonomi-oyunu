@@ -2774,6 +2774,11 @@ if (state.kredi === 0 && state.varliklar && Array.isArray(state.varliklar)) {
         }
     });
 }
+}
+    sonTaksitZamani = simdiMs;
+    guncelle();
+    veriDegisti = true;
+}        
 // 5. Konut Kira Gelirleri
 if (simdiMs - sonKiraZamani >= window.oyunAyarlari.kiraSuresi) {
     let konutSayisi = state.varliklar.filter(v => v.isim === 'Konut' && v.durum === 'sahip').length;
