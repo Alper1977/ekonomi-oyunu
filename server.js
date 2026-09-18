@@ -235,14 +235,20 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
             portfoy.krediler.forEach(kr => {
                 if (!kr || kr.kalanBorc <= 0) return;
 
-                if (!kr.taksitTutu) {
-                    kr.taksitTutu = (kr.kalanBorc / 48) * (faizOranlari.krediKatsayi || 1.25);
+                // --- 🌟 TAKSİT BİLGİSİ DÜZELTİLDİ ---
+                // Frontend'den gelen 'kr.taksit' değeri önceliklidir.
+                let taksitMiktari = kr.taksit !== undefined ? kr.taksit : kr.taksitTutu;
+                
+                // Eğer hiçbir taksit bilgisi yoksa (eski/hatalı veri), o zaman mecburen hesapla
+                if (!taksitMiktari) {
+                    taksitMiktari = (kr.kalanBorc / 48) * (faizOranlari.krediKatsayi || 1.25);
+                    kr.taksit = taksitMiktari; 
                 }
+                
                 if (typeof kr.ustUsteOdenmeyen !== 'number') {
                     kr.ustUsteOdenmeyen = 0;
                 }
 
-                let taksitMiktari = kr.taksitTutu;
                 let mevcutNakit = portfoy.nakit !== undefined ? Number(portfoy.nakit) : (portfoy.para !== undefined ? Number(portfoy.para) : 0);
 
                 // Nakit yetmiyorsa alternatif hesapları (Dolar, Euro, Altın, Vadeli) sırayla bozdur
@@ -347,10 +353,11 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
                                 kr.silinecek = true;
                             } else {
                                 // İCRA SONRASI KALAN BAKİYE BORÇ DURUMU:
-                                // Varlık satıldı ama borcu karşılamadı. Kalan borç bakiyeye dönüştü.
                                 kr.kalanBorc = kr.kalanBorc - satisFiyati;
                                 kr.ustUsteOdenmeyen = 0; 
                                 kr.silinecek = false;   
+                                kr.icradanKalanBorc = true; // --- 🌟 EKLENEN KORUMA BAYRAĞI ---
+                                kr.taksit = 0; 
                             }
                         } else {
                             kr.silinecek = false;
@@ -364,13 +371,11 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
         }
     }
 
-    // --- 4. İCRA SONRASI KALAN BAKİYE BORÇLAR İÇİN ANLIK KAPATMA ---
-    // Normal krediler kendi periyodunda taksit taksit ödenirken; 
-    // icra sonrası kalan (veya varlığı kalmamış/bakiye kalmış) borçlar, kasada para olduğunda anında erir.
+    // --- 🌟 4. İCRA SONRASI KALAN BAKİYE BORÇLAR İÇİN ANLIK KAPATMA (DÜZELTİLDİ) ---
+    // Artık kafasına göre kredi silmeyecek. SADECE icradanKalanBorc bayrağı TRUE ise çalışacak.
     if (portfoy.krediler && Array.isArray(portfoy.krediler) && portfoy.krediler.length > 0) {
         portfoy.krediler.forEach(kr => {
-            // Eğer bu kredi icra görmüş ve bakiye borç bırakmışsa (veya varlığı silinmişse) anında kasadan düş
-            if (kr && kr.kalanBorc > 0 && portfoy.nakit > 0 && (!kr.taksitTutu || kr.bloke === false || !portfoy.varliklar.some(v => v && v.krediID === kr.id))) {
+            if (kr && kr.kalanBorc > 0 && portfoy.nakit > 0 && kr.icradanKalanBorc === true) {
                 let odenen = Math.min(portfoy.nakit, kr.kalanBorc);
                 portfoy.nakit -= odenen;
                 portfoy.para = portfoy.nakit;
@@ -384,7 +389,8 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
     // Genel borç ve taksit özet alanlarını güncelle
     if (portfoy.krediler && Array.isArray(portfoy.krediler)) {
         portfoy.kredi = portfoy.krediler.reduce((toplam, kr) => toplam + (kr.kalanBorc || 0), 0);
-        portfoy.taksit = portfoy.krediler.reduce((toplam, kr) => toplam + (kr.taksitTutu || 0), 0);
+        // Taksit hesabı düzeltildi (kr.taksit veya kr.taksitTutu hangisi varsa)
+        portfoy.taksit = portfoy.krediler.reduce((toplam, kr) => toplam + (kr.taksit || kr.taksitTutu || 0), 0);
     } else {
         portfoy.kredi = 0;
         portfoy.taksit = 0;
