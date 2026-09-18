@@ -238,12 +238,15 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
                 // --- 🌟 TAKSİT BİLGİSİ DÜZELTİLDİ ---
                 // Frontend'den gelen 'kr.taksit' değeri önceliklidir.
                 let taksitMiktari = kr.taksit !== undefined ? kr.taksit : kr.taksitTutu;
-                
-                // Eğer hiçbir taksit bilgisi yoksa (eski/hatalı veri), o zaman mecburen hesapla
-                if (!taksitMiktari) {
-                    taksitMiktari = (kr.kalanBorc / 48) * (faizOranlari.krediKatsayi || 1.25);
-                    kr.taksit = taksitMiktari; 
-                }
+
+// Eğer icradan kalan borçsa taksit YOKTUR, direkt 0'dır. Yeniden hesaplanmaz!
+if (kr.icradanKalanBorc) {
+    taksitMiktari = 0;
+    kr.taksit = 0;
+} else if (!taksitMiktari) {
+    taksitMiktari = (kr.kalanBorc / 48) * (faizOranlari.krediKatsayi || 1.25);
+    kr.taksit = taksitMiktari; 
+}
                 
                 if (typeof kr.ustUsteOdenmeyen !== 'number') {
                     kr.ustUsteOdenmeyen = 0;
@@ -387,15 +390,19 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
     }
 
     // Genel borç ve taksit özet alanlarını güncelle
-    if (portfoy.krediler && Array.isArray(portfoy.krediler)) {
-        portfoy.kredi = portfoy.krediler.reduce((toplam, kr) => toplam + (kr.kalanBorc || 0), 0);
-        // Taksit hesabı düzeltildi (kr.taksit veya kr.taksitTutu hangisi varsa)
-        portfoy.taksit = portfoy.krediler.reduce((toplam, kr) => toplam + (kr.taksit || kr.taksitTutu || 0), 0);
-    } else {
-        portfoy.kredi = 0;
-        portfoy.taksit = 0;
-        portfoy.krediler = [];
-    }
+if (portfoy.krediler && Array.isArray(portfoy.krediler)) {
+    portfoy.kredi = portfoy.krediler.reduce((toplam, kr) => toplam + (kr.kalanBorc || 0), 0);
+    
+    // 🌟 İcradan kalan borçların taksitleri kesinlikle 0 sayılır, toplama katılmaz
+    portfoy.taksit = portfoy.krediler.reduce((toplam, kr) => {
+        if (kr.icradanKalanBorc) return toplam;
+        return toplam + (kr.taksit || kr.taksitTutu || 0);
+    }, 0);
+} else {
+    portfoy.kredi = 0;
+    portfoy.taksit = 0;
+    portfoy.krediler = [];
+}
 
     if (portfoy.kredi <= 0) {
         portfoy.kredi = 0;
