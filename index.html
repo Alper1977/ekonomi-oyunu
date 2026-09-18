@@ -4927,19 +4927,21 @@ function krediyiKesinOnayla() {
     let miktarInput = document.getElementById(inputId);
     let vadeSelect = document.getElementById(vadeInputId);
 
-    // --- 🌟 KESİN ONAY AŞAMASINDA EK GÜVENLİK KİLİDİ ---
+    // --- 🌟 DEĞİŞKENLERİ KESİN OLARAK TANIMLIYORUZ ---
     let maxLimit = (typeof state !== 'undefined' && state.krediLimiti) ? state.krediLimiti : 0;
     let bazVade = 48;
-    let aylikFaizOrani = 0.05; // Varsayılan faiz oranı
+    let aylikFaizOrani = 0.05; 
     let faizInput = document.getElementById('adm-faiz-yatirim');
     if (faizInput && !isNaN(faizInput.value) && faizInput.value !== "") {
         let f = Number(faizInput.value);
         aylikFaizOrani = f > 1 ? f / 100 : f;
     }
 
- let toleransliTaksitSiniri = maxIzinVerilenAylikTaksit + 1.0; 
+    let maxIzinVerilenAylikTaksit = aylikFaizOrani === 0 ? maxLimit / bazVade : maxLimit * (aylikFaizOrani * Math.pow(1 + aylikFaizOrani, bazVade)) / (Math.pow(1 + aylikFaizOrani, bazVade) - 1);
+    let toleransliSinir = maxIzinVerilenAylikTaksit + 1.0;
 
-    if (aylikTaksit > toleransliTaksitSiniri) {
+    // Sadece kısa vadelerde ve gerçekten sınırlı durumda kontrol et, 48 ayda asla patlatma
+    if (aylikTaksit > toleransliSinir && vade < 48) {
         if (miktarInput) miktarInput.value = '';
         if (vadeSelect) vadeSelect.value = "48";
         tempIslem = null;
