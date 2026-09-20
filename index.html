@@ -3987,12 +3987,9 @@ async function islemKesinOnayla(isim, bedel, tip, ilanId) {
         modalOverlay.style.display = 'none';
     }
 
-let gercekBedel = parseFloat(bedel) || 0;
+    let gercekBedel = parseFloat(bedel) || 0;
 
-    // 🌟 KULLANICI INPUT KONTROLÜ: Kullanıcı inputa malın gerçek fiyatından fazla yazmış mı kontrol et
-    // (Arayüzdeki inputun ID'si projenizde ne geçiyorsa ona göre burayı eşitleyebilirsiniz, 
-    //  genelde satın alma inputları 'in-para-birim' veya benzeri bir sınıftadır. 
-    //  Eğer input değerini doğrudan şuradan okuyabiliyorsak:)
+    // 🌟 NAKİT ALIM / İNŞAAT INPUT KONTROLÜ: Kullanıcı inputa gerçek bedelden fazla yazmış mı?
     let aktifInput = document.getElementById('in-para-birim') || document.querySelector('.in-para-birim');
     if (aktifInput && aktifInput.value) {
         let hamInputDegeri = aktifInput.value.replace(/\./g, '').replace(',', '.');
@@ -4000,12 +3997,11 @@ let gercekBedel = parseFloat(bedel) || 0;
 
         if (girilenTutar > gercekBedel + 0.5) {
             modalGoster(`Hata: Girdiğiniz tutar (${girilenTutar.toLocaleString()} TL), bu varlığın gerçek bedelinden (${gercekBedel.toLocaleString()} TL) fazla olamaz!`);
-            return;
+            return; // İşlemi durdur ve uyar
         }
     }
 
-    
-    let sayisalBedel = parseFloat(bedel) || 0;
+    let sayisalBedel = gercekBedel;
 
     // 1. Kasa kontrolü ve nakit düşüşü
     if (state.nakit < sayisalBedel) {
