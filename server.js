@@ -340,32 +340,36 @@ if (kr.icradanKalanBorc) {
                     kr.ustUsteOdenmeyen++;
 
                     // 3 Dönem üst üste ödenmediyse İCRA (Varlığa el koyma)
-                    if (kr.ustUsteOdenmeyen >= 3 && portfoy.varliklar) {
-                        let ilgiliVarlik = portfoy.varliklar.find(v => v && v.krediID === kr.id && v.bloke === true);
-                        if (ilgiliVarlik) {
-                            let satisFiyati = (satisFiyatlari && satisFiyatlari[ilgiliVarlik.isim]) ? satisFiyatlari[ilgiliVarlik.isim] : 10000000;
-                            
-                            // Varlığı portföyden sil
-                            portfoy.varliklar = portfoy.varliklar.filter(v => v && v.id !== ilgiliVarlik.id);
+                   if (kr.ustUsteOdenmeyen >= 3 && portfoy.varliklar) {
+    let ilgiliVarlik = portfoy.varliklar.find(v => v && v.krediID === kr.id && v.bloke === true);
+    if (ilgiliVarlik) {
+        // Doğrudan güncel ayarlardan varlığın anlık satış fiyatını çekiyoruz
+        let varlikAdi = ilgiliVarlik.isim ? ilgiliVarlik.isim.trim() : "";
+        let satisFiyati = (satisFiyatlari && satisFiyatlari[varlikAdi] !== undefined) 
+            ? Number(satisFiyatlari[varlikAdi]) 
+            : 0;
+        
+        // Varlığı portföyden sil
+        portfoy.varliklar = portfoy.varliklar.filter(v => v && v.id !== ilgiliVarlik.id);
 
-                            if (satisFiyati >= kr.kalanBorc) {
-                                let artisFarki = satisFiyati - kr.kalanBorc;
-                                portfoy.nakit += artisFarki;
-                                portfoy.para = portfoy.nakit;
-                                kr.kalanBorc = 0;
-                                kr.silinecek = true;
-                            } else {
-                                // İCRA SONRASI KALAN BAKİYE BORÇ DURUMU:
-                                kr.kalanBorc = kr.kalanBorc - satisFiyati;
-                                kr.ustUsteOdenmeyen = 0; 
-                                kr.silinecek = false;   
-                                kr.icradanKalanBorc = true; // --- 🌟 EKLENEN KORUMA BAYRAĞI ---
-                                kr.taksit = 0; 
-                            }
-                        } else {
-                            kr.silinecek = false;
-                        }
-                    }
+        if (satisFiyati >= kr.kalanBorc) {
+            let artisFarki = satisFiyati - kr.kalanBorc;
+            portfoy.nakit += artisFarki;
+            portfoy.para = portfoy.nakit;
+            kr.kalanBorc = 0;
+            kr.silinecek = true;
+        } else {
+            // İcra satış değeri borçtan düşer, kalan borç bakiye olarak kalır
+            kr.kalanBorc = kr.kalanBorc - satisFiyati;
+            kr.ustUsteOdenmeyen = 0; 
+            kr.silinecek = false;    
+            kr.icradanKalanBorc = true; 
+            kr.taksit = 0; 
+        }
+    } else {
+        kr.silinecek = false;
+    }
+}
                 }
                 degisiklikOldu = true;
             });
