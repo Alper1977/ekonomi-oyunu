@@ -5475,7 +5475,12 @@ function taksitleriOdeVeyaKontrolEt() {
 
                 if (!ilgiliVarlik) break;
 
-                let satisFiyati = (satisFiyatlari && satisFiyatlari[ilgiliVarlik.isim]) ? satisFiyatlari[ilgiliVarlik.isim] : (ilgiliVarlik.fiyat || 12000000);
+               let varlikAdi = ilgiliVarlik.isim ? ilgiliVarlik.isim.trim() : "";
+
+// Config'de (satisFiyatlari) var mı diye kontrol et, yoksa mülkün kendi fiyatını al
+let satisFiyati = (satisFiyatlari && satisFiyatlari[varlikAdi]) !== undefined
+    ? satisFiyatlari[varlikAdi]
+    : (ilgiliVarlik.fiyat || 12000000);
                 state.varliklar = state.varliklar.filter(v => v.id !== ilgiliVarlik.id);
 
                 if (satisFiyati >= toplamBorc) {
