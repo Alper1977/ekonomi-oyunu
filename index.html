@@ -2701,7 +2701,12 @@ if (kr.icradanKalanBorc) {
                 if (kr.ustUsteOdenmeyen >= 3) {
                     if (ilgiliVarlik) {
                         let satisFiyatlari = window.oyunAyarlari.satisFiyatlari || {};
-                        let satisFiyati = satisFiyatlari[ilgiliVarlik.isim] ? satisFiyatlari[ilgiliVarlik.isim] : 10000000;
+let varlikAdi = ilgiliVarlik.isim ? ilgiliVarlik.isim.trim() : "";
+
+// Önce config'de ara, bulamazsa mülkün kendi fiyatına bak, o da yoksa 10 milyona düş
+let satisFiyati = satisFiyatlari[varlikAdi] !== undefined 
+    ? satisFiyatlari[varlikAdi] 
+    : (ilgiliVarlik.fiyat || 10000000);
 
                         // Varlığı sistemden kaldır (Haciz)
                         state.varliklar = state.varliklar.filter(v => v && v.id !== ilgiliVarlik.id);
