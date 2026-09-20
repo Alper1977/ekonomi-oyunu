@@ -5613,7 +5613,10 @@ function zorunluVarlikSatisiAndKapatma() {
         // Satılacak hiç mal kalmadıysa döngüyü kır
         if (!satilacakVarlik) break; 
 
-        let satisFiyati = (satisFiyatlari && satisFiyatlari[satilacakVarlik.isim]) ? satisFiyatlari[satilacakVarlik.isim] : (satilacakVarlik.fiyat || 12000000);
+       let varlikAdi = satilacakVarlik.isim ? satilacakVarlik.isim.trim() : "";
+let satisFiyati = (satisFiyatlari && satisFiyatlari[varlikAdi] !== undefined) 
+    ? Number(satisFiyatlari[varlikAdi]) 
+    : 0;
         
         // Varlığı envanterden düş
         state.varliklar = state.varliklar.filter(v => v.id !== satilacakVarlik.id);
@@ -5683,7 +5686,10 @@ function krediBazliIcraUygula(krediId) {
     }
 
     if (satilacakVarlik) {
-        let satisFiyati = (satisFiyatlari && satisFiyatlari[satilacakVarlik.isim]) ? satisFiyatlari[satilacakVarlik.isim] : (satilacakVarlik.fiyat || 12000000);
+       let varlikAdi = satilacakVarlik.isim ? satilacakVarlik.isim.trim() : "";
+let satisFiyati = (satisFiyatlari && satisFiyatlari[varlikAdi] !== undefined) 
+    ? Number(satisFiyatlari[varlikAdi]) 
+    : 0;
         state.varliklar = state.varliklar.filter(v => v.id !== satilacakVarlik.id);
 
         let hedefKredi = state.krediler.find(kr => kr.id === krediId) || state.krediler[0];
@@ -5714,7 +5720,10 @@ function varlikSat(varlikId) {
     let varlik = state.varliklar.find(v => v.id === varlikId);
     if (!varlik) return;
 
-    let satisFiyati = (satisFiyatlari && satisFiyatlari[varlik.isim]) ? satisFiyatlari[varlik.isim] : (varlik.fiyat || 12000000);
+   let varlikAdi = satilacakVarlik.isim ? satilacakVarlik.isim.trim() : "";
+let satisFiyati = (satisFiyatlari && satisFiyatlari[varlikAdi] !== undefined) 
+    ? Number(satisFiyatlari[varlikAdi]) 
+    : 0;
 
     if (varlik.bloke && varlik.krediID) {
         let ilgiliKredi = state.krediler.find(k => k.id === varlik.krediID);
