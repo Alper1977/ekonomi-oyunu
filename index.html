@@ -4171,8 +4171,11 @@ function kamuMulkKesinSatinAl(mulkIsmi, fiyat, inputId) {
     modalGoster(`Tebrikler! ${mulkIsmi} kamu mülkünü başarıyla satın aldınız.`);
 }
     
-function baskasiSatinAlOnay(varlikId, botIsmi, fiyat) {
-    let inputId = `in-kredi-bot-${varlikId}`;
+function baskasiSatinAlOnay(varlikId, botIsmi, fiyat, inputId) {
+    // Eğer inputId dışarıdan gelmediyse otomatik türetelim
+    if (!inputId) {
+        inputId = `in-kredi-bot-${varlikId}`;
+    }
     
     let butonlar = `
         <button class="btn-green" onclick="baskasiSatinAl(${varlikId}, '${botIsmi}', ${fiyat}, '${inputId}')">ONAYLA</button>
@@ -4184,6 +4187,10 @@ function baskasiSatinAlOnay(varlikId, botIsmi, fiyat) {
 function baskasiSatinAl(varlikId, botIsmi, fiyat, inputId) {
     let modalOverlay = document.getElementById('modal-overlay');
     
+    if (!inputId) {
+        inputId = `in-kredi-bot-${varlikId}`;
+    }
+
     // 🌟 INPUT FAZLA PARA KONTROLÜ
     let inputEl = document.getElementById(inputId);
     if (inputEl && inputEl.value.trim() !== "") {
