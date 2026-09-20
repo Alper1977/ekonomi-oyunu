@@ -5594,7 +5594,8 @@ function zorunluVarlikSatisiAndKapatma() {
     let toplamKrediBorcu = state.krediler && state.krediler.length > 0 
         ? state.krediler.reduce((t, k) => t + (k.kalanBorc || 0), 0) 
         : (state.kredi || 0);
-
+// TEST İÇİN BUNU EKLE:
+    console.log("-> TEST: Fonksiyona Giren Toplam Borç:", toplamKrediBorcu);
     if (toplamKrediBorcu <= 0) return;
 
     let yapilanIslemler = [];
