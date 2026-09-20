@@ -3981,6 +3981,39 @@ function vadeliOnayIste(yon) {
     modalGoster(`${Number(miktar).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL tutarındaki ${islemAdi.toLowerCase()} işlemini onaylıyor musunuz?`, butonlar);
 }
 
+// Ortak Güvenlik Kontrolü (Hangi buton olursa olsun buraya soracak)
+function nakitInputKontrolEt(inputId, gercekBedel) {
+    let inputEl = document.getElementById(inputId);
+    
+    // Eğer element DOM'da bulunamadıysa (sayfa yenilenmişse vs.) konsola yazalım ki bilelim
+    if (!inputEl) {
+        console.warn("⚠️ Uyarı: Kontrol edilecek input DOM'da bulunamadı! ID:", inputId);
+        return false; // Engel olma, geçmesine izin ver veya durdur (tercihen geçsin ya da uyarısın)
+    }
+
+    let degerStr = inputEl.value ? inputEl.value.trim() : "";
+    if (degerStr === "") {
+        return false; // Boş bırakılmış, sorun yok.
+    }
+
+    // Binlik ayraçları (. sil, virgülü noktaya çevir) temizle
+    let hamDeger = degerStr.replace(/\./g, '').replace(',', '.');
+    let girilenTutar = parseFloat(hamDeger) || 0;
+
+    console.log(`🔍 Nakit Kontrolü -> Gerçek: ${gercekBedel}, Girilen: ${girilenTutar}`);
+
+    // Eğer girilen tutar gerçek bedelden fazlaysa uyar ve true dön (yani engelle)
+    if (girilenTutar > gercekBedel + 0.5) {
+        let modalOverlay = document.getElementById('modal-overlay');
+        if (modalOverlay) modalOverlay.style.display = 'none';
+        
+        modalGoster(`Hata: Girdiğiniz tutar (${girilenTutar.toLocaleString()} TL), bu varlığın gerçek bedelinden (${gercekBedel.toLocaleString()} TL) fazla olamaz!`);
+        return true; 
+    }
+
+    return false; // Sorun yok, devam edebilir.
+}    
+
 async function islemKesinOnayla(isim, bedel, tip, ilanId) {
     let modalOverlay = document.getElementById('modal-overlay');
     if (modalOverlay) {
