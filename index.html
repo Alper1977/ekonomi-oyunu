@@ -4121,17 +4121,29 @@ async function islemKesinOnayla(isim, bedel, tip, ilanId) {
 
 function kamuMulkSatinAlOnay(mulkIsmi, fiyat) {
     let temizFiyat = Number(fiyat) || 0;
+    let slug = mulkIsmi.toLowerCase().replace(/ı/g, 'i').replace(/\s+/g, '-');
+    let inputId = `in-kredi-kamu-${slug}`;
     
     let butonlar = `
-        <button class="btn-green" onclick="kamuMulkKesinSatinAl('${mulkIsmi}', ${temizFiyat})">ONAYLA</button>
+        <button class="btn-green" onclick="kamuMulkKesinSatinAl('${mulkIsmi}', ${temizFiyat}, '${inputId}')">ONAYLA</button>
         <button onclick="document.getElementById('modal-overlay').style.display='none'" style="background-color: #d9534f; color: white; margin-left: 10px;">VAZGEÇ</button>
     `;
     
     modalGoster(`${mulkIsmi} kamu mülkünü ${temizFiyat.toLocaleString()} TL ödeyerek satın almak istiyor musunuz?`, butonlar);
 }
 
-function kamuMulkKesinSatinAl(mulkIsmi, fiyat) {
+function kamuMulkKesinSatinAl(mulkIsmi, fiyat, inputId) {
     let temizFiyat = Number(fiyat) || 0;
+
+    // 🌟 INPUT FAZLA PARA KONTROLÜ
+    let inputEl = document.getElementById(inputId);
+    if (inputEl && inputEl.value.trim() !== "") {
+        let girilenTutar = parseFloat(inputEl.value.replace(/\./g, '').replace(',', '.')) || 0;
+        if (girilenTutar > temizFiyat + 0.5) {
+            modalGoster(`Hata: Girdiğiniz tutar (${girilenTutar.toLocaleString()} TL), bu mülkün gerçek bedelinden (${temizFiyat.toLocaleString()} TL) fazla olamaz!`);
+            return;
+        }
+    }
 
     if (state.nakit < temizFiyat) {
         modalGoster("⚠️ Yeterli nakit paranız yok!");
@@ -4160,16 +4172,29 @@ function kamuMulkKesinSatinAl(mulkIsmi, fiyat) {
 }
     
 function baskasiSatinAlOnay(varlikId, botIsmi, fiyat) {
+    let inputId = `in-kredi-bot-${varlikId}`;
+    
     let butonlar = `
-        <button class="btn-green" onclick="baskasiSatinAl(${varlikId}, '${botIsmi}', ${fiyat})">ONAYLA</button>
+        <button class="btn-green" onclick="baskasiSatinAl(${varlikId}, '${botIsmi}', ${fiyat}, '${inputId}')">ONAYLA</button>
         <button onclick="document.getElementById('modal-overlay').style.display='none'" style="background-color: #d9534f; color: white; margin-left: 10px;">VAZGEÇ</button>
     `;
     modalGoster(`${botIsmi} kişisine ait ${fiyat.toLocaleString()} TL bedelli varlığı satın almak istiyor musunuz?`, butonlar);
 }
 
-// 2. Onay verilince çalışan asıl işlem fonksiyonu
-function baskasiSatinAl(varlikId, botIsmi, fiyat) {
+function baskasiSatinAl(varlikId, botIsmi, fiyat, inputId) {
     let modalOverlay = document.getElementById('modal-overlay');
+    
+    // 🌟 INPUT FAZLA PARA KONTROLÜ
+    let inputEl = document.getElementById(inputId);
+    if (inputEl && inputEl.value.trim() !== "") {
+        let girilenTutar = parseFloat(inputEl.value.replace(/\./g, '').replace(',', '.')) || 0;
+        if (girilenTutar > fiyat + 0.5) {
+            if (modalOverlay) modalOverlay.style.display = 'none';
+            modalGoster(`Hata: Girdiğiniz tutar (${girilenTutar.toLocaleString()} TL), bu varlığın gerçek bedelinden (${fiyat.toLocaleString()} TL) fazla olamaz!`);
+            return;
+        }
+    }
+
     if (modalOverlay) {
         modalOverlay.style.display = 'none';
     }
@@ -4188,13 +4213,8 @@ function baskasiSatinAl(varlikId, botIsmi, fiyat) {
     let ilanVarligiIndex = hedefBot.varliklar.findIndex(v => v.id == varlikId);
     if (ilanVarligiIndex === -1) {
         modalGoster("Bu ilan artık geçerli değil veya satılmış!");
-        
-        if (typeof ilanlariGuncelle === 'function') {
-            ilanlariGuncelle();
-        }
-        if (typeof guncelle === 'function') {
-            guncelle();
-        }
+        if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
+        if (typeof guncelle === 'function') guncelle();
         return;
     }
 
@@ -4202,10 +4222,8 @@ function baskasiSatinAl(varlikId, botIsmi, fiyat) {
 
     state.nakit -= fiyat;
     hedefBot.nakit += fiyat;
-
     hedefBot.varliklar.splice(ilanVarligiIndex, 1);
     
-    // Tanımsız değişken patlamasını önlemek için bilgileri satilanVarlik'ten alıyoruz:
     let dogruIsim = satilanVarlik.isim;
     let dogruKonum = satilanVarlik.atananKonum || (typeof arsaKonumunuAl === 'function' ? arsaKonumunuAl(satilanVarlik) : "Merkezi Konum");
 
@@ -4222,30 +4240,35 @@ function baskasiSatinAl(varlikId, botIsmi, fiyat) {
     modalGoster(`Tebrikler! ${botIsmi} kişisinden ${dogruIsim} varlığını ${fiyat.toLocaleString()} TL ödeyerek satın aldınız.`);
     
     guncelle();
-
-    if (typeof ilanlariGuncelle === 'function') {
-        ilanlariGuncelle();
-    }
-
-    if (typeof portfoyuSunucuyaKaydet === 'function') {
-        portfoyuSunucuyaKaydet(state);
-    }
+    if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
+    if (typeof portfoyuSunucuyaKaydet === 'function') portfoyuSunucuyaKaydet(state);
 }
-
 // 1. Onay fonksiyonuna 'konum' parametresini de ekle
 function oyuncuIlaniSatinAlOnayla(ilanId, saticiAdi, varlikIsmi, fiyat, konum) {
     let temizFiyat = Number(fiyat) || 0;
+    let inputId = `in-kredi-oyuncu-${ilanId}`;
     
-    // 🌟 ÇÖZÜM: 'konum' parametresi string olduğu için HTML onclick içinde mutlaka tek tırnak içine ('${konum}') alınmalıdır!
     let butonlar = `
-        <button class="btn-green" onclick="oyuncuIlaniKesinSatinAl('${varlikIsmi}', ${temizFiyat}, ${ilanId}, '${konum}')">ONAYLA</button>
+        <button class="btn-green" onclick="oyuncuIlaniKesinSatinAl('${varlikIsmi}', ${temizFiyat}, ${ilanId}, '${konum}', '${inputId}')">ONAYLA</button>
         <button onclick="document.getElementById('modal-overlay').style.display='none'" style="background-color: #d9534f; color: white; margin-left: 10px;">VAZGEÇ</button>
     `;
     
     modalGoster(`${saticiAdi} kişisinden ${varlikIsmi} varlığını (${konum}) ${temizFiyat.toLocaleString()} TL ödeyerek satın almak istiyor musunuz?`, butonlar);
 }  
 
-async function oyuncuIlaniKesinSatinAl(isim, bedel, ilanId, gelenKonum) {
+async function oyuncuIlaniKesinSatinAl(isim, bedel, ilanId, gelenKonum, inputId) {
+    // 🌟 INPUT FAZLA PARA KONTROLÜ
+    let inputEl = document.getElementById(inputId);
+    if (inputEl && inputEl.value.trim() !== "") {
+        let girilenTutar = parseFloat(inputEl.value.replace(/\./g, '').replace(',', '.')) || 0;
+        if (girilenTutar > bedel + 0.5) {
+            let modalOverlay = document.getElementById('modal-overlay');
+            if (modalOverlay) modalOverlay.style.display = 'none';
+            modalGoster(`Hata: Girdiğiniz tutar (${girilenTutar.toLocaleString()} TL), bu ilanın gerçek bedelinden (${bedel.toLocaleString()} TL) fazla olamaz!`);
+            return;
+        }
+    }
+
     if (state.nakit < bedel) {
         modalGoster("Yeterli nakit paranız yok!");
         return;
@@ -4292,10 +4315,7 @@ async function oyuncuIlaniKesinSatinAl(isim, bedel, ilanId, gelenKonum) {
         }
 
         if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
-        
-        if (typeof portfoyuSunucuyaKaydet === 'function') {
-            portfoyuSunucuyaKaydet(state);
-        }
+        if (typeof portfoyuSunucuyaKaydet === 'function') portfoyuSunucuyaKaydet(state);
 
         modalGoster(`Tebrikler! ${isim} varlığını başarıyla satın aldınız.`);
 
