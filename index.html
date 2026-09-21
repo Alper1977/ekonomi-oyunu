@@ -3261,68 +3261,70 @@ let konutSayisi = state.varliklar.filter(v => v.isim === 'Konut' && (v.durum ===
         });
     } 
 
-    let tList = document.getElementById('musteri-talepleri-listesi');
-    if (tList) {
-        tList.innerHTML = '';
+let tList = document.getElementById('musteri-talepleri-listesi');
+if (tList) {
+    tList.innerHTML = '';
+    
+    let aktifVarliklarTalepler = state.varliklar.filter(v => {
+        if (!v.durum || (v.durum !== 'sahip' && v.durum !== 'ilan-aktif') || !v.isim) return false;
+        let isimLower = v.isim.toLowerCase();
+        return isimLower !== 'konut' && !isimLower.includes('arsa');
+    });
+    
+    aktifVarliklarTalepler.forEach(v => {
+        let talep = state.talepler.find(t => t.tur === v.isim || t.isim === v.isim);
         
-        let aktifVarliklarTalepler = state.varliklar.filter(v => {
-            if (!v.durum || (v.durum !== 'sahip' && v.durum !== 'ilan-aktif') || !v.isim) return false;
-            let isimLower = v.isim.toLowerCase();
-            return isimLower !== 'konut' && !isimLower.includes('arsa');
-        });
+        if (!talep) {
+            let varsayilanBedel = (typeof kazancTablosu !== 'undefined' && kazancTablosu[v.isim]) ? kazancTablosu[v.isim] : 100000;
+            talep = { tur: v.isim, isim: v.isim, bedel: varsayilanBedel };
+            state.talepler.push(talep);
+        }
+
+        let isAktif = (v.talepAktif === true);
         
-        aktifVarliklarTalepler.forEach(v => {
-            let talep = state.talepler.find(t => t.tur === v.isim || t.isim === v.isim);
-            
-            if (!talep) {
-                let varsayilanBedel = (typeof kazancTablosu !== 'undefined' && kazancTablosu[v.isim]) ? kazancTablosu[v.isim] : 100000;
-                talep = { tur: v.isim, isim: v.isim, bedel: varsayilanBedel };
-                state.talepler.push(talep);
+        let beklenenMetin = "Ödeme Bekleniyor";
+        if (!isAktif && typeof odemeProgrami !== 'undefined' && odemeProgrami.length > 0) {
+            let s = typeof saat !== 'undefined' ? saat : new Date().getHours();
+            let d = typeof dakika !== 'undefined' ? dakika : new Date().getMinutes();
+            let simdikiDakikaTotal = s * 60 + d;
+
+            // Sıradaki en yakın gelecek ödeme penceresini bulalım
+            let sonrakiPencere = odemeProgrami.find(p => (p.saat * 60 + (p.dakika || 0)) > simdikiDakikaTotal);
+            if (!sonrakiPencere) {
+                sonrakiPencere = odemeProgrami[0]; // Gün başındaki ilk pencereye sar
             }
-
-            let isAktif = (v.talepAktif === true);
             
-            let beklenenMetin = "Ödeme Bekleniyor";
-            if (!isAktif && typeof odemeProgrami !== 'undefined' && odemeProgrami.length > 0) {
-                let s = typeof saat !== 'undefined' ? saat : new Date().getHours();
-                let d = typeof dakika !== 'undefined' ? dakika : new Date().getMinutes();
+            let basSaat = String(sonrakiPencere.saat).padStart(2, '0') + ':' + String(sonrakiPencere.dakika || 0).padStart(2, '0');    
+            let bitSaatSaat = sonrakiPencere.saat + 1;
+            if (bitSaatSaat >= 24) bitSaatSaat = 0;
+            let bitSaat = String(bitSaatSaat).padStart(2, '0') + ':' + String(sonrakiPencere.dakika || 0).padStart(2, '0');
 
-                let siraIndex = odemeProgrami.findIndex(p => (s < p.saat) || (s === p.saat && d < p.dakika));
-                if (siraIndex === -1) {
-                    siraIndex = 0; 
-                }
-                
-                let aktifOdeme = odemeProgrami[siraIndex];
-                let basSaat = String(aktifOdeme.saat).padStart(2, '0') + ':' + String(aktifOdeme.dakika).padStart(2, '0'); 
-                
-                let bitSaatSaat = aktifOdeme.saat + 1;
-                if (bitSaatSaat >= 24) bitSaatSaat = 0;
-                let bitSaat = String(bitSaatSaat).padStart(2, '0') + ':' + String(aktifOdeme.dakika).padStart(2, '0');
+            beklenenMetin = `${basSaat} - ${bitSaat} arası Ödeme Bekleniyor`;
+        }
 
-                beklenenMetin = `${basSaat} - ${bitSaat} arası Ödeme Bekleniyor`;
-            }
+        let guncelBedel = talep.bedel || 0;
+        let altMetin = isAktif ? ('+' + guncelBedel.toLocaleString() + ' TL') : beklenenMetin;
+        // v.id yoksa v.isim kullanılsın ki fonksiyon patlamasın
+        let kimlik = v.id || v.isim; 
 
-            let guncelBedel = talep.bedel || 0;
-            let altMetin = isAktif ? ('+' + guncelBedel.toLocaleString() + ' TL') : beklenenMetin;
-
-            tList.innerHTML += `
-                <div class="demand-box" style="display: flex; flex-direction: column; align-items: stretch; padding: 10px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                        <span style="font-weight: bold; color: #00bfff; font-size: 14px;">${v.isim}</span>
-                        <div>
-                            <button onclick="${isAktif ? `talepAl('${v.id}')` : 'void(0)'}" 
-                                    ${!isAktif ? 'disabled' : ''} 
-                                    class="${isAktif ? 'nav-btn-kirmizi' : ''}">
-                                ${isAktif ? 'TAHSİL ET' : 'BEKLE'}
-                            </button>
-                        </div>
+        tList.innerHTML += `
+            <div class="demand-box" style="display: flex; flex-direction: column; align-items: stretch; padding: 10px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                    <span style="font-weight: bold; color: #00bfff; font-size: 14px;">${v.isim}</span>
+                    <div>
+                        <button onclick="${isAktif ? `talepAl('${kimlik}')` : 'void(0)'}" 
+                                ${!isAktif ? 'disabled' : ''} 
+                                class="${isAktif ? 'nav-btn-kirmizi' : ''}">
+                            ${isAktif ? 'TAHSİL ET' : 'BEKLE'}
+                        </button>
                     </div>
-                    <div style="font-weight: bold; color: #ff4444; font-size: 12px; margin-top: 6px;">
-                        ${altMetin}
-                    </div>
-                </div>`;
-        });
-    }
+                </div>
+                <div style="font-weight: bold; color: ${isAktif ? '#2ecc71' : '#ff4444'}; font-size: 12px; margin-top: 6px;">
+                    ${altMetin}
+                </div>
+            </div>`;
+    });
+}
 
     let faizBaslikElementi = document.getElementById('faiz-baslik-orani');
     if (faizBaslikElementi) {
