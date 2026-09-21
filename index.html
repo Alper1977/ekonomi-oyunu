@@ -2493,7 +2493,7 @@ if (aktifOdemePenceresi) {
             
             // 🌟 ÇÖZÜM: ID yerine mülkün eşsiz benzersiz tanımlayıcısını ve ismini net birleştirelim
             // Eğer v.id yoksa index veya rastgele bir şey üretmesin, sabit bir benzersizlik kuralı koyalım.
-            let varlikKey = v.id ? v.id : v.isim;
+            let varlikKey = (v.id !== undefined && v.id !== null) ? v.id : (v.isim || 'bilinmeyen');
             let talepAnahtari = `${bugunStr}-${aktifOdemePenceresi.saat}-${varlikKey}`;
             
             if (!v.sonTahsilatGunu || v.sonTahsilatGunu !== talepAnahtari) {
