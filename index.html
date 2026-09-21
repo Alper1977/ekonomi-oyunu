@@ -5078,8 +5078,10 @@ function krediyiKesinOnayla() {
         icradanKalanBorc: false
     });
 
-    let islemTipi = (kapsam === 'ilan') ? 'al' : 'yap';
-    let sure = (isim === 'Bayi') ? (3 * 86400000) : (12 * 86400000);
+    let islemTipi = (kapsam === 'ilan') ? 'al' : 'yap';  
+    let bayiGun = (typeof window.oyunAyarlari !== 'undefined' && window.oyunAyarlari.insaatSuresiBayi) ? window.oyunAyarlari.insaatSuresiBayi : 3;
+    let digerGun = (typeof window.oyunAyarlari !== 'undefined' && window.oyunAyarlari.insaatSuresiDiger) ? window.oyunAyarlari.insaatSuresiDiger : 12;   
+    let sure = (isim === 'Bayi') ? (bayiGun * 86400000) : (digerGun * 86400000);
     
     if (kapsam !== 'ilan') {
         let yeniVarlik = {
