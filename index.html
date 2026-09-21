@@ -2489,24 +2489,27 @@ if (aktifOdemePenceresi) {
     let bugunStr = new Date().toISOString().split('T')[0];
     
     state.varliklar.forEach(v => {
-        // Mülkün geçerli bir adı ve sahibi/ilan durumu olduğundan emin olalım
+        // Varlık nesnesinin kendisi ve temel alanları tamamsa devam et
         if (v && (v.durum === 'sahip' || v.durum === 'ilan-aktif') && v.isim !== 'Konut') {
             
-            // Eğer mülkün bir id'si yoksa geçici olarak ismini kullanalım, undefined asla oluşmasın
-            let varlikKey = v.id !== undefined && v.id !== null ? v.id : v.isim;
-            
-            // Eğer bu mülk için daha önce id atanmadıysa, hatayı önlemek için mülke id basalım
-            if (!v.id) {
-                v.id = 'mulk_' + Math.random().toString(36).substr(2, 9);
-                varlikKey = v.id;
-            }
-
+            // Eğer v.id yoksa ismini anahtar yap, asla undefined bırakma
+            let varlikKey = v.id ? v.id : v.isim;
             let talepAnahtari = `${bugunStr}-${aktifOdemePenceresi.saat}-${varlikKey}`;
             
+            // Yeni eklenenler dahil, eğer bugün bu saat için tahsilat açılmadıysa aç
             if (!v.sonTahsilatGunu || v.sonTahsilatGunu !== talepAnahtari) {
                 v.talepAktif = true;
                 v.talepBaslangic = Date.now();
-                v.sonTahsilatGunu = talepAnahtari; 
+                v.sonTahsilatGunu = talepAnahtari;
+                
+                // Eğer yeni mülkün kazanç/talep kaydı yoksa state.talepler'e otomatik ekle
+                if (typeof state.talepler !== 'undefined') {
+                    let kayitVarMi = state.talepler.some(t => t.tur === v.isim || t.isim === v.isim);
+                    if (!kayitVarMi) {
+                        state.talepler.push({ tur: v.isim, isim: v.isim, bedel: 100000 }); // Varsayılan bedel
+                    }
+                }
+                
                 veriDegisti = true;
             }
         }
