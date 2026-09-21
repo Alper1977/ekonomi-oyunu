@@ -2490,13 +2490,16 @@ if (aktifOdemePenceresi) {
     
     state.varliklar.forEach(v => {
         if ((v.durum === 'sahip' || v.durum === 'ilan-aktif') && v.isim !== 'Konut') {
-            // Bu varlık için bugün bu ödeme saatinde zaten tahsilat açıldı mı veya yapıldı mı?
-            let talepAnahtari = `${bugunStr}-${aktifOdemePenceresi.saat}-${v.id || v.isim}`;
+            
+            // 🌟 ÇÖZÜM: ID yerine mülkün eşsiz benzersiz tanımlayıcısını ve ismini net birleştirelim
+            // Eğer v.id yoksa index veya rastgele bir şey üretmesin, sabit bir benzersizlik kuralı koyalım.
+            let varlikKey = v.id ? v.id : v.isim;
+            let talepAnahtari = `${bugunStr}-${aktifOdemePenceresi.saat}-${varlikKey}`;
             
             if (!v.sonTahsilatGunu || v.sonTahsilatGunu !== talepAnahtari) {
                 v.talepAktif = true;
                 v.talepBaslangic = Date.now();
-                v.sonTahsilatGunu = talepAnahtari; // Bugün bu saat için açıldı olarak işaretle
+                v.sonTahsilatGunu = talepAnahtari; 
                 veriDegisti = true;
             }
         }
