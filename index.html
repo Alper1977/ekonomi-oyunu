@@ -3412,7 +3412,7 @@ function yatirimlariGuncelle() {
         { isim: 'Otel', etiket: 'OTEL YATIRIMI YAP', varsayilanMaliyet: 600000000 },
         { isim: 'Fabrika', etiket: 'FABRİKA YATIRIMI YAP', varsayilanMaliyet: 125000000 },
         { isim: 'Hastane', etiket: 'HASTANE YATIRIMI YAP', varsayilanMaliyet: 500000000 },
-        { isim: 'Özel Okul', etiket: 'OKUL YATIRIMI YAP', varsayilanMaliyet: 100000000 },
+        { isim: 'Özel Okul', etiket: 'ÖZEL OKUL YATIRIMI YAP', varsayilanMaliyet: 100000000 },
         { isim: 'Konut', etiket: 'KONUT YATIRIMI YAP (30 Daire)', varsayilanMaliyet: 250000000 },
         { isim: 'AVM', etiket: 'AVM YATIRIMI YAP', varsayilanMaliyet: 300000000 },
         { isim: 'Hipermarket', etiket: 'HİPERMARKET YATIRIMI YAP', varsayilanMaliyet: 75000000 }
@@ -3640,7 +3640,7 @@ async function ilanlariGuncelle() {
                 let inputId = `in-kredi-bot-${uniqueId}`;
                 let vadeInputId = `vade-kredi-bot-${uniqueId}`;
 
-                let haritalanabilirMulkler = ['arsası', 'otel', 'fabrika', 'hastane', 'okul', 'avm', 'hipermarket', 'konut'];
+                let haritalanabilirMulkler = ['arsası', 'otel', 'fabrika', 'hastane', 'özel okul', 'avm', 'hipermarket', 'konut'];
                 let arsaMi = haritalanabilirMulkler.some(tur => varlik.isim.toLowerCase().includes(tur));
                 
                 if (arsaMi && !varlik.atananKonum) {
@@ -3672,7 +3672,7 @@ async function ilanlariGuncelle() {
                 let inputId = `in-kredi-oyuncu-${uniqueId}`;
                 let vadeInputId = `vade-kredi-oyuncu-${uniqueId}`;
 
-                let haritalanabilirMulkler = ['arsası', 'otel', 'fabrika', 'hastane', 'okul', 'avm', 'hipermarket', 'konut'];
+                let haritalanabilirMulkler = ['arsası', 'otel', 'fabrika', 'hastane', 'özel okul', 'avm', 'hipermarket', 'konut'];
                 let arsaMi = haritalanabilirMulkler.some(tur => ilan.ilan_tipi.toLowerCase().includes(tur));
                 let konum = ilan.detaylar?.atananKonum || '';
 
@@ -3708,7 +3708,7 @@ async function ilanlariGuncelle() {
         { isim: 'Otel', varsayilanFiyat: 1000000000 },
         { isim: 'Fabrika', varsayilanFiyat: 425000000 },
         { isim: 'Hastane', varsayilanFiyat: 650000000 },
-        { isim: ' Özel Okul', varsayilanFiyat: 150000000 },
+        { isim: 'Özel Okul', varsayilanFiyat: 150000000 },
         { isim: 'Konut', varsayilanFiyat: 12000000 },
         { isim: 'AVM', varsayilanFiyat: 750000000 },
         { isim: 'Hipermarket', varsayilanFiyat: 200000000 },
@@ -3730,7 +3730,7 @@ async function ilanlariGuncelle() {
         let inputId = `in-kredi-kamu-${slug}`;
         let vadeInputId = `vade-kredi-kamu-${slug}`;
 
-        let haritalanabilirMulkler = ['arsası', 'otel', 'fabrika', 'hastane', 'okul', 'avm', 'hipermarket', 'konut'];
+        let haritalanabilirMulkler = ['arsası', 'otel', 'fabrika', 'hastane', 'özel okul', 'avm', 'hipermarket', 'konut'];
         let arsaMi = haritalanabilirMulkler.some(tur => urun.isim.toLowerCase().includes(tur));
         let kamuKonumu = arsaMi ? arsaKonumunuAl(urun.isim) : '';
 
