@@ -2508,7 +2508,7 @@ state.varliklar.forEach(v => {
         let gecenFark = simdikiToplamDakika - acilisDakika;
         
         // Eğer ödeme penceresinin üzerinden 60 dakika geçtiyse veya saat geri/ileri sarıldıysa kapat
-        if (gecenFark >= 60 || gecenFark < 0) {
+        if (gecenFark >= 1|| gecenFark < 0) {
             v.talepAktif = false;
             v.aktifPencereSaati = undefined;
             veriDegisti = true;
