@@ -3259,68 +3259,77 @@ let konutSayisi = state.varliklar.filter(v => v.isim === 'Konut' && (v.durum ===
     } 
 
     let tList = document.getElementById('musteri-talepleri-listesi');
-    if (tList) {
-        tList.innerHTML = '';
+if (tList) {
+    tList.innerHTML = '';
+    
+    // Esnek filtre: Durumu yoksa veya sahipse al, arsa ve konutları hariç tut
+    let aktifVarliklarTalepler = state.varliklar.filter(v => {
+        if (!v.isim) return false;
+        let durum = v.durum || 'sahip'; // Durumu yoksa varsayılan sahip kabul et
+        if (durum !== 'sahip' && durum !== 'ilan-aktif') return false;
         
-        let aktifVarliklarTalepler = state.varliklar.filter(v => {
-            if (!v.durum || (v.durum !== 'sahip' && v.durum !== 'ilan-aktif') || !v.isim) return false;
-            let isimLower = v.isim.toLowerCase();
-            return isimLower !== 'konut' && !isimLower.includes('arsa');
-        });
+        let isimLower = v.isim.toLowerCase().trim();
+        return isimLower !== 'konut' && !isimLower.includes('arsa');
+    });
+    
+    aktifVarliklarTalepler.forEach(v => {
+        let vIsimTrim = v.isim.trim();
+        let talep = state.talepler.find(t => (t.tur && t.tur.trim().toLowerCase() === vIsimTrim.toLowerCase()) || (t.isim && t.isim.trim().toLowerCase() === vIsimTrim.toLowerCase()));
         
-        aktifVarliklarTalepler.forEach(v => {
-            let talep = state.talepler.find(t => t.tur === v.isim || t.isim === v.isim);
-            
-            if (!talep) {
-                let varsayilanBedel = (typeof kazancTablosu !== 'undefined' && kazancTablosu[v.isim]) ? kazancTablosu[v.isim] : 100000;
-                talep = { tur: v.isim, isim: v.isim, bedel: varsayilanBedel };
-                state.talepler.push(talep);
+        // Eğer talep yoksa kazanç tablosundan güvenli şekilde bulup oluştur
+        if (!talep) {
+            let varsayilanBedel = 100000;
+            if (typeof kazancTablosu !== 'undefined') {
+                let bulunanKey = Object.keys(kazancTablosu).find(k => k.trim().toLowerCase() === vIsimTrim.toLowerCase());
+                if (bulunanKey) varsayilanBedel = kazancTablosu[bulunanKey];
             }
+            talep = { tur: vIsimTrim, isim: vIsimTrim, bedel: varsayilanBedel };
+            state.talepler.push(talep);
+        }
 
-            let isAktif = (v.talepAktif === true);
-            
-            let beklenenMetin = "Ödeme Bekleniyor";
-            if (!isAktif && typeof odemeProgrami !== 'undefined' && odemeProgrami.length > 0) {
-                let s = typeof saat !== 'undefined' ? saat : new Date().getHours();
-                let d = typeof dakika !== 'undefined' ? dakika : new Date().getMinutes();
+        let isAktif = (v.talepAktif === true);
+        
+        let beklenenMetin = "Ödeme Bekleniyor";
+        if (!isAktif && typeof odemeProgrami !== 'undefined' && odemeProgrami.length > 0) {
+            let s = typeof saat !== 'undefined' ? saat : new Date().getHours();
+            let d = typeof dakika !== 'undefined' ? dakika : new Date().getMinutes();
 
-                let siraIndex = odemeProgrami.findIndex(p => (s < p.saat) || (s === p.saat && d < p.dakika));
-                if (siraIndex === -1) {
-                    siraIndex = 0; 
-                }
-                
-                let aktifOdeme = odemeProgrami[siraIndex];
-                let basSaat = String(aktifOdeme.saat).padStart(2, '0') + ':' + String(aktifOdeme.dakika).padStart(2, '0'); 
-                
-                let bitSaatSaat = aktifOdeme.saat + 1;
-                if (bitSaatSaat >= 24) bitSaatSaat = 0;
-                let bitSaat = String(bitSaatSaat).padStart(2, '0') + ':' + String(aktifOdeme.dakika).padStart(2, '0');
-
-                beklenenMetin = `${basSaat} - ${bitSaat} arası Ödeme Bekleniyor`;
+            let siraIndex = odemeProgrami.findIndex(p => (s < p.saat) || (s === p.saat && d < p.dakika));
+            if (siraIndex === -1) {
+                siraIndex = 0; 
             }
+            
+            let aktifOdeme = odemeProgrami[siraIndex];
+            let basSaat = String(aktifOdeme.saat).padStart(2, '0') + ':' + String(aktifOdeme.dakika).padStart(2, '0'); 
+            
+            let bitSaatSaat = aktifOdeme.saat + 1;
+            if (bitSaatSaat >= 24) bitSaatSaat = 0;
+            let bitSaat = String(bitSaatSaat).padStart(2, '0') + ':' + String(aktifOdeme.dakika).padStart(2, '0');
 
-            let guncelBedel = talep.bedel || 0;
-            let altMetin = isAktif ? ('+' + guncelBedel.toLocaleString() + ' TL') : beklenenMetin;
+            beklenenMetin = `${basSaat} - ${bitSaat} arası Ödeme Bekleniyor`;
+        }
 
-            tList.innerHTML += `
-                <div class="demand-box" style="display: flex; flex-direction: column; align-items: stretch; padding: 10px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                        <span style="font-weight: bold; color: #00bfff; font-size: 14px;">${v.isim}</span>
-                        <div>
-                            <button onclick="${isAktif ? 'talepAl(' + v.id + ')' : 'void(0)'}" 
-                                    ${!isAktif ? 'disabled' : ''} 
-                                    class="${isAktif ? 'nav-btn-kirmizi' : ''}">
-                                ${isAktif ? 'TAHSİL ET' : 'BEKLE'}
-                            </button>
-                        </div>
+        let guncelBedel = talep.bedel || 0;
+        let altMetin = isAktif ? ('+' + guncelBedel.toLocaleString() + ' TL') : beklenenMetin;
+
+        tList.innerHTML += `
+            <div class="demand-box" style="display: flex; flex-direction: column; align-items: stretch; padding: 10px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                    <span style="font-weight: bold; color: #00bfff; font-size: 14px;">${v.isim}</span>
+                    <div>
+                        <button onclick="${isAktif ? 'talepAl(' + v.id + ')' : 'void(0)'}" 
+                                ${!isAktif ? 'disabled' : ''} 
+                                class="${isAktif ? 'nav-btn-kirmizi' : ''}">
+                            ${isAktif ? 'TAHSİL ET' : 'BEKLE'}
+                        </button>
                     </div>
-                    <div style="font-weight: bold; color: #ff4444; font-size: 12px; margin-top: 6px;">
-                        ${altMetin}
-                    </div>
-                </div>`;
-        });
-    }
-
+                </div>
+                <div style="font-weight: bold; color: #ff4444; font-size: 12px; margin-top: 6px;">
+                    ${altMetin}
+                </div>
+            </div>`;
+    });
+}
     let faizBaslikElementi = document.getElementById('faiz-baslik-orani');
     if (faizBaslikElementi) {
         let yuzdeDegeri = Math.round((faizOranlari.krediKatsayi - 1) * 100);
