@@ -2486,35 +2486,21 @@ let aktifOdemePenceresi = odemeProgrami.find(p => {
 });
 
 if (aktifOdemePenceresi) {
-    let bugunStr = new Date().toISOString().split('T')[0];
+    let bugunStr = new Date().toISOString().split('T')[0]; // Günlük benzersiz anahtar için
     
     state.varliklar.forEach(v => {
-        // Varlık nesnesinin kendisi ve temel alanları tamamsa devam et
-        if (v && (v.durum === 'sahip' || v.durum === 'ilan-aktif') && v.isim !== 'Konut') {
+        if ((v.durum === 'sahip' || v.durum === 'ilan-aktif') && v.isim !== 'Konut') {
+            // Bu varlık için bugün bu ödeme saatinde zaten tahsilat açıldı mı veya yapıldı mı?
+            let talepAnahtari = `${bugunStr}-${aktifOdemePenceresi.saat}-${v.id || v.isim}`;
             
-            // Eğer v.id yoksa ismini anahtar yap, asla undefined bırakma
-            let varlikKey = v.id ? v.id : v.isim;
-            let talepAnahtari = `${bugunStr}-${aktifOdemePenceresi.saat}-${varlikKey}`;
-            
-            // Yeni eklenenler dahil, eğer bugün bu saat için tahsilat açılmadıysa aç
             if (!v.sonTahsilatGunu || v.sonTahsilatGunu !== talepAnahtari) {
                 v.talepAktif = true;
                 v.talepBaslangic = Date.now();
-                v.sonTahsilatGunu = talepAnahtari;
-                
-                // Eğer yeni mülkün kazanç/talep kaydı yoksa state.talepler'e otomatik ekle
-                if (typeof state.talepler !== 'undefined') {
-                    let kayitVarMi = state.talepler.some(t => t.tur === v.isim || t.isim === v.isim);
-                    if (!kayitVarMi) {
-                        state.talepler.push({ tur: v.isim, isim: v.isim, bedel: 100000 }); // Varsayılan bedel
-                    }
-                }
-                
+                v.sonTahsilatGunu = talepAnahtari; // Bugün bu saat için açıldı olarak işaretle
                 veriDegisti = true;
             }
         }
     });
-
     if (typeof veriDegisti !== 'undefined' && veriDegisti) {
         guncelle();
     }
@@ -3273,77 +3259,68 @@ let konutSayisi = state.varliklar.filter(v => v.isim === 'Konut' && (v.durum ===
     } 
 
     let tList = document.getElementById('musteri-talepleri-listesi');
-if (tList) {
-    tList.innerHTML = '';
-    
-    // Esnek filtre: Durumu yoksa veya sahipse al, arsa ve konutları hariç tut
-    let aktifVarliklarTalepler = state.varliklar.filter(v => {
-        if (!v.isim) return false;
-        let durum = v.durum || 'sahip'; // Durumu yoksa varsayılan sahip kabul et
-        if (durum !== 'sahip' && durum !== 'ilan-aktif') return false;
+    if (tList) {
+        tList.innerHTML = '';
         
-        let isimLower = v.isim.toLowerCase().trim();
-        return isimLower !== 'konut' && !isimLower.includes('arsa');
-    });
-    
-    aktifVarliklarTalepler.forEach(v => {
-        let vIsimTrim = v.isim.trim();
-        let talep = state.talepler.find(t => (t.tur && t.tur.trim().toLowerCase() === vIsimTrim.toLowerCase()) || (t.isim && t.isim.trim().toLowerCase() === vIsimTrim.toLowerCase()));
+        let aktifVarliklarTalepler = state.varliklar.filter(v => {
+            if (!v.durum || (v.durum !== 'sahip' && v.durum !== 'ilan-aktif') || !v.isim) return false;
+            let isimLower = v.isim.toLowerCase();
+            return isimLower !== 'konut' && !isimLower.includes('arsa');
+        });
         
-        // Eğer talep yoksa kazanç tablosundan güvenli şekilde bulup oluştur
-        if (!talep) {
-            let varsayilanBedel = 100000;
-            if (typeof kazancTablosu !== 'undefined') {
-                let bulunanKey = Object.keys(kazancTablosu).find(k => k.trim().toLowerCase() === vIsimTrim.toLowerCase());
-                if (bulunanKey) varsayilanBedel = kazancTablosu[bulunanKey];
-            }
-            talep = { tur: vIsimTrim, isim: vIsimTrim, bedel: varsayilanBedel };
-            state.talepler.push(talep);
-        }
-
-        let isAktif = (v.talepAktif === true);
-        
-        let beklenenMetin = "Ödeme Bekleniyor";
-        if (!isAktif && typeof odemeProgrami !== 'undefined' && odemeProgrami.length > 0) {
-            let s = typeof saat !== 'undefined' ? saat : new Date().getHours();
-            let d = typeof dakika !== 'undefined' ? dakika : new Date().getMinutes();
-
-            let siraIndex = odemeProgrami.findIndex(p => (s < p.saat) || (s === p.saat && d < p.dakika));
-            if (siraIndex === -1) {
-                siraIndex = 0; 
-            }
+        aktifVarliklarTalepler.forEach(v => {
+            let talep = state.talepler.find(t => t.tur === v.isim || t.isim === v.isim);
             
-            let aktifOdeme = odemeProgrami[siraIndex];
-            let basSaat = String(aktifOdeme.saat).padStart(2, '0') + ':' + String(aktifOdeme.dakika).padStart(2, '0'); 
+            if (!talep) {
+                let varsayilanBedel = (typeof kazancTablosu !== 'undefined' && kazancTablosu[v.isim]) ? kazancTablosu[v.isim] : 100000;
+                talep = { tur: v.isim, isim: v.isim, bedel: varsayilanBedel };
+                state.talepler.push(talep);
+            }
+
+            let isAktif = (v.talepAktif === true);
             
-            let bitSaatSaat = aktifOdeme.saat + 1;
-            if (bitSaatSaat >= 24) bitSaatSaat = 0;
-            let bitSaat = String(bitSaatSaat).padStart(2, '0') + ':' + String(aktifOdeme.dakika).padStart(2, '0');
+            let beklenenMetin = "Ödeme Bekleniyor";
+            if (!isAktif && typeof odemeProgrami !== 'undefined' && odemeProgrami.length > 0) {
+                let s = typeof saat !== 'undefined' ? saat : new Date().getHours();
+                let d = typeof dakika !== 'undefined' ? dakika : new Date().getMinutes();
 
-            beklenenMetin = `${basSaat} - ${bitSaat} arası Ödeme Bekleniyor`;
-        }
+                let siraIndex = odemeProgrami.findIndex(p => (s < p.saat) || (s === p.saat && d < p.dakika));
+                if (siraIndex === -1) {
+                    siraIndex = 0; 
+                }
+                
+                let aktifOdeme = odemeProgrami[siraIndex];
+                let basSaat = String(aktifOdeme.saat).padStart(2, '0') + ':' + String(aktifOdeme.dakika).padStart(2, '0'); 
+                
+                let bitSaatSaat = aktifOdeme.saat + 1;
+                if (bitSaatSaat >= 24) bitSaatSaat = 0;
+                let bitSaat = String(bitSaatSaat).padStart(2, '0') + ':' + String(aktifOdeme.dakika).padStart(2, '0');
 
-        let guncelBedel = talep.bedel || 0;
-        let altMetin = isAktif ? ('+' + guncelBedel.toLocaleString() + ' TL') : beklenenMetin;
+                beklenenMetin = `${basSaat} - ${bitSaat} arası Ödeme Bekleniyor`;
+            }
 
-        tList.innerHTML += `
-            <div class="demand-box" style="display: flex; flex-direction: column; align-items: stretch; padding: 10px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                    <span style="font-weight: bold; color: #00bfff; font-size: 14px;">${v.isim}</span>
-                    <div>
-                        <button onclick="${isAktif ? 'talepAl(' + v.id + ')' : 'void(0)'}" 
-                                ${!isAktif ? 'disabled' : ''} 
-                                class="${isAktif ? 'nav-btn-kirmizi' : ''}">
-                            ${isAktif ? 'TAHSİL ET' : 'BEKLE'}
-                        </button>
+            let guncelBedel = talep.bedel || 0;
+            let altMetin = isAktif ? ('+' + guncelBedel.toLocaleString() + ' TL') : beklenenMetin;
+
+            tList.innerHTML += `
+                <div class="demand-box" style="display: flex; flex-direction: column; align-items: stretch; padding: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                        <span style="font-weight: bold; color: #00bfff; font-size: 14px;">${v.isim}</span>
+                        <div>
+                            <button onclick="${isAktif ? 'talepAl(' + v.id + ')' : 'void(0)'}" 
+                                    ${!isAktif ? 'disabled' : ''} 
+                                    class="${isAktif ? 'nav-btn-kirmizi' : ''}">
+                                ${isAktif ? 'TAHSİL ET' : 'BEKLE'}
+                            </button>
+                        </div>
                     </div>
-                </div>
-                <div style="font-weight: bold; color: #ff4444; font-size: 12px; margin-top: 6px;">
-                    ${altMetin}
-                </div>
-            </div>`;
-    });
-}
+                    <div style="font-weight: bold; color: #ff4444; font-size: 12px; margin-top: 6px;">
+                        ${altMetin}
+                    </div>
+                </div>`;
+        });
+    }
+
     let faizBaslikElementi = document.getElementById('faiz-baslik-orani');
     if (faizBaslikElementi) {
         let yuzdeDegeri = Math.round((faizOranlari.krediKatsayi - 1) * 100);
@@ -3815,31 +3792,62 @@ function paraAl(id) {
     return parseFloat(val) || 0;
 }
 
-function talepAl(id) {  
-    let v = state.varliklar.find(x => x.id == id);  
+function talepAl(id) { 
+    let v = state.varliklar.find(x => x.id == id); 
     if (!v || v.talepAktif !== true) return;
     
-    let t = state.talepler.find(x => x.tur == v.isim || x.isim == v.isim);  
+    let t = state.talepler.find(x => x.tur == v.isim || x.isim == v.isim); 
     if (!t) {
         console.warn("İlgili talep verisi bulunamadı:", v.isim);
         return;
     }
 
-    // Parayı doğrudan kasaya ekle
-    state.nakit += t.bedel;  
-    v.talepAktif = false;  
-    v.talepBaslangic = -1;  
+    // Parayı kasaya ekle
+    state.nakit += t.bedel; 
+    v.talepAktif = false; 
+    v.talepBaslangic = -1; 
 
-    // Eğer state.para kullanıyorsan onu da senkronize et
-    if (state.para !== undefined) {
-        state.para = state.nakit;
+    // 🌟 ANINDA BORÇ DÜŞME MEKANİZMASI
+    let toplamBorc = 0;
+    if (state.krediler && state.krediler.length > 0) {
+        toplamBorc = state.krediler.reduce((acc, k) => acc + (k.kalanBorc || 0), 0);
+    } else {
+        toplamBorc = state.kredi || 0;
     }
 
-    // Borçla ilgili otomatik kesinti kodunu BURADAN TAMAMEN ÇIKARDIK. 
-    // Böylece kazandığın para cebinde kalır, kredi ödemesi kendi zamanında (veya normal döngüsünde) yapılır.
+    // Eğer borç varsa ve kasada para varsa, saniyesinde borçtan düş
+    if (toplamBorc > 0 && state.nakit > 0) {
+        if (state.nakit >= toplamBorc) {
+            state.nakit -= toplamBorc;
+            state.krediler = [];
+            state.kredi = 0;
+            state.taksit = 0;
+        } else {
+            let harcananNakit = state.nakit;
+            state.nakit = 0;
+            
+            if (state.krediler && state.krediler.length > 0) {
+                let kalanDusulecek = harcananNakit;
+                state.krediler.forEach(kr => {
+                    if (kalanDusulecek > 0 && kr.kalanBorc > 0) {
+                        let dusulen = Math.min(kalanDusulecek, kr.kalanBorc);
+                        kr.kalanBorc -= dusulen;
+                        kalanDusulecek -= dusulen;
+                    }
+                    kr.icradanKalanBorc = (kr.kalanBorc > 0);
+                });
+                state.krediler = state.krediler.filter(kr => kr.kalanBorc > 0 || kr.icradanKalanBorc);
+                state.kredi = state.krediler.reduce((acc, k) => acc + (k.kalanBorc || 0), 0);
+            } else {
+                state.kredi = Math.max(0, state.kredi - harcananNakit);
+            }
+            state.taksit = 0;
+        }
+    }
 
-    guncelle();  
+    guncelle(); 
 }
+
 function modalGoster(m, b = '<button onclick="document.getElementById(\'modal-overlay\').style.display=\'none\'">TAMAM</button>') { 
     document.getElementById('modal-yazi').innerHTML = m; // 🌟 innerText yerine innerHTML yaptık!
     document.getElementById('modal-buton-alani').innerHTML = b; 
