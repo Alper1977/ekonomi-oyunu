@@ -3792,39 +3792,42 @@ function paraAl(id) {
     return parseFloat(val) || 0;
 }
 
-function talepAl(id) { 
+function talepAl(id) {  
     console.log("Tıklanan ID:", id, "Tip:", typeof id);
     console.log("Mevcut varlıklar:", state.varliklar);
     
-    let v = state.varliklar.find(x => x.id == id); 
+    let v = state.varliklar.find(x => x.id == id);  
     if (!v || v.talepAktif !== true) return;
     
-    let t = state.talepler.find(x => x.tur == v.isim || x.isim == v.isim); 
+    let t = state.talepler.find(x => x.tur == v.isim || x.isim == v.isim);  
     if (!t) {
         console.warn("İlgili talep verisi bulunamadı:", v.isim);
         return;
     }
 
     // Parayı kasaya ekle
-    state.nakit += t.bedel; 
-    v.talepAktif = false; 
-    v.talepBaslangic = -1; 
+    state.nakit += t.bedel;  
+    v.talepAktif = false;  
+    v.talepBaslangic = -1;  
 
-    // 🌟 ANINDA BORÇ DÜŞME MEKANİZMASI
-    let toplamBorc = 0;
-    if (state.krediler && state.krediler.length > 0) {
-        toplamBorc = state.krediler.reduce((acc, k) => acc + (k.kalanBorc || 0), 0);
-    } else {
-        toplamBorc = state.kredi || 0;
-    }
+    // 🌟 İCRA KONTROLLÜ BORÇ DÜŞME MEKANİZMASI
+    // Sadece icralık (icradanKalanBorc = true olan) borç varsa kasayı otomatik çeker
+    let icralikBorcVarMi = state.krediler && state.krediler.some(kr => kr.icradanKalanBorc === true);
 
-    // Eğer borç varsa ve kasada para varsa, saniyesinde borçtan düş
-    if (toplamBorc > 0 && state.nakit > 0) {
-        if (state.nakit >= toplamBorc) {
-            state.nakit -= toplamBorc;
-            state.krediler = [];
-            state.kredi = 0;
-            state.taksit = 0;
+    if (icralikBorcVarMi && state.nakit > 0) {
+        let toplamIcraBorcu = state.krediler.reduce((acc, k) => acc + (k.icradanKalanBorc ? (k.kalanBorc || 0) : 0), 0);
+
+        if (state.nakit >= toplamIcraBorcu) {
+            state.nakit -= toplamIcraBorcu;
+            state.krediler.forEach(kr => {
+                if (kr.icradanKalanBorc) {
+                    kr.kalanBorc = 0;
+                    kr.icradanKalanBorc = false;
+                }
+            });
+            state.krediler = state.krediler.filter(kr => kr.kalanBorc > 0 || kr.icradanKalanBorc);
+            state.kredi = state.krediler.reduce((acc, k) => acc + (k.kalanBorc || 0), 0);
+            state.taksit = state.krediler.reduce((acc, k) => acc + (k.taksitTutu || 0), 0);
         } else {
             let harcananNakit = state.nakit;
             state.nakit = 0;
@@ -3832,25 +3835,19 @@ function talepAl(id) {
             if (state.krediler && state.krediler.length > 0) {
                 let kalanDusulecek = harcananNakit;
                 state.krediler.forEach(kr => {
-                    if (kalanDusulecek > 0 && kr.kalanBorc > 0) {
+                    if (kalanDusulecek > 0 && kr.icradanKalanBorc && kr.kalanBorc > 0) {
                         let dusulen = Math.min(kalanDusulecek, kr.kalanBorc);
                         kr.kalanBorc -= dusulen;
                         kalanDusulecek -= dusulen;
                     }
-                    kr.icradanKalanBorc = (kr.kalanBorc > 0);
                 });
-                state.krediler = state.krediler.filter(kr => kr.kalanBorc > 0 || kr.icradanKalanBorc);
                 state.kredi = state.krediler.reduce((acc, k) => acc + (k.kalanBorc || 0), 0);
-            } else {
-                state.kredi = Math.max(0, state.kredi - harcananNakit);
             }
-            state.taksit = 0;
         }
     }
 
-    guncelle(); 
+    guncelle();  
 }
-
 function modalGoster(m, b = '<button onclick="document.getElementById(\'modal-overlay\').style.display=\'none\'">TAMAM</button>') { 
     document.getElementById('modal-yazi').innerHTML = m; // 🌟 innerText yerine innerHTML yaptık!
     document.getElementById('modal-buton-alani').innerHTML = b; 
