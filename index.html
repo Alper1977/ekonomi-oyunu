@@ -3193,7 +3193,7 @@ let konutSayisi = state.varliklar.filter(v => v.isim === 'Konut' && (v.durum ===
         }
     });
     
-    let aktifTalepVar = state.varliklar.some(v => v.talepAktif);
+    aktifTalepVar = state.varliklar.some(v => v.talepAktif);
     let tahsilatButonlari = document.querySelectorAll('.nav-btn-tahsilat-cls');
     tahsilatButonlari.forEach(btn => {
         if (aktifTalepVar) {
