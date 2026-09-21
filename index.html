@@ -2480,7 +2480,7 @@ let bugunStr = new Date().toISOString().split('T')[0];
 let aktifOdemePenceresi = odemeProgrami.find(p => {
     let odemeToplamDakika = p.saat * 60 + (p.dakika || 0);
     let fark = simdikiToplamDakika - odemeToplamDakika;
-    return fark >= 0 && fark < 60; // Normalde 60 dakika
+    return fark >= 0 && fark < 1; // Normalde 60 dakika
 });
 
 veriDegisti = false;
