@@ -2476,48 +2476,47 @@ setInterval(async () => {
 let simdikiZaman = typeof saat !== 'undefined' ? { saat: saat, dakika: dakika } : { saat: new Date().getHours(), dakika: new Date().getMinutes() };
 let simdikiToplamDakika = simdikiZaman.saat * 60 + simdikiZaman.dakika;
 
-// odemeProgramındaki saatleri kontrol et: Ödeme saatinden itibaren 60 dakika (1 saat) geçerli olsun
-    let aktifOdemePenceresi = odemeProgrami.find(p => {
-        let odemeToplamDakika = p.saat * 60 + (p.dakika || 0);
-        let fark = simdikiToplamDakika - odemeToplamDakika;
-        
-        // Eğer oyuncu ödeme saatinden itibaren geçen 0 ile 59 dakika arasındaysa (1 saatlik pencere)
-        return fark >= 0 && fark < 60;
-    });
+let aktifOdemePenceresi = odemeProgrami.find(p => {
+    let odemeToplamDakika = p.saat * 60 + (p.dakika || 0);
+    let fark = simdikiToplamDakika - odemeToplamDakika;
+    return fark >= 0 && fark < 60;
+});
 
-     veriDegisti = false;
+veriDegisti = false;
 
-    if (aktifOdemePenceresi) {
-        let bugunStr = new Date().toISOString().split('T')[0]; // Günlük benzersiz anahtar için
-        
-        state.varliklar.forEach(v => {
-            if ((v.durum === 'sahip' || v.durum === 'ilan-aktif') && v.isim !== 'Konut') {
-                // Bu varlık için bugün bu ödeme saatinde zaten tahsilat açıldı mı veya yapıldı mı?
-                let talepAnahtari = `${bugunStr}-${aktifOdemePenceresi.saat}-${v.id || v.isim}`;
-                
-                if (!v.sonTahsilatGunu || v.sonTahsilatGunu !== talepAnahtari) {
-                    v.talepAktif = true;
-                    v.talepBaslangic = Date.now();
-                    v.sonTahsilatGunu = talepAnahtari; // Bugün bu saat için açıldı olarak işaretle
-                    veriDegisti = true;
-                }
-            }
-        });
-    }
-
-    // 🌟 1 saatlik süre aşımı kontrolü (Bozmadan temiz eklenen kısım)
+if (aktifOdemePenceresi) {
+    let bugunStr = new Date().toISOString().split('T')[0];
+    
     state.varliklar.forEach(v => {
-        if (v.talepAktif && v.talepBaslangic > 0 && (Date.now() - v.talepBaslangic >= 3600000)) {
+        if ((v.durum === 'sahip' || v.durum === 'ilan-aktif') && v.isim !== 'Konut') {
+            let talepAnahtari = `${bugunStr}-${aktifOdemePenceresi.saat}-${v.id || v.isim}`;
+            
+            if (!v.sonTahsilatGunu || v.sonTahsilatGunu !== talepAnahtari) {
+                v.talepAktif = true;
+                v.talepBaslangic = simdikiToplamDakika; // Gerçek zaman yerine simülasyon dakikası
+                v.sonTahsilatGunu = talepAnahtari;
+                veriDegisti = true;
+            }
+        }
+    });
+}
+
+// Süre aşımı kontrolü (Simülasyon dakikasına göre 60 dakika geçtiyse kapat)
+state.varliklar.forEach(v => {
+    if (v.talepAktif && v.talepBaslangic > 0) {
+        let gecenDakikaFarki = simdikiToplamDakika - v.talepBaslangic;
+        // Eğer simülasyon saati 60 dakikayı aştıysa veya yeni bir saate/güne geçildiyse kapat
+        if (gecenDakikaFarki >= 60 || gecenDakikaFarki < 0) {
             v.talepAktif = false;
             v.talepBaslangic = 0;
             veriDegisti = true;
         }
-    });
-
-    if (veriDegisti) {
-        guncelle();
     }
+});
 
+if (veriDegisti) {
+    guncelle();
+}
     // 3. İnşaat ve Varlık Bitişleri
 
    let degisiklikVar = false;
