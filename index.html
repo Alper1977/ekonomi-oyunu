@@ -3793,6 +3793,9 @@ function paraAl(id) {
 }
 
 function talepAl(id) { 
+    console.log("Tıklanan ID:", id, "Tip:", typeof id);
+    console.log("Mevcut varlıklar:", state.varliklar);
+    
     let v = state.varliklar.find(x => x.id == id); 
     if (!v || v.talepAktif !== true) return;
     
