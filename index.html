@@ -2477,10 +2477,12 @@ let simdikiZaman = typeof saat !== 'undefined' ? { saat: saat, dakika: dakika } 
 let simdikiToplamDakika = simdikiZaman.saat * 60 + simdikiZaman.dakika;
 let bugunStr = new Date().toISOString().split('T')[0];
 
+// 🌟 DOĞRU PENCERE KONTROLÜ: Ödeme saatinden itibaren 60 dakikalık aralığı net yakala
 let aktifOdemePenceresi = odemeProgrami.find(p => {
-    let odemeToplamDakika = p.saat * 60 + (p.dakika || 0);
+    let odemeToplamDakika = (p.saat * 60) + (p.dakika || 0);
     let fark = simdikiToplamDakika - odemeToplamDakika;
-    return fark >= 0 && fark < 60; // Normalde 60 dakika
+    // Eğer simülasyon saati ödeme saatinden büyük veya eşitse ve aradan 60 dakika geçmediyse
+    return fark >= 0 && fark < 60;
 });
 
 veriDegisti = false;
@@ -2488,11 +2490,11 @@ veriDegisti = false;
 if (aktifOdemePenceresi) {
     state.varliklar.forEach(v => {
         if ((v.durum === 'sahip' || v.durum === 'ilan-aktif') && v.isim !== 'Konut') {
-            let talepAnahtari = `${bugunStr}-${aktifOdemePenceresi.saat}-${v.id || v.isim}`;
+            let talepAnahtari = `${bugunStr}-${aktifOdemePenceresi.saat}-${v.dakika || 0}-${v.id || v.isim}`;
             
             if (!v.sonTahsilatGunu || v.sonTahsilatGunu !== talepAnahtari) {
                 v.talepAktif = true;
-                v.aktifPencereSaati = aktifOdemePenceresi.saat; // Hangi saat penceresinde açıldığını kaydediyoruz
+                v.aktifPencereBaslangic = (aktifOdemePenceresi.saat * 60) + (aktifOdemePenceresi.dakika || 0);
                 v.sonTahsilatGunu = talepAnahtari;
                 veriDegisti = true;
             }
@@ -2500,17 +2502,15 @@ if (aktifOdemePenceresi) {
     });
 }
 
-// 🌟 PENCERE DIŞINA ÇIKIŞ KONTROLÜ: 
-// Simülasyon saati, talebin açıldığı saatin 1 saatlik penceresinden çıktıysa talebi kapat
+// 🌟 KAPANIŞ KONTROLÜ: Pencere başlangıcından itibaren 60 dakika dolduysa kapat
 state.varliklar.forEach(v => {
-    if (v.talepAktif && v.aktifPencereSaati !== undefined) {
-        let acilisDakika = v.aktifPencereSaati * 60;
-        let gecenFark = simdikiToplamDakika - acilisDakika;
+    if (v.talepAktif && v.aktifPencereBaslangic !== undefined) {
+        let gecenFark = simdikiToplamDakika - v.aktifPencereBaslangic;
         
-        // Eğer ödeme penceresinin üzerinden 60 dakika geçtiyse veya saat geri/ileri sarıldıysa kapat
-        if (gecenFark >= 1|| gecenFark < 0) {
+        // 60 dakika bittiyse veya saat geri/ileri sarıldıysa kapat
+        if (gecenFark >= 60 || gecenFark < 0) {
             v.talepAktif = false;
-            v.aktifPencereSaati = undefined;
+            v.aktifPencereBaslangic = undefined;
             veriDegisti = true;
         }
     }
