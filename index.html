@@ -3307,7 +3307,7 @@ let konutSayisi = state.varliklar.filter(v => v.isim === 'Konut' && (v.durum ===
                     <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                         <span style="font-weight: bold; color: #00bfff; font-size: 14px;">${v.isim}</span>
                         <div>
-                            <button onclick="${isAktif ? 'talepAl(' + v.id + ')' : 'void(0)'}" 
+                            <button onclick="${isAktif ? `talepAl('${v.id}')` : 'void(0)'}" 
                                     ${!isAktif ? 'disabled' : ''} 
                                     class="${isAktif ? 'nav-btn-kirmizi' : ''}">
                                 ${isAktif ? 'TAHSİL ET' : 'BEKLE'}
