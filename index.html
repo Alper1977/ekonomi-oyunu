@@ -1947,21 +1947,21 @@ let soyisimHavuzu = ["ENERJİ", "İNŞAAT", "TAAHHÜT", "MAKİNA", "METAL", "SAN
 
 let botlar = [];
 for (let i = 1; i <= 500; i++) {
-    // Math.random yerine i değerine bağlı sabit kombinasyonlar kullanalım
+    // Math.random YERİNE i'ye bağlı sabit indeksler (Herkesin tarayıcısında aynı bot çıkar)
     let isimIndex = (i * 7) % isimHavuzu.length;
     let soyisimIndex = (i * 13) % soyisimHavuzu.length;
     
-    let rastgeleIsim = isimHavuzu[isimIndex] + " " + soyisimHavuzu[soyisimIndex] + " A.Ş.";
+    let sabitIsim = isimHavuzu[isimIndex] + " " + soyisimHavuzu[soyisimIndex] + " A.Ş.";
     
-    // Başlangıç parasını da rastgelelikten çıkarıp i'ye bağlı sabit ama değişken görünümlü bir formüle bağlayalım
-    let baslangicNakit = 5000000 + ((i * 123456) % 45000000);
-    let baslangicVadeli = (i * 78910) % 10000000;
+    // Başlangıç parasını da rastgelelikten çıkarıp sabitliyoruz
+    let sabitNakit = 5000000 + ((i * 123456) % 45000000);
+    let sabitVadeli = (i * 78910) % 10000000;
     
     botlar.push({
         id: 200 + i,
-        isim: rastgeleIsim,
-        nakit: baslangicNakit,
-        vadeli: baslangicVadeli,
+        isim: sabitIsim,
+        nakit: sabitNakit,
+        vadeli: sabitVadeli,
         altin: 0,
         dolar: 0,
         euro: 0,
