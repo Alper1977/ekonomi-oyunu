@@ -329,7 +329,7 @@ if (kr.icradanKalanBorc) {
 
                     // Borç bittiyse blokesini kaldır
                     if (kr.kalanBorc === 0 && portfoy.varliklar) {
-                        let ilgiliVarlik = portfoy.varliklar.find(v => v && v.krediID === kr.id);
+                        let ilgiliVarlik = portfoy.varliklar.find(v => v && v.krediID && kr.id && String(v.krediID) === String(kr.id));
                         if (ilgiliVarlik) {
                             ilgiliVarlik.bloke = false;
                             ilgiliVarlik.krediID = null;
@@ -341,7 +341,7 @@ if (kr.icradanKalanBorc) {
 
                     // 3 Dönem üst üste ödenmediyse İCRA (Varlığa el koyma)
                     if (kr.ustUsteOdenmeyen >= 3 && portfoy.varliklar) {
-                        let ilgiliVarlik = portfoy.varliklar.find(v => v && v.krediID === kr.id && v.bloke === true);
+                        let ilgiliVarlik = portfoy.varliklar.find(v => v && v.krediID && kr.id && String(v.krediID) === String(kr.id));
                         if (ilgiliVarlik) {
                             let satisFiyati = (satisFiyatlari && satisFiyatlari[ilgiliVarlik.isim]) ? satisFiyatlari[ilgiliVarlik.isim] : 10000000;
                             
@@ -412,15 +412,16 @@ if (portfoy.krediler && Array.isArray(portfoy.krediler)) {
 
     // 🌟 KESİN ÇÖZÜM: Toplam borç 0 ise (veya kredi kalmadıysa) sunucu tarafında 
     // ID bağına bakılmaksızın tüm varlıkların blokesini ve kredi bağlantısını temizle!
-    if (portfoy.kredi === 0 && portfoy.varliklar && Array.isArray(portfoy.varliklar)) {
-        portfoy.varliklar.forEach(v => {
-            if (v && v.bloke) {
-                v.bloke = false;
-                v.krediID = null;
-                degisiklikOldu = true; // Değişiklik olduğunu işaretle ki veritabanına yazılsın!
-            }
-        });
-    }
+    if (portfoy.kredi < 0.01 && portfoy.varliklar && Array.isArray(portfoy.varliklar)) {
+    portfoy.kredi = 0; // Küsuratı tamamen sıfırla
+    portfoy.varliklar.forEach(v => {
+        if (v && v.bloke) {
+            v.bloke = false;
+            v.krediID = null;
+            degisiklikOldu = true;
+        }
+    });
+}
 
     // Yeni son güncelleme zamanını hesaplanan periyotlar üzerinden ileri taşı
     const tuketilenPeriyot = Math.max(kiraPeriyotSayisi, faizPeriyotSayisi, taksitPeriyotSayisi);
