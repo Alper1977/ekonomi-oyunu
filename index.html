@@ -4269,10 +4269,11 @@ function oyuncuIlaniSatinAlOnayla(ilanId, saticiAdi, varlikIsmi, fiyat, konum) {
 }  
 
 async function oyuncuIlaniKesinSatinAl(isim, bedel, ilanId, gelenKonum, inputId) {
-    // 🌟 INPUT FAZLA PARA KONTROLÜ
     let inputEl = document.getElementById(inputId);
+    let girilenTutar = bedel; // Varsayılan olarak tam bedel
+    
     if (inputEl && inputEl.value.trim() !== "") {
-        let girilenTutar = parseFloat(inputEl.value.replace(/\./g, '').replace(',', '.')) || 0;
+        girilenTutar = parseFloat(inputEl.value.replace(/\./g, '').replace(',', '.')) || bedel;
         if (girilenTutar > bedel + 0.5) {
             let modalOverlay = document.getElementById('modal-overlay');
             if (modalOverlay) modalOverlay.style.display = 'none';
@@ -4281,7 +4282,7 @@ async function oyuncuIlaniKesinSatinAl(isim, bedel, ilanId, gelenKonum, inputId)
         }
     }
 
-    if (state.nakit < bedel) {
+    if (state.nakit < girilenTutar) {
         modalGoster("Yeterli nakit paranız yok!");
         return;
     }
@@ -4290,8 +4291,13 @@ async function oyuncuIlaniKesinSatinAl(isim, bedel, ilanId, gelenKonum, inputId)
         let response = await fetch('/api/ilan-satin-al', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            credentials: 'include', 
-            body: JSON.stringify({ ilanId: ilanId }) 
+            credentials: 'include',  
+            body: JSON.stringify({ 
+                ilanId: ilanId, 
+                odenenNakit: girilenTutar,
+                ilanTipiBedel: bedel,
+                ilanIsmi: isim
+            })  
         });
 
         let sonuc = await response.json();
@@ -4300,16 +4306,20 @@ async function oyuncuIlaniKesinSatinAl(isim, bedel, ilanId, gelenKonum, inputId)
             return;
         }
 
-        state.nakit -= bedel;
-
-        state.varliklar.push({
-            id: Date.now() + Math.random(),
-            isim: isim,
-            durum: 'sahip',
-            bloke: false,
-            krediID: null,
-            atananKonum: gelenKonum 
-        });
+        // 🌟 SUNUCUDAN GELEN GÜNCEL PORTFÖYÜ STATE'E AKTAR (Borçların ekrandan silinmesini sağlar)
+        if (sonuc.yeniPortfoy) {
+            state = sonuc.yeniPortfoy;
+        } else {
+            state.nakit -= girilenTutar;
+            state.varliklar.push({
+                id: Date.now() + Math.random(),
+                isim: isim,
+                durum: 'sahip',
+                bloke: false,
+                krediID: null,
+                atananKonum: gelenKonum  
+            });
+        }
 
         if (typeof botlar !== 'undefined' && Array.isArray(botlar)) {
             botlar.forEach(b => {
@@ -4326,7 +4336,9 @@ async function oyuncuIlaniKesinSatinAl(isim, bedel, ilanId, gelenKonum, inputId)
             veriDegisti = true;
         }
 
+        // Arayüzü ve listeleri tamamen tazele ki eski borç yazıları uçsun
         if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
+        if (typeof portfoyuGuncelleEkran === 'function') portfoyuGuncelleEkran(); // Varsa ekranı yenileyen fonksiyon
         if (typeof portfoyuSunucuyaKaydet === 'function') portfoyuSunucuyaKaydet(state);
 
         modalGoster(`Tebrikler! ${isim} varlığını başarıyla satın aldınız.`);
