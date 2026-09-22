@@ -1033,19 +1033,39 @@ app.post('/api/portfoy-guncelle', (req, res) => {
     }
 
     const userId = req.session.kullanici.id;
-    const yeniPortfoy = req.body.portfoy;
-    const portfoyStr = JSON.stringify(yeniPortfoy || {});
+    let yeniPortfoy = req.body.portfoy || {};
+
+    // 🌟 SUNUCU TARAFi TEMİZLİK FİLTRESİ (Frontend'den gelen bozuk/eski borçları engelle!)
+    if (yeniPortfoy.krediler && Array.isArray(yeniPortfoy.krediler)) {
+        // Gerçekten kalan borcu olanları filtrele
+        yeniPortfoy.krediler = yeniPortfoy.krediler.filter(k => k && (k.kalanBorc || 0) > 0.01);
+        
+        // Yeniden hesapla
+        yeniPortfoy.kredi = yeniPortfoy.krediler.reduce((toplam, kr) => toplam + (kr.kalanBorc || 0), 0);
+        yeniPortfoy.taksit = yeniPortfoy.krediler.reduce((toplam, kr) => {
+            if (kr.icradanKalanBorc) return toplam;
+            return toplam + (kr.taksitTutu || kr.taksit || 0);
+        }, 0);
+    }
+
+    // Eğer toplam kredi borcu sıfıra yakınsa, tüm kredi alanlarını kökten sıfırla
+    if (!yeniPortfoy.krediler || yeniPortfoy.krediler.length === 0 || yeniPortfoy.kredi < 0.01) {
+        yeniPortfoy.kredi = 0;
+        yeniPortfoy.taksit = 0;
+        yeniPortfoy.krediler = [];
+    }
+
+    const portfoyStr = JSON.stringify(yeniPortfoy);
 
     try {
         db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`).run(portfoyStr, Date.now(), userId);
         req.session.kullanici.portfoy = yeniPortfoy;
-        res.json({ basari: true, mesaj: "Portföy kaydedildi." });
+        res.json({ basari: true, mesaj: "Portföy kaydedildi.", portfoy: yeniPortfoy });
     } catch (err) {
         console.error("Portföy güncelleme hatası:", err.message);
         return res.status(500).json({ basari: false, mesaj: err.message });
     }
 });
-
 app.get('/api/kullanicilar-liste', (req, res) => {
     try {
         const rows = db.prepare(`SELECT adsoyad, portfoy FROM kullanicilar`).all();
