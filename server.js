@@ -636,28 +636,36 @@ if (saticiId) {
             }
         }
 
-// 🌟 KREDİ VE BLOKE KONTROLÜ (GARANTİCİ VERSİYON)
-        // Eğer satıcının aktif kredi borcu varsa, mülk satıldığında gelen parayı direkt borçtan düş!
-        if (saticiPortfoy.krediler && saticiPortfoy.krediler.length > 0) {
+// 🌟 KREDİ VE BLOKE KONTROLÜ (GÜNCELLENMİŞ VE KUSURSUZ)
+        let ilgiliKredi = null;
+        if (satilanVarlik && satilanVarlik.krediID && saticiPortfoy.krediler) {
+            ilgiliKredi = saticiPortfoy.krediler.find(k => String(k.id) === String(satilanVarlik.krediID));
+        }
+
+        if (ilgiliKredi) {
+            let kalanBorc = ilgiliKredi.kalanBorc || 0;
+            let artisFarki = gelenSatisParasi - kalanBorc;
+
+            if (artisFarki > 0) {
+                saticiNakit += artisFarki;
+                // Bu krediyi diziden tamamen uçur
+                saticiPortfoy.krediler = saticiPortfoy.krediler.filter(k => String(k.id) !== String(satilanVarlik.krediID));
+            } else {
+                let kalanNetBorc = Math.abs(artisFarki);
+                ilgiliKredi.kalanBorc = kalanNetBorc;
+                ilgiliKredi.icradanKalanBorc = true;
+                saticiNakit = 0; // Borcu kapatmaya yetmediği için gelen para borca gitti, nakit sıfırlandı
+            }
+        } else if (saticiPortfoy.krediler && saticiPortfoy.krediler.length > 0) {
+            // Eğer spesifik kredi bulunamazsa genel toplam üzerinden düş
             let toplamKalanBorc = saticiPortfoy.krediler.reduce((toplam, kr) => toplam + (kr.kalanBorc || 0), 0);
             
-            if (toplamKalanBorc > 0) {
-                if (gelenSatisParasi >= toplamKalanBorc) {
-                    // Satış parası tüm borcu kapatmaya yetiyor ve üstü artıyor
-                    let artisFarki = gelenSatisParasi - toplamKalanBorc;
-                    saticiNakit += artisFarki;
-                    
-                    // TÜM KREDİLERİ VE BORÇ SATIRINI TAMAMEN SİL/SIFIRLA
-                    saticiPortfoy.krediler = [];
-                    saticiPortfoy.kredi = 0;
-                    saticiPortfoy.taksit = 0;
-                } else {
-                    // Satış parası borcun bir kısmını kapatır, kalanı ilk krediden düşer
-                    saticiPortfoy.krediler[0].kalanBorc -= gelenSatisParasi;
-                    saticiPortfoy.kredi = saticiPortfoy.krediler.reduce((toplam, kr) => toplam + (kr.kalanBorc || 0), 0);
-                }
+            if (gelenSatisParasi >= toplamKalanBorc) {
+                let artisFarki = gelenSatisParasi - toplamKalanBorc;
+                saticiNakit += artisFarki;
+                saticiPortfoy.krediler = [];
             } else {
-                saticiNakit += gelenSatisParasi;
+                saticiPortfoy.krediler[0].kalanBorc -= gelenSatisParasi;
             }
         } else {
             saticiNakit += gelenSatisParasi;
@@ -665,19 +673,21 @@ if (saticiId) {
 
         saticiPortfoy.nakit = saticiNakit;
 
-        // Genel kredi toplamlarını güvenli bir şekilde güncelle
+        // Genel kredi toplamlarını ve 0.01 küsurat temizliğini güvenle yap
         if (saticiPortfoy.krediler && Array.isArray(saticiPortfoy.krediler)) {
-            saticiPortfoy.kredi = saticiPortfoy.krediler.reduce((toplam, kr) => toplam + (kr.kalanBorc || 0), 0);
-            saticiPortfoy.taksit = saticiPortfoy.krediler.reduce((toplam, kr) => {
-                if (kr.icradanKalanBorc) return toplam;
-                return toplam + (kr.taksitTutu || kr.taksit || 0);
-            }, 0);
+            saticiPortfoy.krediler = saticiPortfoy.krediler.filter(kr => (kr.kalanBorc || 0) > 0.01);
             
-            // 0.01'den küçük küsuratları veya boş diziyi tamamen sıfırla
-            if (saticiPortfoy.kredi < 0.01 || saticiPortfoy.krediler.length === 0) {
+            saticiPortfoy.kredi = saticiPortfoy.krediler.reduce((toplam, kr) => toplam + (kr.kalanBorc || 0), 0);
+            
+            if (saticiPortfoy.krediler.length === 0 || saticiPortfoy.kredi < 0.01) {
                 saticiPortfoy.kredi = 0;
                 saticiPortfoy.taksit = 0;
                 saticiPortfoy.krediler = [];
+            } else {
+                saticiPortfoy.taksit = saticiPortfoy.krediler.reduce((toplam, kr) => {
+                    if (kr.icradanKalanBorc) return toplam;
+                    return toplam + (kr.taksitTutu || kr.taksit || 0);
+                }, 0);
             }
         } else {
             saticiPortfoy.kredi = 0;
