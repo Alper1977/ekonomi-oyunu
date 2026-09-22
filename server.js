@@ -674,7 +674,7 @@ if (saticiId) {
             saticiPortfoy.kredi = 0;
             saticiPortfoy.taksit = 0;
         }
-        }
+        
 
         // 🌟 SATICININ ENVANTERİNDEN VARLIĞI KESİN OLARAK DÜŞ
         if (saticiPortfoy.varliklar && Array.isArray(saticiPortfoy.varliklar)) {
