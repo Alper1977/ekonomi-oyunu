@@ -1942,73 +1942,24 @@ function sozlesmeAc(tur) {
 
 
 
-function botlariGuncelleVeGetir() {
-    let isimHavuzu = ["BUKET", "AHMET", "MEHMET", "AYŞE", "FATMA", "MUSTAFA", "EMEL", "CAN", "ZEYNEP", "BURAK", "SEDA", "EMRE", "DENİZ", "MURAT", "ELİF", "KEREM", "MERVE", "TOLGA", "SELİN", "ONUR", "ESRA", "KAAN", "BÜŞRA", "VOLKAN", "GAMZE", "CEM", "GİZEM", "OĞUZ", "CEREN", "BERK", "DERYA"];
-    let soyisimHavuzu = ["ENERJİ", "İNŞAAT", "TAAHHÜT", "MAKİNA", "METAL", "SANAYİ", "TİCARET", "GRUP", "YAPI", "ENDÜSTRİ", "YILMAZ", "DEMİR", "KAYA", "ÇELİK", "ŞAHİN", "ÖZTÜRK", "YILDIZ", "AYDIN", "ARSLAN", "DOĞAN", "KILIÇ", "ASLAN", "ÇETİN", "KOÇ", "KURT", "ÖZKAN", "ŞİMŞEK", "POLAT", "ÖZDEMİR", "ERDOĞAN"];
-
-    let gercekVarliklar = Object.keys(typeof satisFiyatlari !== 'undefined' ? satisFiyatlari : {});
-    let simdiMs = Date.now();
+let isimHavuzu = ["BUKET", "AHMET", "MEHMET", "AYŞE", "FATMA", "MUSTAFA", "EMEL", "CAN", "ZEYNEP", "BURAK", "SEDA", "EMRE", "DENİZ", "MURAT", "ELİF", "KEREM", "MERVE", "TOLGA", "SELİN", "ONUR", "ESRA", "KAAN", "BÜŞRA", "VOLKAN", "GAMZE", "CEM", "GİZEM", "OĞUZ", "CEREN", "BERK", "DERYA"];
+let soyisimHavuzu = ["ENERJİ", "İNŞAAT", "TAAHHÜT", "MAKİNA", "METAL", "SANAYİ", "TİCARET", "GRUP", "YAPI", "ENDÜSTRİ", "YILMAZ", "DEMİR", "KAYA", "ÇELİK", "ŞAHİN", "ÖZTÜRK", "YILDIZ", "AYDIN", "ARSLAN", "DOĞAN", "KILIÇ", "ASLAN", "ÇETİN", "KOÇ", "KURT", "ÖZKAN", "ŞİMŞEK", "POLAT", "ÖZDEMİR", "ERDOĞAN"];
+let botlar = [];
+for (let i = 1; i <= 500; i++) {
+    let rastgeleIsim = isimHavuzu[Math.floor(Math.random() * isimHavuzu.length)] + " " + soyisimHavuzu[Math.floor(Math.random() * soyisimHavuzu.length)] + " A.Ş.";
+    let baslangicNakit = Math.floor(Math.random() * 50000000) + 5000000;
     
-    let oyunBaslangicEpoch = 1775000000000; 
-    let gecenSure = Math.max(0, simdiMs - oyunBaslangicEpoch);
-    
-    // Window kontrolünü güvenli hale getirdik (Sunucuda patlamaz)
-    let botHizi = 8000;
-    if (typeof window !== 'undefined' && window.oyunAyarlari && window.oyunAyarlari.botHizi) {
-        botHizi = window.oyunAyarlari.botHizi;
-    } else if (typeof globalAyarlar !== 'undefined' && globalAyarlar.botHizi) {
-        botHizi = globalAyarlar.botHizi;
-    }
-    
-    let toplamAdim = Math.floor(gecenSure / botHizi);
-    let botlar = [];
-    
-    for (let i = 1; i <= 500; i++) {
-        let isimIndex = (i * 7) % isimHavuzu.length;
-        let soyisimIndex = (i * 13) % soyisimHavuzu.length;
-        let sabitIsim = isimHavuzu[isimIndex] + " " + soyisimHavuzu[soyisimIndex] + " A.Ş.";
-
-        let nakit = 50000000 + ((i * 123456) % 200000000);
-        let varliklar = [];
-
-        let botAdimSayisi = Math.floor(toplamAdim / 5);
-        
-        for (let adim = 0; adim < botAdimSayisi; adim++) {
-            let secilenBotIndex = (adim * 31 + i * 97) % 500;
-            if (secilenBotIndex === (i - 1)) {
-                let ihtimalCheck = (adim * 17 + i * 53) % 100;
-                if (ihtimalCheck < 30) {
-                    nakit += 50000000 + ((adim * i * 123) % 100000000);
-                } else if (gercekVarliklar.length > 0) {
-                    let urunIndex = (adim * 43 + i * 71) % gercekVarliklar.length;
-                    let secilenUrun = gercekVarliklar[urunIndex];
-                    let bedel = (typeof satisFiyatlari !== 'undefined' && satisFiyatlari[secilenUrun]) ? satisFiyatlari[secilenUrun] : 2000000;
-                    if (nakit >= bedel) {
-                        nakit -= bedel;
-                        varliklar.push({
-                            id: adim * 1000 + i,
-                            isim: secilenUrun,
-                            durum: 'sahip'
-                        });
-                    }
-                }
-            }
-        }
-
-        botlar.push({
-            id: 200 + i,
-            isim: sabitIsim,
-            nakit: nakit,
-            vadeli: 0,
-            altin: 0,
-            dolar: 0,
-            euro: 0,
-            kredi: 0,
-            varliklar: varliklar
-        });
-    }
-
-    return botlar;
+    botlar.push({
+        id: 200 + i,
+        isim: rastgeleIsim,
+        nakit: baslangicNakit,
+        vadeli: Math.floor(Math.random() * 10000000),
+        altin: 0,
+        dolar: 0,
+        euro: 0,
+        kredi: 0,
+        varliklar: []
+    });
 }
 
 if (state.ustUsteOdenmeyenTaksit === undefined) state.ustUsteOdenmeyenTaksit = 0;
@@ -2881,40 +2832,28 @@ if (typeof sonBotZamani === 'undefined') { sonBotZamani = 0; }
 
 if (simdiMs - sonBotZamani >= window.oyunAyarlari.botHizi) {
     let gercekVarliklar = Object.keys(satisFiyatlari);
-    
-    // Admin panelinden gelen hıza veya zamana bağlı ortak bir adım (step) hesaplıyoruz
-    let adimSuresi = window.oyunAyarlari.botHizi || 8000;
-    let step = Math.floor(simdiMs / adimSuresi);
 
-    // Orijinal kodundaki gibi 5 bot seçimi
     for (let i = 0; i < 5; i++) {
-        // Math.random yerine step'e bağlı sabit bot seçimi (Herkes aynı botları seçer)
-        let rastgeleIndex = (step * 31 + i * 97) % botlar.length;
-        let rastgeleBot = botlar[rastgeleIndex];
+        let rastgeleBot = botlar[Math.floor(Math.random() * botlar.length)];
 
         if (!rastgeleBot.varliklar) rastgeleBot.varliklar = [];
 
-        // %30 ihtimal kontrolü (rastgele yerine step'e bağlı)
-        let ihtimalKontrol = (step * 17 + i * 53) % 100;
-
-        if (ihtimalKontrol < 30) {
-            rastgeleBot.nakit += 50000000 + ((step * i * 12345) % 150000000);
-        } else if (gercekVarliklar.length > 0) {
-            let urunIndex = (step * 43 + i * 71) % gercekVarliklar.length;
-            let secilenUrun = gercekVarliklar[urunIndex];
-            let bedel = satisFiyatlari[secilenUrun] || 2000000;
+        if (Math.random() < 0.30) {
+            rastgeleBot.nakit += Math.floor(Math.random() * 200000000) + 50000000;
+        } else {
+            let secilenUrun = gercekVarliklar[Math.floor(Math.random() * gercekVarliklar.length)];
+            let bedel = satisFiyatlari[secilenUrun];
 
             if (rastgeleBot.nakit >= bedel) {
                 rastgeleBot.nakit -= bedel;
                 rastgeleBot.varliklar.push({
-                    id: step * 1000 + i,
+                    id: Date.now() + Math.random(),
                     isim: secilenUrun,
                     durum: 'sahip'
                 });
             }
         }
     }
-
     if (typeof zenginlerListesiniGuncelle === 'function') {
         zenginlerListesiniGuncelle();
     }
@@ -4538,17 +4477,13 @@ async function siralamayiGuncelle() {
         console.error("Portföy kaydedilemedi:", e);
     }
 
-  // 2. Botları listeye ekle (Sabit ve ortak değerlerle)
+    // 2. Botları listeye ekle
     let tumSiralama = [];
     if (typeof botlar !== 'undefined' && Array.isArray(botlar)) {
         botlar.forEach(bot => {
-            // Eğer botun kendi içinde Math.random ile değişen bir servet hesapl durumu varsa, 
-            // burada doğrudan botun sabit kayıtlı servetini baz almalıyız.
-            let botServet = bot.servet || (typeof hesaplaServet === 'function' ? hesaplaServet(bot) : (bot.nakit || 0));
-            
             tumSiralama.push({
                 isim: bot.isim,
-                nakit: botServet,
+                nakit: typeof hesaplaServet === 'function' ? hesaplaServet(bot) : (bot.nakit || 0),
                 benMi: false
             });
         });
