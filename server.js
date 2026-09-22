@@ -450,7 +450,6 @@ setInterval(() => {
         const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
         if (!ayarKaydi || !ayarKaydi.ayarlari) return;
         
-        // Güvenli parse kontrolü (undefined hatasını engeller)
         const ayarlar = typeof ayarKaydi.ayarlari === 'string' ? JSON.parse(ayarKaydi.ayarlari) : ayarKaydi.ayarlari;
 
         // Canlı kurları veritabanından çekiyoruz
@@ -461,10 +460,22 @@ setInterval(() => {
             kurlar = typeof kurlarKaydi.kurlar === 'string' ? JSON.parse(kurlarKaydi.kurlar) : kurlarKaydi.kurlar;
         }
 
+        // --- BOTLARIN İLAN VE İŞLEM DÖNGÜSÜ ---
+        // Eğer sunucuda bot işlemlerini yürüten bir fonksiyonun veya tablon varsa burada tetiklenmeli
+        // Örneğin botHizi kontrolü ile her adımda botların ilan vermesini sağlayalım:
+        let botHizi = ayarlar.botHizi || 8000;
+        let simdiMs = Date.now();
+        let oyunBaslangicEpoch = 1775000000000; 
+        let toplamAdim = Math.floor(Math.max(0, simdiMs - oyunBaslangicEpoch) / botHizi);
+
+        // Burada botların ilan verme / varlık alma mantığını güncel kur ve ayarlara göre işletiyoruz
+        if (typeof botIslemleriniCalistir === 'function') {
+            botIslemleriniCalistir(toplamAdim, ayarlar, kurlar);
+        }
+
         const kullanicilar = db.prepare(`SELECT id, portfoy, son_guncelleme FROM kullanicilar`).all();
         if (!kullanicilar) return;
         
-        // Her kullanıcıyı kendi bağımsız transaction ve try-catch bloğuna alıyoruz
         kullanicilar.forEach(user => {
             try {
                 const userTransaction = db.transaction(() => {
@@ -476,7 +487,7 @@ setInterval(() => {
             }
         });
 
-    } catch (err) {
+    } `catch` (err) {
         console.error("Arka plan oyun döngüsü genel hata:", err.message);
     }
 }, 30000);
