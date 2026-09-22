@@ -4477,13 +4477,17 @@ async function siralamayiGuncelle() {
         console.error("Portföy kaydedilemedi:", e);
     }
 
-    // 2. Botları listeye ekle
+  // 2. Botları listeye ekle (Sabit ve ortak değerlerle)
     let tumSiralama = [];
     if (typeof botlar !== 'undefined' && Array.isArray(botlar)) {
         botlar.forEach(bot => {
+            // Eğer botun kendi içinde Math.random ile değişen bir servet hesapl durumu varsa, 
+            // burada doğrudan botun sabit kayıtlı servetini baz almalıyız.
+            let botServet = bot.servet || (typeof hesaplaServet === 'function' ? hesaplaServet(bot) : (bot.nakit || 0));
+            
             tumSiralama.push({
                 isim: bot.isim,
-                nakit: typeof hesaplaServet === 'function' ? hesaplaServet(bot) : (bot.nakit || 0),
+                nakit: botServet,
                 benMi: false
             });
         });
