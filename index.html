@@ -1942,32 +1942,72 @@ function sozlesmeAc(tur) {
 
 
 
-let isimHavuzu = ["BUKET", "AHMET", "MEHMET", "AYŞE", "FATMA", "MUSTAFA", "EMEL", "CAN", "ZEYNEP", "BURAK", "SEDA", "EMRE", "DENİZ", "MURAT", "ELİF", "KEREM", "MERVE", "TOLGA", "SELİN", "ONUR", "ESRA", "KAAN", "BÜŞRA", "VOLKAN", "GAMZE", "CEM", "GİZEM", "OĞUZ", "CEREN", "BERK", "DERYA"];
-let soyisimHavuzu = ["ENERJİ", "İNŞAAT", "TAAHHÜT", "MAKİNA", "METAL", "SANAYİ", "TİCARET", "GRUP", "YAPI", "ENDÜSTRİ", "YILMAZ", "DEMİR", "KAYA", "ÇELİK", "ŞAHİN", "ÖZTÜRK", "YILDIZ", "AYDIN", "ARSLAN", "DOĞAN", "KILIÇ", "ASLAN", "ÇETİN", "KOÇ", "KURT", "ÖZKAN", "ŞİMŞEK", "POLAT", "ÖZDEMİR", "ERDOĞAN"];
+function botlariGuncelleVeGetir() {
+    let isimHavuzu = ["BUKET", "AHMET", "MEHMET", "AYŞE", "FATMA", "MUSTAFA", "EMEL", "CAN", "ZEYNEP", "BURAK", "SEDA", "EMRE", "DENİZ", "MURAT", "ELİF", "KEREM", "MERVE", "TOLGA", "SELİN", "ONUR", "ESRA", "KAAN", "BÜŞRA", "VOLKAN", "GAMZE", "CEM", "GİZEM", "OĞUZ", "CEREN", "BERK", "DERYA"];
+    let soyisimHavuzu = ["ENERJİ", "İNŞAAT", "TAAHHÜT", "MAKİNA", "METAL", "SANAYİ", "TİCARET", "GRUP", "YAPI", "ENDÜSTRİ", "YILMAZ", "DEMİR", "KAYA", "ÇELİK", "ŞAHİN", "ÖZTÜRK", "YILDIZ", "AYDIN", "ARSLAN", "DOĞAN", "KILIÇ", "ASLAN", "ÇETİN", "KOÇ", "KURT", "ÖZKAN", "ŞİMŞEK", "POLAT", "ÖZDEMİR", "ERDOĞAN"];
 
-let botlar = [];
-for (let i = 1; i <= 500; i++) {
-    // Math.random YERİNE i'ye bağlı sabit indeksler (Herkesin tarayıcısında aynı bot çıkar)
-    let isimIndex = (i * 7) % isimHavuzu.length;
-    let soyisimIndex = (i * 13) % soyisimHavuzu.length;
+    let gercekVarliklar = Object.keys(satisFiyatlari || {});
+    let simdiMs = Date.now();
     
-    let sabitIsim = isimHavuzu[isimIndex] + " " + soyisimHavuzu[soyisimIndex] + " A.Ş.";
+    // Sabit bir başlangıç noktası (Epoch)
+    let oyunBaslangicEpoch = 1775000000000; 
+    let gecenSure = Math.max(0, simdiMs - oyunBaslangicEpoch);
     
-    // Başlangıç parasını da rastgelelikten çıkarıp sabitliyoruz
-    let sabitNakit = 5000000 + ((i * 123456) % 45000000);
-    let sabitVadeli = (i * 78910) % 10000000;
+    // ADMIN PANELİNDEN GELEN HIZ BURADA DİNAMİK OLARAK KULLANILIYOR
+    let botHizi = (window.oyunAyarlari && window.oyunAyarlari.botHizi) ? window.oyunAyarlari.botHizi : 8000;
     
-    botlar.push({
-        id: 200 + i,
-        isim: sabitIsim,
-        nakit: sabitNakit,
-        vadeli: sabitVadeli,
-        altin: 0,
-        dolar: 0,
-        euro: 0,
-        kredi: 0,
-        varliklar: []
-    });
+    // Geçen sürenin adminin belirlediği hıza oranla kaçıncı adımda (tick) olduğunu buluyoruz
+    let toplamAdim = Math.floor(gecenSure / botHizi);
+
+    let botlar = [];
+    
+    for (let i = 1; i <= 500; i++) {
+        let isimIndex = (i * 7) % isimHavuzu.length;
+        let soyisimIndex = (i * 13) % soyisimHavuzu.length;
+        let sabitIsim = isimHavuzu[isimIndex] + " " + soyisimHavuzu[soyisimIndex] + " A.Ş.";
+
+        let nakit = 50000000 + ((i * 123456) % 200000000);
+        let varliklar = [];
+
+        // Her admin adımında 5 bot işlem yaptığı için döngüyü buna göre simüle ediyoruz
+        let botAdimSayisi = Math.floor(toplamAdim / 5);
+        
+        for (let adim = 0; adim < botAdimSayisi; adim++) {
+            let secilenBotIndex = (adim * 31 + i * 97) % 500;
+            if (secilenBotIndex === (i - 1)) {
+                let ihtimalCheck = (adim * 17 + i * 53) % 100;
+                if (ihtimalCheck < 30) {
+                    nakit += 50000000 + ((adim * i * 123) % 100000000);
+                } else if (gercekVarliklar.length > 0) {
+                    let urunIndex = (adim * 43 + i * 71) % gercekVarliklar.length;
+                    let secilenUrun = gercekVarliklar[urunIndex];
+                    let bedel = satisFiyatlari[secilenUrun] || 2000000;
+                    if (nakit >= bedel) {
+                        nakit -= bedel;
+                        varliklar.push({
+                            id: adim * 1000 + i,
+                            isim: secilenUrun,
+                            durum: 'sahip'
+                        });
+                    }
+                }
+            }
+        }
+
+        botlar.push({
+            id: 200 + i,
+            isim: sabitIsim,
+            nakit: nakit,
+            vadeli: 0,
+            altin: 0,
+            dolar: 0,
+            euro: 0,
+            kredi: 0,
+            varliklar: varliklar
+        });
+    }
+
+    return botlar;
 }
 
 if (state.ustUsteOdenmeyenTaksit === undefined) state.ustUsteOdenmeyenTaksit = 0;
