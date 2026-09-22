@@ -2840,28 +2840,40 @@ if (typeof sonBotZamani === 'undefined') { sonBotZamani = 0; }
 
 if (simdiMs - sonBotZamani >= window.oyunAyarlari.botHizi) {
     let gercekVarliklar = Object.keys(satisFiyatlari);
+    
+    // Admin panelinden gelen hıza veya zamana bağlı ortak bir adım (step) hesaplıyoruz
+    let adimSuresi = window.oyunAyarlari.botHizi || 8000;
+    let step = Math.floor(simdiMs / adimSuresi);
 
+    // Orijinal kodundaki gibi 5 bot seçimi
     for (let i = 0; i < 5; i++) {
-        let rastgeleBot = botlar[Math.floor(Math.random() * botlar.length)];
+        // Math.random yerine step'e bağlı sabit bot seçimi (Herkes aynı botları seçer)
+        let rastgeleIndex = (step * 31 + i * 97) % botlar.length;
+        let rastgeleBot = botlar[rastgeleIndex];
 
         if (!rastgeleBot.varliklar) rastgeleBot.varliklar = [];
 
-        if (Math.random() < 0.30) {
-            rastgeleBot.nakit += Math.floor(Math.random() * 200000000) + 50000000;
-        } else {
-            let secilenUrun = gercekVarliklar[Math.floor(Math.random() * gercekVarliklar.length)];
-            let bedel = satisFiyatlari[secilenUrun];
+        // %30 ihtimal kontrolü (rastgele yerine step'e bağlı)
+        let ihtimalKontrol = (step * 17 + i * 53) % 100;
+
+        if (ihtimalKontrol < 30) {
+            rastgeleBot.nakit += 50000000 + ((step * i * 12345) % 150000000);
+        } else if (gercekVarliklar.length > 0) {
+            let urunIndex = (step * 43 + i * 71) % gercekVarliklar.length;
+            let secilenUrun = gercekVarliklar[urunIndex];
+            let bedel = satisFiyatlari[secilenUrun] || 2000000;
 
             if (rastgeleBot.nakit >= bedel) {
                 rastgeleBot.nakit -= bedel;
                 rastgeleBot.varliklar.push({
-                    id: Date.now() + Math.random(),
+                    id: step * 1000 + i,
                     isim: secilenUrun,
                     durum: 'sahip'
                 });
             }
         }
     }
+
     if (typeof zenginlerListesiniGuncelle === 'function') {
         zenginlerListesiniGuncelle();
     }
