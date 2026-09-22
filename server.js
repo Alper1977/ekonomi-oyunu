@@ -634,19 +634,20 @@ if (saticiId) {
         }
 
         // 🌟 KREDİ VE BLOKE KONTROLÜ
-        if (satilanVarlik && satilanVarlik.bloke && satilanVarlik.krediID && saticiPortfoy.krediler) {
-            let ilgiliKredi = saticiPortfoy.krediler.find(k => String(k.id) === String(satilanVarlik.krediID));
+   if (satilanVarlik && satilanVarlik.bloke && satilanVarlik.krediID && saticiPortfoy.krediler && Array.isArray(saticiPortfoy.krediler)) {
+            let krediIndex = saticiPortfoy.krediler.findIndex(k => String(k.id) === String(satilanVarlik.krediID));
             
-            if (ilgiliKredi && ilgiliKredi.kalanBorc > 0) {
-                let kalanBorc = ilgiliKredi.kalanBorc;
+            if (krediIndex !== -1) {
+                let ilgiliKredi = saticiPortfoy.krediler[krediIndex];
+                let kalanBorc = ilgiliKredi.kalanBorc || 0;
                 let artisFarki = gelenSatisParasi - kalanBorc;
                 
-                if (artisFarki > 0) {
+                if (artisFarki >= 0) {
+                    // Borç tamamen kapandı! Krediyi diziden tamamen siliyoruz ki arayüzde o satır yok olsun.
                     saticiNakit += artisFarki;
-                    ilgiliKredi.kalanBorc = 0;
-                    ilgiliKredi.icradanKalanBorc = false;
-                    saticiPortfoy.krediler = saticiPortfoy.krediler.filter(k => String(k.id) !== String(satilanVarlik.krediID));
+                    saticiPortfoy.krediler.splice(krediIndex, 1);
                 } else {
+                    // Borç kapanmadı, kalan borç güncelleniyor
                     ilgiliKredi.kalanBorc = Math.abs(artisFarki);
                     ilgiliKredi.icradanKalanBorc = true;
                 }
@@ -659,14 +660,20 @@ if (saticiId) {
 
         saticiPortfoy.nakit = saticiNakit;
 
-        // Genel kredi toplamlarını güncelle
+        // Genel kredi toplamlarını ve satırlarını kesin olarak güncelle
         if (saticiPortfoy.krediler && Array.isArray(saticiPortfoy.krediler)) {
-            saticiPortfoy.kredi = saticiPortfoy.krediler.reduce((toplam, kr) => toplam + (kr.kalanBorc || 0), 0);
-            saticiPortfoy.taksit = saticiPortfoy.krediler.reduce((toplam, kr) => toplam + (kr.icradanKalanBorc ? 0 : (kr.taksitTutu || kr.taksit || 0)), 0);
             if (saticiPortfoy.krediler.length === 0) {
                 saticiPortfoy.kredi = 0;
                 saticiPortfoy.taksit = 0;
+            } else {
+                saticiPortfoy.kredi = saticiPortfoy.krediler.reduce((toplam, kr) => toplam + (Number(kr.kalanBorc) || 0), 0);
+                saticiPortfoy.taksit = saticiPortfoy.krediler.reduce((toplam, kr) => toplam + (kr.icradanKalanBorc ? 0 : (Number(kr.taksitTutu) || Number(kr.taksit) || 0)), 0);
             }
+        } else {
+            saticiPortfoy.krediler = [];
+            saticiPortfoy.kredi = 0;
+            saticiPortfoy.taksit = 0;
+        }
         }
 
         // 🌟 SATICININ ENVANTERİNDEN VARLIĞI KESİN OLARAK DÜŞ
