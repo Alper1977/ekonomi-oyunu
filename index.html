@@ -5355,20 +5355,23 @@ function krediOde() {
         }
     }
 
-    state.krediler = state.krediler.filter(kr => kr.kalanBorc > 0 || kr.icradanKalanBorc);
+state.krediler = state.krediler.filter(kr => (kr.kalanBorc || 0) > 0.01 || kr.icradanKalanBorc);
+    
+    // Toplam borcu yeniden hesapla
     state.kredi = state.krediler.reduce((toplam, kr) => toplam + (kr.kalanBorc || 0), 0);
 
-    if (state.kredi > 0) {
+    // EĞER TOPLAM BORÇ 0 VEYA 0'A ÇOK YAKINSA, HER ŞEYİ KÖKTEN SIFIRLA!
+    if (state.kredi < 0.01 || state.krediler.length === 0) {
+        state.kredi = 0;
+        state.taksit = 0;
+        state.krediler = [];
+    } else {
         state.taksit = state.krediler.reduce((toplam, kr) => {
             let kalanVade = kr.vade || 48;
             let katsayi = (typeof faizOranlari !== 'undefined' && faizOranlari.krediKatsayi) ? faizOranlari.krediKatsayi : 1.25;
             kr.taksitTutu = (kr.kalanBorc / kalanVade) * katsayi;
             return toplam + kr.taksitTutu;
         }, 0);
-    } else {
-        state.kredi = 0;
-        state.taksit = 0;
-        state.krediler = [];
     }
 
   // 🌟 KESİN ÇÖZÜM: Borç bittiği an blokeli ve satışta olan tüm varlıkları serbest bırak
