@@ -2768,21 +2768,25 @@ if (state.kredi <= 0) {
     state.krediler = [];
 }
 
-// 🌟 GÜVENLİK AĞI: Toplam borç 0landıysa, aktif kredi kalmadıysa sistemdeki TÜM blokeleri kaldır!
-if (state.kredi === 0 && state.varliklar && Array.isArray(state.varliklar)) {
+
+// 🌟 GÜVENLİK AĞI: Borcu biten veya aktif kredilerde ID'si kalmayan TÜM varlıkların blokesini kaldır!
+if (state.varliklar && Array.isArray(state.varliklar)) {
+    let aktifKrediIds = state.krediler.map(k => String(k.id));
     state.varliklar.forEach(v => {
         if (v && v.bloke) {
-            v.bloke = false;
-            v.krediID = null;
-            veriDegisti = true;
+            if (!v.krediID || !aktifKrediIds.includes(String(v.krediID)) || state.kredi === 0) {
+                v.bloke = false;
+                v.krediID = null;
+                veriDegisti = true;
+            }
         }
     });
-}
 }
     sonTaksitZamani = simdiMs;
     guncelle();
     veriDegisti = true;
-}        
+}
+
 // 5. Konut Kira Gelirleri
 if (simdiMs - sonKiraZamani >= window.oyunAyarlari.kiraSuresi) {
     let konutSayisi = state.varliklar.filter(v => v.isim === 'Konut' && v.durum === 'sahip').length;
@@ -5316,7 +5320,7 @@ function krediOde() {
 
             if (state.varliklar) {
                 // Hem ID eşleşmesine hem de genel blokelilere bakarak kaçırmayalım
-                let ilgiliVarlik = state.varliklar.find(v => v.krediID === kr.id) || state.varliklar.find(v => v.bloke === true);
+                let ilgiliVarlik = state.varliklar.find(v => v.krediID && String(v.krediID) === String(kr.id)) || state.varliklar.find(v => v.bloke === true);
                 if (ilgiliVarlik) {
                     ilgiliVarlik.bloke = false;
                     ilgiliVarlik.krediID = null; 
@@ -5347,15 +5351,19 @@ function krediOde() {
     }
 
   // 🌟 KESİN ÇÖZÜM: Borç bittiği an blokeli ve satışta olan tüm varlıkları serbest bırak
-    if (state.kredi === 0 && state.varliklar) {
+// 🌟 GÜÇLENDİRİLMİŞ GÜVENLİK AĞI
+    if (state.varliklar && Array.isArray(state.varliklar)) {
+        let aktifKrediIds = state.krediler.map(k => String(k.id));
         state.varliklar.forEach(v => {
-            if (v.bloke || v.durum === 'ilan-aktif') {
-                v.bloke = false;
-                v.krediID = null;
-                if (v.durum === 'ilan-aktif') {
-                    v.durum = 'sahip'; // Eğer satışta kaldıysa tekrar normal sahip pozisyonuna getirir
+            if (v && v.bloke) {
+                if (state.kredi === 0 || !v.krediID || !aktifKrediIds.includes(String(v.krediID))) {
+                    v.bloke = false;
+                    v.krediID = null;
+                    if (v.durum === 'ilan-aktif') {
+                        v.durum = 'sahip';
+                    }
+                    kalkanBlokeSayisi++;
                 }
-                kalkanBlokeSayisi++;
             }
         });
     }
@@ -5461,7 +5469,7 @@ function taksitleriOdeVeyaKontrolEt() {
                 if (kr.kalanBorc > 0 && !kr.icradanKalanBorc) {
                     kr.kalanBorc = Math.max(0, kr.kalanBorc - taksitMiktari);
                     if (kr.kalanBorc === 0) {
-                        let ilgiliVarlik = state.varliklar.find(v => v.krediID === kr.id || v.isim === kr.isim);
+                        let ilgiliVarlik = state.varliklar.find(v => (v.krediID && String(v.krediID) === String(kr.id)) || v.isim === kr.isim);
                         if (ilgiliVarlik) {
                             ilgiliVarlik.bloke = false;
                             ilgiliVarlik.krediID = null;
@@ -5476,7 +5484,10 @@ function taksitleriOdeVeyaKontrolEt() {
             let yapilanIslemler = [];
             let toplamBorc = state.krediler.reduce((t, k) => t + (k.kalanBorc || 0), 0);
 
-            while (toplamBorc > 0) {
+            while (true) {
+                let toplamBorc = state.krediler.reduce((t, k) => t + (k.kalanBorc || 0), 0);
+                if (toplamBorc <= 0) break;
+
                 let ilgiliVarlik = state.varliklar.find(v => v.bloke === true) || 
                                    state.varliklar.find(v => v.bloke === false || v.durum === 'sahip' || v.durum === undefined);
 
@@ -5485,15 +5496,22 @@ function taksitleriOdeVeyaKontrolEt() {
                 let satisFiyati = (satisFiyatlari && satisFiyatlari[ilgiliVarlik.isim]) ? satisFiyatlari[ilgiliVarlik.isim] : (ilgiliVarlik.fiyat || 12000000);
                 state.varliklar = state.varliklar.filter(v => v.id !== ilgiliVarlik.id);
 
-                if (satisFiyati >= toplamBorc) {
-                    let artisFarki = satisFiyati - toplamBorc;
-                    state.nakit += artisFarki;
-                    toplamBorc = 0;
-                    yapilanIslemler.push(`<b>${ilgiliVarlik.isim}</b> haczedilerek satıldı. Borç kapandı, artan <b>${artisFarki.toLocaleString()} TL</b> nakite eklendi.`);
-                    break;
+                let kalanSatis = satisFiyati;
+                for (let kr of state.krediler) {
+                    if (kalanSatis <= 0) break;
+                    if (kr.kalanBorc > 0) {
+                        let dusulecek = Math.min(kalanSatis, kr.kalanBorc);
+                        kr.kalanBorc -= dusulecek;
+                        kalanSatis -= dusulecek;
+                    }
+                }
+
+                if (kalanSatis > 0) {
+                    state.nakit += kalanSatis;
+                    yapilanIslemler.push(`<b>${ilgiliVarlik.isim}</b> haczedilerek satıldı. Borç kapandı, artan <b>${kalanSatis.toLocaleString()} TL</b> nakite eklendi.`);
                 } else {
-                    toplamBorc -= satisFiyati;
-                    yapilanIslemler.push(`<b>${ilgiliVarlik.isim}</b> satıldı (${satisFiyati.toLocaleString()} TL), borca yetmedi. Kalan: <b>${toplamBorc.toLocaleString()} TL</b>.`);
+                    let guncelToplamBorc = state.krediler.reduce((t, k) => t + (k.kalanBorc || 0), 0);
+                    yapilanIslemler.push(`<b>${ilgiliVarlik.isim}</b> satıldı (${satisFiyati.toLocaleString()} TL), borca yetmedi. Kalan: <b>${guncelToplamBorc.toLocaleString()} TL</b>.`);
                 }
             }
 
@@ -5698,7 +5716,7 @@ function krediBazliIcraUygula(krediId) {
         let satisFiyati = (satisFiyatlari && satisFiyatlari[satilacakVarlik.isim]) ? satisFiyatlari[satilacakVarlik.isim] : (satilacakVarlik.fiyat || 12000000);
         state.varliklar = state.varliklar.filter(v => v.id !== satilacakVarlik.id);
 
-        let hedefKredi = state.krediler.find(kr => kr.id === krediId) || state.krediler[0];
+        let hedefKredi = state.krediler.find(kr => String(kr.id) === String(krediId)) || state.krediler[0];
         if (hedefKredi) {
             let artisFarki = satisFiyati - hedefKredi.kalanBorc;
             if (artisFarki > 0) {
@@ -5729,7 +5747,7 @@ function varlikSat(varlikId) {
     let satisFiyati = (satisFiyatlari && satisFiyatlari[varlik.isim]) ? satisFiyatlari[varlik.isim] : (varlik.fiyat || 12000000);
 
     if (varlik.bloke && varlik.krediID) {
-        let ilgiliKredi = state.krediler.find(k => k.id === varlik.krediID);
+        let ilgiliKredi = state.krediler.find(k => k.krediID && String(k.id) === String(varlik.krediID));
         
         if (ilgiliKredi) {
             let kalanBorc = ilgiliKredi.kalanBorc;
@@ -5737,7 +5755,7 @@ function varlikSat(varlikId) {
             
             if (artisFarki > 0) {
                 state.nakit += artisFarki;
-                state.krediler = state.krediler.filter(k => k.id !== varlik.krediID);
+                state.krediler = state.krediler.filter(k => String(k.id) !== String(varlik.krediID));
                 modalGoster(`🏠 <b>KREDİLİ VARLIK SATILDI:</b> ${varlik.isim} satıldı, borç tamamen kapandı ve artan ${artisFarki.toLocaleString()} TL nakite eklendi.`);
             } else {
                 let kalanNetBorc = Math.abs(artisFarki);
