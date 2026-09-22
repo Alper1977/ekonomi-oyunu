@@ -448,14 +448,21 @@ if (portfoy.kredi < 0.01) {
 setInterval(() => {
     try {
         const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
-        if (!ayarKaydi) return;
-        const ayarlar = JSON.parse(ayarKaydi.ayarlari);
+        if (!ayarKaydi || !ayarKaydi.ayarlari) return;
+        
+        // Güvenli parse kontrolü (undefined hatasını engeller)
+        const ayarlar = typeof ayarKaydi.ayarlari === 'string' ? JSON.parse(ayarKaydi.ayarlari) : ayarKaydi.ayarlari;
 
         // Canlı kurları veritabanından çekiyoruz
         const kurlarKaydi = db.prepare(`SELECT kurlar FROM oyun_kurlari WHERE id = 1`).get();
-        const kurlar = kurlarKaydi ? JSON.parse(kurlarKaydi.kurlar) : { dolar: {satis: 49}, euro: {satis: 54}, altin: {satis: 6000} };
+        let kurlar = { dolar: {satis: 49}, euro: {satis: 54}, altin: {satis: 6000} };
+        
+        if (kurlarKaydi && kurlarKaydi.kurlar) {
+            kurlar = typeof kurlarKaydi.kurlar === 'string' ? JSON.parse(kurlarKaydi.kurlar) : kurlarKaydi.kurlar;
+        }
 
         const kullanicilar = db.prepare(`SELECT id, portfoy, son_guncelleme FROM kullanicilar`).all();
+        if (!kullanicilar) return;
         
         // Her kullanıcıyı kendi bağımsız transaction ve try-catch bloğuna alıyoruz
         kullanicilar.forEach(user => {
@@ -466,7 +473,6 @@ setInterval(() => {
                 userTransaction();
             } catch (userErr) {
                 console.error(`Kullanıcı ID ${user.id} ekonomi işletilirken hata oluştu:`, userErr.message);
-                // Bu kullanıcı patlasa bile diğer kullanıcıların parası, dövizi, kredisi etkilenmez
             }
         });
 
@@ -474,7 +480,6 @@ setInterval(() => {
         console.error("Arka plan oyun döngüsü genel hata:", err.message);
     }
 }, 30000);
-
 // --- API Rotaları ---
 
 app.get('/api/ilanlar', (req, res) => {
