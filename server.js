@@ -618,21 +618,22 @@ if (saticiId) {
         let saticiPortfoy = JSON.parse(saticiRow.portfoy || '{}');
         let saticiNakit = saticiPortfoy.nakit !== undefined ? saticiPortfoy.nakit : (saticiPortfoy.para || 0);
         
+        let gelenSatisParasi = ilanFiyat;
         let hedefVarlikId = detaylarObj.varlikId;
         let satilanVarlik = null;
 
-        if (saticiPortfoy.varliklar) {
-            satilanVarlik = saticiPortfoy.varliklar.find(v => {
-                if (!v) return false;
-                if (hedefVarlikId && String(v.id) === String(hedefVarlikId)) return true;
-                if (v.isim === ilanTipi && (v.durum === 'ilan-aktif' || v.durum === 'satildi' || v.durum === 'sahip')) return true;
-                return false;
-            });
+        if (saticiPortfoy.varliklar && Array.isArray(saticiPortfoy.varliklar)) {
+            // 1. Önce ID ile birebir aramayı dene
+            if (hedefVarlikId) {
+                satilanVarlik = saticiPortfoy.varliklar.find(v => v && String(v.id) === String(hedefVarlikId));
+            }
+            // 2. ID ile bulunamadıysa, ismi ve ilan/sahip durumu eşleşen ilk varlığı al
+            if (!satilanVarlik) {
+                satilanVarlik = saticiPortfoy.varliklar.find(v => v && v.isim === ilanTipi && (v.durum === 'ilan-aktif' || v.durum === 'satildi' || v.durum === 'sahip' || v.bloke));
+            }
         }
 
-        let gelenSatisParasi = ilanFiyat;
-
-        // 🌟 KREDİ VE BLOKE KONTROLÜ (varlikSat fonksiyonundaki mantık)
+        // 🌟 KREDİ VE BLOKE KONTROLÜ
         if (satilanVarlik && satilanVarlik.bloke && satilanVarlik.krediID && saticiPortfoy.krediler) {
             let ilgiliKredi = saticiPortfoy.krediler.find(k => String(k.id) === String(satilanVarlik.krediID));
             
@@ -641,23 +642,18 @@ if (saticiId) {
                 let artisFarki = gelenSatisParasi - kalanBorc;
                 
                 if (artisFarki > 0) {
-                    // Borç tamamen kapandı, artan para nakite ekleniyor
                     saticiNakit += artisFarki;
                     ilgiliKredi.kalanBorc = 0;
                     ilgiliKredi.icradanKalanBorc = false;
                     saticiPortfoy.krediler = saticiPortfoy.krediler.filter(k => String(k.id) !== String(satilanVarlik.krediID));
                 } else {
-                    // Satış bedeli borcu kapatmaya yetmedi, kalan bakiye borç olarak kalıyor
-                    let kalanNetBorc = Math.abs(artisFarki);
-                    ilgiliKredi.kalanBorc = kalanNetBorc;
+                    ilgiliKredi.kalanBorc = Math.abs(artisFarki);
                     ilgiliKredi.icradanKalanBorc = true;
-                    // Nakite ekstra para eklenmiyor çünkü para borca gitti
                 }
             } else {
                 saticiNakit += gelenSatisParasi;
             }
         } else {
-            // Blokeli değilse para doğrudan nakite eklenir
             saticiNakit += gelenSatisParasi;
         }
 
@@ -673,9 +669,23 @@ if (saticiId) {
             }
         }
 
-        // Varlığı satıcının envanterinden düş
-        if (saticiPortfoy.varliklar && satilanVarlik) {
-            saticiPortfoy.varliklar = saticiPortfoy.varliklar.filter(v => v && v.id !== satilanVarlik.id);
+        // 🌟 SATICININ ENVANTERİNDEN VARLIĞI KESİN OLARAK DÜŞ
+        if (saticiPortfoy.varliklar && Array.isArray(saticiPortfoy.varliklar)) {
+            if (satilanVarlik) {
+                // Bulunan spesifik varlığı ID üzerinden çıkar
+                saticiPortfoy.varliklar = saticiPortfoy.varliklar.filter(v => v && String(v.id) !== String(satilanVarlik.id));
+            } else {
+                // Hiçbiri eşleşmediyse ismi tutan ilk ilandakini güvenli sil
+                let silindi = false;
+                saticiPortfoy.varliklar = saticiPortfoy.varliklar.filter(v => {
+                    if (!v) return false;
+                    if (!silindi && v.isim === ilanTipi) {
+                        silindi = true;
+                        return false;
+                    }
+                    return true;
+                });
+            }
         }
 
         db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`).run(JSON.stringify(saticiPortfoy), Date.now(), saticiId);
