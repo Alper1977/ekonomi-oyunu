@@ -1714,6 +1714,11 @@ async function portfoyuSenkronizeEt() {
                 // Nakiti güncelle
                 state.nakit = user.portfoy.nakit !== undefined ? user.portfoy.nakit : state.nakit;
                 
+                // 🌟 EKSİK OLAN PARÇA: Kredi, taksit ve krediler dizisini sunucudan senkronize et!
+                state.kredi = user.portfoy.kredi !== undefined ? user.portfoy.kredi : 0;
+                state.taksit = user.portfoy.taksit !== undefined ? user.portfoy.taksit : 0;
+                state.krediler = user.portfoy.krediler || [];
+                
                 let sunucuVarliklar = user.portfoy.varliklar || [];
 
                 // İşlemde olan (lokal olarak güncellenmiş) varlıklarımızı koruyalım
@@ -1747,7 +1752,6 @@ async function portfoyuSenkronizeEt() {
         console.error("Portföy senkronizasyon hatası:", err);
     }
 }
-
 async function portfoyuSunucuyaKaydet(yeniPortfoy) {
 
     if (!yeniPortfoy || typeof state === 'undefined' || !state) {
