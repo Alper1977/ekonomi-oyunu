@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="tr">
-<head> 
+<head>
 
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
     <meta charset="UTF-8">
     <title>Stratejik Holding</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>     
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>    
 
 
     <style> 
@@ -2766,7 +2766,7 @@ if (state.kredi <= 0) {
     state.kredi = 0;
     state.taksit = 0;
     state.krediler = [];
-} 
+}
 
 
 // 🌟 GÜVENLİK AĞI: Borcu biten veya aktif kredilerde ID'si kalmayan TÜM varlıkların blokesini kaldır!
@@ -4257,165 +4257,86 @@ function baskasiSatinAl(varlikId, botIsmi, fiyat, inputId) {
 }
 // 1. Onay fonksiyonuna 'konum' parametresini de ekle
 function oyuncuIlaniSatinAlOnayla(ilanId, saticiAdi, varlikIsmi, fiyat, konum) {
-
     let temizFiyat = Number(fiyat) || 0;
-
     let inputId = `in-kredi-oyuncu-${ilanId}`;
-
     
-
     let butonlar = `
-
         <button class="btn-green" onclick="oyuncuIlaniKesinSatinAl('${varlikIsmi}', ${temizFiyat}, ${ilanId}, '${konum}', '${inputId}')">ONAYLA</button>
-
         <button onclick="document.getElementById('modal-overlay').style.display='none'" style="background-color: #d9534f; color: white; margin-left: 10px;">VAZGEÇ</button>
-
     `;
-
     
-
     modalGoster(`${saticiAdi} kişisinden ${varlikIsmi} varlığını (${konum}) ${temizFiyat.toLocaleString()} TL ödeyerek satın almak istiyor musunuz?`, butonlar);
-
 }  
 
-
-
 async function oyuncuIlaniKesinSatinAl(isim, bedel, ilanId, gelenKonum, inputId) {
-
     // 🌟 INPUT FAZLA PARA KONTROLÜ
-
     let inputEl = document.getElementById(inputId);
-
     if (inputEl && inputEl.value.trim() !== "") {
-
         let girilenTutar = parseFloat(inputEl.value.replace(/\./g, '').replace(',', '.')) || 0;
-
         if (girilenTutar > bedel + 0.5) {
-
             let modalOverlay = document.getElementById('modal-overlay');
-
             if (modalOverlay) modalOverlay.style.display = 'none';
-
             modalGoster(`Hata: Girdiğiniz tutar (${girilenTutar.toLocaleString()} TL), bu ilanın gerçek bedelinden (${bedel.toLocaleString()} TL) fazla olamaz!`);
-
             return;
-
         }
-
     }
-
-
 
     if (state.nakit < bedel) {
-
         modalGoster("Yeterli nakit paranız yok!");
-
         return;
-
     }
 
-
-
     try {
-
         let response = await fetch('/api/ilan-satin-al', {
-
             method: 'POST',
-
             headers: { 'Content-Type': 'application/json' },
-
             credentials: 'include', 
-
             body: JSON.stringify({ ilanId: ilanId }) 
-
         });
 
-
-
         let sonuc = await response.json();
-
         if (!sonuc.basari) {
-
             modalGoster(sonuc.mesaj || "Satın alma işleminde bir hata oluştu!");
-
             return;
-
         }
-
-
 
         state.nakit -= bedel;
 
-
-
         state.varliklar.push({
-
             id: Date.now() + Math.random(),
-
             isim: isim,
-
             durum: 'sahip',
-
             bloke: false,
-
             krediID: null,
-
             atananKonum: gelenKonum 
-
         });
 
-
-
         if (typeof botlar !== 'undefined' && Array.isArray(botlar)) {
-
             botlar.forEach(b => {
-
                 if (b.varliklar && Array.isArray(b.varliklar)) {
-
                     b.varliklar = b.varliklar.filter(v => !(v.isim === isim && v.durum === 'ilan-aktif'));
-
                 }
-
             });
-
         }
-
-
 
         let modalOverlay = document.getElementById('modal-overlay');
-
         if (modalOverlay) modalOverlay.style.display = 'none';
 
-
-
         if (typeof veriDegisti !== 'undefined') {
-
             veriDegisti = true;
-
         }
 
-
-
         if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
-
         if (typeof portfoyuSunucuyaKaydet === 'function') portfoyuSunucuyaKaydet(state);
-
-
 
         modalGoster(`Tebrikler! ${isim} varlığını başarıyla satın aldınız.`);
 
-
-
     } catch (err) {
-
         console.error("Satın alma hatası:", err);
-
         modalGoster("Bağlantı hatası oluştu.");
-
     }
-
 }
- 
+
     
 function ilanaCikar(id) {  
     let v = state.varliklar.find(x => x.id == id);
