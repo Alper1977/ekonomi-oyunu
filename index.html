@@ -1946,19 +1946,21 @@ function botlariGuncelleVeGetir() {
     let isimHavuzu = ["BUKET", "AHMET", "MEHMET", "AYŞE", "FATMA", "MUSTAFA", "EMEL", "CAN", "ZEYNEP", "BURAK", "SEDA", "EMRE", "DENİZ", "MURAT", "ELİF", "KEREM", "MERVE", "TOLGA", "SELİN", "ONUR", "ESRA", "KAAN", "BÜŞRA", "VOLKAN", "GAMZE", "CEM", "GİZEM", "OĞUZ", "CEREN", "BERK", "DERYA"];
     let soyisimHavuzu = ["ENERJİ", "İNŞAAT", "TAAHHÜT", "MAKİNA", "METAL", "SANAYİ", "TİCARET", "GRUP", "YAPI", "ENDÜSTRİ", "YILMAZ", "DEMİR", "KAYA", "ÇELİK", "ŞAHİN", "ÖZTÜRK", "YILDIZ", "AYDIN", "ARSLAN", "DOĞAN", "KILIÇ", "ASLAN", "ÇETİN", "KOÇ", "KURT", "ÖZKAN", "ŞİMŞEK", "POLAT", "ÖZDEMİR", "ERDOĞAN"];
 
-    let gercekVarliklar = Object.keys(satisFiyatlari || {});
+    let gercekVarliklar = Object.keys(typeof satisFiyatlari !== 'undefined' ? satisFiyatlari : {});
     let simdiMs = Date.now();
     
-    // Sabit bir başlangıç noktası (Epoch)
     let oyunBaslangicEpoch = 1775000000000; 
     let gecenSure = Math.max(0, simdiMs - oyunBaslangicEpoch);
     
-    // ADMIN PANELİNDEN GELEN HIZ BURADA DİNAMİK OLARAK KULLANILIYOR
-    let botHizi = (window.oyunAyarlari && window.oyunAyarlari.botHizi) ? window.oyunAyarlari.botHizi : 8000;
+    // Window kontrolünü güvenli hale getirdik (Sunucuda patlamaz)
+    let botHizi = 8000;
+    if (typeof window !== 'undefined' && window.oyunAyarlari && window.oyunAyarlari.botHizi) {
+        botHizi = window.oyunAyarlari.botHizi;
+    } else if (typeof globalAyarlar !== 'undefined' && globalAyarlar.botHizi) {
+        botHizi = globalAyarlar.botHizi;
+    }
     
-    // Geçen sürenin adminin belirlediği hıza oranla kaçıncı adımda (tick) olduğunu buluyoruz
     let toplamAdim = Math.floor(gecenSure / botHizi);
-
     let botlar = [];
     
     for (let i = 1; i <= 500; i++) {
@@ -1969,7 +1971,6 @@ function botlariGuncelleVeGetir() {
         let nakit = 50000000 + ((i * 123456) % 200000000);
         let varliklar = [];
 
-        // Her admin adımında 5 bot işlem yaptığı için döngüyü buna göre simüle ediyoruz
         let botAdimSayisi = Math.floor(toplamAdim / 5);
         
         for (let adim = 0; adim < botAdimSayisi; adim++) {
@@ -1981,7 +1982,7 @@ function botlariGuncelleVeGetir() {
                 } else if (gercekVarliklar.length > 0) {
                     let urunIndex = (adim * 43 + i * 71) % gercekVarliklar.length;
                     let secilenUrun = gercekVarliklar[urunIndex];
-                    let bedel = satisFiyatlari[secilenUrun] || 2000000;
+                    let bedel = (typeof satisFiyatlari !== 'undefined' && satisFiyatlari[secilenUrun]) ? satisFiyatlari[secilenUrun] : 2000000;
                     if (nakit >= bedel) {
                         nakit -= bedel;
                         varliklar.push({
