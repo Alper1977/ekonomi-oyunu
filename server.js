@@ -6,7 +6,7 @@ const SQLiteStore = require('connect-sqlite3')(session);
 const Database = require('better-sqlite3');
 const fs = require('fs');
 
-const app = express();  
+const app = express();
 const server = http.createServer(app);  
 const io = new Server(server);   
 
@@ -442,7 +442,6 @@ if (portfoy.krediler && Array.isArray(portfoy.krediler)) {
 
     return portfoy;
 }
-
 setInterval(() => {
     try {
         const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
@@ -472,7 +471,6 @@ setInterval(() => {
         console.error("Arka plan oyun döngüsü genel hata:", err.message);
     }
 }, 30000);
-
 
 // --- API Rotaları ---
 
@@ -612,107 +610,41 @@ app.post('/api/ilan-satin-al', (req, res) => {
             db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`).run(JSON.stringify(aliciPortfoy), Date.now(), aliciId);
             guncelAliciPortfoy = aliciPortfoy;
 
-// SATICI İŞLEMLERİ (Sadece gerçek kullanıcılar için)
-// SATICI İŞLEMLERİ (Sadece gerçek kullanıcılar için)
-if (saticiId) {
-    const saticiRow = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(saticiId);
-    
-    if (saticiRow && saticiRow.portfoy) {
-        let saticiPortfoy = JSON.parse(saticiRow.portfoy || '{}');
-        let saticiNakit = saticiPortfoy.nakit !== undefined ? saticiPortfoy.nakit : (saticiPortfoy.para || 0);
-        
-        let gelenSatisParasi = ilanFiyat;
-        let hedefVarlikId = detaylarObj.varlikId;
-        let satilanVarlik = null;
-
-        if (saticiPortfoy.varliklar && Array.isArray(saticiPortfoy.varliklar)) {
-            // 1. Önce ID ile bulmayı dene
-            if (hedefVarlikId) {
-                satilanVarlik = saticiPortfoy.varliklar.find(v => v && String(v.id) === String(hedefVarlikId));
-            }
-            // 2. Bulunamadıysa, ismi uyan ve blokesi/kredisi olan veya ilan-aktif olan varlığı bul
-            if (!satilanVarlik) {
-                satilanVarlik = saticiPortfoy.varliklar.find(v => v && v.isim === ilanTipi && (v.durum === 'ilan-aktif' || v.bloke));
-            }
-            // 3. Hala bulunamadıysa ismi tutan ilk varlığı al
-            if (!satilanVarlik) {
-                satilanVarlik = saticiPortfoy.varliklar.find(v => v && v.isim === ilanTipi);
-            }
-        }
-
-        // 🌟 KREDİ VE BLOKE KONTROLÜ (Garantili Temizlik)
-        let silinecekKrediId = null;
-        if (satilanVarlik) {
-            // Varlığın üzerinde krediID varsa veya varlık blokeliyse
-            if (satilanVarlik.krediID) {
-                silinecekKrediId = String(satilanVarlik.krediID);
-            }
-        }
-
-        // Eğer varlıkta krediID bulunamadıysa ama ilanın kendisinde veya detayında krediID kalmış ol ihtimaline karşı kontrol et
-        if (!silinecekKrediId && detaylarObj.krediID) {
-            silinecekKrediId = String(detaylarObj.krediID);
-        }
-
-        if (silinecekKrediId && saticiPortfoy.krediler && Array.isArray(saticiPortfoy.krediler)) {
-            let krediIndex = saticiPortfoy.krediler.findIndex(k => k && String(k.id) === silinecekKrediId);
-            
-            if (krediIndex !== -1) {
-                let ilgiliKredi = saticiPortfoy.krediler[krediIndex];
-                let kalanBorc = Number(ilgiliKredi.kalanBorc) || 0;
-                let artisFarki = gelenSatisParasi - kalanBorc;
+            // SATICI İŞLEMLERİ (Sadece gerçek kullanıcılar için)
+            if (saticiId) {
+                const saticiRow = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(saticiId);
                 
-                if (artisFarki >= 0) {
-                    saticiNakit += artisFarki;
-                    saticiPortfoy.krediler.splice(krediIndex, 1); // Krediyi tamamen uçuruyoruz
-                } else {
-                    ilgiliKredi.kalanBorc = Math.abs(artisFarki);
-                    ilgiliKredi.icradanKalanBorc = true;
-                }
-            } else {
-                saticiNakit += gelenSatisParasi;
-            }
-        } else {
-            saticiNakit += gelenSatisParasi;
-        }
+                if (saticiRow && saticiRow.portfoy) {
+                    let saticiPortfoy = JSON.parse(saticiRow.portfoy || '{}');
+                    let saticiNakit = saticiPortfoy.nakit !== undefined ? saticiPortfoy.nakit : (saticiPortfoy.para || 0);
+                    
+                    saticiNakit += ilanFiyat;
+                    saticiPortfoy.nakit = saticiNakit;
 
-        saticiPortfoy.nakit = saticiNakit;
+                    if (saticiPortfoy.varliklar) {
+                        let silindiMi = false;
+                        let hedefVarlikId = detaylarObj.varlikId;
 
-        // Genel kredi toplamlarını güncelle
-        if (saticiPortfoy.krediler && Array.isArray(saticiPortfoy.krediler)) {
-            if (saticiPortfoy.krediler.length === 0) {
-                saticiPortfoy.kredi = 0;
-                saticiPortfoy.taksit = 0;
-            } else {
-                saticiPortfoy.kredi = saticiPortfoy.krediler.reduce((toplam, kr) => toplam + (Number(kr.kalanBorc) || 0), 0);
-                saticiPortfoy.taksit = saticiPortfoy.krediler.reduce((toplam, kr) => toplam + (kr.icradanKalanBorc ? 0 : (Number(kr.taksitTutu) || Number(kr.taksit) || 0)), 0);
-            }
-        } else {
-            saticiPortfoy.krediler = [];
-            saticiPortfoy.kredi = 0;
-            saticiPortfoy.taksit = 0;
-        }
+                        saticiPortfoy.varliklar = saticiPortfoy.varliklar.filter(v => {
+                            if (!v) return true;
+                            if (silindiMi) return true;
 
-        // 🌟 SATICININ ENVANTERİNDEN VARLIĞI KESİN OLARAK DÜŞ
-        if (saticiPortfoy.varliklar && Array.isArray(saticiPortfoy.varliklar)) {
-            if (satilanVarlik && satilanVarlik.id) {
-                saticiPortfoy.varliklar = saticiPortfoy.varliklar.filter(v => v && String(v.id) !== String(satilanVarlik.id));
-            } else {
-                let silindi = false;
-                saticiPortfoy.varliklar = saticiPortfoy.varliklar.filter(v => {
-                    if (!v) return false;
-                    if (!silindi && v.isim === ilanTipi) {
-                        silindi = true;
-                        return false;
+                            if (hedefVarlikId && String(v.id) === String(hedefVarlikId)) {
+                                silindiMi = true;
+                                return false; 
+                            }
+                            if (v.isim === ilanTipi && (v.durum === 'ilan-aktif' || v.durum === 'satildi' || v.durum === 'sahip')) {
+                                silindiMi = true;
+                                return false; 
+                            }
+                            return true;
+                        });
                     }
-                    return true;
-                });
-            }
-        }
 
-        db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`).run(JSON.stringify(saticiPortfoy), Date.now(), saticiId);
-    }
-}
+                    db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`).run(JSON.stringify(saticiPortfoy), Date.now(), saticiId);
+                }
+            }
+
             if (ilan) {
                 db.prepare(`DELETE FROM ilanlar WHERE id = ?`).run(ilanId);
             }
