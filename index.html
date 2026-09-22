@@ -5773,14 +5773,16 @@ function varlikSat(varlikId) {
     let satisFiyati = (satisFiyatlari && satisFiyatlari[varlik.isim]) ? satisFiyatlari[varlik.isim] : (varlik.fiyat || 12000000);
 
     if (varlik.bloke && varlik.krediID) {
-        let ilgiliKredi = state.krediler.find(k => k.krediID && String(k.id) === String(varlik.krediID));
+        // 🌟 HATA DÜZELTİLDİ: k.krediID aranmaz, direkt k.id ile varlik.krediID kıyaslanır!
+        let ilgiliKredi = state.krediler.find(k => String(k.id) === String(varlik.krediID));
         
         if (ilgiliKredi) {
-            let kalanBorc = ilgiliKredi.kalanBorc;
+            let kalanBorc = ilgiliKredi.kalanBorc || 0;
             let artisFarki = satisFiyati - kalanBorc;
             
             if (artisFarki > 0) {
                 state.nakit += artisFarki;
+                // Krediyi diziden tamamen sil
                 state.krediler = state.krediler.filter(k => String(k.id) !== String(varlik.krediID));
                 modalGoster(`🏠 <b>KREDİLİ VARLIK SATILDI:</b> ${varlik.isim} satıldı, borç tamamen kapandı ve artan ${artisFarki.toLocaleString()} TL nakite eklendi.`);
             } else {
@@ -5790,6 +5792,9 @@ function varlikSat(varlikId) {
                 state.nakit = 0;
                 modalGoster(`🏠 <b>KREDİLİ VARLIK SATILDI:</b> ${varlik.isim} satıldı ancak borcu kapatmaya yetmedi. Kalan ${kalanNetBorc.toLocaleString()} TL borç bakiye olarak kaldı.`);
             }
+        } else {
+            // Kredi bulunamazsa parayı güvenle nakite at
+            state.nakit += satisFiyati;
         }
     } else {
         state.nakit += satisFiyati;
@@ -5797,12 +5802,17 @@ function varlikSat(varlikId) {
 
     state.varliklar = state.varliklar.filter(v => v.id !== varlikId);
 
+    // 🌟 KÜSURAT VE SIFIRLAMA GÜVENLİĞİ
+    state.krediler = state.krediler.filter(kr => (kr.kalanBorc || 0) > 0.01);
+    
     state.kredi = state.krediler.reduce((toplam, kr) => toplam + (kr.kalanBorc || 0), 0);
-    state.taksit = state.krediler.reduce((toplam, kr) => toplam + (kr.taksitTutu || 0), 0);
-
-    if (state.krediler.length === 0) {
+    
+    if (state.krediler.length === 0 || state.kredi < 0.01) {
         state.kredi = 0;
         state.taksit = 0;
+        state.krediler = [];
+    } else {
+        state.taksit = state.krediler.reduce((toplam, kr) => toplam + (kr.icradanKalanBorc ? 0 : (kr.taksitTutu || kr.taksit || 0)), 0);
     }
 
     guncelle();
@@ -5810,7 +5820,6 @@ function varlikSat(varlikId) {
         portfoyuSunucuyaKaydet(state);
     }
 }
-
 
 function faizOranlariniGuncelle() {
     let faizMetni = `Yatırım Kredisi Aylık Faiz Oranı %${faizOranlari.yatirimKredisiYuzde}`;
