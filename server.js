@@ -146,7 +146,7 @@ db.prepare(`CREATE TABLE IF NOT EXISTS ilanlar (
 
 // --- 🌟 ÇEVRİMİÇİ / ÇEVRİMDIŞI AKILLI EKONOMİ MOTORU (TAM KAPSAMLI) ---
 function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
-    if (!userRow || !userRow.portfoy || userRow.portfoy === 'undefined' || userRow.portfoy === 'null') return null;
+    if (!userRow || !userRow.portfoy) return null;
 
     let portfoy;
     try {
@@ -442,43 +442,29 @@ if (portfoy.krediler && Array.isArray(portfoy.krediler)) {
 
     return portfoy;
 }
+
 setInterval(() => {
     try {
         const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
-        if (!ayarKaydi || !ayarKaydi.ayarlar) return;
-        
-        let ayarlar = {};
-        try {
-            ayarlar = JSON.parse(ayarKaydi.ayarlar);
-        } catch (e) {
-            ayarlar = {};
-        }
+        if (!ayarKaydi) return;
+        const ayarlar = JSON.parse(ayarKaydi.ayarlari);
 
-        // Canlı kurları veritabanından güvenli çekiyoruz
+        // Canlı kurları veritabanından çekiyoruz
         const kurlarKaydi = db.prepare(`SELECT kurlar FROM oyun_kurlari WHERE id = 1`).get();
-        let kurlar = { dolar: {satis: 49}, euro: {satis: 54}, altin: {satis: 6000} };
-        if (kurlarKaydi && kurlarKaydi.kurlar) {
-            try {
-                kurlar = JSON.parse(kurlarKaydi.kurlar);
-            } catch (e) {
-                // Varsayılan kurlarda kalır
-            }
-        }
+        const kurlar = kurlarKaydi ? JSON.parse(kurlarKaydi.kurlar) : { dolar: {satis: 49}, euro: {satis: 54}, altin: {satis: 6000} };
 
         const kullanicilar = db.prepare(`SELECT id, portfoy, son_guncelleme FROM kullanicilar`).all();
         
         // Her kullanıcıyı kendi bağımsız transaction ve try-catch bloğuna alıyoruz
         kullanicilar.forEach(user => {
             try {
-                // Eğer kullanıcının portföy verisi yoksa veya geçersizse pas geç veya güvenli nesne ver
-                if (!user.portfoy) return;
-
                 const userTransaction = db.transaction(() => {
                     kullaniciEkonomisiniIslet(user, ayarlar, kurlar);
                 });
                 userTransaction();
             } catch (userErr) {
                 console.error(`Kullanıcı ID ${user.id} ekonomi işletilirken hata oluştu:`, userErr.message);
+                // Bu kullanıcı patlasa bile diğer kullanıcıların parası, dövizi, kredisi etkilenmez
             }
         });
 
@@ -486,6 +472,7 @@ setInterval(() => {
         console.error("Arka plan oyun döngüsü genel hata:", err.message);
     }
 }, 30000);
+
 
 // --- API Rotaları ---
 
@@ -626,6 +613,7 @@ app.post('/api/ilan-satin-al', (req, res) => {
             guncelAliciPortfoy = aliciPortfoy;
 
 // SATICI İŞLEMLERİ (Sadece gerçek kullanıcılar için)
+// SATICI İŞLEMLERİ (Sadece gerçek kullanıcılar için)
 if (saticiId) {
     const saticiRow = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(saticiId);
     
@@ -637,42 +625,38 @@ if (saticiId) {
         let hedefVarlikId = detaylarObj.varlikId;
         let satilanVarlik = null;
 
-        // 1. Önce varlığı bulmaya çalışalım
         if (saticiPortfoy.varliklar && Array.isArray(saticiPortfoy.varliklar)) {
+            // 1. Önce ID ile bulmayı dene
             if (hedefVarlikId) {
                 satilanVarlik = saticiPortfoy.varliklar.find(v => v && String(v.id) === String(hedefVarlikId));
             }
+            // 2. Bulunamadıysa, ismi uyan ve blokesi/kredisi olan veya ilan-aktif olan varlığı bul
             if (!satilanVarlik) {
                 satilanVarlik = saticiPortfoy.varliklar.find(v => v && v.isim === ilanTipi && (v.durum === 'ilan-aktif' || v.bloke));
             }
+            // 3. Hala bulunamadıysa ismi tutan ilk varlığı al
             if (!satilanVarlik) {
                 satilanVarlik = saticiPortfoy.varliklar.find(v => v && v.isim === ilanTipi);
             }
         }
 
-        // 🌟 2. KREDİYİ KESİN OLARAK BUL VE SİL (ID veya İsim Eşleşmesi ile)
-        let silinenKrediBulundu = false;
-        
-        if (saticiPortfoy.krediler && Array.isArray(saticiPortfoy.krediler) && saticiPortfoy.krediler.length > 0) {
-            let krediIndex = -1;
+        // 🌟 KREDİ VE BLOKE KONTROLÜ (Garantili Temizlik)
+        let silinecekKrediId = null;
+        if (satilanVarlik) {
+            // Varlığın üzerinde krediID varsa veya varlık blokeliyse
+            if (satilanVarlik.krediID) {
+                silinecekKrediId = String(satilanVarlik.krediID);
+            }
+        }
 
-            // A. Varlığın üzerindeki krediID ile ara
-            if (satilanVarlik && satilanVarlik.krediID) {
-                krediIndex = saticiPortfoy.krediler.findIndex(k => k && String(k.id) === String(satilanVarlik.krediID));
-            }
-            // B. Detaydaki krediID ile ara
-            if (krediIndex === -1 && detaylarObj.krediID) {
-                krediIndex = saticiPortfoy.krediler.findIndex(k => k && String(k.id) === String(detaylarObj.krediID));
-            }
-            // C. Kredinin bağlı olduğu varlık ismi veya mülk ismiyle eşleştir
-            if (krediIndex === -1) {
-                krediIndex = saticiPortfoy.krediler.findIndex(k => k && (k.varlikIsmi === ilanTipi || k.isim === ilanTipi || k.gayrimenkul === ilanTipi));
-            }
-            // D. Hala bulunamadıysa ve satıcının tek bir kredisi varsa, satılan bu mülk kesinlikle o kredinin teminatıdır, ilkini al
-            if (krediIndex === -1 && saticiPortfoy.krediler.length === 1) {
-                krediIndex = 0;
-            }
+        // Eğer varlıkta krediID bulunamadıysa ama ilanın kendisinde veya detayında krediID kalmış ol ihtimaline karşı kontrol et
+        if (!silinecekKrediId && detaylarObj.krediID) {
+            silinecekKrediId = String(detaylarObj.krediID);
+        }
 
+        if (silinecekKrediId && saticiPortfoy.krediler && Array.isArray(saticiPortfoy.krediler)) {
+            let krediIndex = saticiPortfoy.krediler.findIndex(k => k && String(k.id) === silinecekKrediId);
+            
             if (krediIndex !== -1) {
                 let ilgiliKredi = saticiPortfoy.krediler[krediIndex];
                 let kalanBorc = Number(ilgiliKredi.kalanBorc) || 0;
@@ -680,46 +664,36 @@ if (saticiId) {
                 
                 if (artisFarki >= 0) {
                     saticiNakit += artisFarki;
-                    saticiPortfoy.krediler.splice(krediIndex, 1); // Krediyi diziden tamamen söküp atıyoruz!
+                    saticiPortfoy.krediler.splice(krediIndex, 1); // Krediyi tamamen uçuruyoruz
                 } else {
                     ilgiliKredi.kalanBorc = Math.abs(artisFarki);
                     ilgiliKredi.icradanKalanBorc = true;
                 }
-                silinenKrediBulundu = true;
+            } else {
+                saticiNakit += gelenSatisParasi;
             }
-        }
-
-        if (!silinenKrediBulundu) {
+        } else {
             saticiNakit += gelenSatisParasi;
         }
 
         saticiPortfoy.nakit = saticiNakit;
 
-        // 3. Genel kredi toplamlarını güncelle ve sıfırla
+        // Genel kredi toplamlarını güncelle
         if (saticiPortfoy.krediler && Array.isArray(saticiPortfoy.krediler)) {
             if (saticiPortfoy.krediler.length === 0) {
                 saticiPortfoy.kredi = 0;
                 saticiPortfoy.taksit = 0;
             } else {
                 saticiPortfoy.kredi = saticiPortfoy.krediler.reduce((toplam, kr) => toplam + (Number(kr.kalanBorc) || 0), 0);
-                saticiPortfoy.taksit = saticiPortfoy.krediler.reduce((toplam, kr) => {
-                    if (kr.icradanKalanBorc) return toplam;
-                    return toplam + (Number(kr.taksit) || Number(kr.taksitTutu) || 0);
-                }, 0);
+                saticiPortfoy.taksit = saticiPortfoy.krediler.reduce((toplam, kr) => toplam + (kr.icradanKalanBorc ? 0 : (Number(kr.taksitTutu) || Number(kr.taksit) || 0)), 0);
             }
         } else {
+            saticiPortfoy.krediler = [];
             saticiPortfoy.kredi = 0;
             saticiPortfoy.taksit = 0;
-            saticiPortfoy.krediler = [];
         }
 
-        if (saticiPortfoy.kredi <= 0) {
-            saticiPortfoy.kredi = 0;
-            saticiPortfoy.taksit = 0;
-            saticiPortfoy.krediler = [];
-        }
-
-        // 4. Satıcının envanterinden mülkü kesin olarak düş
+        // 🌟 SATICININ ENVANTERİNDEN VARLIĞI KESİN OLARAK DÜŞ
         if (saticiPortfoy.varliklar && Array.isArray(saticiPortfoy.varliklar)) {
             if (satilanVarlik && satilanVarlik.id) {
                 saticiPortfoy.varliklar = saticiPortfoy.varliklar.filter(v => v && String(v.id) !== String(satilanVarlik.id));
