@@ -448,34 +448,16 @@ if (portfoy.kredi < 0.01) {
 setInterval(() => {
     try {
         const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
-        if (!ayarKaydi || !ayarKaydi.ayarlari) return;
-        
-        const ayarlar = typeof ayarKaydi.ayarlari === 'string' ? JSON.parse(ayarKaydi.ayarlari) : ayarKaydi.ayarlari;
+        if (!ayarKaydi) return;
+        const ayarlar = JSON.parse(ayarKaydi.ayarlari);
 
         // Canlı kurları veritabanından çekiyoruz
         const kurlarKaydi = db.prepare(`SELECT kurlar FROM oyun_kurlari WHERE id = 1`).get();
-        let kurlar = { dolar: {satis: 49}, euro: {satis: 54}, altin: {satis: 6000} };
-        
-        if (kurlarKaydi && kurlarKaydi.kurlar) {
-            kurlar = typeof kurlarKaydi.kurlar === 'string' ? JSON.parse(kurlarKaydi.kurlar) : kurlarKaydi.kurlar;
-        }
-
-        // --- BOTLARIN İLAN VE İŞLEM DÖNGÜSÜ ---
-        // Eğer sunucuda bot işlemlerini yürüten bir fonksiyonun veya tablon varsa burada tetiklenmeli
-        // Örneğin botHizi kontrolü ile her adımda botların ilan vermesini sağlayalım:
-        let botHizi = ayarlar.botHizi || 8000;
-        let simdiMs = Date.now();
-        let oyunBaslangicEpoch = 1775000000000; 
-        let toplamAdim = Math.floor(Math.max(0, simdiMs - oyunBaslangicEpoch) / botHizi);
-
-        // Burada botların ilan verme / varlık alma mantığını güncel kur ve ayarlara göre işletiyoruz
-        if (typeof botIslemleriniCalistir === 'function') {
-            botIslemleriniCalistir(toplamAdim, ayarlar, kurlar);
-        }
+        const kurlar = kurlarKaydi ? JSON.parse(kurlarKaydi.kurlar) : { dolar: {satis: 49}, euro: {satis: 54}, altin: {satis: 6000} };
 
         const kullanicilar = db.prepare(`SELECT id, portfoy, son_guncelleme FROM kullanicilar`).all();
-        if (!kullanicilar) return;
         
+        // Her kullanıcıyı kendi bağımsız transaction ve try-catch bloğuna alıyoruz
         kullanicilar.forEach(user => {
             try {
                 const userTransaction = db.transaction(() => {
@@ -484,13 +466,15 @@ setInterval(() => {
                 userTransaction();
             } catch (userErr) {
                 console.error(`Kullanıcı ID ${user.id} ekonomi işletilirken hata oluştu:`, userErr.message);
+                // Bu kullanıcı patlasa bile diğer kullanıcıların parası, dövizi, kredisi etkilenmez
             }
         });
 
-    } `catch` (err) {
+    } catch (err) {
         console.error("Arka plan oyun döngüsü genel hata:", err.message);
     }
 }, 30000);
+
 // --- API Rotaları ---
 
 app.get('/api/ilanlar', (req, res) => {
