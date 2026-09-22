@@ -402,13 +402,16 @@ if (portfoy.krediler && Array.isArray(portfoy.krediler)) {
     portfoy.kredi = 0;
     portfoy.taksit = 0;
     portfoy.krediler = [];
+    degisiklikOldu = true; // 🌟 Eklendi
 }
 
-    if (portfoy.kredi <= 0) {
-        portfoy.kredi = 0;
-        portfoy.taksit = 0;
-        portfoy.krediler = [];
-    }
+// 0.01'den küçük küsuratları da kapsayacak şekilde güvenli sıfırlama
+if (portfoy.kredi < 0.01) {
+    portfoy.kredi = 0;
+    portfoy.taksit = 0;
+    portfoy.krediler = [];
+    degisiklikOldu = true; // 🌟 BURASI HAYATİ: Veritabanına "borç bitti, güncelle" komutunu gönderir!
+}
 
     // 🌟 KESİN ÇÖZÜM: Toplam borç 0 ise (veya kredi kalmadıysa) sunucu tarafında 
     // ID bağına bakılmaksızın tüm varlıkların blokesini ve kredi bağlantısını temizle!
