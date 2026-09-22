@@ -622,38 +622,42 @@ if (saticiId) {
         let hedefVarlikId = detaylarObj.varlikId;
         let satilanVarlik = null;
 
+        // 1. Önce varlığı bulmaya çalışalım
         if (saticiPortfoy.varliklar && Array.isArray(saticiPortfoy.varliklar)) {
-            // 1. Önce ID ile bulmayı dene
             if (hedefVarlikId) {
                 satilanVarlik = saticiPortfoy.varliklar.find(v => v && String(v.id) === String(hedefVarlikId));
             }
-            // 2. Bulunamadıysa, ismi uyan ve blokesi/kredisi olan veya ilan-aktif olan varlığı bul
             if (!satilanVarlik) {
                 satilanVarlik = saticiPortfoy.varliklar.find(v => v && v.isim === ilanTipi && (v.durum === 'ilan-aktif' || v.bloke));
             }
-            // 3. Hala bulunamadıysa ismi tutan ilk varlığı al
             if (!satilanVarlik) {
                 satilanVarlik = saticiPortfoy.varliklar.find(v => v && v.isim === ilanTipi);
             }
         }
 
-        // 🌟 KREDİ VE BLOKE KONTROLÜ (Garantili Temizlik)
-        let silinecekKrediId = null;
-        if (satilanVarlik) {
-            // Varlığın üzerinde krediID varsa veya varlık blokeliyse
-            if (satilanVarlik.krediID) {
-                silinecekKrediId = String(satilanVarlik.krediID);
+        // 🌟 2. KREDİYİ KESİN OLARAK BUL VE SİL (ID veya İsim Eşleşmesi ile)
+        let silinenKrediBulundu = false;
+        
+        if (saticiPortfoy.krediler && Array.isArray(saticiPortfoy.krediler) && saticiPortfoy.krediler.length > 0) {
+            let krediIndex = -1;
+
+            // A. Varlığın üzerindeki krediID ile ara
+            if (satilanVarlik && satilanVarlik.krediID) {
+                krediIndex = saticiPortfoy.krediler.findIndex(k => k && String(k.id) === String(satilanVarlik.krediID));
             }
-        }
+            // B. Detaydaki krediID ile ara
+            if (krediIndex === -1 && detaylarObj.krediID) {
+                krediIndex = saticiPortfoy.krediler.findIndex(k => k && String(k.id) === String(detaylarObj.krediID));
+            }
+            // C. Kredinin bağlı olduğu varlık ismi veya mülk ismiyle eşleştir
+            if (krediIndex === -1) {
+                krediIndex = saticiPortfoy.krediler.findIndex(k => k && (k.varlikIsmi === ilanTipi || k.isim === ilanTipi || k.gayrimenkul === ilanTipi));
+            }
+            // D. Hala bulunamadıysa ve satıcının tek bir kredisi varsa, satılan bu mülk kesinlikle o kredinin teminatıdır, ilkini al
+            if (krediIndex === -1 && saticiPortfoy.krediler.length === 1) {
+                krediIndex = 0;
+            }
 
-        // Eğer varlıkta krediID bulunamadıysa ama ilanın kendisinde veya detayında krediID kalmış ol ihtimaline karşı kontrol et
-        if (!silinecekKrediId && detaylarObj.krediID) {
-            silinecekKrediId = String(detaylarObj.krediID);
-        }
-
-        if (silinecekKrediId && saticiPortfoy.krediler && Array.isArray(saticiPortfoy.krediler)) {
-            let krediIndex = saticiPortfoy.krediler.findIndex(k => k && String(k.id) === silinecekKrediId);
-            
             if (krediIndex !== -1) {
                 let ilgiliKredi = saticiPortfoy.krediler[krediIndex];
                 let kalanBorc = Number(ilgiliKredi.kalanBorc) || 0;
@@ -661,40 +665,46 @@ if (saticiId) {
                 
                 if (artisFarki >= 0) {
                     saticiNakit += artisFarki;
-                    saticiPortfoy.krediler.splice(krediIndex, 1); // Krediyi tamamen uçuruyoruz
+                    saticiPortfoy.krediler.splice(krediIndex, 1); // Krediyi diziden tamamen söküp atıyoruz!
                 } else {
                     ilgiliKredi.kalanBorc = Math.abs(artisFarki);
                     ilgiliKredi.icradanKalanBorc = true;
                 }
-            } else {
-                saticiNakit += gelenSatisParasi;
+                silinenKrediBulundu = true;
             }
-        } else {
+        }
+
+        if (!silinenKrediBulundu) {
             saticiNakit += gelenSatisParasi;
         }
 
         saticiPortfoy.nakit = saticiNakit;
 
-        // Genel kredi toplamlarını güncelle
+        // 3. Genel kredi toplamlarını güncelle ve sıfırla
         if (saticiPortfoy.krediler && Array.isArray(saticiPortfoy.krediler)) {
             if (saticiPortfoy.krediler.length === 0) {
                 saticiPortfoy.kredi = 0;
                 saticiPortfoy.taksit = 0;
             } else {
                 saticiPortfoy.kredi = saticiPortfoy.krediler.reduce((toplam, kr) => toplam + (Number(kr.kalanBorc) || 0), 0);
-saticiPortfoy.taksit = saticiPortfoy.krediler.reduce((toplam, kr) => {
-    if (kr.icradanKalanBorc) return toplam;
-    return toplam + (Number(kr.taksit) || Number(kr.taksitTutu) || 0);
-}, 0);
+                saticiPortfoy.taksit = saticiPortfoy.krediler.reduce((toplam, kr) => {
+                    if (kr.icradanKalanBorc) return toplam;
+                    return toplam + (Number(kr.taksit) || Number(kr.taksitTutu) || 0);
+                }, 0);
+            }
+        } else {
+            saticiPortfoy.kredi = 0;
+            saticiPortfoy.taksit = 0;
+            saticiPortfoy.krediler = [];
+        }
 
-if (saticiPortfoy.kredi <= 0) {
-    saticiPortfoy.kredi = 0;
-    saticiPortfoy.taksit = 0;
-    saticiPortfoy.krediler = [];
-}
-}
-}            
-        // 🌟 SATICININ ENVANTERİNDEN VARLIĞI KESİN OLARAK DÜŞ
+        if (saticiPortfoy.kredi <= 0) {
+            saticiPortfoy.kredi = 0;
+            saticiPortfoy.taksit = 0;
+            saticiPortfoy.krediler = [];
+        }
+
+        // 4. Satıcının envanterinden mülkü kesin olarak düş
         if (saticiPortfoy.varliklar && Array.isArray(saticiPortfoy.varliklar)) {
             if (satilanVarlik && satilanVarlik.id) {
                 saticiPortfoy.varliklar = saticiPortfoy.varliklar.filter(v => v && String(v.id) !== String(satilanVarlik.id));
