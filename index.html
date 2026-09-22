@@ -5647,10 +5647,20 @@ function kalanBorclariOtomatikOde() {
 }
 
 function zorunluVarlikSatisiAndKapatma() {
+    // 1. İŞLEM: Adminin panelden belirlediği güncel fiyatları veritabanından güvenle çekelim
+    let guncelSatisFiyatlari = {};
+    try {
+        const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
+        if (ayarKaydi && ayarKaydi.ayarlar) {
+            const parsed = JSON.parse(ayarKaydi.ayarlar);
+            if (parsed.satisFiyatlari) guncelSatisFiyatlari = parsed.satisFiyatlari;
+        }
+    } catch (e) {}
+
     let toplamKrediBorcu = state.krediler && state.krediler.length > 0 
         ? state.krediler.reduce((t, k) => t + (k.kalanBorc || 0), 0) 
         : (state.kredi || 0);
-// TEST İÇİN BUNU EKLE:
+
     console.log("-> TEST: Fonksiyona Giren Toplam Borç:", toplamKrediBorcu);
     if (toplamKrediBorcu <= 0) return;
 
@@ -5661,15 +5671,23 @@ function zorunluVarlikSatisiAndKapatma() {
         // ÖNCE TÜM BLOKELİ VARLIKLARI SIRAYLA BUL VE TÜKET
         let satilacakVarlik = state.varliklar.find(v => v.bloke === true);
         
-        // Blokeli varlıklar tamamen bittiyse serbest varlıklara geç
+        // Blokeli varlıklar tamamen bittiyse serbest varlıklara geç (Burada !v.bloke diyerek her serbest malı kapsadık)
         if (!satilacakVarlik) {
-            satilacakVarlik = state.varliklar.find(v => v.durum === 'sahip' || v.bloke === false || v.durum === undefined);
+            satilacakVarlik = state.varliklar.find(v => !v.bloke);
         }
 
         // Satılacak hiç mal kalmadıysa döngüyü kır
         if (!satilacakVarlik) break; 
 
-        let satisFiyati = (satisFiyatlari && satisFiyatlari[satilacakVarlik.isim]) ? satisFiyatlari[satilacakVarlik.isim] : (satilacakVarlik.fiyat || 12000000);
+        // 2. İŞLEM: Fiyatı adminin güncel listesinden isme göre tam bulalım (Yoksa kendi fiyatına düşsün)
+        let satisFiyati = 0;
+        if (satilacakVarlik && satilacakVarlik.isim && guncelSatisFiyatlari[satilacakVarlik.isim]) {
+            satisFiyati = guncelSatisFiyatlari[satilacakVarlik.isim];
+        } else if (satisFiyatlari && satisFiyatlari[satilacakVarlik.isim]) {
+            satisFiyati = satisFiyatlari[satilacakVarlik.isim];
+        } else {
+            satisFiyati = satilacakVarlik.fiyat || 12000000;
+        }
         
         // Varlığı envanterden düş
         state.varliklar = state.varliklar.filter(v => v.id !== satilacakVarlik.id);
