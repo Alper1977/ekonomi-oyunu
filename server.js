@@ -636,25 +636,25 @@ if (saticiId) {
             }
         }
 
-// 🌟 KREDİ VE BLOKE KONTROLÜ (DÜZELTİLMİŞ)
-        if (satilanVarlik && satilanVarlik.bloke && satilanVarlik.krediID && saticiPortfoy.krediler) {
-            let ilgiliKredi = saticiPortfoy.krediler.find(k => String(k.id) === String(satilanVarlik.krediID));
+// 🌟 KREDİ VE BLOKE KONTROLÜ (GARANTİCİ VERSİYON)
+        // Eğer satıcının aktif kredi borcu varsa, mülk satıldığında gelen parayı direkt borçtan düş!
+        if (saticiPortfoy.krediler && saticiPortfoy.krediler.length > 0) {
+            let toplamKalanBorc = saticiPortfoy.krediler.reduce((toplam, kr) => toplam + (kr.kalanBorc || 0), 0);
             
-            if (ilgiliKredi && ilgiliKredi.kalanBorc > 0) {
-                // Satış parasından borcu düş
-                let kalanBorc = ilgiliKredi.kalanBorc;
-                
-                if (gelenSatisParasi >= kalanBorc) {
-                    // Satış parası borcu tamamen kapatmaya yetiyor veya artıyor
-                    let artisFarki = gelenSatisParasi - kalanBorc;
-                    saticiNakit += artisFarki; // Artan para nakite eklenir
+            if (toplamKalanBorc > 0) {
+                if (gelenSatisParasi >= toplamKalanBorc) {
+                    // Satış parası tüm borcu kapatmaya yetiyor ve üstü artıyor
+                    let artisFarki = gelenSatisParasi - toplamKalanBorc;
+                    saticiNakit += artisFarki;
                     
-                    // Krediyi tamamen sil
-                    saticiPortfoy.krediler = saticiPortfoy.krediler.filter(k => String(k.id) !== String(satilanVarlik.krediID));
+                    // TÜM KREDİLERİ VE BORÇ SATIRINI TAMAMEN SİL/SIFIRLA
+                    saticiPortfoy.krediler = [];
+                    saticiPortfoy.kredi = 0;
+                    saticiPortfoy.taksit = 0;
                 } else {
-                    // Satış parası borcun sadece bir kısmını kapatabiliyor
-                    ilgiliKredi.kalanBorc -= gelenSatisParasi;
-                    ilgiliKredi.icradanKalanBorc = true;
+                    // Satış parası borcun bir kısmını kapatır, kalanı ilk krediden düşer
+                    saticiPortfoy.krediler[0].kalanBorc -= gelenSatisParasi;
+                    saticiPortfoy.kredi = saticiPortfoy.krediler.reduce((toplam, kr) => toplam + (kr.kalanBorc || 0), 0);
                 }
             } else {
                 saticiNakit += gelenSatisParasi;
