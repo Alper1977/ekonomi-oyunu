@@ -4350,6 +4350,21 @@ function ilanaCikar(id) {
     // İşaretle ve kilitle
     v._islemde = true;
     v.durum = 'ilan-aktif';
+
+    // 🌟 Ekranın ve butonun anında güncellenmesini sağlayarak takılmayı önleyen DOM hamlesi
+    let mulkKutulari = document.querySelectorAll('.item-box-varlik');
+    mulkKutulari.forEach(kutu => {
+        if (kutu.innerHTML.includes(`ilanaCikar('${id}')`) || kutu.innerHTML.includes(`ilanaCikar("${id}")`) || kutu.innerHTML.includes(`ilanaCikar(${id})`)) {
+            let sagAlan = kutu.querySelector('div:nth-child(2)');
+            if (sagAlan) {
+                sagAlan.innerHTML = `
+                    <span style="color:#ff4444; font-size:13px; font-weight:bold;">SATIŞTA</span> 
+                    <button onclick="vazgec('${v.id}')" class="btn-red" style="margin-top: 4px; width: 100%; box-sizing: border-box;">Vazgeç</button>
+                `;
+            }
+        }
+    });
+
     if (typeof guncelle === 'function') {
         guncelle(); // Artık render fonksiyonu _islemde sayesinde bu mülke buton koymayacak
     }
