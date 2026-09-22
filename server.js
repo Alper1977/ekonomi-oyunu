@@ -682,13 +682,16 @@ if (saticiId) {
                 saticiPortfoy.taksit = 0;
             } else {
                 saticiPortfoy.kredi = saticiPortfoy.krediler.reduce((toplam, kr) => toplam + (Number(kr.kalanBorc) || 0), 0);
-                saticiPortfoy.taksit = saticiPortfoy.krediler.reduce((toplam, kr) => toplam + (kr.icradanKalanBorc ? 0 : (Number(kr.taksitTutu) || Number(kr.taksit) || 0)), 0);
-            }
-        } else {
-            saticiPortfoy.krediler = [];
-            saticiPortfoy.kredi = 0;
-            saticiPortfoy.taksit = 0;
-        }
+saticiPortfoy.taksit = saticiPortfoy.krediler.reduce((toplam, kr) => {
+    if (kr.icradanKalanBorc) return toplam;
+    return toplam + (Number(kr.taksit) || Number(kr.taksitTutu) || 0);
+}, 0);
+
+if (saticiPortfoy.kredi <= 0) {
+    saticiPortfoy.kredi = 0;
+    saticiPortfoy.taksit = 0;
+    saticiPortfoy.krediler = [];
+}
 
         // 🌟 SATICININ ENVANTERİNDEN VARLIĞI KESİN OLARAK DÜŞ
         if (saticiPortfoy.varliklar && Array.isArray(saticiPortfoy.varliklar)) {
