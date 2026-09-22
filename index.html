@@ -2753,7 +2753,7 @@ if (kr.icradanKalanBorc) {
             modalGoster(`📋 <b>DÖNEMSEL FİNANSAL RAPOR</b><br><br>` + bildirimler.join('<br><br>'));
         }
 
-  // Genel borç ve taksitleri güncelle
+// Genel borç ve taksitleri güncelle
 state.kredi = state.krediler.reduce((toplam, kr) => toplam + (kr.kalanBorc || 0), 0);
 
 // 🌟 İcradan kalan borçların taksitleri 0 kabul edilir, genel aylık taksite eklenmez
@@ -2762,7 +2762,8 @@ state.taksit = state.krediler.reduce((toplam, kr) => {
     return toplam + (kr.taksit || kr.taksitTutu || 0);
 }, 0);
 
-if (state.kredi <= 0) {
+// 🌟 İstemcide de 0.01'den küçük küsuratları ve sıfırlanmayı garanti altına al
+if (state.kredi < 0.01) {
     state.kredi = 0;
     state.taksit = 0;
     state.krediler = [];
