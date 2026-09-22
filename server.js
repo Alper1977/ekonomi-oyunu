@@ -146,7 +146,7 @@ db.prepare(`CREATE TABLE IF NOT EXISTS ilanlar (
 
 // --- 🌟 ÇEVRİMİÇİ / ÇEVRİMDIŞI AKILLI EKONOMİ MOTORU (TAM KAPSAMLI) ---
 function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
-    if (!userRow || !userRow.portfoy) return null;
+    if (!userRow || !userRow.portfoy || userRow.portfoy === 'undefined' || userRow.portfoy === 'null') return null;
 
     let portfoy;
     try {
