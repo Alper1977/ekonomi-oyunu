@@ -610,41 +610,77 @@ app.post('/api/ilan-satin-al', (req, res) => {
             db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`).run(JSON.stringify(aliciPortfoy), Date.now(), aliciId);
             guncelAliciPortfoy = aliciPortfoy;
 
-            // SATICI İŞLEMLERİ (Sadece gerçek kullanıcılar için)
-            if (saticiId) {
-                const saticiRow = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(saticiId);
+           // SATICI İŞLEMLERİ (Sadece gerçek kullanıcılar için)
+if (saticiId) {
+    const saticiRow = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(saticiId);
+    
+    if (saticiRow && saticiRow.portfoy) {
+        let saticiPortfoy = JSON.parse(saticiRow.portfoy || '{}');
+        let saticiNakit = saticiPortfoy.nakit !== undefined ? saticiPortfoy.nakit : (saticiPortfoy.para || 0);
+        
+        let hedefVarlikId = detaylarObj.varlikId;
+        let satilanVarlik = null;
+
+        if (saticiPortfoy.varliklar) {
+            satilanVarlik = saticiPortfoy.varliklar.find(v => {
+                if (!v) return false;
+                if (hedefVarlikId && String(v.id) === String(hedefVarlikId)) return true;
+                if (v.isim === ilanTipi && (v.durum === 'ilan-aktif' || v.durum === 'satildi' || v.durum === 'sahip')) return true;
+                return false;
+            });
+        }
+
+        let gelenSatisParasi = ilanFiyat;
+
+        // 🌟 KREDİ VE BLOKE KONTROLÜ (varlikSat fonksiyonundaki mantık)
+        if (satilanVarlik && satilanVarlik.bloke && satilanVarlik.krediID && saticiPortfoy.krediler) {
+            let ilgiliKredi = saticiPortfoy.krediler.find(k => String(k.id) === String(satilanVarlik.krediID));
+            
+            if (ilgiliKredi && ilgiliKredi.kalanBorc > 0) {
+                let kalanBorc = ilgiliKredi.kalanBorc;
+                let artisFarki = gelenSatisParasi - kalanBorc;
                 
-                if (saticiRow && saticiRow.portfoy) {
-                    let saticiPortfoy = JSON.parse(saticiRow.portfoy || '{}');
-                    let saticiNakit = saticiPortfoy.nakit !== undefined ? saticiPortfoy.nakit : (saticiPortfoy.para || 0);
-                    
-                    saticiNakit += ilanFiyat;
-                    saticiPortfoy.nakit = saticiNakit;
-
-                    if (saticiPortfoy.varliklar) {
-                        let silindiMi = false;
-                        let hedefVarlikId = detaylarObj.varlikId;
-
-                        saticiPortfoy.varliklar = saticiPortfoy.varliklar.filter(v => {
-                            if (!v) return true;
-                            if (silindiMi) return true;
-
-                            if (hedefVarlikId && String(v.id) === String(hedefVarlikId)) {
-                                silindiMi = true;
-                                return false; 
-                            }
-                            if (v.isim === ilanTipi && (v.durum === 'ilan-aktif' || v.durum === 'satildi' || v.durum === 'sahip')) {
-                                silindiMi = true;
-                                return false; 
-                            }
-                            return true;
-                        });
-                    }
-
-                    db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`).run(JSON.stringify(saticiPortfoy), Date.now(), saticiId);
+                if (artisFarki > 0) {
+                    // Borç tamamen kapandı, artan para nakite ekleniyor
+                    saticiNakit += artisFarki;
+                    ilgiliKredi.kalanBorc = 0;
+                    ilgiliKredi.icradanKalanBorc = false;
+                    saticiPortfoy.krediler = saticiPortfoy.krediler.filter(k => String(k.id) !== String(satilanVarlik.krediID));
+                } else {
+                    // Satış bedeli borcu kapatmaya yetmedi, kalan bakiye borç olarak kalıyor
+                    let kalanNetBorc = Math.abs(artisFarki);
+                    ilgiliKredi.kalanBorc = kalanNetBorc;
+                    ilgiliKredi.icradanKalanBorc = true;
+                    // Nakite ekstra para eklenmiyor çünkü para borca gitti
                 }
+            } else {
+                saticiNakit += gelenSatisParasi;
             }
+        } else {
+            // Blokeli değilse para doğrudan nakite eklenir
+            saticiNakit += gelenSatisParasi;
+        }
 
+        saticiPortfoy.nakit = saticiNakit;
+
+        // Genel kredi toplamlarını güncelle
+        if (saticiPortfoy.krediler && Array.isArray(saticiPortfoy.krediler)) {
+            saticiPortfoy.kredi = saticiPortfoy.krediler.reduce((toplam, kr) => toplam + (kr.kalanBorc || 0), 0);
+            saticiPortfoy.taksit = saticiPortfoy.krediler.reduce((toplam, kr) => toplam + (kr.icradanKalanBorc ? 0 : (kr.taksitTutu || kr.taksit || 0)), 0);
+            if (saticiPortfoy.krediler.length === 0) {
+                saticiPortfoy.kredi = 0;
+                saticiPortfoy.taksit = 0;
+            }
+        }
+
+        // Varlığı satıcının envanterinden düş
+        if (saticiPortfoy.varliklar && satilanVarlik) {
+            saticiPortfoy.varliklar = saticiPortfoy.varliklar.filter(v => v && v.id !== satilanVarlik.id);
+        }
+
+        db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`).run(JSON.stringify(saticiPortfoy), Date.now(), saticiId);
+    }
+}
             if (ilan) {
                 db.prepare(`DELETE FROM ilanlar WHERE id = ?`).run(ilanId);
             }
