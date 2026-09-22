@@ -951,7 +951,11 @@ app.get('/api/portfoy-getir', (req, res) => {
             nakit: guncelPortfoy.nakit !== undefined ? guncelPortfoy.nakit : (guncelPortfoy.para || 0),
             varliklar: guncelPortfoy.varliklar || [],
             gunlukGelir: guncelPortfoy.gunlukGelir || 0,
-            konutKiraGeliri: guncelPortfoy.konutKiraGeliri || 0 
+            konutKiraGeliri: guncelPortfoy.konutKiraGeliri || 0,
+            // 🌟 İŞTE EKSİK OLAN VE EKRANI GÜNCELLEYECEK KRİTİK ALANLAR BURASI:
+            krediler: guncelPortfoy.krediler || [],
+            kredi: guncelPortfoy.kredi || 0,
+            taksit: guncelPortfoy.taksit || 0
         });
     } catch (err) {
         console.error("Portföy getirme hatası:", err.message);
