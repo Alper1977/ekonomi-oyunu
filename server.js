@@ -622,45 +622,55 @@ if (saticiId) {
         let hedefVarlikId = detaylarObj.varlikId;
         let satilanVarlik = null;
 
+        console.log("--- İLAN SATIŞI DEBUG ---");
+        console.log("Hedef Varlık ID:", hedefVarlikId);
+        console.log("İlan Tipi / İsmi:", ilanTipi);
+        console.log("Satıcının Varlıkları:", saticiPortfoy.varliklar);
+        console.log("Satıcının Kredileri:", saticiPortfoy.krediler);
+
         if (saticiPortfoy.varliklar && Array.isArray(saticiPortfoy.varliklar)) {
-            // 1. Önce ID ile birebir aramayı dene
             if (hedefVarlikId) {
                 satilanVarlik = saticiPortfoy.varliklar.find(v => v && String(v.id) === String(hedefVarlikId));
             }
-            // 2. ID ile bulunamadıysa, ismi ve ilan/sahip durumu eşleşen ilk varlığı al
             if (!satilanVarlik) {
                 satilanVarlik = saticiPortfoy.varliklar.find(v => v && v.isim === ilanTipi && (v.durum === 'ilan-aktif' || v.durum === 'satildi' || v.durum === 'sahip' || v.bloke));
             }
         }
 
+        console.log("Bulunan Satılan Varlık:", satilanVarlik);
+
         // 🌟 KREDİ VE BLOKE KONTROLÜ
-   if (satilanVarlik && satilanVarlik.bloke && satilanVarlik.krediID && saticiPortfoy.krediler && Array.isArray(saticiPortfoy.krediler)) {
-            let krediIndex = saticiPortfoy.krediler.findIndex(k => String(k.id) === String(satilanVarlik.krediID));
+        if (satilanVarlik && satilanVarlik.bloke && satilanVarlik.krediID && saticiPortfoy.krediler && Array.isArray(saticiPortfoy.krediler)) {
+            // Hem k.id hem k.krediID kontrolü ekleyelim (Hangisiyle tutuluyorsa yakalasın)
+            let krediIndex = saticiPortfoy.krediler.findIndex(k => k && (String(k.id) === String(satilanVarlik.krediID) || String(k.krediID) === String(satilanVarlik.krediID)));
             
+            console.log("Eşleşen Kredi Index:", krediIndex);
+
             if (krediIndex !== -1) {
                 let ilgiliKredi = saticiPortfoy.krediler[krediIndex];
-                let kalanBorc = ilgiliKredi.kalanBorc || 0;
+                let kalanBorc = Number(ilgiliKredi.kalanBorc) || 0;
                 let artisFarki = gelenSatisParasi - kalanBorc;
                 
                 if (artisFarki >= 0) {
-                    // Borç tamamen kapandı! Krediyi diziden tamamen siliyoruz ki arayüzde o satır yok olsun.
                     saticiNakit += artisFarki;
                     saticiPortfoy.krediler.splice(krediIndex, 1);
+                    console.log("Borç tamamen kapandı, kredi diziden silindi!");
                 } else {
-                    // Borç kapanmadı, kalan borç güncelleniyor
                     ilgiliKredi.kalanBorc = Math.abs(artisFarki);
                     ilgiliKredi.icradanKalanBorc = true;
+                    console.log("Borç kısmen ödendi, kalan borç:", ilgiliKredi.kalanBorc);
                 }
             } else {
                 saticiNakit += gelenSatisParasi;
             }
         } else {
+            console.log("Varlık blokeli değil veya krediID bulunamadı. Sadece nakit ekleniyor.");
             saticiNakit += gelenSatisParasi;
         }
 
         saticiPortfoy.nakit = saticiNakit;
 
-        // Genel kredi toplamlarını ve satırlarını kesin olarak güncelle
+        // Genel kredi toplamlarını güncelle
         if (saticiPortfoy.krediler && Array.isArray(saticiPortfoy.krediler)) {
             if (saticiPortfoy.krediler.length === 0) {
                 saticiPortfoy.kredi = 0;
@@ -674,15 +684,12 @@ if (saticiId) {
             saticiPortfoy.kredi = 0;
             saticiPortfoy.taksit = 0;
         }
-        
 
-        // 🌟 SATICININ ENVANTERİNDEN VARLIĞI KESİN OLARAK DÜŞ
+        // Satıcının envanterinden varlığı düş
         if (saticiPortfoy.varliklar && Array.isArray(saticiPortfoy.varliklar)) {
             if (satilanVarlik) {
-                // Bulunan spesifik varlığı ID üzerinden çıkar
                 saticiPortfoy.varliklar = saticiPortfoy.varliklar.filter(v => v && String(v.id) !== String(satilanVarlik.id));
             } else {
-                // Hiçbiri eşleşmediyse ismi tutan ilk ilandakini güvenli sil
                 let silindi = false;
                 saticiPortfoy.varliklar = saticiPortfoy.varliklar.filter(v => {
                     if (!v) return false;
@@ -696,6 +703,7 @@ if (saticiId) {
         }
 
         db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`).run(JSON.stringify(saticiPortfoy), Date.now(), saticiId);
+        console.log("Veritabanı başarıyla güncellendi.");
     }
 }
             if (ilan) {
