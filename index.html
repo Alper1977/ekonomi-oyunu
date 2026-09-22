@@ -5572,16 +5572,18 @@ function taksitleriOdeVeyaKontrolEt() {
         });
     }
 
-    // 6. ADIM: Kesin Temizlik ve Sıfırlama
+// 6. ADIM: Kesin Temizlik ve Sıfırlama
     if (state.krediler && Array.isArray(state.krediler)) {
-        // Borcu bitenleri (kalanBorc <= 0 olanları) diziden tamamen uçur
-        state.krediler = state.krediler.filter(kr => (kr.kalanBorc || 0) > 0);
+        // 🌟 KÜSURAT HATASINI ÖNLEMEK İÇİN 0.01'DEN KÜÇÜK KALANLARI SİL!
+        state.krediler = state.krediler.filter(kr => (kr.kalanBorc || 0) > 0.01);
         
         state.kredi = state.krediler.reduce((toplam, kr) => toplam + (kr.kalanBorc || 0), 0);
         
-        if (state.krediler.length === 0) {
+        // Eğer toplam borç 1 kuruştan az kaldıysa kesinlikle sıfırla
+        if (state.krediler.length === 0 || state.kredi < 0.01) {
             state.kredi = 0;
             state.taksit = 0;
+            state.krediler = [];
         } else {
             // Aktif normal kredilerin taksitlerini al, icra bakiyesi varsa taksiti 0 yap
             state.taksit = state.krediler.reduce((toplam, kr) => toplam + (kr.icradanKalanBorc ? 0 : (kr.taksit || 0)), 0);
