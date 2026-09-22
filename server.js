@@ -694,23 +694,28 @@ if (saticiId) {
             saticiPortfoy.taksit = 0;
             saticiPortfoy.krediler = [];
         }
-
-        // 🌟 SATICININ ENVANTERİNDEN VARLIĞI KESİN OLARAK DÜŞ
+// 🌟 SATICININ ENVANTERİNDEN VARLIĞI KESİN OLARAK DÜŞ (GARANTİCİ YÖNTEM)
         if (saticiPortfoy.varliklar && Array.isArray(saticiPortfoy.varliklar)) {
-            if (satilanVarlik) {
-                // Bulunan spesifik varlığı ID üzerinden çıkar
-                saticiPortfoy.varliklar = saticiPortfoy.varliklar.filter(v => v && String(v.id) !== String(satilanVarlik.id));
-            } else {
-                // Hiçbiri eşleşmediyse ismi tutan ilk ilandakini güvenli sil
-                let silindi = false;
-                saticiPortfoy.varliklar = saticiPortfoy.varliklar.filter(v => {
-                    if (!v) return false;
-                    if (!silindi && v.isim === ilanTipi) {
-                        silindi = true;
-                        return false;
-                    }
-                    return true;
-                });
+            let silinenIndex = -1;
+
+            // 1. Adım: Önce istekten gelen hedefVarlikId ile birebir eşleşeni ara
+            if (hedefVarlikId) {
+                silinenIndex = saticiPortfoy.varliklar.findIndex(v => v && String(v.id) === String(hedefVarlikId));
+            }
+
+            // 2. Adım: ID ile bulunamadıysa, satilanVarlik nesnesinin ID'si ile ara
+            if (silinenIndex === -1 && satilanVarlik && satilanVarlik.id) {
+                silinenIndex = saticiPortfoy.varliklar.findIndex(v => v && String(v.id) === String(satilanVarlik.id));
+            }
+
+            // 3. Adım: Hala bulunamadıysa, ismi (boslukları temizleyerek) eşleşen ilk varlığı bul
+            if (silinenIndex === -1 && ilanTipi) {
+                silinenIndex = saticiPortfoy.varliklar.findIndex(v => v && v.isim && v.isim.trim() === ilanTipi.trim());
+            }
+
+            // Eğer eşleşen bir varlık index'i bulunduysa, diziden kesin olarak söküp at!
+            if (silinenIndex !== -1) {
+                saticiPortfoy.varliklar.splice(silinenIndex, 1);
             }
         }
 
