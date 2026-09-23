@@ -568,8 +568,7 @@ for (let i = 0; i < 5; i++) {
         }
     }
 }
-                global.sonBotZamani = simdiMs;
-            }
+             
 
             // --- B. Bot İlan Açma Döngüsü ---
             if (simdiMs - global.sonBotIlanZamani >= botIlanHizi) {
