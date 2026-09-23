@@ -1595,7 +1595,11 @@ async function zenginlerListesiniGuncelle() {
         kullaniciAdi = aktifKullaniciAdiKaydi;
     }
 
-    let aktifSirketAdi = kullaniciAdi.toUpperCase() + " A.Ş.";
+    let aktifSirketAdi = kullaniciAdi.toUpperCase();
+    if (!aktifSirketAdi.endsWith(" A.Ş.")) {
+        aktifSirketAdi += " A.Ş.";
+    }
+
     if (sirketBaslikMali) sirketBaslikMali.innerText = aktifSirketAdi;
     if (sirketAdiSplash) sirketAdiSplash.innerText = aktifSirketAdi;
 
@@ -1625,13 +1629,18 @@ async function zenginlerListesiniGuncelle() {
 
         if (Array.isArray(hamListe) && hamListe.length > 0) {
             oyuncuListesi = hamListe.map(item => {
-                let isim = item.isim || item.name || "B bilinmeyen";
+                let hamIsim = (item.isim || item.name || "Bilinmeyen").trim();
+                let bHali = hamIsim.toLocaleUpperCase('tr-TR');
+                if (!bHali.endsWith(" A.Ş.") && !bHali.endsWith(" A.S.")) {
+                    bHali += " A.Ş.";
+                }
+
                 let servetDegeri = item.nakit !== undefined ? item.nakit : (item.servet !== undefined ? item.servet : (item.toplamServet || 0));
                 
                 return {
-                    isim: isim,
+                    isim: bHali,
                     servet: Number(servetDegeri) || 0,
-                    benim: isim.trim().toUpperCase() === aktifSirketAdi.trim().toUpperCase()
+                    benim: bHali === aktifSirketAdi || hamIsim === kullaniciAdi
                 };
             });
         }
@@ -1639,15 +1648,17 @@ async function zenginlerListesiniGuncelle() {
         console.error("Zenginler listesi sunucudan alınamadı:", e);
     }
 
-    // Eğer sunucudan liste boş geldiyse istemcideki botlar ve state ile geçici liste oluştur (Hata durumunda liste bomboş kalmasın)
+    // Eğer sunucudan liste boş geldiyse istemcideki botlar ve state ile geçici liste oluştur
     if (oyuncuListesi.length === 0) {
         let benimToplamServet = (state.nakit || 0) + (state.vadeli || 0);
         oyuncuListesi.push({ isim: aktifSirketAdi, servet: benimToplamServet, benim: true });
 
         if (typeof botlar !== 'undefined' && Array.isArray(botlar)) {
             botlar.forEach(b => {
+                let botIsim = b.isim.toLocaleUpperCase('tr-TR');
+                if (!botIsim.endsWith(" A.Ş.")) botIsim += " A.Ş.";
                 let botServet = (b.nakit || 0) + (b.vadeli || 0);
-                oyuncuListesi.push({ isim: b.isim, servet: botServet, benim: false });
+                oyuncuListesi.push({ isim: botIsim, servet: botServet, benim: false });
             });
         }
     }
