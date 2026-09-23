@@ -144,6 +144,33 @@ db.prepare(`CREATE TABLE IF NOT EXISTS ilanlar (
     tarih DATETIME DEFAULT CURRENT_TIMESTAMP
 )`).run();
 
+// --- 1. Bot Havuzu Tanımları ve Üretimi (Sunucu Başlangıcı) ---
+const isimHavuzu = ["BUKET", "AHMET", "MEHMET", "AYŞE", "FATMA", "MUSTAFA", "EMEL", "CAN", "ZEYNEP", "BURAK", "SEDA", "EMRE", "DENİZ", "MURAT", "ELİF", "KEREM", "MERVE", "TOLGA", "SELİN", "ONUR", "ESRA", "KAAN", "BÜŞRA", "VOLKAN", "GAMZE", "CEM", "GİZEM", "OĞUZ", "CEREN", "BERK", "DERYA"];
+const soyisimHavuzu = ["ENERJİ", "İNŞAAT", "TAAHHÜT", "MAKİNA", "METAL", "SANAYİ", "TİCARET", "GRUP", "YAPI", "ENDÜSTRİ", "YILMAZ", "DEMİR", "KAYA", "ÇELİK", "ŞAHİN", "ÖZTÜRK", "YILDIZ", "AYDIN", "ARSLAN", "DOĞAN", "KILIÇ", "ASLAN", "ÇETİN", "KOÇ", "KURT", "ÖZKAN", "ŞİMŞEK", "POLAT", "ÖZDEMİR", "ERDOĞAN"];
+
+// Eğer botlar tablosu boşsa sunucu açılışında 500 botu oluşturup veritabanına kaydedebilirsin
+function botlariBaslat() {
+    const mevcutBotSayisi = db.prepare(`SELECT COUNT(*) as sayi FROM botlar`).get().sayi;
+    if (mevcutBotSayisi > 0) return;
+
+    const insertBot = db.prepare(`INSERT INTO botlar (id, isim, nakit, varliklar) VALUES (?, ?, ?, ?)`);
+    const insertTransaction = db.transaction(() => {
+        for (let i = 1; i <= 500; i++) {
+            let rastgeleIsim = isimHavuzu[Math.floor(Math.random() * isimHavuzu.length)] + " " + soyisimHavuzu[Math.floor(Math.random() * soyisimHavuzu.length)] + " A.Ş.";
+            let baslangicNakit = Math.floor(Math.random() * 50000000) + 5000000;
+            
+            insertBot.run(
+                200 + i, 
+                rastgeleIsim, 
+                baslangicNakit, 
+                JSON.stringify([])
+            );
+        }
+    });
+    insertTransaction();
+}
+botlariBaslat();
+
 // --- 🌟 ÇEVRİMİÇİ / ÇEVRİMDIŞI AKILLI EKONOMİ MOTORU (TAM KAPSAMLI) ---
 function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
     if (!userRow || !userRow.portfoy) return null;
