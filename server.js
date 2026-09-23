@@ -144,6 +144,72 @@ db.prepare(`CREATE TABLE IF NOT EXISTS ilanlar (
     tarih DATETIME DEFAULT CURRENT_TIMESTAMP
 )`).run();
 
+db.prepare(`CREATE TABLE IF NOT EXISTS ilanlar (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    kullanici_id INTEGER,
+    satici_adsoyad TEXT,
+    ilan_tipi TEXT,
+    fiyat REAL,
+    detaylar TEXT,
+    tarih DATETIME DEFAULT CURRENT_TIMESTAMP
+)`).run();
+
+// ==========================================
+// 🌟 MERKEZİ BOTLAR TABLOSU VE SABİT KAYIT
+// ==========================================
+db.prepare(`
+    CREATE TABLE IF NOT EXISTS botlar (
+        id INTEGER PRIMARY KEY,
+        isim TEXT,
+        nakit REAL,
+        vadeli REAL,
+        altin REAL,
+        dolar REAL,
+        euro REAL,
+        kredi REAL,
+        varliklar TEXT
+    )
+`).run();
+
+// Eğer botlar tablosu boşsa, o 500 sabit botu veritabanına tek seferlik çakıyoruz
+const botSayisi = db.prepare(`SELECT COUNT(*) as sayi FROM botlar`).get().sayi;
+
+if (botSayisi === 0) {
+    let isimHavuzu = ["BUKET", "AHMET", "MEHMET", "AYŞE", "FATMA", "MUSTAFA", "EMEL", "CAN", "ZEYNEP", "BURAK", "SEDA", "EMRE", "DENİZ", "MURAT", "ELİF", "KEREM", "MERVE", "TOLGA", "SELİN", "ONUR", "ESRA", "KAAN", "BÜŞRA", "VOLKAN", "GAMZE", "CEM", "GİZEM", "OĞUZ", "CEREN", "BERK", "DERYA"];
+    let soyisimHavuzu = ["ENERJİ", "İNŞAAT", "TAAHHÜT", "MAKİNA", "METAL", "SANAYİ", "TİCARET", "GRUP", "YAPI", "ENDÜSTRİ", "YILMAZ", "DEMİR", "KAYA", "ÇELİK", "ŞAHİN", "ÖZTÜRK", "YILDIZ", "AYDIN", "ARSLAN", "DOĞAN", "KILIÇ", "ASLAN", "ÇETİN", "KOÇ", "KURT", "ÖZKAN", "ŞİMŞEK", "POLAT", "ÖZDEMİR", "ERDOĞAN"];
+
+    const insertBot = db.prepare(`
+        INSERT INTO botlar (id, isim, nakit, vadeli, altin, dolar, euro, kredi, varliklar) 
+        VALUES (?, ?, ?, ?, 0, 0, 0, 0, '[]')
+    `);
+
+    const insertMany = db.transaction((bots) => {
+        for (let bot of bots) {
+            insertBot.run(bot.id, bot.isim, bot.nakit, bot.vadeli);
+        }
+    });
+
+    let yeniBotlar = [];
+    for (let i = 1; i <= 500; i++) {
+        let isimIndex = (i * 7) % isimHavuzu.length;
+        let soyisimIndex = (i * 13) % soyisimHavuzu.length;
+        let sabitIsim = isimHavuzu[isimIndex] + " " + soyisimHavuzu[soyisimIndex] + " A.Ş.";
+        
+        let sabitNakit = 5000000 + ((i * 123456) % 45000000);
+        let sabitVadeli = (i * 78910) % 10000000;
+
+        yeniBotlar.push({
+            id: 200 + i,
+            isim: sabitIsim,
+            nakit: sabitNakit,
+            vadeli: sabitVadeli
+        });
+    }
+
+    insertMany(yeniBotlar);
+    console.log("500 adet sabit bot veritabanına başarıyla kaydedildi.");
+}
+
 // --- 🌟 ÇEVRİMİÇİ / ÇEVRİMDIŞI AKILLI EKONOMİ MOTORU (TAM KAPSAMLI) ---
 function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
     if (!userRow || !userRow.portfoy) return null;
