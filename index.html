@@ -1616,13 +1616,14 @@ async function zenginlerListesiniGuncelle() {
     let oyuncuListesi = [];
 
     // 2. Kendi şirketimizi listeye ekle
+    let toplamServetim = (state.nakit || 0) + (state.vadeli || 0) + ((state.altin || 0) * 3000) + ((state.dolar || 0) * 35);
     oyuncuListesi.push({
         isim: aktifSirketAdi,
-        servet: typeof hesaplaServet === 'function' ? hesaplaServet(state) : 0,
+        servet: toplamServetim,
         benim: true
     });
 
-   // 3. Sunucudan HEM GERÇEK ÜYELERİ HEM DE 500 SABİT BOTU ÇEK
+    // 3. SUNUCUDAN HEM GERÇEK ÜYELERİ HEM DE BOTLARI TEK SEFERDE ÇEK
     try {
         let response = await fetch('/api/kullanicilar-liste');
         let sonuc = await response.json();
@@ -1630,15 +1631,14 @@ async function zenginlerListesiniGuncelle() {
         if (sonuc.basari && Array.isArray(sonuc.uyeler)) {
             sonuc.uyeler.forEach(uye => {
                 let uyeSirketAdi = (uye.adsoyad || uye.isim || 'ŞİRKET').toUpperCase();
-                // Eğer ismin son zaten A.Ş. ile bitmiyorsa ekleyelim ki estetik dursun
                 if (!uyeSirketAdi.endsWith("A.Ş.")) {
                     uyeSirketAdi += " A.Ş.";
                 }
                 
-                // Kendimizi tekrar eklememek için kontrol
+                // Kendimizi iki kere eklememek için kontrol
                 if (uyeSirketAdi !== aktifSirketAdi) {
-                    let hedefVeri = uye.portfoy || uye.state || uye;
-                    let uyeServet = typeof hesaplaServet === 'function' ? hesaplaServet(hedefVeri) : (uye.servet || 0);
+                    let hedefPortfoy = uye.portfoy || {};
+                    let uyeServet = typeof hesaplaServet === 'function' ? hesaplaServet(hedefPortfoy) : ((hedefPortfoy.nakit || hedefPortfoy.para || 0) + (hedefPortfoy.vadeli || 0));
                     
                     oyuncuListesi.push({
                         isim: uyeSirketAdi,
@@ -1676,7 +1676,7 @@ async function zenginlerListesiniGuncelle() {
             }
         }
 
-        listeDiv.innerHTML = gosterilecekListe.map(o => {
+        let html = gosterilecekListe.map(o => {
             if (o.ozelSatir) {
                 return `<div class="zengin-item-box" style="text-align: center; background: transparent; border: none; font-size: 13px; color: #fff;">...</div>`;
             }
@@ -1688,13 +1688,11 @@ async function zenginlerListesiniGuncelle() {
                 </div>
             `;
         }).join('');
-    }
 
-    let siralamaBilgisi = document.getElementById('siralama-bilgisi');
-    if (siralamaBilgisi) {
-        siralamaBilgisi.innerText = "Zenginler Listesi: " + benimSira + ". Sıradasınız";
+        listeDiv.innerHTML = html;
     }
 }
+ 
 async function portfoyuSenkronizeEt() {
     try {
         let response = await fetch('/api/aktif-kullanici', { credentials: 'include' });
