@@ -3041,6 +3041,12 @@ if (typeof veriDegisti !== 'undefined' && veriDegisti && typeof portfoyuSunucuya
     portfoyuSunucuyaKaydet(state);
     veriDegisti = false; // Bayrağı sıfırlayarak sürekli istek atılmasını önleyelim
 }
+
+// 🌟 Zenginler listesini her periyodik turda (her 3 saniyede bir) garanti güncelle
+if (typeof zenginlerListesiniGuncelle === 'function') {
+    zenginlerListesiniGuncelle();
+}
+ 
 }, 3000);
     
 async function guncelle() {
