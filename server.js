@@ -1276,9 +1276,10 @@ app.post('/api/portfoy-guncelle', (req, res) => {
         return res.status(500).json({ basari: false, mesaj: err.message });
     }
 });
+
 app.get('/api/kullanicilar-liste', (req, res) => {
     try {
-        // 1. Gerçek kullanıcıları çek ve portföylerini parse et
+        // 1. Gerçek kullanıcıları çek
         const userRows = db.prepare(`SELECT adsoyad, portfoy FROM kullanicilar`).all();
         let uyeler = userRows.map(row => {
             let portfoyData = {};
@@ -1302,7 +1303,7 @@ app.get('/api/kullanicilar-liste', (req, res) => {
             };
         });
 
-        // 2. Ayrı tablodaki botları çek ve aynı formata sokarak listeye dahil et
+        // 2. Botlar tablosundaki tüm botları çek
         const botRows = db.prepare(`SELECT isim, nakit, vadeli, varliklar FROM botlar`).all();
         let botUyeler = botRows.map(bot => {
             let botNakit = bot.nakit || 0;
@@ -1320,21 +1321,13 @@ app.get('/api/kullanicilar-liste', (req, res) => {
                     nakit: botNakit,
                     para: botNakit,
                     vadeli: botVadeli,
-                    varliklar: botVarliklar,
-                    gunlukGelir: Math.floor(botNakit * 0.005)
+                    varliklar: botVarliklar
                 }
             };
         });
 
-        // 3. Gerçek kullanıcılar ve botları tek havuzda birleştir
+        // 3. Hepsini tek havuzda birleştir
         let tumListe = [...uyeler, ...botUyeler];
-
-        // 4. Toplam servete göre büyükten küçüğe sırala
-        tumListe.sort((a, b) => {
-            let servetA = (a.portfoy.nakit || a.portfoy.para || 0) + (a.portfoy.vadeli || 0);
-            let servetB = (b.portfoy.nakit || b.portfoy.para || 0) + (b.portfoy.vadeli || 0);
-            return servetB - servetA;
-        });
 
         res.json({ basari: true, uyeler: tumListe });
     } catch (err) {
