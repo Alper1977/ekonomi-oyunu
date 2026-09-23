@@ -1585,6 +1585,7 @@ async function profilAdiGuncelle() {
 async function zenginlerListesiniGuncelle() {
     if (typeof state === 'undefined' || !state) return;
 
+    // 1. Kendi portföyünü sunucuya gönder
     try {
         await fetch('/api/portfoy-guncelle', {
             method: 'POST',
@@ -1595,7 +1596,7 @@ async function zenginlerListesiniGuncelle() {
             })
         });
     } catch (e) {
-        console.error("Portföy ve botlar sunucuya kaydedilemedi:", e);
+        // 401 hatası verse bile listenin kalanı çalışmaya devam etsin
     }
 
     let sirketBaslikMali = document.getElementById('sirket-adi-mali');
@@ -1614,41 +1615,53 @@ async function zenginlerListesiniGuncelle() {
         aktifSirketAdi += " A.Ş.";
     }
 
-    let globalOyuncuListesi = [];
+    let hamListe = [];
 
+    // 2. Sunucudan ortak zenginler listesini çek
     try {
         let response = await fetch('/api/zenginler-listesi-ortak');
         let textData = await response.text();
         let sonuc = textData ? JSON.parse(textData) : {};
         
-        let hamListe = sonuc.liste || sonuc.zenginler || sonuc.data || (Array.isArray(sonuc) ? sonuc : []);
-
-        if (Array.isArray(hamListe) && hamListe.length > 0) {
-            globalOyuncuListesi = hamListe.map(item => {
-                let hamIsim = (item.isim || item.name || item.sirketAdi || "Bilinmeyen").trim();
-                let bHali = hamIsim.toLocaleUpperCase('tr-TR');
-                if (!bHali.endsWith(" A.Ş.") && !bHali.endsWith(" A.S.")) {
-                    bHali += " A.Ş.";
-                }
-
-                let servetDegeri = item.nakit !== undefined ? item.nakit : (item.servet !== undefined ? item.servet : (item.toplamServet || 0));
-                let isBenim = (bHali === aktifSirketAdi) || (item.benim === true);
-                
-                return {
-                    isim: bHali,
-                    servet: Number(servetDegeri) || 0,
-                    benim: isBenim
-                };
-            });
-        }
+        hamListe = sonuc.liste || sonuc.zenginler || sonuc.data || (Array.isArray(sonuc) ? sonuc : []);
     } catch (e) {
-        console.error("Zenginler listesi sunucudan alınamadı:", e);
+        console.error("Zenginler listesi alınamadı:", e);
     }
 
-    globalOyuncuListesi.sort((a, b) => b.servet - a.servet);
+    let islenmisListe = [];
+    let gorulenIsimler = new Set();
 
+    if (Array.isArray(hamListe) && hamListe.length > 0) {
+        for (let item of hamListe) {
+            let hamIsim = (item.isim || item.name || item.sirketAdi || "Bilinmeyen").trim();
+            let bHali = hamIsim.toLocaleUpperCase('tr-TR');
+            if (!bHali.endsWith(" A.Ş.") && !bHali.endsWith(" A.S.")) {
+                bHali += " A.Ş.";
+            }
+
+            // Aynı isimli mükerrer kayıtları engelle (Adminin iki kere listeye girmesini önler)
+            if (gorulenIsimler.has(bHali)) continue;
+            gorulenIsimler.add(bHali);
+
+            let servetDegeri = item.nakit !== undefined ? item.nakit : (item.servet !== undefined ? item.servet : (item.toplamServet || 0));
+            
+            // Aktif şirket eşleşmesi
+            let isBenim = (bHali === aktifSirketAdi) || (item.benim === true);
+
+            islenmisListe.push({
+                isim: bHali,
+                servet: Number(servetDegeri) || 0,
+                benim: isBenim
+            });
+        }
+    }
+
+    // Servete göre büyükten küçüğe sırala
+    islenmisListe.sort((a, b) => b.servet - a.servet);
+
+    // Aktif şirket adını listede bulup kesin olarak 'benim' bayrağını verelim
     if (aktifSirketAdi) {
-        globalOyuncuListesi.forEach(item => {
+        islenmisListe.forEach(item => {
             if (item.isim === aktifSirketAdi) {
                 item.benim = true;
             } else {
@@ -1657,22 +1670,22 @@ async function zenginlerListesiniGuncelle() {
         });
     }
 
-    let benimSira = globalOyuncuListesi.findIndex(x => x.benim) + 1;
+    let benimSira = islenmisListe.findIndex(x => x.benim) + 1;
     if (benimSira <= 0) benimSira = 1; 
 
     let listeDiv = document.getElementById('zenginler-listesi');
     if (listeDiv) {
         let gosterilecekListe = [];
-        let sinir = Math.min(100, globalOyuncuListesi.length);
+        let sinir = Math.min(100, islenmisListe.length);
         
         for (let i = 0; i < sinir; i++) {
-            gosterilecekListe.push({ ...globalOyuncuListesi[i], gercekIndex: i + 1 });
+            gosterilecekListe.push({ ...islenmisListe[i], gercekIndex: i + 1 });
         }
 
         let kullaniciIlkYuzdeMi = gosterilecekListe.some(x => x.benim);
         if (!kullaniciIlkYuzdeMi) {
             gosterilecekListe.push({ isim: "...", servet: 0, ozelSatir: true });
-            let benimObjem = globalOyuncuListesi.find(x => x.benim);
+            let benimObjem = islenmisListe.find(x => x.benim);
             if (benimObjem) {
                 gosterilecekListe.push({ ...benimObjem, gercekIndex: benimSira });
             }
