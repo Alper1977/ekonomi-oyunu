@@ -4441,56 +4441,42 @@ async function siralamayiGuncelle() {
         console.error("Portföy kaydedilemedi:", e);
     }
 
-    // 2. Botları listeye ekle
     let tumSiralama = [];
-    if (typeof botlar !== 'undefined' && Array.isArray(botlar)) {
-        botlar.forEach(bot => {
-            tumSiralama.push({
-                isim: bot.isim,
-                nakit: typeof hesaplaServet === 'function' ? hesaplaServet(bot) : (bot.nakit || 0),
-                benMi: false
-            });
-        });
-    }
 
-    // 3. Sunucudan diğer GERÇEK ÜYELERİ çek
-    try {
-        let response = await fetch('/api/kullanicilar-liste');
-        let sonuc = await response.json();
-        
-        if (sonuc.basari && Array.isArray(sonuc.uyeler)) {
-            sonuc.uyeler.forEach(uye => {
-                let sirketAdi = (uye.adsoyad || 'ŞİRKET').toUpperCase() + " A.Ş.";
-                let servet = typeof hesaplaServet === 'function' ? hesaplaServet(uye.portfoy || {}) : 0;
-                
-                // Eğer bu kayıt sunucudaki oturum sahibi ile eşleşiyorsa veya genel kontrol
-                tumSiralama.push({
-                    isim: sirketAdi,
-                    nakit: servet,
-                    benim: false // Aşağıda güncellenecek
-                });
-            });
-        }
-    } catch (e) {
-        console.error("Gerçek üyeler çekilemedi:", e);
-    }
-
-    // 4. Kendi servetini hesapla ve listeye ekle
-    let toplamServetim = state.nakit + (state.vadeli || 0) + (state.altin || 0) * 3000 + (state.dolar || 0) * 35; 
-    
     // Aktif kullanıcının adını HTML'den veya session'dan al
     let sirketBaslik = document.getElementById('sirket-adi-mali');
     let aktifIsim = (sirketBaslik && sirketBaslik.innerText && !sirketBaslik.innerText.includes("Yükleniyor")) 
         ? sirketBaslik.innerText 
         : "ALPER A.Ş.";
 
-    tumSiralama.push({
-        isim: aktifIsim,
-        nakit: toplamServetim,
-        benim: true
-    });
+    // 2. Sunucudan ortak zenginler listesini çek (Tüm botlar ve kullanıcılar dahil)
+    try {
+        let response = await fetch('/api/zenginler-listesi-ortak');
+        let sonuc = await response.json();
+        
+        if (sonuc.basari && Array.isArray(sonuc.liste)) {
+            tumSiralama = sonuc.liste.map(item => ({
+                isim: item.isim,
+                nakit: item.servet,
+                benMi: item.isim === aktifIsim
+            }));
+        }
+    } catch (e) {
+        console.error("Ortak zenginler listesi çekilemedi:", e);
+    }
 
-    // 5. Büyükten küçüğe sırala
+    // Eğer sunucu listesinde henüz anlık kullanıcı yoksa veya lokal olarak eklemek gerekirse garantileyelim
+    let benimKaydimVarMi = tumSiralama.some(item => item.benMi);
+    if (!benimKaydimVarMi) {
+        let toplamServetim = hesaplaServet(state);
+        tumSiralama.push({
+            isim: aktifIsim,
+            nakit: toplamServetim,
+            benMi: true
+        });
+    }
+
+    // 3. Büyükten küçüğe sırala
     tumSiralama.sort((a, b) => b.nakit - a.nakit);
 
     let benimIndexim = tumSiralama.findIndex(item => item.benMi) + 1;
@@ -4521,7 +4507,6 @@ async function siralamayiGuncelle() {
 
     listeKapsayici.innerHTML = html;
 }
-
 function botIlaniniKrediliAl(varlikId, botIsmi, varlikIsmi, bedel) {
     let miktarInput = document.getElementById(`kredi-miktar-${varlikId}`);
     let vadeSelect = document.getElementById(`kredi-vade-${varlikId}`);
