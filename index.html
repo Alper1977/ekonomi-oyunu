@@ -1595,8 +1595,8 @@ async function zenginlerListesiniGuncelle() {
         kullaniciAdi = aktifKullaniciAdiKaydi;
     }
 
-    let aktifSirketAdi = kullaniciAdi.toUpperCase();
-    if (!aktifSirketAdi.endsWith(" A.Ş.")) {
+    let aktifSirketAdi = kullaniciAdi.toLocaleUpperCase('tr-TR').trim();
+    if (!aktifSirketAdi.endsWith(" A.Ş.") && !aktifSirketAdi.endsWith(" A.S.")) {
         aktifSirketAdi += " A.Ş.";
     }
 
@@ -1637,10 +1637,16 @@ async function zenginlerListesiniGuncelle() {
 
                 let servetDegeri = item.nakit !== undefined ? item.nakit : (item.servet !== undefined ? item.servet : (item.toplamServet || 0));
                 
+                // Admin / Senin hesabını yakalamak için esnek eşleşme
+                let isBenim = (bHali === aktifSirketAdi) || 
+                              (hamIsim.toLocaleUpperCase('tr-TR') === kullaniciAdi.toLocaleUpperCase('tr-TR')) || 
+                              (bHali.includes("STRATEJİK")) ||
+                              (item.benim === true);
+                
                 return {
                     isim: bHali,
                     servet: Number(servetDegeri) || 0,
-                    benim: bHali === aktifSirketAdi || hamIsim === kullaniciAdi
+                    benim: isBenim
                 };
             });
         }
@@ -1648,7 +1654,7 @@ async function zenginlerListesiniGuncelle() {
         console.error("Zenginler listesi sunucudan alınamadı:", e);
     }
 
-    // Eğer sunucudan liste boş geldiyse istemcideki botlar ve state ile geçici liste oluştur
+    // Eğer sunucudan liste boş geldiyse istemcideki botlar ve state ile liste oluştur
     if (oyuncuListesi.length === 0) {
         let benimToplamServet = (state.nakit || 0) + (state.vadeli || 0);
         oyuncuListesi.push({ isim: aktifSirketAdi, servet: benimToplamServet, benim: true });
@@ -1665,6 +1671,13 @@ async function zenginlerListesiniGuncelle() {
 
     // Servete göre büyükten küçüğe sırala
     oyuncuListesi.sort((a, b) => b.servet - a.servet);
+
+    // Listede kendi hesabını (admini) kesin olarak işaretle
+    oyuncuListesi.forEach(item => {
+        if (item.isim === aktifSirketAdi || item.isim.includes("STRATEJİK") || item.isim.replace(" A.Ş.", "") === kullaniciAdi.toLocaleUpperCase('tr-TR')) {
+            item.benim = true;
+        }
+    });
 
     let benimSira = oyuncuListesi.findIndex(x => x.benim) + 1;
     if (benimSira <= 0) benimSira = 1; 
@@ -1693,9 +1706,9 @@ async function zenginlerListesiniGuncelle() {
             }
             let benMi = o.benim;
             return `
-                <div class="zengin-item-box ${benMi ? 'highlight-me' : ''}" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; margin-bottom: 6px; background: #1a1a1a; border: 1px solid #333; border-radius: 6px; font-size: 11px; color: ${benMi ? '#fff' : '#ddd'}; ${benMi ? 'border: 2px solid gold; background: rgba(255,215,0,0.1);' : ''}">
+                <div class="zengin-item-box ${benMi ? 'highlight-me' : ''}" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; margin-bottom: 6px; background: ${benMi ? 'rgba(255,215,0,0.15)' : '#1a1a1a'}; border: ${benMi ? '2px solid gold' : '1px solid #333'}; border-radius: 6px; font-size: 11px; color: ${benMi ? '#fff' : '#ddd'};">
                     <span>${o.gercekIndex}. ${o.isim}</span>
-                    <span style="color: ${benMi ? 'gold' : '#00c853'};">${Math.floor(o.servet).toLocaleString()} TL</span>
+                    <span style="color: ${benMi ? 'gold' : '#00c853'}; font-weight: ${benMi ? 'bold' : 'normal'};">${Math.floor(o.servet).toLocaleString()} TL</span>
                 </div>
             `;
         }).join('');
