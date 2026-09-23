@@ -545,29 +545,29 @@ setInterval(() => {
             global.sonBotZamani = global.sonBotZamani || 0;
             global.sonBotIlanZamani = global.sonBotIlanZamani || 0;
 
-            // --- A. Bot İşlemleri (Varlık Alımı / Nakit Artışı) ---
-            if (simdiMs - global.sonBotZamani >= botHizi) {
-                let gercekVarliklar = Object.keys(satisFiyatlari);
-                for (let i = 0; i < 5; i++) {
-                    let rastgeleBot = botlar[Math.floor(Math.random() * botlar.length)];
-                    if (!rastgeleBot.varliklar) rastgeleBot.varliklar = [];
+          // --- A. Bot İşlemleri (Varlık Alımı / Nakit Artışı) ---
+// global kontrolünü kaldırıp her döngüde oransal/garanti işlem yapmasını sağlayalım
+let gercekVarliklar = Object.keys(satisFiyatlari);
+for (let i = 0; i < 5; i++) {
+    let rastgeleBot = botlar[Math.floor(Math.random() * botlar.length)];
+    if (!rastgeleBot.varliklar) rastgeleBot.varliklar = [];
 
-                    if (Math.random() < 0.30) {
-                        rastgeleBot.nakit += Math.floor(Math.random() * 200000000) + 50000000;
-                    } else {
-                        let secilenUrun = gercekVarliklar[Math.floor(Math.random() * gercekVarliklar.length)];
-                        let bedel = satisFiyatlari[secilenUrun] || 2000000;
+    if (Math.random() < 0.50) { // Şansı biraz artır ki hemen aksiyon alılsın
+        rastgeleBot.nakit += Math.floor(Math.random() * 200000000) + 50000000;
+    } else {
+        let secilenUrun = gercekVarliklar[Math.floor(Math.random() * gercekVarliklar.length)];
+        let bedel = satisFiyatlari[secilenUrun] || 2000000;
 
-                        if (rastgeleBot.nakit >= bedel) {
-                            rastgeleBot.nakit -= bedel;
-                            rastgeleBot.varliklar.push({
-                                id: Date.now() + Math.random(),
-                                isim: secilenUrun,
-                                durum: 'sahip'
-                            });
-                        }
-                    }
-                }
+        if (rastgeleBot.nakit >= bedel) {
+            rastgeleBot.nakit -= bedel;
+            rastgeleBot.varliklar.push({
+                id: Date.now() + Math.random(),
+                isim: secilenUrun,
+                durum: 'sahip'
+            });
+        }
+    }
+}
                 global.sonBotZamani = simdiMs;
             }
 
