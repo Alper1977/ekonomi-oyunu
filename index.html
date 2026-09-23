@@ -3049,6 +3049,11 @@ if (typeof veriDegisti !== 'undefined' && veriDegisti && typeof portfoyuSunucuya
 if (typeof zenginlerListesiniGuncelle === 'function') {
     zenginlerListesiniGuncelle();
 }
+
+ // 🌟 Botların her periyodik turda işlem yapmasını tetikle
+if (typeof botlariGuncelle === 'function') {
+    botlariGuncelle();
+}
  
 }, 3000);
     
@@ -4668,6 +4673,16 @@ async function botlarIlanlariSatinAl() {
         }
     }
 
+ try {
+        await fetch('/api/portfoy-guncelle', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ portfoy: state, botlar: botlar })
+        });
+    } catch (e) {
+        console.error("Bot alışverişi sonrası senkronizasyon hatası:", e);
+    }
+
     // Pazar ekranını ve zenginler listesini güvenle güncelle
     if (typeof ilanlariGuncelle === 'function') {
         await ilanlariGuncelle();
@@ -4845,6 +4860,8 @@ function botlarIlanlariKontrolEt() {
     guncelle();
     if (typeof ilanlariGuncelle === 'function') { ilanlariGuncelle(); }
     if (typeof portfoyuSunucuyaKaydet === 'function') { portfoyuSunucuyaKaydet(state); }
+    if (typeof zenginlerListesiniGuncelle === 'function') {
+        zenginlerListesiniGuncelle();
 }
 
 
