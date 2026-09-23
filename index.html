@@ -1620,16 +1620,20 @@ async function zenginlerListesiniGuncelle() {
     let oyuncuListesi = [];
 
     // 2. Sunucudan ortak zenginler listesini çek
+   let oyuncuListesi = [];
+
+    // 2. Sunucudan ortak zenginler listesini çek (Admin ve normal üyelik farkını ortadan kaldıran esnek yapı)
     try {
         let response = await fetch('/api/zenginler-listesi-ortak');
         let textData = await response.text();
         let sonuc = textData ? JSON.parse(textData) : {};
         
-        let hamListe = sonuc.liste || sonuc.zenginler || (Array.isArray(sonuc) ? sonuc : []);
+        // Admin veya normal üyelik fark etmeksizin verinin olası tüm yollarını tarıyoruz
+        let hamListe = sonuc.liste || sonuc.zenginler || sonuc.data || (Array.isArray(sonuc) ? sonuc : []);
 
         if (Array.isArray(hamListe) && hamListe.length > 0) {
             oyuncuListesi = hamListe.map(item => {
-                let hamIsim = (item.isim || item.name || "Bilinmeyen").trim();
+                let hamIsim = (item.isim || item.name || item.sirketAdi || "Bilinmeyen").trim();
                 let bHali = hamIsim.toLocaleUpperCase('tr-TR');
                 if (!bHali.endsWith(" A.Ş.") && !bHali.endsWith(" A.S.")) {
                     bHali += " A.Ş.";
@@ -1637,11 +1641,8 @@ async function zenginlerListesiniGuncelle() {
 
                 let servetDegeri = item.nakit !== undefined ? item.nakit : (item.servet !== undefined ? item.servet : (item.toplamServet || 0));
                 
-                // Admin / Senin hesabını yakalamak için esnek eşleşme
-                let isBenim = (bHali === aktifSirketAdi) || 
-                              (hamIsim.toLocaleUpperCase('tr-TR') === kullaniciAdi.toLocaleUpperCase('tr-TR')) || 
-                              (bHali.includes("STRATEJİK")) ||
-                              (item.benim === true);
+                // Admin üyeliğinde gelen özel bayrakları da kontrol edelim
+                let isBenim = (bHali === aktifSirketAdi) || (item.benim === true) || (item.isAdmin === true && bHali === aktifSirketAdi);
                 
                 return {
                     isim: bHali,
@@ -1653,7 +1654,6 @@ async function zenginlerListesiniGuncelle() {
     } catch (e) {
         console.error("Zenginler listesi sunucudan alınamadı:", e);
     }
-
     // Eğer sunucudan liste boş geldiyse istemcideki botlar ve state ile liste oluştur
     if (oyuncuListesi.length === 0) {
         let benimToplamServet = (state.nakit || 0) + (state.vadeli || 0);
