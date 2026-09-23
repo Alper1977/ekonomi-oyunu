@@ -1315,56 +1315,61 @@ app.get('/api/kullanicilar-liste', (req, res) => {
 
 app.get('/api/zenginler-listesi-ortak', (req, res) => {
     try {
-        const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
-        const ayarlar = ayarKaydi ? JSON.parse(ayarKaydi.ayarlari) : {};
+        // Tabloların veya kayıtların olmama ihtimaline karşı güvenli kontroller ekliyoruz
+        let ayarlar = {};
+        try {
+            const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
+            if (ayarKaydi && ayarKaydi.ayarlari) ayarlar = JSON.parse(ayarKaydi.ayarlari);
+        } catch (err) {}
 
-        const kurlarKaydi = db.prepare(`SELECT kurlar FROM oyun_kurlari WHERE id = 1`).get();
-        const kurlar = kurlarKaydi ? JSON.parse(kurlarKaydi.kurlar) : {};
+        let kurlar = {};
+        try {
+            const kurlarKaydi = db.prepare(`SELECT kurlar FROM oyun_kurlari WHERE id = 1`).get();
+            if (kurlarKaydi && kurlarKaydi.kurlar) kurlar = JSON.parse(kurlarKaydi.kurlar);
+        } catch (err) {}
 
         let tumSiralama = [];
 
-        // 1. Veritabanındaki güncel botları çek (setInterval içinde dönen son halleriyle)
-        let botlarRows = db.prepare(`SELECT * FROM botlar`).all();
-        botlarRows.forEach(bot => {
-            let botPortfoy = {
-                nakit: bot.nakit,
-                vadeli: bot.vadeli || 0,
-                altin: bot.altin || 0,
-                dolar: bot.dolar || 0,
-                euro: bot.euro || 0,
-                kredi: bot.kredi || 0,
-                varliklar: typeof bot.varliklar === 'string' ? JSON.parse(bot.varliklar || '[]') : (bot.varliklar || [])
-            };
-            let servet = sunucudaServetHesapla(botPortfoy, ayarlar, kurlar);
-
-            tumSiralama.push({
-                isim: bot.isim,
-                nakit: servet, // İstemci nakit alanı üzerinden okuduğu için serveti nakit key'iyle veriyoruz
-                benMi: false
+        // Botlar tablosu varsa çek, yoksa boş geç
+        try {
+            let botlarRows = db.prepare(`SELECT * FROM botlar`).all();
+            botlarRows.forEach(bot => {
+                let botPortfoy = {
+                    nakit: bot.nakit || 0,
+                    vadeli: bot.vadeli || 0,
+                    altin: bot.altin || 0,
+                    dolar: bot.dolar || 0,
+                    euro: bot.euro || 0,
+                    kredi: bot.kredi || 0,
+                    varliklar: typeof bot.varliklar === 'string' ? JSON.parse(bot.varliklar || '[]') : (bot.varliklar || [])
+                };
+                let servet = sunucudaServetHesapla(botPortfoy, ayarlar, kurlar);
+                tumSiralama.push({ isim: bot.isim, nakit: servet, benMi: false });
             });
-        });
+        } catch (err) {
+            console.log("Botlar tablosu okunamadı veya henüz yok:", err.message);
+        }
 
-        // 2. Tüm gerçek kullanıcıları çek ve servetlerini sunucuda hesapla
-        let kullanicilarRows = db.prepare(`SELECT id, adsoyad, portfoy FROM kullanicilar`).all();
-        kullanicilarRows.forEach(kul => {
-            let portfoy = typeof kul.portfoy === 'string' ? JSON.parse(kul.portfoy || '{}') : (kul.portfoy || {});
-            let sirketAdi = (kul.adsoyad || 'ŞİRKET').toUpperCase() + " A.Ş.";
-            let servet = sunucudaServetHesapla(portfoy, ayarlar, kurlar);
-
-            tumSiralama.push({
-                isim: sirketAdi,
-                nakit: servet,
-                benMi: false // İstemci tarafında oturum sahibine göre eşleşecek
+        // Kullanıcılar
+        try {
+            let kullanicilarRows = db.prepare(`SELECT id, adsoyad, portfoy FROM kullanicilar`).all();
+            kullanicilarRows.forEach(kul => {
+                let portfoy = typeof kul.portfoy === 'string' ? JSON.parse(kul.portfoy || '{}') : (kul.portfoy || {});
+                let sirketAdi = (kul.adsoyad || 'ŞİRKET').toUpperCase() + " A.Ş.";
+                let servet = sunucudaServetHesapla(portfoy, ayarlar, kurlar);
+                tumSiralama.push({ isim: sirketAdi, nakit: servet, benMi: false });
             });
-        });
+        } catch (err) {
+            console.log("Kullanıcılar okunamadı:", err.message);
+        }
 
-        // 3. Ortak havuzu büyükten küçüğe kusursuzca sırala
         tumSiralama.sort((a, b) => b.nakit - a.nakit);
 
-        res.json({ basari: true, liste: tumSiralama });
+        // Kesinlikle her koşulda geçerli bir JSON dönüyoruz
+        return res.json({ basari: true, liste: tumSiralama });
     } catch (e) {
-        console.error("Ortak zenginler listesi hatası:", e);
-        res.status(500).json({ basari: false, liste: [] });
+        console.error("Ortak zenginler listesi kritik hata:", e);
+        return res.status(500).json({ basari: false, liste: [], hata: e.message });
     }
 });
 
