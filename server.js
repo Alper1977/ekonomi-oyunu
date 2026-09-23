@@ -1143,7 +1143,7 @@ app.post('/api/portfoy-guncelle', (req, res) => {
 });
 app.get('/api/kullanicilar-liste', (req, res) => {
     try {
-        // 1. Gerçek kullanıcıları çek
+        // Doğrudan senin döngünün okuduğu ana tablodan tüm profilleri (gerçek kullanıcılar ve botlar) çekiyoruz
         const rows = db.prepare(`SELECT adsoyad, portfoy FROM kullanicilar`).all();
 
         let uyeler = rows.map(row => {
@@ -1154,46 +1154,29 @@ app.get('/api/kullanicilar-liste', (req, res) => {
                 portfoyData = {};
             }
 
-            // Toplam serveti hesapla (nakit + varlıklar/hisseler vs.)
+            // Nakit / Para değerini güvenli bir şekilde al
             let nakit = portfoyData.nakit !== undefined ? portfoyData.nakit : (portfoyData.para || 0);
-            
+            let vadeli = portfoyData.vadeli || 0;
+
             return {
                 adsoyad: row.adsoyad ? row.adsoyad.trim() : 'İsimsiz Şirket',
                 portfoy: {
                     ...portfoyData,
                     nakit: nakit,
-                    para: nakit
+                    para: nakit,
+                    vadeli: vadeli
                 }
             };
         });
 
-        // 2. Botları sabit değil, her istekte o anki veritabanı/arkaplan döngüsündeki güncel ve farklı servetleriyle çek
-        const sabitBotlar = db.prepare(`SELECT isim, nakit, vadeli FROM botlar`).all();
-        let botUyeler = sabitBotlar.map(bot => {
-            let botNakit = bot.nakit || 0;
-            let botVadeli = bot.vadeli || 0;
-            
-            return {
-                adsoyad: bot.isim,
-                portfoy: {
-                    nakit: botNakit,
-                    para: botNakit,
-                    vadeli: botVadeli,
-                    gunlukGelir: Math.floor(botNakit * 0.005), // Botlar için pasif gelir simülasyonu
-                    varliklar: [],
-                    hisseler: []
-                }
-            };
-        });
-
-        // 3. Hepsini tek havuzda birleştir ve toplam servete göre büyükten küçüğe sırala (Zenginler Listesi)
-        let tumListe = [...uyeler, ...botUyeler].sort((a, b) => {
+        // Toplam servete göre büyükten küçüğe (zenginlik sırasına) diz
+        uyeler.sort((a, b) => {
             let servetA = (a.portfoy.nakit || a.portfoy.para || 0) + (a.portfoy.vadeli || 0);
             let servetB = (b.portfoy.nakit || b.portfoy.para || 0) + (b.portfoy.vadeli || 0);
             return servetB - servetA;
         });
 
-        res.json({ basari: true, uyeler: tumListe });
+        res.json({ basari: true, uyeler: uyeler });
     } catch (err) {
         return res.status(500).json({ basari: false, mesaj: err.message });
     }
