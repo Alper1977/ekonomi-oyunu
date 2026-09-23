@@ -455,18 +455,163 @@ setInterval(() => {
         const kurlarKaydi = db.prepare(`SELECT kurlar FROM oyun_kurlari WHERE id = 1`).get();
         const kurlar = kurlarKaydi ? JSON.parse(kurlarKaydi.kurlar) : { dolar: {satis: 49}, euro: {satis: 54}, altin: {satis: 6000} };
 
-        const kullanicilar = db.prepare(`SELECT id, portfoy, son_guncelleme FROM kullanicilar`).all();
+        // -------------------------------------------------------------
+        // 1. BOT VE GLOBAL İLAN/PİYASA İŞLEMLERİ (Sunucu Tarafı)
+        // -------------------------------------------------------------
+        try {
+            const satisFiyatlari = ayarlar.satisFiyatlari || { "Konut": 2000000, "Arsa": 1500000, "Ticari": 5000000 };
+            const maksimumIlanSiniri = ayarlar.maksimumIlanSiniri || 5;
+            const beklemeSuresiMs = ayarlar.GLOBAL_BEKLEME_SURESI || 60000;
+            const botHizi = ayarlar.botHizi || 8000;
+            const botIlanHizi = ayarlar.botIlanHizi || 15000;
+            const simdiMs = Date.now();
+
+            let botlarRows = db.prepare(`SELECT * FROM botlar`).all();
+            let botlar = botlarRows.map(b => ({
+                ...b,
+                varliklar: typeof b.varliklar === 'string' ? JSON.parse(b.varliklar || '[]') : (b.varliklar || [])
+            }));
+
+            global.sonBotZamani = global.sonBotZamani || 0;
+            global.sonBotIlanZamani = global.sonBotIlanZamani || 0;
+
+            // --- A. Bot İşlemleri (Varlık Alımı / Nakit Artışı) ---
+            if (simdiMs - global.sonBotZamani >= botHizi) {
+                let gercekVarliklar = Object.keys(satisFiyatlari);
+                for (let i = 0; i < 5; i++) {
+                    let rastgeleBot = botlar[Math.floor(Math.random() * botlar.length)];
+                    if (!rastgeleBot.varliklar) rastgeleBot.varliklar = [];
+
+                    if (Math.random() < 0.30) {
+                        rastgeleBot.nakit += Math.floor(Math.random() * 200000000) + 50000000;
+                    } else {
+                        let secilenUrun = gercekVarliklar[Math.floor(Math.random() * gercekVarliklar.length)];
+                        let bedel = satisFiyatlari[secilenUrun] || 2000000;
+
+                        if (rastgeleBot.nakit >= bedel) {
+                            rastgeleBot.nakit -= bedel;
+                            rastgeleBot.varliklar.push({
+                                id: Date.now() + Math.random(),
+                                isim: secilenUrun,
+                                durum: 'sahip'
+                            });
+                        }
+                    }
+                }
+                global.sonBotZamani = simdiMs;
+            }
+
+            // --- B. Bot İlan Açma Döngüsü ---
+            if (simdiMs - global.sonBotIlanZamani >= botIlanHizi) {
+                let aktifIlanSayilari = {};
+                botlar.forEach(b => {
+                    if (b.varliklar) {
+                        b.varliklar.forEach(v => {
+                            if (v.durum === 'ilan-aktif') {
+                                aktifIlanSayilari[v.isim] = (aktifIlanSayilari[v.isim] || 0) + 1;
+                            }
+                        });
+                    }
+                });
+
+                botlar.forEach(bot => {
+                    if (bot.varliklar && bot.varliklar.length > 0) {
+                        let sahipVarliklar = bot.varliklar.filter(v => v.durum === 'sahip');
+                        if (sahipVarliklar.length > 0 && Math.random() < 0.30) {
+                            let uygunVarliklar = sahipVarliklar.filter(v => {
+                                let mevcutSayi = aktifIlanSayilari[v.isim] || 0;
+                                return mevcutSayi < maksimumIlanSiniri;
+                            });
+
+                            if (uygunVarliklar.length > 0) {
+                                uygunVarliklar.sort(() => Math.random() - 0.5);
+                                let secilenVarlik = uygunVarliklar[0];
+                                secilenVarlik.durum = 'ilan-aktif';
+                                secilenVarlik.ilanSahibi = bot.isim;
+                                secilenVarlik.ilanVerilisZamani = simdiMs;
+                                aktifIlanSayilari[secilenVarlik.isim] = (aktifIlanSayilari[secilenVarlik.isim] || 0) + 1;
+                            }
+                        }
+                    }
+                });
+                global.sonBotIlanZamani = simdiMs;
+            }
+
+            // --- C. Diğer Botların İlanlarının Süresi Dolması ---
+            botlar.forEach(tekilBot => {
+                if (!tekilBot.varliklar || !Array.isArray(tekilBot.varliklar)) return;
+
+                tekilBot.varliklar.forEach(varlik => {
+                    if (varlik.durum !== 'ilan-aktif') return;
+                    if (varlik.satinAlindi || varlik.islemde || varlik.durum === 'satildi-bekliyor' || varlik.durum === 'silinecek') return; 
+
+                    if (!varlik.ilanVerilisZamani) {
+                        varlik.ilanVerilisZamani = simdiMs;
+                        return;
+                    }
+                    
+                    let gecenSure = simdiMs - varlik.ilanVerilisZamani;
+                    if (gecenSure < beklemeSuresiMs) return;
+
+                    let satisBedeli = (satisFiyatlari && satisFiyatlari[varlik.isim]) ? satisFiyatlari[varlik.isim] : 2000000;
+                    let alabilecekBotlar = botlar.filter(b => b.isim !== tekilBot.isim && b.nakit >= satisBedeli);
+                    let aliciBot;
+
+                    if (alabilecekBotlar.length > 0) {
+                        aliciBot = alabilecekBotlar[Math.floor(Math.random() * alabilecekBotlar.length)];
+                    } else {
+                        let digerBotlar = botlar.filter(b => b.isim !== tekilBot.isim);
+                        if (digerBotlar.length > 0) {
+                            aliciBot = digerBotlar[Math.floor(Math.random() * digerBotlar.length)];
+                            aliciBot.nakit += satisBedeli + 5000000;
+                        }
+                    }
+
+                    if (aliciBot) {
+                        aliciBot.nakit -= satisBedeli;
+                        tekilBot.nakit += satisBedeli;
+                        varlik.durum = 'satildi_isaretle';
+
+                        if (!aliciBot.varliklar) aliciBot.varliklar = [];
+                        aliciBot.varliklar.push({
+                            id: Date.now() + Math.random(),
+                            isim: varlik.isim,
+                            durum: 'sahip'
+                        });
+                    }
+                });
+                tekilBot.varliklar = tekilBot.varliklar.filter(v => v.durum !== 'satildi_isaretle');
+            });
+
+            // Bot verilerini kaydet
+            const updateStmt = db.prepare(`UPDATE botlar SET nakit = ?, varliklar = ? WHERE id = ?`);
+            const saveBotTransaction = db.transaction((botListesi) => {
+                botListesi.forEach(b => {
+                    updateStmt.run(b.nakit, JSON.stringify(b.varliklar), b.id);
+                });
+            });
+            saveBotTransaction(botlar);
+
+        } catch (botErr) {
+            console.error("Bot ve piyasa döngüsü hatası:", botErr.message);
+        }
+
+        // -------------------------------------------------------------
+        // 2. KULLANICI EKONOMİSİ VE İLAN SATIN ALMA İŞLEMLERİ
+        // -------------------------------------------------------------
+        const kullanicilar = db.prepare(`SELECT id, portfoy, krediler, son_guncelleme FROM kullanicilar`).all();
         
         // Her kullanıcıyı kendi bağımsız transaction ve try-catch bloğuna alıyoruz
         kullanicilar.forEach(user => {
             try {
                 const userTransaction = db.transaction(() => {
+                    // Önce kullanıcının kendi aktif ilanlarının botlar tarafından garanti satış kontrolü yapılabilir
+                    // Veya mevcut ekonomi fonksiyonu çağrılır:
                     kullaniciEkonomisiniIslet(user, ayarlar, kurlar);
                 });
                 userTransaction();
             } catch (userErr) {
                 console.error(`Kullanıcı ID ${user.id} ekonomi işletilirken hata oluştu:`, userErr.message);
-                // Bu kullanıcı patlasa bile diğer kullanıcıların parası, dövizi, kredisi etkilenmez
             }
         });
 
