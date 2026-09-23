@@ -1584,9 +1584,7 @@ async function profilAdiGuncelle() {
 async function zenginlerListesiniGuncelle() {
     try {
         let listeDiv = document.getElementById('zenginler-listesi') || document.getElementById('siralama-listesi');
-        if (!listeDiv) return;
-
-        // Eğer henüz state tanımlı değilse hata vermesin
+        
         if (typeof state === 'undefined' || !state) {
             window.state = { nakit: 100000, vadeli: 0, altin: 0, dolar: 0, varliklar: [] };
         }
@@ -1598,9 +1596,7 @@ async function zenginlerListesiniGuncelle() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ portfoy: state })
             });
-        } catch (err) {
-            // Sunucuya atılamazsa akışı bozmasın
-        }
+        } catch (err) {}
 
         // 2. Şirket adını güvenli şekilde al
         let sirketBaslikMali = document.getElementById('sirket-adi-mali');
@@ -1631,14 +1627,12 @@ async function zenginlerListesiniGuncelle() {
                 let isim = (uye.adsoyad || uye.isim || 'ŞİRKET').toUpperCase();
                 if (!isim.endsWith("A.Ş.")) isim += " A.Ş.";
 
-                // Kendimizi iki kez eklememek için kontrol
                 if (isim !== aktifSirketAdi) {
                     let p = uye.portfoy || {};
                     let servet = (p.nakit || p.para || 0) + (p.vadeli || 0);
                     
-                    // Eğer varlıkları varsa ekleyebiliriz
                     if (Array.isArray(p.varliklar)) {
-                        p.varliklar.forEach(() => { servet += 2000000; }); // Varlık tahmini ekleme
+                        p.varliklar.forEach(() => { servet += 2000000; });
                     }
 
                     oyuncuListesi.push({
@@ -1653,63 +1647,73 @@ async function zenginlerListesiniGuncelle() {
         // 4. Büyükten küçüğe sırala
         oyuncuListesi.sort((a, b) => b.servet - a.servet);
 
-        // 5. HTML çıktısını oluştur ve ekrana bas
-        let html = "";
-        let sinir = Math.min(100, oyuncuListesi.length);
+        // SENİN GERÇEK SIRA NUMARAN BURADA HESAPLANIYOR
         let benimSiram = oyuncuListesi.findIndex(x => x.benim) + 1;
+        if (benimSiram <= 0) benimSiram = 1;
 
-        for (let i = 0; i < sinir; i++) {
-            let o = oyuncuListesi[i];
-            let benMi = o.benim;
-            
-            // Tablo veya Div yapısına göre otomatik uyum
-            if (listeDiv.tagName === 'TBODY' || listeDiv.tagName === 'TABLE') {
-                html += `<tr style="${benMi ? 'background-color: rgba(255,215,0,0.15); font-weight: bold;' : ''}">
-                    <td>${i + 1}</td>
-                    <td>${o.isim} ${benMi ? "(Sen)" : ""}</td>
-                    <td>${Math.floor(o.servet).toLocaleString()} TL</td>
-                </tr>`;
-            } else {
-                html += `
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; margin-bottom: 6px; background: #1a1a1a; border: 1px solid #333; border-radius: 6px; font-size: 11px; color: ${benMi ? '#fff' : '#ddd'}; ${benMi ? 'border: 2px solid gold; background: rgba(255,215,0,0.1);' : ''}">
-                        <span>${i + 1}. ${o.isim} ${benMi ? "<b>(Sen)</b>" : ""}</span>
-                        <span style="color: ${benMi ? 'gold' : '#00c853'};">${Math.floor(o.servet).toLocaleString()} TL</span>
-                    </div>
-                `;
-            }
+        // ANA SAYFADAKİ SIRA NUMARASI ELEMENTİNİ GÜNCELLE
+        let siraElementleri = document.querySelectorAll('#siralamam, .siralamam-text, [data-siralamam]');
+        siraElementleri.forEach(el => {
+            el.innerText = benimSiram + ". Sıradasınız";
+        });
+        // Alternatif yaygın ID'ler için tekil kontrol
+        let tekilSiraElementi = document.getElementById('oyuncu-sira-no') || document.getElementById('sira-numaram');
+        if (tekilSiraElementi) {
+            tekilSiraElementi.innerText = benimSiram;
         }
 
-        // Eğer ilk 100'e giremediysen alta ekle
-        if (benimSiram > 100) {
-            let benimObjem = oyuncuListesi.find(x => x.benim);
-            if (benimObjem) {
-                if (listeDiv.tagName === 'TBODY') {
-                    html += `<tr><td colspan="3" style="text-align: center;">...</td></tr>`;
-                    html += `<tr style="background-color: rgba(255,215,0,0.15); font-weight: bold;">
-                        <td>${benimSiram}</td><td>${benimObjem.isim} (Sen)</td><td>${Math.floor(benimObjem.servet).toLocaleString()} TL</td>
+        // 5. Eğer liste elementi varsa tabloyu/listeyi doldur
+        if (listeDiv) {
+            let html = "";
+            let sinir = Math.min(100, oyuncuListesi.length);
+
+            for (let i = 0; i < sinir; i++) {
+                let o = oyuncuListesi[i];
+                let benMi = o.benim;
+                
+                if (listeDiv.tagName === 'TBODY' || listeDiv.tagName === 'TABLE') {
+                    html += `<tr style="${benMi ? 'background-color: rgba(255,215,0,0.15); font-weight: bold;' : ''}">
+                        <td>${i + 1}</td>
+                        <td>${o.isim} ${benMi ? "(Sen)" : ""}</td>
+                        <td>${Math.floor(o.servet).toLocaleString()} TL</td>
                     </tr>`;
                 } else {
-                    html += `<div style="text-align: center; color: #fff; font-size: 13px; margin: 5px 0;">...</div>`;
-                    html += `<div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; background: rgba(255,215,0,0.1); border: 2px solid gold; border-radius: 6px; font-size: 11px; color: #fff;">
-                        <span>${benimSiram}. ${benimObjem.isim} <b>(Sen)</b></span>
-                        <span style="color: gold;">${Math.floor(benimObjem.servet).toLocaleString()} TL</span>
-                    </div>`;
+                    html += `
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; margin-bottom: 6px; background: #1a1a1a; border: 1px solid #333; border-radius: 6px; font-size: 11px; color: ${benMi ? '#fff' : '#ddd'}; ${benMi ? 'border: 2px solid gold; background: rgba(255,215,0,0.1);' : ''}">
+                            <span>${i + 1}. ${o.isim} ${benMi ? "<b>(Sen)</b>" : ""}</span>
+                            <span style="color: ${benMi ? 'gold' : '#00c853'};">${Math.floor(o.servet).toLocaleString()} TL</span>
+                        </div>
+                    `;
                 }
             }
-        }
 
-        listeDiv.innerHTML = html;
+            if (benimSiram > 100) {
+                let benimObjem = oyuncuListesi.find(x => x.benim);
+                if (benimObjem) {
+                    if (listeDiv.tagName === 'TBODY') {
+                        html += `<tr><td colspan="3" style="text-align: center;">...</td></tr>`;
+                        html += `<tr style="background-color: rgba(255,215,0,0.15); font-weight: bold;">
+                            <td>${benimSiram}</td><td>${benimObjem.isim} (Sen)</td><td>${Math.floor(benimObjem.servet).toLocaleString()} TL</td>
+                        </tr>`;
+                    } else {
+                        html += `<div style="text-align: center; color: #fff; font-size: 13px; margin: 5px 0;">...</div>`;
+                        html += `<div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; background: rgba(255,215,0,0.1); border: 2px solid gold; border-radius: 6px; font-size: 11px; color: #fff;">
+                            <span>${benimSiram}. ${benimObjem.isim} <b>(Sen)</b></span>
+                            <span style="color: gold;">${Math.floor(benimObjem.servet).toLocaleString()} TL</span>
+                        </div>`;
+                    }
+                }
+            }
+
+            listeDiv.innerHTML = html;
+        }
 
     } catch (err) {
         console.error("Zenginler listesi güncellenirken hata:", err);
-        let listeDiv = document.getElementById('zenginler-listesi') || document.getElementById('siralama-listesi');
-        if (listeDiv) {
-            listeDiv.innerHTML = `<div style="padding: 10px; color: #ff5252; text-align: center;">Liste yüklenemedi, yeniden deneniyor...</div>`;
-        }
     }
 }
 
-// Listenin otomatik ve dinamik akması için periyodik tetikleyici (Her 5 saniyede bir)
+// Otomatik akış için interval
 if (typeof window.zenginlerIntervalDurdurucu === 'undefined') {
     window.zenginlerIntervalDurdurucu = setInterval(() => {
         zenginlerListesiniGuncelle();
