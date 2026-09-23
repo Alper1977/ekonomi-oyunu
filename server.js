@@ -1313,7 +1313,6 @@ app.get('/api/kullanicilar-liste', (req, res) => {
     }
 });
 
-// Ortak Zenginler Listesi API Uç Noktası
 app.get('/api/zenginler-listesi-ortak', (req, res) => {
     try {
         const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
@@ -1324,7 +1323,7 @@ app.get('/api/zenginler-listesi-ortak', (req, res) => {
 
         let tumSiralama = [];
 
-        // 1. Botları ekle
+        // 1. Veritabanındaki güncel botları çek (setInterval içinde dönen son halleriyle)
         let botlarRows = db.prepare(`SELECT * FROM botlar`).all();
         botlarRows.forEach(bot => {
             let botPortfoy = {
@@ -1340,12 +1339,12 @@ app.get('/api/zenginler-listesi-ortak', (req, res) => {
 
             tumSiralama.push({
                 isim: bot.isim,
-                servet: servet,
-                userId: null
+                nakit: servet, // İstemci nakit alanı üzerinden okuduğu için serveti nakit key'iyle veriyoruz
+                benMi: false
             });
         });
 
-        // 2. Diğer Gerçek Üyeleri ekle
+        // 2. Tüm gerçek kullanıcıları çek ve servetlerini sunucuda hesapla
         let kullanicilarRows = db.prepare(`SELECT id, adsoyad, portfoy FROM kullanicilar`).all();
         kullanicilarRows.forEach(kul => {
             let portfoy = typeof kul.portfoy === 'string' ? JSON.parse(kul.portfoy || '{}') : (kul.portfoy || {});
@@ -1354,13 +1353,13 @@ app.get('/api/zenginler-listesi-ortak', (req, res) => {
 
             tumSiralama.push({
                 isim: sirketAdi,
-                servet: servet,
-                userId: kul.id
+                nakit: servet,
+                benMi: false // İstemci tarafında oturum sahibine göre eşleşecek
             });
         });
 
-        // Servete göre büyükten küçüğe sırala
-        tumSiralama.sort((a, b) => b.servet - a.servet);
+        // 3. Ortak havuzu büyükten küçüğe kusursuzca sırala
+        tumSiralama.sort((a, b) => b.nakit - a.nakit);
 
         res.json({ basari: true, liste: tumSiralama });
     } catch (e) {
