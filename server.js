@@ -1153,6 +1153,7 @@ app.post('/api/portfoy-guncelle', (req, res) => {
 });
 app.get('/api/kullanicilar-liste', (req, res) => {
     try {
+        // 1. Gerçek kullanıcıları çek
         const rows = db.prepare(`SELECT adsoyad, portfoy FROM kullanicilar`).all();
 
         let uyeler = rows.map(row => {
@@ -1173,7 +1174,23 @@ app.get('/api/kullanicilar-liste', (req, res) => {
             };
         });
 
-        res.json({ basari: true, uyeler: uyeler });
+        // 2. Veritabanındaki sabit botları çek ve aynı formata dönüştür
+        const sabitBotlar = db.prepare(`SELECT isim, nakit, vadeli FROM botlar`).all();
+        
+        let botUyeler = sabitBotlar.map(bot => ({
+            adsoyad: bot.isim,
+            portfoy: {
+                nakit: bot.nakit || 0,
+                para: bot.nakit || 0,
+                vadeli: bot.vadeli || 0,
+                hisseler: []
+            }
+        }));
+
+        // 3. Gerçek üyeler ile sabit botları tek havuzda birleştir
+        let tumListe = [...uyeler, ...botUyeler];
+
+        res.json({ basari: true, uyeler: tumListe });
     } catch (err) {
         return res.status(500).json({ basari: false, mesaj: err.message });
     }
