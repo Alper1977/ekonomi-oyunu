@@ -1330,7 +1330,6 @@ app.get('/api/kullanicilar-liste', (req, res) => {
 
 app.get('/api/zenginler-listesi-ortak', (req, res) => {
     try {
-        // Tabloların veya kayıtların olmama ihtimaline karşı güvenli kontroller ekliyoruz
         let ayarlar = {};
         try {
             const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
@@ -1345,7 +1344,7 @@ app.get('/api/zenginler-listesi-ortak', (req, res) => {
 
         let tumSiralama = [];
 
-        // Botlar tablosu varsa çek, yoksa boş geç
+        // Botları çek
         try {
             let botlarRows = db.prepare(`SELECT * FROM botlar`).all();
             botlarRows.forEach(bot => {
@@ -1361,11 +1360,9 @@ app.get('/api/zenginler-listesi-ortak', (req, res) => {
                 let servet = sunucudaServetHesapla(botPortfoy, ayarlar, kurlar);
                 tumSiralama.push({ isim: bot.isim, nakit: servet, benMi: false });
             });
-        } catch (err) {
-            console.log("Botlar tablosu okunamadı veya henüz yok:", err.message);
-        }
+        } catch (err) {}
 
-        // Kullanıcılar
+        // Gerçek kullanıcıları çek
         try {
             let kullanicilarRows = db.prepare(`SELECT id, adsoyad, portfoy FROM kullanicilar`).all();
             kullanicilarRows.forEach(kul => {
@@ -1374,16 +1371,12 @@ app.get('/api/zenginler-listesi-ortak', (req, res) => {
                 let servet = sunucudaServetHesapla(portfoy, ayarlar, kurlar);
                 tumSiralama.push({ isim: sirketAdi, nakit: servet, benMi: false });
             });
-        } catch (err) {
-            console.log("Kullanıcılar okunamadı:", err.message);
-        }
+        } catch (err) {}
 
         tumSiralama.sort((a, b) => b.nakit - a.nakit);
 
-        // Kesinlikle her koşulda geçerli bir JSON dönüyoruz
         return res.json({ basari: true, liste: tumSiralama });
     } catch (e) {
-        console.error("Ortak zenginler listesi kritik hata:", e);
         return res.status(500).json({ basari: false, liste: [], hata: e.message });
     }
 });
