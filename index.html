@@ -1582,18 +1582,21 @@ async function profilAdiGuncelle() {
 }
 
 
- async function zenginlerListesiniGuncelle() {
+async function zenginlerListesiniGuncelle() {
     if (typeof state === 'undefined' || !state) return;
 
-    // 1. Önce kendi güncel portföyünü sunucuya kaydet
+    // 1. Kendi portföyünü VE istemcideki botların güncel durumunu sunucuya gönder
     try {
         await fetch('/api/portfoy-guncelle', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ portfoy: state })
+            body: JSON.stringify({ 
+                portfoy: state,
+                botlar: typeof botlar !== 'undefined' ? botlar : [] // 🌟 Botları da sunucuya taşıyoruz
+            })
         });
     } catch (e) {
-        console.error("Portföy sunucuya kaydedilemedi:", e);
+        console.error("Portföy ve botlar sunucuya kaydedilemedi:", e);
     }
 
     let sirketBaslikMali = document.getElementById('sirket-adi-mali');
