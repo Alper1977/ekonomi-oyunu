@@ -1585,25 +1585,6 @@ async function profilAdiGuncelle() {
 async function zenginlerListesiniGuncelle() {
     if (typeof state === 'undefined' || !state) return;
 
-    let sirketBaslikMali = document.getElementById('sirket-adi-mali');
-    let sirketAdiSplash = document.getElementById('kurum-adi-baslik');
-    let kullaniciAdi = "STRATEJİK";
-    
-    if (sirketBaslikMali && sirketBaslikMali.innerText && !sirketBaslikMali.innerText.includes("Yükleniyor")) {
-        kullaniciAdi = sirketBaslikMali.innerText.replace(" A.Ş.", "").trim();
-    } else if (typeof aktifKullaniciAdiKaydi !== 'undefined' && aktifKullaniciAdiKaydi) {
-        kullaniciAdi = aktifKullaniciAdiKaydi;
-    }
-
-    let aktifSirketAdi = kullaniciAdi.toLocaleUpperCase('tr-TR').trim();
-    if (!aktifSirketAdi.endsWith(" A.Ş.") && !aktifSirketAdi.endsWith(" A.S.")) {
-        aktifSirketAdi += " A.Ş.";
-    }
-
-    if (sirketBaslikMali) sirketBaslikMali.innerText = aktifSirketAdi;
-    if (sirketAdiSplash) sirketAdiSplash.innerText = aktifSirketAdi;
-
-    // 1. Kendi portföyünü ve botları sunucuya gönder
     try {
         await fetch('/api/portfoy-guncelle', {
             method: 'POST',
@@ -1617,22 +1598,33 @@ async function zenginlerListesiniGuncelle() {
         console.error("Portföy ve botlar sunucuya kaydedilemedi:", e);
     }
 
-    let oyuncuListesi = [];
+    let sirketBaslikMali = document.getElementById('sirket-adi-mali');
+    let hamEkranAdi = "";
+    
+    if (sirketBaslikMali && sirketBaslikMali.innerText && !sirketBaslikMali.innerText.includes("Yükleniyor")) {
+        hamEkranAdi = sirketBaslikMali.innerText.replace(" A.Ş.", "").trim();
+    } else if (typeof aktifKullaniciAdiKaydi !== 'undefined' && aktifKullaniciAdiKaydi) {
+        hamEkranAdi = aktifKullaniciAdiKaydi;
+    } else {
+        hamEkranAdi = window.aktifSirketAdiDeposu || state.sirketAdi || "";
+    }
 
-    // 2. Sunucudan ortak zenginler listesini çek
-   let oyuncuListesi = [];
+    let aktifSirketAdi = hamEkranAdi ? hamEkranAdi.toLocaleUpperCase('tr-TR').trim() : "";
+    if (aktifSirketAdi && !aktifSirketAdi.endsWith(" A.Ş.") && !aktifSirketAdi.endsWith(" A.S.")) {
+        aktifSirketAdi += " A.Ş.";
+    }
 
-    // 2. Sunucudan ortak zenginler listesini çek (Admin ve normal üyelik farkını ortadan kaldıran esnek yapı)
+    let globalOyuncuListesi = [];
+
     try {
         let response = await fetch('/api/zenginler-listesi-ortak');
         let textData = await response.text();
         let sonuc = textData ? JSON.parse(textData) : {};
         
-        // Admin veya normal üyelik fark etmeksizin verinin olası tüm yollarını tarıyoruz
         let hamListe = sonuc.liste || sonuc.zenginler || sonuc.data || (Array.isArray(sonuc) ? sonuc : []);
 
         if (Array.isArray(hamListe) && hamListe.length > 0) {
-            oyuncuListesi = hamListe.map(item => {
+            globalOyuncuListesi = hamListe.map(item => {
                 let hamIsim = (item.isim || item.name || item.sirketAdi || "Bilinmeyen").trim();
                 let bHali = hamIsim.toLocaleUpperCase('tr-TR');
                 if (!bHali.endsWith(" A.Ş.") && !bHali.endsWith(" A.S.")) {
@@ -1640,9 +1632,7 @@ async function zenginlerListesiniGuncelle() {
                 }
 
                 let servetDegeri = item.nakit !== undefined ? item.nakit : (item.servet !== undefined ? item.servet : (item.toplamServet || 0));
-                
-                // Admin üyeliğinde gelen özel bayrakları da kontrol edelim
-                let isBenim = (bHali === aktifSirketAdi) || (item.benim === true) || (item.isAdmin === true && bHali === aktifSirketAdi);
+                let isBenim = (bHali === aktifSirketAdi) || (item.benim === true);
                 
                 return {
                     isim: bHali,
@@ -1654,47 +1644,35 @@ async function zenginlerListesiniGuncelle() {
     } catch (e) {
         console.error("Zenginler listesi sunucudan alınamadı:", e);
     }
-    // Eğer sunucudan liste boş geldiyse istemcideki botlar ve state ile liste oluştur
-    if (oyuncuListesi.length === 0) {
-        let benimToplamServet = (state.nakit || 0) + (state.vadeli || 0);
-        oyuncuListesi.push({ isim: aktifSirketAdi, servet: benimToplamServet, benim: true });
 
-        if (typeof botlar !== 'undefined' && Array.isArray(botlar)) {
-            botlar.forEach(b => {
-                let botIsim = b.isim.toLocaleUpperCase('tr-TR');
-                if (!botIsim.endsWith(" A.Ş.")) botIsim += " A.Ş.";
-                let botServet = (b.nakit || 0) + (b.vadeli || 0);
-                oyuncuListesi.push({ isim: botIsim, servet: botServet, benim: false });
-            });
-        }
+    globalOyuncuListesi.sort((a, b) => b.servet - a.servet);
+
+    if (aktifSirketAdi) {
+        globalOyuncuListesi.forEach(item => {
+            if (item.isim === aktifSirketAdi) {
+                item.benim = true;
+            } else {
+                item.benim = false;
+            }
+        });
     }
 
-    // Servete göre büyükten küçüğe sırala
-    oyuncuListesi.sort((a, b) => b.servet - a.servet);
-
-    // Listede kendi hesabını (admini) kesin olarak işaretle
-    oyuncuListesi.forEach(item => {
-        if (item.isim === aktifSirketAdi || item.isim.includes("STRATEJİK") || item.isim.replace(" A.Ş.", "") === kullaniciAdi.toLocaleUpperCase('tr-TR')) {
-            item.benim = true;
-        }
-    });
-
-    let benimSira = oyuncuListesi.findIndex(x => x.benim) + 1;
+    let benimSira = globalOyuncuListesi.findIndex(x => x.benim) + 1;
     if (benimSira <= 0) benimSira = 1; 
 
     let listeDiv = document.getElementById('zenginler-listesi');
     if (listeDiv) {
         let gosterilecekListe = [];
-        let sinir = Math.min(100, oyuncuListesi.length);
+        let sinir = Math.min(100, globalOyuncuListesi.length);
         
         for (let i = 0; i < sinir; i++) {
-            gosterilecekListe.push({ ...oyuncuListesi[i], gercekIndex: i + 1 });
+            gosterilecekListe.push({ ...globalOyuncuListesi[i], gercekIndex: i + 1 });
         }
 
         let kullaniciIlkYuzdeMi = gosterilecekListe.some(x => x.benim);
         if (!kullaniciIlkYuzdeMi) {
             gosterilecekListe.push({ isim: "...", servet: 0, ozelSatir: true });
-            let benimObjem = oyuncuListesi.find(x => x.benim);
+            let benimObjem = globalOyuncuListesi.find(x => x.benim);
             if (benimObjem) {
                 gosterilecekListe.push({ ...benimObjem, gercekIndex: benimSira });
             }
