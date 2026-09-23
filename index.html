@@ -4450,19 +4450,20 @@ async function siralamayiGuncelle() {
         : "ALPER A.Ş.";
 
     // 2. Sunucudan ortak zenginler listesini çek (Tüm botlar ve kullanıcılar dahil)
-    try {
+   try {
         let response = await fetch('/api/zenginler-listesi-ortak');
-        let sonuc = await response.json();
+        let textData = await response.text(); // Önce text olarak alalım
+        let sonuc = textData ? JSON.parse(textData) : {}; // Boşsa patlamasın
         
         if (sonuc.basari && Array.isArray(sonuc.liste)) {
             tumSiralama = sonuc.liste.map(item => ({
                 isim: item.isim,
-                nakit: item.servet,
+                nakit: item.nakit,
                 benMi: item.isim === aktifIsim
             }));
         }
     } catch (e) {
-        console.error("Ortak zenginler listesi çekilemedi:", e);
+        console.error("Ortak zenginler listesi çekilemedi (JSON parse hatası):", e);
     }
 
     // Eğer sunucu listesinde henüz anlık kullanıcı yoksa veya lokal olarak eklemek gerekirse garantileyelim
