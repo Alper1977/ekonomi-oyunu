@@ -1159,22 +1159,27 @@ app.post('/api/profil-guncelle', (req, res) => {
 });
 
 app.get('/api/portfoy-getir', (req, res) => {
-    if (!req.session || !req.session.kullanici) {
+    // Hem normal kullanıcı hem de admin oturumunu destekle
+    let sessionUser = req.session.kullanici || req.session.admin;
+    if (!req.session || !sessionUser) {
         return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı!" });
     }
 
     try {
-        const userId = req.session.kullanici.id;
+        const userId = sessionUser.id;
         const user = db.prepare(`SELECT * FROM kullanicilar WHERE id = ?`).get(userId);
         
         if (!user) {
+            // Eğer admin veritabanında kullanicilar tablosunda yoksa bile çökmesini engellemek için geçici bir nesne üretelim
+            if (req.session.admin) {
+                return res.json({ basari: true, nakit: 0, varliklar: [], gunlukGelir: 0, konutKiraGeliri: 0, krediler: [], kredi: 0, taksit: 0 });
+            }
             return res.status(404).json({ basari: false, mesaj: "Kullanıcı bulunamadı!" });
         }
 
         const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
         const ayarlar = ayarKaydi ? JSON.parse(ayarKaydi.ayarlar) : {};
 
-        // 🌟 Çevrimdışı geçen süredeki gelirleri hesaba kat!
         const guncelPortfoy = kullaniciEkonomisiniIslet(user, ayarlar) || JSON.parse(user.portfoy || '{}');
 
         res.json({
@@ -1183,7 +1188,6 @@ app.get('/api/portfoy-getir', (req, res) => {
             varliklar: guncelPortfoy.varliklar || [],
             gunlukGelir: guncelPortfoy.gunlukGelir || 0,
             konutKiraGeliri: guncelPortfoy.konutKiraGeliri || 0,
-            // 🌟 İŞTE EKSİK OLAN VE EKRANI GÜNCELLEYECEK KRİTİK ALANLAR BURASI:
             krediler: guncelPortfoy.krediler || [],
             kredi: guncelPortfoy.kredi || 0,
             taksit: guncelPortfoy.taksit || 0
@@ -1273,19 +1277,16 @@ app.get('/api/aktif-kullanici', (req, res) => {
 });
 
 app.post('/api/portfoy-guncelle', (req, res) => {
-    if (!req.session || !req.session.kullanici) {
-        return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı!" }); 
+    let sessionUser = req.session.kullanici || req.session.admin;
+    if (!req.session || !sessionUser) {
+        return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı!" });  
     }
 
-    const userId = req.session.kullanici.id;
+    const userId = sessionUser.id;
     let yeniPortfoy = req.body.portfoy || {};
 
-    // 🌟 SUNUCU TARAFi TEMİZLİK FİLTRESİ (Frontend'den gelen bozuk/eski borçları engelle!)
     if (yeniPortfoy.krediler && Array.isArray(yeniPortfoy.krediler)) {
-        // Gerçekten kalan borcu olanları filtrele
         yeniPortfoy.krediler = yeniPortfoy.krediler.filter(k => k && (k.kalanBorc || 0) > 0.01);
-        
-        // Yeniden hesapla
         yeniPortfoy.kredi = yeniPortfoy.krediler.reduce((toplam, kr) => toplam + (kr.kalanBorc || 0), 0);
         yeniPortfoy.taksit = yeniPortfoy.krediler.reduce((toplam, kr) => {
             if (kr.icradanKalanBorc) return toplam;
@@ -1293,7 +1294,6 @@ app.post('/api/portfoy-guncelle', (req, res) => {
         }, 0);
     }
 
-    // Eğer toplam kredi borcu sıfıra yakınsa, tüm kredi alanlarını kökten sıfırla
     if (!yeniPortfoy.krediler || yeniPortfoy.krediler.length === 0 || yeniPortfoy.kredi < 0.01) {
         yeniPortfoy.kredi = 0;
         yeniPortfoy.taksit = 0;
@@ -1303,14 +1303,20 @@ app.post('/api/portfoy-guncelle', (req, res) => {
     const portfoyStr = JSON.stringify(yeniPortfoy);
 
     try {
-        db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`).run(portfoyStr, Date.now(), userId);
-        req.session.kullanici.portfoy = yeniPortfoy;
+        // Eğer admin tablosunda ID eşleşmiyorsa hata vermemesi için kontrol ekleyelim
+        const userCheck = db.prepare(`SELECT id FROM kullanicilar WHERE id = ?`).get(userId);
+        if (userCheck) {
+            db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`).run(portfoyStr, Date.now(), userId);
+        }
+        
+        sessionUser.portfoy = yeniPortfoy;
         res.json({ basari: true, mesaj: "Portföy kaydedildi.", portfoy: yeniPortfoy });
     } catch (err) {
         console.error("Portföy güncelleme hatası:", err.message);
         return res.status(500).json({ basari: false, mesaj: err.message });
     }
 });
+
 app.get('/api/kullanicilar-liste', (req, res) => {
     try {
         const rows = db.prepare(`SELECT adsoyad, portfoy FROM kullanicilar`).all();
