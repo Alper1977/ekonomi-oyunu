@@ -1582,115 +1582,138 @@ async function profilAdiGuncelle() {
 }
 
 async function zenginlerListesiniGuncelle() {
-    if (typeof state === 'undefined' || !state) {
-        return; 
-    }
-
-    // 1. ÖNCE KENDİ GÜNCEL PORTFÖYÜNÜ SUNUCUYA KAYDET
     try {
-        await fetch('/api/portfoy-guncelle', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ portfoy: state })
-        });
-    } catch (e) {
-        console.error("Portföy sunucuya kaydedilemedi:", e);
-    }
+        let listeDiv = document.getElementById('zenginler-listesi') || document.getElementById('siralama-listesi');
+        if (!listeDiv) return;
 
-    let sirketBaslikMali = document.getElementById('sirket-adi-mali');
-    let sirketAdiSplash = document.getElementById('kurum-adi-baslik');
-    
-    let kullaniciAdi = "STRATEJİK";
-    
-    if (sirketBaslikMali && sirketBaslikMali.innerText && !sirketBaslikMali.innerText.includes("Yükleniyor")) {
-        kullaniciAdi = sirketBaslikMali.innerText.replace(" A.Ş.", "").trim();
-    } else if (typeof aktifKullaniciAdiKaydi !== 'undefined' && aktifKullaniciAdiKaydi) {
-        kullaniciAdi = aktifKullaniciAdiKaydi;
-    }
+        // Eğer henüz state tanımlı değilse hata vermesin
+        if (typeof state === 'undefined' || !state) {
+            window.state = { nakit: 100000, vadeli: 0, altin: 0, dolar: 0, varliklar: [] };
+        }
 
-    let aktifSirketAdi = kullaniciAdi.toUpperCase() + " A.Ş.";
+        // 1. Kendi güncel portföyünü arka planda sunucuya bildir
+        try {
+            await fetch('/api/portfoy-guncelle', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ portfoy: state })
+            });
+        } catch (err) {
+            // Sunucuya atılamazsa akışı bozmasın
+        }
 
-    if (sirketBaslikMali) sirketBaslikMali.innerText = aktifSirketAdi;
-    if (sirketAdiSplash) sirketAdiSplash.innerText = aktifSirketAdi;
+        // 2. Şirket adını güvenli şekilde al
+        let sirketBaslikMali = document.getElementById('sirket-adi-mali');
+        let kullaniciAdi = "STRATEJİK";
+        if (sirketBaslikMali && sirketBaslikMali.innerText && !sirketBaslikMali.innerText.includes("Yükleniyor")) {
+            kullaniciAdi = sirketBaslikMali.innerText.replace(" A.Ş.", "").trim();
+        } else if (typeof aktifKullaniciAdiKaydi !== 'undefined' && aktifKullaniciAdiKaydi) {
+            kullaniciAdi = aktifKullaniciAdiKaydi;
+        }
+        let aktifSirketAdi = kullaniciAdi.toUpperCase() + " A.Ş.";
 
-    let oyuncuListesi = [];
+        // Kendi servetimizi hesapla
+        let benimServetim = (state.nakit || 0) + (state.vadeli || 0) + 
+                            ((state.altin || 0) * 3000) + ((state.dolar || 0) * 35);
 
-    // 2. Kendi şirketimizi listeye ekle
-    let toplamServetim = (state.nakit || 0) + (state.vadeli || 0) + ((state.altin || 0) * 3000) + ((state.dolar || 0) * 35);
-    oyuncuListesi.push({
-        isim: aktifSirketAdi,
-        servet: toplamServetim,
-        benim: true
-    });
+        let oyuncuListesi = [{
+            isim: aktifSirketAdi,
+            servet: benimServetim,
+            benim: true
+        }];
 
-    // 3. SUNUCUDAN HEM GERÇEK ÜYELERİ HEM DE BOTLARI TEK SEFERDE ÇEK
-    try {
+        // 3. Sunucudan tüm kullanıcıları ve botları çek
         let response = await fetch('/api/kullanicilar-liste');
         let sonuc = await response.json();
-        
+
         if (sonuc.basari && Array.isArray(sonuc.uyeler)) {
             sonuc.uyeler.forEach(uye => {
-                let uyeSirketAdi = (uye.adsoyad || uye.isim || 'ŞİRKET').toUpperCase();
-                if (!uyeSirketAdi.endsWith("A.Ş.")) {
-                    uyeSirketAdi += " A.Ş.";
-                }
-                
-                // Kendimizi iki kere eklememek için kontrol
-                if (uyeSirketAdi !== aktifSirketAdi) {
-                    let hedefPortfoy = uye.portfoy || {};
-                    let uyeServet = typeof hesaplaServet === 'function' ? hesaplaServet(hedefPortfoy) : ((hedefPortfoy.nakit || hedefPortfoy.para || 0) + (hedefPortfoy.vadeli || 0));
+                let isim = (uye.adsoyad || uye.isim || 'ŞİRKET').toUpperCase();
+                if (!isim.endsWith("A.Ş.")) isim += " A.Ş.";
+
+                // Kendimizi iki kez eklememek için kontrol
+                if (isim !== aktifSirketAdi) {
+                    let p = uye.portfoy || {};
+                    let servet = (p.nakit || p.para || 0) + (p.vadeli || 0);
                     
+                    // Eğer varlıkları varsa ekleyebiliriz
+                    if (Array.isArray(p.varliklar)) {
+                        p.varliklar.forEach(() => { servet += 2000000; }); // Varlık tahmini ekleme
+                    }
+
                     oyuncuListesi.push({
-                        isim: uyeSirketAdi,
-                        servet: uyeServet,
+                        isim: isim,
+                        servet: servet,
                         benim: false
                     });
                 }
             });
         }
-    } catch (e) {
-        console.error("Zenginler listesi sunucudan çekilemedi:", e);
-    }
 
-    // 4. Servete göre büyükten küçüğe sırala
-    oyuncuListesi.sort((a, b) => b.servet - a.servet);
+        // 4. Büyükten küçüğe sırala
+        oyuncuListesi.sort((a, b) => b.servet - a.servet);
 
-    let benimSira = oyuncuListesi.findIndex(x => x.benim) + 1;
-    if (benimSira <= 0) benimSira = 1; 
-
-    let listeDiv = document.getElementById('zenginler-listesi');
-    if (listeDiv) {
-        let gosterilecekListe = [];
+        // 5. HTML çıktısını oluştur ve ekrana bas
+        let html = "";
         let sinir = Math.min(100, oyuncuListesi.length);
-        
+        let benimSiram = oyuncuListesi.findIndex(x => x.benim) + 1;
+
         for (let i = 0; i < sinir; i++) {
-            gosterilecekListe.push({ ...oyuncuListesi[i], gercekIndex: i + 1 });
+            let o = oyuncuListesi[i];
+            let benMi = o.benim;
+            
+            // Tablo veya Div yapısına göre otomatik uyum
+            if (listeDiv.tagName === 'TBODY' || listeDiv.tagName === 'TABLE') {
+                html += `<tr style="${benMi ? 'background-color: rgba(255,215,0,0.15); font-weight: bold;' : ''}">
+                    <td>${i + 1}</td>
+                    <td>${o.isim} ${benMi ? "(Sen)" : ""}</td>
+                    <td>${Math.floor(o.servet).toLocaleString()} TL</td>
+                </tr>`;
+            } else {
+                html += `
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; margin-bottom: 6px; background: #1a1a1a; border: 1px solid #333; border-radius: 6px; font-size: 11px; color: ${benMi ? '#fff' : '#ddd'}; ${benMi ? 'border: 2px solid gold; background: rgba(255,215,0,0.1);' : ''}">
+                        <span>${i + 1}. ${o.isim} ${benMi ? "<b>(Sen)</b>" : ""}</span>
+                        <span style="color: ${benMi ? 'gold' : '#00c853'};">${Math.floor(o.servet).toLocaleString()} TL</span>
+                    </div>
+                `;
+            }
         }
 
-        let kullaniciIlkYuzdeMi = gosterilecekListe.some(x => x.benim);
-        if (!kullaniciIlkYuzdeMi) {
-            gosterilecekListe.push({ isim: "...", servet: 0, ozelSatir: true });
+        // Eğer ilk 100'e giremediysen alta ekle
+        if (benimSiram > 100) {
             let benimObjem = oyuncuListesi.find(x => x.benim);
             if (benimObjem) {
-                gosterilecekListe.push({ ...benimObjem, gercekIndex: benimSira });
+                if (listeDiv.tagName === 'TBODY') {
+                    html += `<tr><td colspan="3" style="text-align: center;">...</td></tr>`;
+                    html += `<tr style="background-color: rgba(255,215,0,0.15); font-weight: bold;">
+                        <td>${benimSiram}</td><td>${benimObjem.isim} (Sen)</td><td>${Math.floor(benimObjem.servet).toLocaleString()} TL</td>
+                    </tr>`;
+                } else {
+                    html += `<div style="text-align: center; color: #fff; font-size: 13px; margin: 5px 0;">...</div>`;
+                    html += `<div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; background: rgba(255,215,0,0.1); border: 2px solid gold; border-radius: 6px; font-size: 11px; color: #fff;">
+                        <span>${benimSiram}. ${benimObjem.isim} <b>(Sen)</b></span>
+                        <span style="color: gold;">${Math.floor(benimObjem.servet).toLocaleString()} TL</span>
+                    </div>`;
+                }
             }
         }
 
-        let html = gosterilecekListe.map(o => {
-            if (o.ozelSatir) {
-                return `<div class="zengin-item-box" style="text-align: center; background: transparent; border: none; font-size: 13px; color: #fff;">...</div>`;
-            }
-            let benMi = o.benim;
-            return `
-                <div class="zengin-item-box ${benMi ? 'highlight-me' : ''}" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; margin-bottom: 6px; background: #1a1a1a; border: 1px solid #333; border-radius: 6px; font-size: 11px; color: ${benMi ? '#fff' : '#ddd'}; ${benMi ? 'border: 2px solid gold; background: rgba(255,215,0,0.1);' : ''}">
-                    <span>${o.gercekIndex}. ${o.isim}</span>
-                    <span style="color: ${benMi ? 'gold' : '#00c853'};">${Math.floor(o.servet).toLocaleString()} TL</span>
-                </div>
-            `;
-        }).join('');
-
         listeDiv.innerHTML = html;
+
+    } catch (err) {
+        console.error("Zenginler listesi güncellenirken hata:", err);
+        let listeDiv = document.getElementById('zenginler-listesi') || document.getElementById('siralama-listesi');
+        if (listeDiv) {
+            listeDiv.innerHTML = `<div style="padding: 10px; color: #ff5252; text-align: center;">Liste yüklenemedi, yeniden deneniyor...</div>`;
+        }
     }
+}
+
+// Listenin otomatik ve dinamik akması için periyodik tetikleyici (Her 5 saniyede bir)
+if (typeof window.zenginlerIntervalDurdurucu === 'undefined') {
+    window.zenginlerIntervalDurdurucu = setInterval(() => {
+        zenginlerListesiniGuncelle();
+    }, 5000);
 }
  
 async function portfoyuSenkronizeEt() {
