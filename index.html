@@ -1613,14 +1613,15 @@ async function profilAdiGuncelle() {
     let oyuncuListesi = [];
 
     // 2. Sunucudan ortak zenginler listesini çek
-    try {
-        let response = await fetch('/api/zenginler-listesi');
-        let sonuc = await response.json();
+  try {
+        let response = await fetch('/api/zenginler-listesi-ortak'); // <-- BURAYI DÜZELTTİK
+        let textData = await response.text();
+        let sonuc = textData ? JSON.parse(textData) : {};
         
         if (sonuc.basari && Array.isArray(sonuc.liste)) {
             oyuncuListesi = sonuc.liste.map(item => ({
                 isim: item.isim,
-                servet: item.servet,
+                servet: item.nakit, // Sunucudan 'nakit' key'i ile servet gönderiyorduk
                 benim: item.isim === aktifSirketAdi
             }));
         }
