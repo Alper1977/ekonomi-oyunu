@@ -1585,20 +1585,6 @@ async function profilAdiGuncelle() {
 async function zenginlerListesiniGuncelle() {
     if (typeof state === 'undefined' || !state) return;
 
-    // 1. Kendi portföyünü VE istemcideki botların güncel durumunu sunucuya gönder
-    try {
-        await fetch('/api/portfoy-guncelle', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                portfoy: state,
-                botlar: typeof botlar !== 'undefined' ? botlar : [] // 🌟 Botları da sunucuya taşıyoruz
-            })
-        });
-    } catch (e) {
-        console.error("Portföy ve botlar sunucuya kaydedilemedi:", e);
-    }
-
     let sirketBaslikMali = document.getElementById('sirket-adi-mali');
     let sirketAdiSplash = document.getElementById('kurum-adi-baslik');
     let kullaniciAdi = "STRATEJİK";
@@ -1613,24 +1599,61 @@ async function zenginlerListesiniGuncelle() {
     if (sirketBaslikMali) sirketBaslikMali.innerText = aktifSirketAdi;
     if (sirketAdiSplash) sirketAdiSplash.innerText = aktifSirketAdi;
 
+    // 1. Kendi portföyünü ve botları sunucuya gönder
+    try {
+        await fetch('/api/portfoy-guncelle', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                portfoy: state,
+                botlar: typeof botlar !== 'undefined' ? botlar : []
+            })
+        });
+    } catch (e) {
+        console.error("Portföy ve botlar sunucuya kaydedilemedi:", e);
+    }
+
     let oyuncuListesi = [];
 
     // 2. Sunucudan ortak zenginler listesini çek
-  try {
-        let response = await fetch('/api/zenginler-listesi-ortak'); // <-- BURAYI DÜZELTTİK
+    try {
+        let response = await fetch('/api/zenginler-listesi-ortak');
         let textData = await response.text();
         let sonuc = textData ? JSON.parse(textData) : {};
         
-        if (sonuc.basari && Array.isArray(sonuc.liste)) {
-            oyuncuListesi = sonuc.liste.map(item => ({
-                isim: item.isim,
-                servet: item.nakit, // Sunucudan 'nakit' key'i ile servet gönderiyorduk
-                benim: item.isim === aktifSirketAdi
-            }));
+        let hamListe = sonuc.liste || sonuc.zenginler || (Array.isArray(sonuc) ? sonuc : []);
+
+        if (Array.isArray(hamListe) && hamListe.length > 0) {
+            oyuncuListesi = hamListe.map(item => {
+                let isim = item.isim || item.name || "B bilinmeyen";
+                let servetDegeri = item.nakit !== undefined ? item.nakit : (item.servet !== undefined ? item.servet : (item.toplamServet || 0));
+                
+                return {
+                    isim: isim,
+                    servet: Number(servetDegeri) || 0,
+                    benim: isim.trim().toUpperCase() === aktifSirketAdi.trim().toUpperCase()
+                };
+            });
         }
     } catch (e) {
         console.error("Zenginler listesi sunucudan alınamadı:", e);
     }
+
+    // Eğer sunucudan liste boş geldiyse istemcideki botlar ve state ile geçici liste oluştur (Hata durumunda liste bomboş kalmasın)
+    if (oyuncuListesi.length === 0) {
+        let benimToplamServet = (state.nakit || 0) + (state.vadeli || 0);
+        oyuncuListesi.push({ isim: aktifSirketAdi, servet: benimToplamServet, benim: true });
+
+        if (typeof botlar !== 'undefined' && Array.isArray(botlar)) {
+            botlar.forEach(b => {
+                let botServet = (b.nakit || 0) + (b.vadeli || 0);
+                oyuncuListesi.push({ isim: b.isim, servet: botServet, benim: false });
+            });
+        }
+    }
+
+    // Servete göre büyükten küçüğe sırala
+    oyuncuListesi.sort((a, b) => b.servet - a.servet);
 
     let benimSira = oyuncuListesi.findIndex(x => x.benim) + 1;
     if (benimSira <= 0) benimSira = 1; 
