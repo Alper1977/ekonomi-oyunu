@@ -1583,6 +1583,12 @@ async function profilAdiGuncelle() {
 
 
 async function zenginlerListesiniGuncelle() {
+let sirketBaslikMali = document.getElementById('sirket-adi-mali');
+    console.log("DOM'dan okunan şirket başlığı:", sirketBaslikMali ? sirketBaslikMali.innerText : "Element bulunamadı!");
+    console.log("Aktif kullanıcı adı kaydı:", typeof aktifKullaniciAdiKaydi !== 'undefined' ? aktifKullaniciAdiKaydi : "Tanımlı değil");
+
+
+ 
     if (typeof state === 'undefined' || !state) return;
 
     // 1. Kendi portföyünü sunucuya gönder
