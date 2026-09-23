@@ -1622,16 +1622,18 @@ async function zenginlerListesiniGuncelle() {
         benim: true
     });
 
-   // 3. Sunucudan diğer GERÇEK ÜYELERİ çek ve listeye dahil et
+   // 3. Sunucudan HEM GERÇEK ÜYELERİ HEM DE 500 SABİT BOTU ÇEK
     try {
         let response = await fetch('/api/kullanicilar-liste');
         let sonuc = await response.json();
         
-        console.log("Sunucudan gelen ham üye verisi:", sonuc); // Buraya bakarak kimlerin geldiğini görebilirsin
-
         if (sonuc.basari && Array.isArray(sonuc.uyeler)) {
             sonuc.uyeler.forEach(uye => {
-                let uyeSirketAdi = (uye.adsoyad || uye.isim || 'ŞİRKET').toUpperCase() + " A.Ş.";
+                let uyeSirketAdi = (uye.adsoyad || uye.isim || 'ŞİRKET').toUpperCase();
+                // Eğer ismin son zaten A.Ş. ile bitmiyorsa ekleyelim ki estetik dursun
+                if (!uyeSirketAdi.endsWith("A.Ş.")) {
+                    uyeSirketAdi += " A.Ş.";
+                }
                 
                 // Kendimizi tekrar eklememek için kontrol
                 if (uyeSirketAdi !== aktifSirketAdi) {
@@ -1647,21 +1649,10 @@ async function zenginlerListesiniGuncelle() {
             });
         }
     } catch (e) {
-        console.error("Gerçek üyeler çekilemedi:", e);
+        console.error("Zenginler listesi sunucudan çekilemedi:", e);
     }
 
-    // 4. BOTLARI da listeye ekle
-    if (typeof botlar !== 'undefined' && Array.isArray(botlar)) {
-        botlar.forEach(bot => {
-            oyuncuListesi.push({
-                isim: bot.isim,
-                servet: typeof hesaplaServet === 'function' ? hesaplaServet(bot) : (bot.servet || 0),
-                benim: false
-            });
-        });
-    }
-
-    // 5. Servete göre büyükten küçüğe sırala
+    // 4. Servete göre büyükten küçüğe sırala
     oyuncuListesi.sort((a, b) => b.servet - a.servet);
 
     let benimSira = oyuncuListesi.findIndex(x => x.benim) + 1;
@@ -1704,7 +1695,6 @@ async function zenginlerListesiniGuncelle() {
         siralamaBilgisi.innerText = "Zenginler Listesi: " + benimSira + ". Sıradasınız";
     }
 }
-
 async function portfoyuSenkronizeEt() {
     try {
         let response = await fetch('/api/aktif-kullanici', { credentials: 'include' });
