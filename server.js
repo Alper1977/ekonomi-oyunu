@@ -1289,7 +1289,7 @@ app.get('/api/kullanicilar-liste', (req, res) => {
     try {
         const rows = db.prepare(`SELECT adsoyad, portfoy FROM kullanicilar`).all();
 
-        let uyeler = rows.map(row => {
+        let uyeler = rows.map(row => { 
             let portfoyData = {};
             try {
                 if (typeof row.portfoy === 'string') {
