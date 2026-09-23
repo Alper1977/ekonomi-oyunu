@@ -134,7 +134,6 @@ if (ayarSayisi.sayi === 0) {
     db.prepare(`INSERT OR IGNORE INTO oyun_ayarlari (id, ayarlar) VALUES (1, ?)`).run(JSON.stringify(varsayilanAyarlar));
 }
 
-// İlanlar tablosu (tek ve güvenli)
 db.prepare(`CREATE TABLE IF NOT EXISTS ilanlar (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     kullanici_id INTEGER,
@@ -144,61 +143,6 @@ db.prepare(`CREATE TABLE IF NOT EXISTS ilanlar (
     detaylar TEXT,
     tarih DATETIME DEFAULT CURRENT_TIMESTAMP
 )`).run();
-
-// ==========================================
-// 🌟 MERKEZİ BOTLAR TABLOSU VE SABİT KAYIT
-// ==========================================
-db.prepare(`
-    CREATE TABLE IF NOT EXISTS botlar (
-        id INTEGER PRIMARY KEY,
-        isim TEXT,
-        nakit REAL,
-        vadeli REAL,
-        altin REAL,
-        dolar REAL,
-        euro REAL,
-        kredi REAL,
-        varliklar TEXT
-    )
-`).run();
-
-const botSayisi = db.prepare(`SELECT COUNT(*) as sayi FROM botlar`).get().sayi;
-
-if (botSayisi === 0) {
-    let isimHavuzu = ["BUKET", "AHMET", "MEHMET", "AYŞE", "FATMA", "MUSTAFA", "EMEL", "CAN", "ZEYNEP", "BURAK", "SEDA", "EMRE", "DENİZ", "MURAT", "ELİF", "KEREM", "MERVE", "TOLGA", "SELİN", "ONUR", "ESRA", "KAAN", "BÜŞRA", "VOLKAN", "GAMZE", "CEM", "GİZEM", "OĞUZ", "CEREN", "BERK", "DERYA"];
-    let soyisimHavuzu = ["ENERJİ", "İNŞAAT", "TAAHHÜT", "MAKİNA", "METAL", "SANAYİ", "TİCARET", "GRUP", "YAPI", "ENDÜSTRİ", "YILMAZ", "DEMİR", "KAYA", "ÇELİK", "ŞAHİN", "ÖZTÜRK", "YILDIZ", "AYDIN", "ARSLAN", "DOĞAN", "KILIÇ", "ASLAN", "ÇETİN", "KOÇ", "KURT", "ÖZKAN", "ŞİMŞEK", "POLAT", "ÖZDEMİR", "ERDOĞAN"];
-
-    const insertBot = db.prepare(`
-        INSERT INTO botlar (id, isim, nakit, vadeli, altin, dolar, euro, kredi, varliklar) 
-        VALUES (?, ?, ?, ?, 0, 0, 0, 0, '[]')
-    `);
-
-    const insertMany = db.transaction((bots) => {
-        for (let bot of bots) {
-            insertBot.run(bot.id, bot.isim, bot.nakit, bot.vadeli);
-        }
-    });
-
-    let yeniBotlar = [];
-    for (let i = 1; i <= 500; i++) {
-        let isimIndex = (i * 7) % isimHavuzu.length;
-        let soyisimIndex = (i * 13) % soyisimHavuzu.length;
-        let sabitIsim = isimHavuzu[isimIndex] + " " + soyisimHavuzu[soyisimIndex] + " A.Ş.";
-        
-        let sabitNakit = 5000000 + ((i * 123456) % 45000000);
-        let sabitVadeli = (i * 78910) % 10000000;
-
-        yeniBotlar.push({
-            id: 200 + i,
-            isim: sabitIsim,
-            nakit: sabitNakit,
-            vadeli: sabitVadeli
-        });
-    }
-
-    insertMany(yeniBotlar);
-    console.log("500 adet sabit bot veritabanına başarıyla kaydedildi.");
-}
 
 // --- 🌟 ÇEVRİMİÇİ / ÇEVRİMDIŞI AKILLI EKONOMİ MOTORU (TAM KAPSAMLI) ---
 function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
@@ -507,145 +451,30 @@ setInterval(() => {
         if (!ayarKaydi) return;
         const ayarlar = JSON.parse(ayarKaydi.ayarlari);
 
-        // Admin panelinden gelen dinamik süre ve limit ayarları
-        const botHizi = ayarlar.botHizi || 8000;
-        const botIlanHizi = ayarlar.botIlanHizi || 15000;
-        const maksimumIlanSiniri = ayarlar.maksimumIlanSiniri || 5;
-        const beklemeSuresiMs = ayarlar.GLOBAL_BEKLEME_SURESI || 60000;
+        // Canlı kurları veritabanından çekiyoruz
+        const kurlarKaydi = db.prepare(`SELECT kurlar FROM oyun_kurlari WHERE id = 1`).get();
+        const kurlar = kurlarKaydi ? JSON.parse(kurlarKaydi.kurlar) : { dolar: {satis: 49}, euro: {satis: 54}, altin: {satis: 6000} };
 
-        const simdiMs = Date.now();
-
-        // Veritabanındaki botları çek
-        const botlarRows = db.prepare(`SELECT * FROM botlar`).all();
-        let botlar = botlarRows.map(b => ({
-            ...b,
-            varliklar: typeof b.varliklar === 'string' ? JSON.parse(b.varliklar || '[]') : (b.varliklar || [])
-        }));
-
-        const satisFiyatlari = ayarlar.satisFiyatlari || { "Konut": 2000000, "Arsa": 1500000, "Ticari": 5000000 };
-        let gercekVarliklar = Object.keys(satisFiyatlari);
-
-        global.sonBotZamani = global.sonBotZamani || 0;
-        global.sonBotIlanZamani = global.sonBotIlanZamani || 0;
-
-        // 1. Bot İşlemleri (Admin botHizi süresine göre)
-        if (simdiMs - global.sonBotZamani >= botHizi) {
-            botlar.forEach(bot => {
-                for (let i = 0; i < 5; i++) {
-                    if (Math.random() < 0.30) {
-                        bot.nakit += Math.floor(Math.random() * 200000000) + 50000000;
-                    } else {
-                        let secilenUrun = gercekVarliklar[Math.floor(Math.random() * gercekVarliklar.length)];
-                        let bedel = satisFiyatlari[secilenUrun] || 2000000;
-
-                        if (bot.nakit >= bedel) {
-                            bot.nakit -= bedel;
-                            bot.varliklar.push({
-                                id: Date.now() + Math.random(),
-                                isim: secilenUrun,
-                                durum: 'sahip'
-                            });
-                        }
-                    }
-                }
-            });
-            global.sonBotZamani = simdiMs;
-        }
-
-        // 2. Bot İlan Açma (Admin botIlanHizi ve maksimumIlanSiniri kurallarına göre)
-        if (simdiMs - global.sonBotIlanZamani >= botIlanHizi) {
-            let aktifIlanSayilari = {};
-
-            const dbIlanlar = db.prepare(`SELECT ilan_tipi FROM ilanlar`).all();
-            dbIlanlar.forEach(ilan => {
-                aktifIlanSayilari[ilan.ilan_tipi] = (aktifIlanSayilari[ilan.ilan_tipi] || 0) + 1;
-            });
-
-            botlar.forEach(b => {
-                if (b.varliklar) {
-                    b.varliklar.forEach(v => {
-                        if (v.durum === 'ilan-aktif') {
-                            aktifIlanSayilari[v.isim] = (aktifIlanSayilari[v.isim] || 0) + 1;
-                        }
-                    });
-                }
-            });
-
-            botlar.forEach(bot => {
-                if (bot.varliklar && bot.varliklar.length > 0) {
-                    let sahipVarliklar = bot.varliklar.filter(v => v.durum === 'sahip');
-
-                    if (sahipVarliklar.length > 0 && Math.random() < 0.30) {
-                        let uygunVarliklar = sahipVarliklar.filter(v => {
-                            let mevcutSayi = aktifIlanSayilari[v.isim] || 0;
-                            return mevcutSayi < maksimumIlanSiniri;
-                        });
-
-                        if (uygunVarliklar.length > 0) {
-                            uygunVarliklar.sort(() => Math.random() - 0.5);
-                            let secilenVarlik = uygunVarliklar[0];
-                        
-                            secilenVarlik.durum = 'ilan-aktif';
-                            secilenVarlik.ilanSahibi = bot.isim;
-                            secilenVarlik.ilanVerilisZamani = simdiMs;
-                            
-                            aktifIlanSayilari[secilenVarlik.isim] = (aktifIlanSayilari[secilenVarlik.isim] || 0) + 1;
-
-                            db.prepare(`INSERT INTO ilanlar (kullanici_id, satici_adsoyad, ilan_tipi, fiyat, detaylar) VALUES (?, ?, ?, ?, ?)`)
-                              .run(0, bot.isim, secilenVarlik.isim, satisFiyatlari[secilenVarlik.isim] || 2000000, JSON.stringify({ varlikId: secilenVarlik.id }));
-                        }
-                    }
-                }
-            });
-
-            global.sonBotIlanZamani = simdiMs;
-        }
-
-        // 3. Garanti Satış / Süre Kontrolü (Admin GLOBAL_BEKLEME_SURESI kuralına göre)
-        const dbIlanlarFull = db.prepare(`SELECT * FROM ilanlar`).all();
-        dbIlanlarFull.forEach(ilan => {
-            let ilanZamani = ilan.ilanVerilisZamani || simdiMs;
-            let gecenSure = simdiMs - ilanZamani;
-
-            if (gecenSure >= beklemeSuresiMs) {
-                let satisBedeli = ilan.fiyat || 2000000;
-                let alabilecekBotlar = botlar.filter(b => b.nakit >= satisBedeli);
-                let aliciBot;
-
-                if (alabilecekBotlar.length > 0) {
-                    aliciBot = alabilecekBotlar[Math.floor(Math.random() * alabilecekBotlar.length)];
-                } else {
-                    aliciBot = botlar[Math.floor(Math.random() * botlar.length)];
-                    if (aliciBot) aliciBot.nakit += satisBedeli + 5000000;
-                }
-
-                if (aliciBot) {
-                    aliciBot.nakit -= satisBedeli;
-                    if (!aliciBot.varliklar) aliciBot.varliklar = [];
-                    aliciBot.varliklar.push({
-                        id: Date.now() + Math.random(),
-                        isim: ilan.ilan_tipi,
-                        durum: 'sahip'
-                    });
-
-                    db.prepare(`DELETE FROM ilanlar WHERE id = ?`).run(ilan.id);
-                }
+        const kullanicilar = db.prepare(`SELECT id, portfoy, son_guncelleme FROM kullanicilar`).all();
+        
+        // Her kullanıcıyı kendi bağımsız transaction ve try-catch bloğuna alıyoruz
+        kullanicilar.forEach(user => {
+            try {
+                const userTransaction = db.transaction(() => {
+                    kullaniciEkonomisiniIslet(user, ayarlar, kurlar);
+                });
+                userTransaction();
+            } catch (userErr) {
+                console.error(`Kullanıcı ID ${user.id} ekonomi işletilirken hata oluştu:`, userErr.message);
+                // Bu kullanıcı patlasa bile diğer kullanıcıların parası, dövizi, kredisi etkilenmez
             }
         });
 
-        // Botların güncel halini veritabanına kaydet
-        const updateStmt = db.prepare(`UPDATE botlar SET nakit = ?, varliklar = ? WHERE id = ?`);
-        const updateTransaction = db.transaction((botListesi) => {
-            botListesi.forEach(b => {
-                updateStmt.run(b.nakit, JSON.stringify(b.varliklar), b.id);
-            });
-        });
-        updateTransaction(botlar);
-
     } catch (err) {
-        console.error("Bot döngüsü hatası:", err.message);
+        console.error("Arka plan oyun döngüsü genel hata:", err.message);
     }
-}, 3000);
+}, 30000);
+
 // --- API Rotaları ---
 
 app.get('/api/ilanlar', (req, res) => {
@@ -1256,7 +1085,6 @@ app.post('/api/portfoy-guncelle', (req, res) => {
         return res.status(500).json({ basari: false, mesaj: err.message });
     }
 });
-
 app.get('/api/kullanicilar-liste', (req, res) => {
     try {
         const rows = db.prepare(`SELECT adsoyad, portfoy FROM kullanicilar`).all();
@@ -1264,29 +1092,19 @@ app.get('/api/kullanicilar-liste', (req, res) => {
         let uyeler = rows.map(row => {
             let portfoyData = {};
             try {
-                portfoyData = typeof row.portfoy === 'string' ? JSON.parse(row.portfoy) : (row.portfoy || {});
+                if (typeof row.portfoy === 'string') {
+                    portfoyData = JSON.parse(row.portfoy);
+                } else if (typeof row.portfoy === 'object' && row.portfoy !== null) {
+                    portfoyData = row.portfoy;
+                }
             } catch (e) {
                 portfoyData = {};
             }
 
-            let nakit = portfoyData.nakit !== undefined ? portfoyData.nakit : (portfoyData.para || 0);
-            let vadeli = portfoyData.vadeli || 0;
-
             return {
                 adsoyad: row.adsoyad ? row.adsoyad.trim() : 'İsimsiz Şirket',
-                portfoy: {
-                    ...portfoyData,
-                    nakit: nakit,
-                    para: nakit,
-                    vadeli: vadeli
-                }
+                portfoy: portfoyData
             };
-        });
-
-        uyeler.sort((a, b) => {
-            let servetA = (a.portfoy.nakit || a.portfoy.para || 0) + (a.portfoy.vadeli || 0);
-            let servetB = (b.portfoy.nakit || b.portfoy.para || 0) + (b.portfoy.vadeli || 0);
-            return servetB - servetA;
         });
 
         res.json({ basari: true, uyeler: uyeler });
