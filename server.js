@@ -1278,10 +1278,9 @@ app.post('/api/portfoy-guncelle', (req, res) => {
 });
 app.get('/api/kullanicilar-liste', (req, res) => {
     try {
-        // Doğrudan senin döngünün okuduğu ana tablodan tüm profilleri (gerçek kullanıcılar ve botlar) çekiyoruz
-        const rows = db.prepare(`SELECT adsoyad, portfoy FROM kullanicilar`).all();
-
-        let uyeler = rows.map(row => {
+        // 1. Gerçek kullanıcıları çek ve portföylerini parse et
+        const userRows = db.prepare(`SELECT adsoyad, portfoy FROM kullanicilar`).all();
+        let uyeler = userRows.map(row => {
             let portfoyData = {};
             try {
                 portfoyData = typeof row.portfoy === 'string' ? JSON.parse(row.portfoy) : (row.portfoy || {});
@@ -1289,7 +1288,6 @@ app.get('/api/kullanicilar-liste', (req, res) => {
                 portfoyData = {};
             }
 
-            // Nakit / Para değerini güvenli bir şekilde al
             let nakit = portfoyData.nakit !== undefined ? portfoyData.nakit : (portfoyData.para || 0);
             let vadeli = portfoyData.vadeli || 0;
 
@@ -1304,14 +1302,41 @@ app.get('/api/kullanicilar-liste', (req, res) => {
             };
         });
 
-        // Toplam servete göre büyükten küçüğe (zenginlik sırasına) diz
-        uyeler.sort((a, b) => {
+        // 2. Ayrı tablodaki botları çek ve aynı formata sokarak listeye dahil et
+        const botRows = db.prepare(`SELECT isim, nakit, vadeli, varliklar FROM botlar`).all();
+        let botUyeler = botRows.map(bot => {
+            let botNakit = bot.nakit || 0;
+            let botVadeli = bot.vadeli || 0;
+            let botVarliklar = [];
+            try {
+                botVarliklar = typeof bot.varliklar === 'string' ? JSON.parse(bot.varliklar) : (bot.varliklar || []);
+            } catch (e) {
+                botVarliklar = [];
+            }
+
+            return {
+                adsoyad: bot.isim ? bot.isim.trim() : 'Bot',
+                portfoy: {
+                    nakit: botNakit,
+                    para: botNakit,
+                    vadeli: botVadeli,
+                    varliklar: botVarliklar,
+                    gunlukGelir: Math.floor(botNakit * 0.005)
+                }
+            };
+        });
+
+        // 3. Gerçek kullanıcılar ve botları tek havuzda birleştir
+        let tumListe = [...uyeler, ...botUyeler];
+
+        // 4. Toplam servete göre büyükten küçüğe sırala
+        tumListe.sort((a, b) => {
             let servetA = (a.portfoy.nakit || a.portfoy.para || 0) + (a.portfoy.vadeli || 0);
             let servetB = (b.portfoy.nakit || b.portfoy.para || 0) + (b.portfoy.vadeli || 0);
             return servetB - servetA;
         });
 
-        res.json({ basari: true, uyeler: uyeler });
+        res.json({ basari: true, uyeler: tumListe });
     } catch (err) {
         return res.status(500).json({ basari: false, mesaj: err.message });
     }
