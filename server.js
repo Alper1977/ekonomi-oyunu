@@ -134,16 +134,7 @@ if (ayarSayisi.sayi === 0) {
     db.prepare(`INSERT OR IGNORE INTO oyun_ayarlari (id, ayarlar) VALUES (1, ?)`).run(JSON.stringify(varsayilanAyarlar));
 }
 
-db.prepare(`CREATE TABLE IF NOT EXISTS ilanlar (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    kullanici_id INTEGER,
-    satici_adsoyad TEXT,
-    ilan_tipi TEXT,
-    fiyat REAL,
-    detaylar TEXT,
-    tarih DATETIME DEFAULT CURRENT_TIMESTAMP
-)`).run();
-
+// İlanlar tablosu (tek ve güvenli)
 db.prepare(`CREATE TABLE IF NOT EXISTS ilanlar (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     kullanici_id INTEGER,
@@ -171,7 +162,6 @@ db.prepare(`
     )
 `).run();
 
-// Eğer botlar tablosu boşsa, o 500 sabit botu veritabanına tek seferlik çakıyoruz
 const botSayisi = db.prepare(`SELECT COUNT(*) as sayi FROM botlar`).get().sayi;
 
 if (botSayisi === 0) {
