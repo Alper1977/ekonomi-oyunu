@@ -1586,6 +1586,7 @@ async function zenginlerListesiniGuncelle() {
         return; 
     }
 
+    // 1. ÖNCE KENDİ GÜNCEL PORTFÖYÜNÜ SUNUCUYA KAYDET
     try {
         await fetch('/api/portfoy-guncelle', {
             method: 'POST',
@@ -1614,37 +1615,25 @@ async function zenginlerListesiniGuncelle() {
 
     let oyuncuListesi = [];
 
-    // Kendi şirketimizi ekle
+    // 2. Kendi şirketimizi listeye ekle
     oyuncuListesi.push({
         isim: aktifSirketAdi,
         servet: typeof hesaplaServet === 'function' ? hesaplaServet(state) : 0,
         benim: true
     });
 
-    // Yerel botları listeye dahil et
-    if (typeof botlar !== 'undefined' && Array.isArray(botlar)) {
-        botlar.forEach(bot => {
-            let botServet = typeof hesaplaServet === 'function' ? hesaplaServet(bot) : (bot.nakit || 0);
-            oyuncuListesi.push({
-                isim: (bot.isim || 'BOT').toUpperCase(),
-                servet: botServet,
-                benim: false
-            });
-        });
-    }
-
-    // Sunucudan gerçek üyeleri çek
+   // 3. Sunucudan diğer GERÇEK ÜYELERİ çek ve listeye dahil et
     try {
         let response = await fetch('/api/kullanicilar-liste');
         let sonuc = await response.json();
         
+        console.log("Sunucudan gelen ham üye verisi:", sonuc); // Buraya bakarak kimlerin geldiğini görebilirsin
+
         if (sonuc.basari && Array.isArray(sonuc.uyeler)) {
             sonuc.uyeler.forEach(uye => {
-                let uyeSirketAdi = (uye.adsoyad || uye.isim || 'ŞİRKET').toUpperCase();
-                if (!uyeSirketAdi.endsWith("A.Ş.")) {
-                    uyeSirketAdi += " A.Ş.";
-                }
+                let uyeSirketAdi = (uye.adsoyad || uye.isim || 'ŞİRKET').toUpperCase() + " A.Ş.";
                 
+                // Kendimizi tekrar eklememek için kontrol
                 if (uyeSirketAdi !== aktifSirketAdi) {
                     let hedefVeri = uye.portfoy || uye.state || uye;
                     let uyeServet = typeof hesaplaServet === 'function' ? hesaplaServet(hedefVeri) : (uye.servet || 0);
@@ -1658,19 +1647,25 @@ async function zenginlerListesiniGuncelle() {
             });
         }
     } catch (e) {
-        console.error("Zenginler listesi sunucudan çekilemedi:", e);
+        console.error("Gerçek üyeler çekilemedi:", e);
     }
 
+    // 4. BOTLARI da listeye ekle
+    if (typeof botlar !== 'undefined' && Array.isArray(botlar)) {
+        botlar.forEach(bot => {
+            oyuncuListesi.push({
+                isim: bot.isim,
+                servet: typeof hesaplaServet === 'function' ? hesaplaServet(bot) : (bot.servet || 0),
+                benim: false
+            });
+        });
+    }
+
+    // 5. Servete göre büyükten küçüğe sırala
     oyuncuListesi.sort((a, b) => b.servet - a.servet);
 
     let benimSira = oyuncuListesi.findIndex(x => x.benim) + 1;
     if (benimSira <= 0) benimSira = 1; 
-
-    // Sıra numarasını ana sayfaya/elementlere yazdır
-    let siraElementleri = document.querySelectorAll('#siralamam, .siralamam-text, #sira-numaram');
-    siraElementleri.forEach(el => {
-        el.innerText = `${benimSira}. Sıradasınız`;
-    });
 
     let listeDiv = document.getElementById('zenginler-listesi');
     if (listeDiv) {
@@ -1703,8 +1698,60 @@ async function zenginlerListesiniGuncelle() {
             `;
         }).join('');
     }
+
+    let siralamaBilgisi = document.getElementById('siralama-bilgisi');
+    if (siralamaBilgisi) {
+        siralamaBilgisi.innerText = "Zenginler Listesi: " + benimSira + ". Sıradasınız";
+    }
 }
- 
+
+async function portfoyuSenkronizeEt() {
+    try {
+        let response = await fetch('/api/aktif-kullanici', { credentials: 'include' });
+        if (response.ok) {
+            let user = await response.json();
+            if (user && user.portfoy) {
+                // Nakiti güncelle
+                state.nakit = user.portfoy.nakit !== undefined ? user.portfoy.nakit : state.nakit;
+                
+                // 🌟 EKSİK OLAN PARÇA: Kredi, taksit ve krediler dizisini sunucudan senkronize et!
+                state.kredi = user.portfoy.kredi !== undefined ? user.portfoy.kredi : 0;
+                state.taksit = user.portfoy.taksit !== undefined ? user.portfoy.taksit : 0;
+                state.krediler = user.portfoy.krediler || [];
+                
+                let sunucuVarliklar = user.portfoy.varliklar || [];
+
+                // İşlemde olan (lokal olarak güncellenmiş) varlıklarımızı koruyalım
+                let islemdekiVarliklar = state.varliklar.filter(v => v._islemde);
+
+                // Sunucudan gelen listede olup işlemde olanları koruyarak state'i güncelleyelim
+                state.varliklar = sunucuVarliklar.map(sunucuV => {
+                    let lokalV = islemdekiVarliklar.find(iv => iv.id == sunucuV.id || iv.id == sunucuV.varlikId);
+                    if (lokalV) {
+                        return lokalV; // Sunucu henüz haberdar değilse lokaldeki işlem halindeki halini tut
+                    }
+                    return sunucuV;
+                });
+
+                // Sunucu listesinde olmayan ama lokalde yeni işlemde kalmış olanları da kaybetmeyelim
+                islemdekiVarliklar.forEach(iv => {
+                    if (!state.varliklar.some(v => v.id == iv.id)) {
+                        state.varliklar.push(iv);
+                    }
+                });
+                
+                // DOM elementlerini güncelle
+                if (typeof varliklariGoster === 'function') {
+                    varliklariGoster();
+                } else if (typeof guncelle === 'function') {
+                    guncelle();
+                }
+            }
+        }
+    } catch (err) {
+        console.error("Portföy senkronizasyon hatası:", err);
+    }
+}
 async function portfoyuSunucuyaKaydet(yeniPortfoy) {
 
     if (!yeniPortfoy || typeof state === 'undefined' || !state) {
@@ -1897,24 +1944,16 @@ function sozlesmeAc(tur) {
 
 let isimHavuzu = ["BUKET", "AHMET", "MEHMET", "AYŞE", "FATMA", "MUSTAFA", "EMEL", "CAN", "ZEYNEP", "BURAK", "SEDA", "EMRE", "DENİZ", "MURAT", "ELİF", "KEREM", "MERVE", "TOLGA", "SELİN", "ONUR", "ESRA", "KAAN", "BÜŞRA", "VOLKAN", "GAMZE", "CEM", "GİZEM", "OĞUZ", "CEREN", "BERK", "DERYA"];
 let soyisimHavuzu = ["ENERJİ", "İNŞAAT", "TAAHHÜT", "MAKİNA", "METAL", "SANAYİ", "TİCARET", "GRUP", "YAPI", "ENDÜSTRİ", "YILMAZ", "DEMİR", "KAYA", "ÇELİK", "ŞAHİN", "ÖZTÜRK", "YILDIZ", "AYDIN", "ARSLAN", "DOĞAN", "KILIÇ", "ASLAN", "ÇETİN", "KOÇ", "KURT", "ÖZKAN", "ŞİMŞEK", "POLAT", "ÖZDEMİR", "ERDOĞAN"];
-
 let botlar = [];
 for (let i = 1; i <= 500; i++) {
-    // Math.random YERİNE i'ye bağlı sabit indeksler (Herkesin tarayıcısında aynı bot çıkar)
-    let isimIndex = (i * 7) % isimHavuzu.length;
-    let soyisimIndex = (i * 13) % soyisimHavuzu.length;
-    
-    let sabitIsim = isimHavuzu[isimIndex] + " " + soyisimHavuzu[soyisimIndex] + " A.Ş.";
-    
-    // Paraları da rastgelelikten çıkarıp i'ye göre sabitliyoruz
-    let sabitNakit = 5000000 + ((i * 123456) % 45000000);
-    let sabitVadeli = (i * 78910) % 10000000;
+    let rastgeleIsim = isimHavuzu[Math.floor(Math.random() * isimHavuzu.length)] + " " + soyisimHavuzu[Math.floor(Math.random() * soyisimHavuzu.length)] + " A.Ş.";
+    let baslangicNakit = Math.floor(Math.random() * 50000000) + 5000000;
     
     botlar.push({
         id: 200 + i,
-        isim: sabitIsim,
-        nakit: sabitNakit,
-        vadeli: sabitVadeli,
+        isim: rastgeleIsim,
+        nakit: baslangicNakit,
+        vadeli: Math.floor(Math.random() * 10000000),
         altin: 0,
         dolar: 0,
         euro: 0,
@@ -1922,7 +1961,7 @@ for (let i = 1; i <= 500; i++) {
         varliklar: []
     });
 }
- 
+
 if (state.ustUsteOdenmeyenTaksit === undefined) state.ustUsteOdenmeyenTaksit = 0;
 
 
