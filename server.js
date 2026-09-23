@@ -191,25 +191,37 @@ function sunucudaServetHesapla(oyuncu, ayarlar, kurlar) {
     if (!oyuncu) return 0;
 
     let varlikDegeri = 0;
-    const satisFiyatlari = ayarlar.satisFiyatlari || { "Konut": 2000000, "Arsa": 1500000, "Ticari": 5000000 };
+    // Ayarlar veya satisFiyatlari undefined gelirse varsayılanı kullan
+    let satisFiyatlari = { "Konut": 2000000, "Arsa": 1500000, "Ticari": 5000000 };
+    try {
+        if (ayarlar && ayarlar.satisFiyatlari) {
+            satisFiyatlari = ayarlar.satisFiyatlari;
+        }
+    } catch (e) {}
     
-    if (oyuncu.varliklar && Array.isArray(oyuncu.varliklar)) {
-        varlikDegeri = oyuncu.varliklar
+    // Varlıklar dizi değilse veya string olarak geldiyse güvenle parse et
+    let varliklarDizisi = oyuncu.varliklar;
+    if (typeof varliklarDizisi === 'string') {
+        try { varliklarDizisi = JSON.parse(varliklarDizisi); } catch (e) { varliklarDizisi = []; }
+    }
+
+    if (Array.isArray(varliklarDizisi)) {
+        varlikDegeri = varliklarDizisi
             .filter(v => v && v.durum === 'sahip')
             .reduce((toplam, v) => toplam + (satisFiyatlari[v.isim] || 0), 0);
     }
     
-    let nakit = oyuncu.nakit || 0;
-    let vadeli = oyuncu.vadeli || 0;
-    let kredi = oyuncu.kredi || 0;
+    let nakit = Number(oyuncu.nakit) || 0;
+    let vadeli = Number(oyuncu.vadeli) || 0;
+    let kredi = Number(oyuncu.kredi) || 0;
 
-    let altinFiyat = (kurlar && kurlar.altin) ? kurlar.altin.satis : 6000;
-    let dolarFiyat = (kurlar && kurlar.dolar) ? kurlar.dolar.satis : 49;
-    let euroFiyat = (kurlar && kurlar.euro) ? kurlar.euro.satis : 54;
+    let altinFiyat = (kurlar && kurlar.altin && kurlar.altin.satis) ? Number(kurlar.altin.satis) : 6000;
+    let dolarFiyat = (kurlar && kurlar.dolar && kurlar.dolar.satis) ? Number(kurlar.dolar.satis) : 49;
+    let euroFiyat = (kurlar && kurlar.euro && kurlar.euro.satis) ? Number(kurlar.euro.satis) : 54;
 
-    let altinTL = (oyuncu.altin || 0) * altinFiyat;
-    let dolarTL = (oyuncu.dolar || 0) * dolarFiyat;
-    let euroTL = (oyuncu.euro || 0) * euroFiyat;
+    let altinTL = (Number(oyuncu.altin) || 0) * altinFiyat;
+    let dolarTL = (Number(oyuncu.dolar) || 0) * dolarFiyat;
+    let euroTL = (Number(oyuncu.euro) || 0) * euroFiyat;
     
     return nakit + vadeli + varlikDegeri + altinTL + dolarTL + euroTL - kredi;
 }
