@@ -2822,6 +2822,21 @@ if (simdiMs - sonBotZamani >= window.oyunAyarlari.botHizi) {
             }
         }
     }
+
+try {
+    await fetch('/api/portfoy-guncelle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            portfoy: state, 
+            botlar: botlar // Botların son halini buraya dahil ediyoruz
+        })
+    });
+} catch (e) {
+    console.error("Sunucuya bot aktarımı başarısız:", e);
+}
+
+ 
     if (typeof zenginlerListesiniGuncelle === 'function') {
         zenginlerListesiniGuncelle();
     }
