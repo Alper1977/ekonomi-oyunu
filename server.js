@@ -1343,76 +1343,92 @@ app.get('/api/kullanicilar-liste', (req, res) => {
 app.get('/api/zenginler-listesi-ortak', (req, res) => {
     try {
         // 1. Ayarları güvenli çek
-        const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
         let ayarlar = {};
         try {
+            const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
             if (ayarKaydi && ayarKaydi.ayarlari) {
                 ayarlar = JSON.parse(ayarKaydi.ayarlari);
             }
         } catch (e) { ayarlar = {}; }
 
         // 2. Kurları güvenli çek (Tablo yoksa veya boşsa varsayılanı kullan)
-        let kurlar = { dolar: {satis: 49}, euro: {satis: 54}, altin: {satis: 6000} };
+        let kurlar = { dolar: { satis: 49 }, euro: { satis: 54 }, altin: { satis: 6000 } };
         try {
             const kurlarKaydi = db.prepare(`SELECT kurlar FROM oyun_kurlari WHERE id = 1`).get();
             if (kurlarKaydi && kurlarKaydi.kurlar) {
                 kurlar = JSON.parse(kurlarKaydi.kurlar);
             }
-        } catch (e) { /* Tablo yoksa sessizce varsayılanı kullan */ }
+        } catch (e) { /* Tablo yoksa varsayılanla devam et */ }
 
-        // 3. Gerçek kullanıcıları çek ve servetlerini hesapla
-        const kullanicilarRows = db.prepare(`SELECT id, kadi, adsoyad, portfoy FROM kullanicilar`).all();
-        const kullaniciListesi = kullanicilarRows.map(u => {
-            let portfoy = {};
-            try { portfoy = JSON.parse(u.portfoy || '{}'); } catch(e) {}
-            
-            let toplamServet = sunucudaServetHesapla(portfoy, ayarlar, kurlar);
+        // 3. Gerçek kullanıcıları güvenle çek ve servetlerini hesapla
+        let kullaniciListesi = [];
+        try {
+            const kullanicilarRows = db.prepare(`SELECT id, kadi, adsoyad, portfoy FROM kullanicilar`).all();
+            kullaniciListesi = kullanicilarRows.map(u => {
+                let portfoy = {};
+                try {
+                    if (u.portfoy) {
+                        portfoy = typeof u.portfoy === 'string' ? JSON.parse(u.portfoy) : u.portfoy;
+                    }
+                } catch (err) { portfoy = {}; }
+                
+                let toplamServet = sunucudaServetHesapla(portfoy, ayarlar, kurlar);
 
-            return {
-                id: u.id,
-                isim: u.adsoyad || u.kadi || "Yatırımcı",
-                servet: toplamServet,
-                tip: "Kullanıcı"
-            };
-        });
+                return {
+                    id: u.id,
+                    isim: u.adsoyad || u.kadi || "Yatırımcı",
+                    servet: Number(toplamServet) || 0,
+                    tip: "Kullanıcı"
+                };
+            });
+        } catch (err) {
+            console.error("Kullanıcılar listelenirken hata:", err.message);
+        }
 
-        // 4. Botları çek ve servetlerini hesapla
-        const botlarRows = db.prepare(`SELECT id, isim, nakit, vadeli, altin, dolar, euro, kredi, varliklar FROM botlar`).all();
-        const botListesi = botlarRows.map(b => {
-            let varliklarDizisi = [];
-            try {
-                varliklarDizisi = typeof b.varliklar === 'string' ? JSON.parse(b.varliklar || '[]') : (b.varliklar || []);
-            } catch (e) { varliklarDizisi = []; }
+        // 4. Botları güvenle çek ve servetlerini hesapla
+        let botListesi = [];
+        try {
+            const botlarRows = db.prepare(`SELECT id, isim, nakit, vadeli, altin, dolar, euro, kredi, varliklar FROM botlar`).all();
+            botListesi = botlarRows.map(b => {
+                let varliklarDizisi = [];
+                try {
+                    if (b.varliklar) {
+                        varliklarDizisi = typeof b.varliklar === 'string' ? JSON.parse(b.varliklar) : b.varliklar;
+                    }
+                } catch (e) { varliklarDizisi = []; }
 
-            let portfoy = {
-                nakit: b.nakit,
-                vadeli: b.vadeli,
-                altin: b.altin,
-                dolar: b.dolar,
-                euro: b.euro,
-                kredi: b.kredi,
-                varliklar: varliklarDizisi
-            };
-            
-            let toplamServet = sunucudaServetHesapla(portfoy, ayarlar, kurlar);
+                let portfoy = {
+                    nakit: Number(b.nakit) || 0,
+                    vadeli: Number(b.vadeli) || 0,
+                    altin: Number(b.altin) || 0,
+                    dolar: Number(b.dolar) || 0,
+                    euro: Number(b.euro) || 0,
+                    kredi: Number(b.kredi) || 0,
+                    varliklar: Array.isArray(varliklarDizisi) ? varliklarDizisi : []
+                };
+                
+                let toplamServet = sunucudaServetHesapla(portfoy, ayarlar, kurlar);
 
-            return {
-                id: b.id,
-                isim: b.isim,
-                servet: toplamServet,
-                tip: "Bot"
-            };
-        });
+                return {
+                    id: b.id,
+                    isim: b.isim || "İsimsiz Bot",
+                    servet: Number(toplamServet) || 0,
+                    tip: "Bot"
+                };
+            });
+        } catch (err) {
+            console.error("Botlar listelenirken hata:", err.message);
+        }
 
-        // 5. Hepsini birleştir, servete göre sırala ve gönder
+        // 5. Hepsini birleştir, büyükten küçüğe sırala ve gönder
         const tumListe = [...kullaniciListesi, ...botListesi];
         tumListe.sort((a, b) => b.servet - a.servet);
 
         res.json(tumListe);
 
     } catch (err) {
-        console.error("Zenginler listesi hatası:", err.message);
-        res.status(500).json({ hata: "Liste alınırken bir hata oluştu." });
+        console.error("Zenginler listesi genel kritik hata:", err.message);
+        res.status(500).json([]); // Hata anında boş dizi dönerek arayüzün patlamasını önle
     }
 });
 
