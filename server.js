@@ -144,6 +144,21 @@ db.prepare(`CREATE TABLE IF NOT EXISTS ilanlar (
     tarih DATETIME DEFAULT CURRENT_TIMESTAMP
 )`).run();
 
+// 1. Veritabanında botlar tablosu yoksa otomatik oluşturur
+db.prepare(`
+    CREATE TABLE IF NOT EXISTS botlar (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        isim TEXT,
+        nakit REAL,
+        vadeli REAL DEFAULT 0,
+        altin REAL DEFAULT 0,
+        dolar REAL DEFAULT 0,
+        euro REAL DEFAULT 0,
+        kredi REAL DEFAULT 0,
+        varliklar TEXT
+    )
+`).run();
+
 // --- 1. Bot Havuzu Tanımları ve Üretimi (Sunucu Başlangıcı) ---
 const isimHavuzu = ["BUKET", "AHMET", "MEHMET", "AYŞE", "FATMA", "MUSTAFA", "EMEL", "CAN", "ZEYNEP", "BURAK", "SEDA", "EMRE", "DENİZ", "MURAT", "ELİF", "KEREM", "MERVE", "TOLGA", "SELİN", "ONUR", "ESRA", "KAAN", "BÜŞRA", "VOLKAN", "GAMZE", "CEM", "GİZEM", "OĞUZ", "CEREN", "BERK", "DERYA"];
 const soyisimHavuzu = ["ENERJİ", "İNŞAAT", "TAAHHÜT", "MAKİNA", "METAL", "SANAYİ", "TİCARET", "GRUP", "YAPI", "ENDÜSTRİ", "YILMAZ", "DEMİR", "KAYA", "ÇELİK", "ŞAHİN", "ÖZTÜRK", "YILDIZ", "AYDIN", "ARSLAN", "DOĞAN", "KILIÇ", "ASLAN", "ÇETİN", "KOÇ", "KURT", "ÖZKAN", "ŞİMŞEK", "POLAT", "ÖZDEMİR", "ERDOĞAN"];
