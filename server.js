@@ -171,6 +171,34 @@ function botlariBaslat() {
 }
 botlariBaslat();
 
+// Servet hesaplama fonksiyonunun sunucu versiyonu (istemcinin aynısı)
+function sunucudaServetHesapla(oyuncu, ayarlar, kurlar) {
+    if (!oyuncu) return 0;
+
+    let varlikDegeri = 0;
+    const satisFiyatlari = ayarlar.satisFiyatlari || { "Konut": 2000000, "Arsa": 1500000, "Ticari": 5000000 };
+    
+    if (oyuncu.varliklar && Array.isArray(oyuncu.varliklar)) {
+        varlikDegeri = oyuncu.varliklar
+            .filter(v => v && v.durum === 'sahip')
+            .reduce((toplam, v) => toplam + (satisFiyatlari[v.isim] || 0), 0);
+    }
+    
+    let nakit = oyuncu.nakit || 0;
+    let vadeli = oyuncu.vadeli || 0;
+    let kredi = oyuncu.kredi || 0;
+
+    let altinFiyat = (kurlar && kurlar.altin) ? kurlar.altin.satis : 6000;
+    let dolarFiyat = (kurlar && kurlar.dolar) ? kurlar.dolar.satis : 49;
+    let euroFiyat = (kurlar && kurlar.euro) ? kurlar.euro.satis : 54;
+
+    let altinTL = (oyuncu.altin || 0) * altinFiyat;
+    let dolarTL = (oyuncu.dolar || 0) * dolarFiyat;
+    let euroTL = (oyuncu.euro || 0) * euroFiyat;
+    
+    return nakit + vadeli + varlikDegeri + altinTL + dolarTL + euroTL - kredi;
+}
+
 // --- 🌟 ÇEVRİMİÇİ / ÇEVRİMDIŞI AKILLI EKONOMİ MOTORU (TAM KAPSAMLI) ---
 function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
     if (!userRow || !userRow.portfoy) return null;
@@ -1282,6 +1310,62 @@ app.get('/api/kullanicilar-liste', (req, res) => {
         res.json({ basari: true, uyeler: uyeler });
     } catch (err) {
         return res.status(500).json({ basari: false, mesaj: err.message });
+    }
+});
+
+// Ortak Zenginler Listesi API Uç Noktası
+app.get('/api/zenginler-listesi-ortak', (req, res) => {
+    try {
+        const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
+        const ayarlar = ayarKaydi ? JSON.parse(ayarKaydi.ayarlari) : {};
+
+        const kurlarKaydi = db.prepare(`SELECT kurlar FROM oyun_kurlari WHERE id = 1`).get();
+        const kurlar = kurlarKaydi ? JSON.parse(kurlarKaydi.kurlar) : {};
+
+        let tumSiralama = [];
+
+        // 1. Botları ekle
+        let botlarRows = db.prepare(`SELECT * FROM botlar`).all();
+        botlarRows.forEach(bot => {
+            let botPortfoy = {
+                nakit: bot.nakit,
+                vadeli: bot.vadeli || 0,
+                altin: bot.altin || 0,
+                dolar: bot.dolar || 0,
+                euro: bot.euro || 0,
+                kredi: bot.kredi || 0,
+                varliklar: typeof bot.varliklar === 'string' ? JSON.parse(bot.varliklar || '[]') : (bot.varliklar || [])
+            };
+            let servet = sunucudaServetHesapla(botPortfoy, ayarlar, kurlar);
+
+            tumSiralama.push({
+                isim: bot.isim,
+                servet: servet,
+                userId: null
+            });
+        });
+
+        // 2. Diğer Gerçek Üyeleri ekle
+        let kullanicilarRows = db.prepare(`SELECT id, adsoyad, portfoy FROM kullanicilar`).all();
+        kullanicilarRows.forEach(kul => {
+            let portfoy = typeof kul.portfoy === 'string' ? JSON.parse(kul.portfoy || '{}') : (kul.portfoy || {});
+            let sirketAdi = (kul.adsoyad || 'ŞİRKET').toUpperCase() + " A.Ş.";
+            let servet = sunucudaServetHesapla(portfoy, ayarlar, kurlar);
+
+            tumSiralama.push({
+                isim: sirketAdi,
+                servet: servet,
+                userId: kul.id
+            });
+        });
+
+        // Servete göre büyükten küçüğe sırala
+        tumSiralama.sort((a, b) => b.servet - a.servet);
+
+        res.json({ basari: true, liste: tumSiralama });
+    } catch (e) {
+        console.error("Ortak zenginler listesi hatası:", e);
+        res.status(500).json({ basari: false, liste: [] });
     }
 });
 
