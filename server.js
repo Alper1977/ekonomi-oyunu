@@ -1259,9 +1259,9 @@ app.post('/api/portfoy-guncelle', (req, res) => {
 
 app.get('/api/kullanicilar-liste', (req, res) => {
     try {
-        // 1. Gerçek kullanıcıları çek
-        const userRows = db.prepare(`SELECT adsoyad, portfoy FROM kullanicilar`).all();
-        let uyeler = userRows.map(row => {
+        const rows = db.prepare(`SELECT adsoyad, portfoy FROM kullanicilar`).all();
+
+        let uyeler = rows.map(row => {
             let portfoyData = {};
             try {
                 portfoyData = typeof row.portfoy === 'string' ? JSON.parse(row.portfoy) : (row.portfoy || {});
@@ -1283,33 +1283,13 @@ app.get('/api/kullanicilar-liste', (req, res) => {
             };
         });
 
-        // 2. Botlar tablosundaki tüm botları çek
-        const botRows = db.prepare(`SELECT isim, nakit, vadeli, varliklar FROM botlar`).all();
-        let botUyeler = botRows.map(bot => {
-            let botNakit = bot.nakit || 0;
-            let botVadeli = bot.vadeli || 0;
-            let botVarliklar = [];
-            try {
-                botVarliklar = typeof bot.varliklar === 'string' ? JSON.parse(bot.varliklar) : (bot.varliklar || []);
-            } catch (e) {
-                botVarliklar = [];
-            }
-
-            return {
-                adsoyad: bot.isim ? bot.isim.trim() : 'Bot',
-                portfoy: {
-                    nakit: botNakit,
-                    para: botNakit,
-                    vadeli: botVadeli,
-                    varliklar: botVarliklar
-                }
-            };
+        uyeler.sort((a, b) => {
+            let servetA = (a.portfoy.nakit || a.portfoy.para || 0) + (a.portfoy.vadeli || 0);
+            let servetB = (b.portfoy.nakit || b.portfoy.para || 0) + (b.portfoy.vadeli || 0);
+            return servetB - servetA;
         });
 
-        // 3. Hepsini tek havuzda birleştir
-        let tumListe = [...uyeler, ...botUyeler];
-
-        res.json({ basari: true, uyeler: tumListe });
+        res.json({ basari: true, uyeler: uyeler });
     } catch (err) {
         return res.status(500).json({ basari: false, mesaj: err.message });
     }
