@@ -2780,7 +2780,10 @@ if (typeof sonBotZamani === 'undefined') { sonBotZamani = 0; }
 
 if (simdiMs - sonBotZamani >= window.oyunAyarlari.botHizi) {
     let gercekVarliklar = Object.keys(satisFiyatlari);
-
+ 
+if (typeof botlar !== 'undefined' && Array.isArray(botlar) && botlar.length > 0) {
+    if (simdiMs - sonBotZamani >= window.oyunAyarlari.botHizi) {
+        let gercekVarliklar = Object.keys(satisFiyatlari);
     for (let i = 0; i < 5; i++) {
         let rastgeleBot = botlar[Math.floor(Math.random() * botlar.length)];
 
