@@ -1149,36 +1149,49 @@ app.get('/api/kullanicilar-liste', (req, res) => {
         let uyeler = rows.map(row => {
             let portfoyData = {};
             try {
-                if (typeof row.portfoy === 'string') {
-                    portfoyData = JSON.parse(row.portfoy);
-                } else if (typeof row.portfoy === 'object' && row.portfoy !== null) {
-                    portfoyData = row.portfoy;
-                }
+                portfoyData = typeof row.portfoy === 'string' ? JSON.parse(row.portfoy) : (row.portfoy || {});
             } catch (e) {
                 portfoyData = {};
             }
 
+            // Toplam serveti hesapla (nakit + varlıklar/hisseler vs.)
+            let nakit = portfoyData.nakit !== undefined ? portfoyData.nakit : (portfoyData.para || 0);
+            
             return {
                 adsoyad: row.adsoyad ? row.adsoyad.trim() : 'İsimsiz Şirket',
-                portfoy: portfoyData
+                portfoy: {
+                    ...portfoyData,
+                    nakit: nakit,
+                    para: nakit
+                }
             };
         });
 
-        // 2. Veritabanındaki sabit botları çek ve aynı formata dönüştür
+        // 2. Botları sabit değil, her istekte o anki veritabanı/arkaplan döngüsündeki güncel ve farklı servetleriyle çek
         const sabitBotlar = db.prepare(`SELECT isim, nakit, vadeli FROM botlar`).all();
-        
-        let botUyeler = sabitBotlar.map(bot => ({
-            adsoyad: bot.isim,
-            portfoy: {
-                nakit: bot.nakit || 0,
-                para: bot.nakit || 0,
-                vadeli: bot.vadeli || 0,
-                hisseler: []
-            }
-        }));
+        let botUyeler = sabitBotlar.map(bot => {
+            let botNakit = bot.nakit || 0;
+            let botVadeli = bot.vadeli || 0;
+            
+            return {
+                adsoyad: bot.isim,
+                portfoy: {
+                    nakit: botNakit,
+                    para: botNakit,
+                    vadeli: botVadeli,
+                    gunlukGelir: Math.floor(botNakit * 0.005), // Botlar için pasif gelir simülasyonu
+                    varliklar: [],
+                    hisseler: []
+                }
+            };
+        });
 
-        // 3. Gerçek üyeler ile sabit botları tek havuzda birleştir
-        let tumListe = [...uyeler, ...botUyeler];
+        // 3. Hepsini tek havuzda birleştir ve toplam servete göre büyükten küçüğe sırala (Zenginler Listesi)
+        let tumListe = [...uyeler, ...botUyeler].sort((a, b) => {
+            let servetA = (a.portfoy.nakit || a.portfoy.para || 0) + (a.portfoy.vadeli || 0);
+            let servetB = (b.portfoy.nakit || b.portfoy.para || 0) + (b.portfoy.vadeli || 0);
+            return servetB - servetA;
+        });
 
         res.json({ basari: true, uyeler: tumListe });
     } catch (err) {
