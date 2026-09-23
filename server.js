@@ -144,7 +144,7 @@ db.prepare(`CREATE TABLE IF NOT EXISTS ilanlar (
     tarih DATETIME DEFAULT CURRENT_TIMESTAMP
 )`).run();
 
-// 1. Veritabanında botlar tablosu yoksa otomatik oluşturur
+// Botlar tablosu yoksa otomatik oluşturur
 db.prepare(`
     CREATE TABLE IF NOT EXISTS botlar (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
