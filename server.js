@@ -1330,20 +1330,30 @@ app.get('/api/kullanicilar-liste', (req, res) => {
 // --- 🌟 ORTAK ZENGİNLER LİSTESİ API ROTASI ---
 app.get('/api/zenginler-listesi-ortak', (req, res) => {
     try {
-        // 1. Ayarları ve kurları çek
+        // 1. Ayarları güvenli çek
         const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
-        const ayarlar = ayarKaydi ? JSON.parse(ayarKaydi.ayarlari) : {};
-        
-        const kurlarKaydi = db.prepare(`SELECT kurlar FROM oyun_kurlari WHERE id = 1`).get();
-        const kurlar = kurlarKaydi ? JSON.parse(kurlarKaydi.kurlari) : { dolar: {satis: 49}, euro: {satis: 54}, altin: {satis: 6000} };
+        let ayarlar = {};
+        try {
+            if (ayarKaydi && ayarKaydi.ayarlari) {
+                ayarlar = JSON.parse(ayarKaydi.ayarlari);
+            }
+        } catch (e) { ayarlar = {}; }
 
-        // 2. Gerçek kullanıcıları çek ve servetlerini hesapla
+        // 2. Kurları güvenli çek (Tablo yoksa veya boşsa varsayılanı kullan)
+        let kurlar = { dolar: {satis: 49}, euro: {satis: 54}, altin: {satis: 6000} };
+        try {
+            const kurlarKaydi = db.prepare(`SELECT kurlar FROM oyun_kurlari WHERE id = 1`).get();
+            if (kurlarKaydi && kurlarKaydi.kurlar) {
+                kurlar = JSON.parse(kurlarKaydi.kurlar);
+            }
+        } catch (e) { /* Tablo yoksa sessizce varsayılanı kullan */ }
+
+        // 3. Gerçek kullanıcıları çek ve servetlerini hesapla
         const kullanicilarRows = db.prepare(`SELECT id, kadi, adsoyad, portfoy FROM kullanicilar`).all();
         const kullaniciListesi = kullanicilarRows.map(u => {
             let portfoy = {};
             try { portfoy = JSON.parse(u.portfoy || '{}'); } catch(e) {}
             
-            // Servet hesaplama fonksiyonunu çağırıyoruz
             let toplamServet = sunucudaServetHesapla(portfoy, ayarlar, kurlar);
 
             return {
@@ -1354,9 +1364,14 @@ app.get('/api/zenginler-listesi-ortak', (req, res) => {
             };
         });
 
-        // 3. Botları çek ve servetlerini hesapla
+        // 4. Botları çek ve servetlerini hesapla
         const botlarRows = db.prepare(`SELECT id, isim, nakit, vadeli, altin, dolar, euro, kredi, varliklar FROM botlar`).all();
         const botListesi = botlarRows.map(b => {
+            let varliklarDizisi = [];
+            try {
+                varliklarDizisi = typeof b.varliklar === 'string' ? JSON.parse(b.varliklar || '[]') : (b.varliklar || []);
+            } catch (e) { varliklarDizisi = []; }
+
             let portfoy = {
                 nakit: b.nakit,
                 vadeli: b.vadeli,
@@ -1364,7 +1379,7 @@ app.get('/api/zenginler-listesi-ortak', (req, res) => {
                 dolar: b.dolar,
                 euro: b.euro,
                 kredi: b.kredi,
-                varliklar: typeof b.varliklar === 'string' ? JSON.parse(b.varliklar || '[]') : b.varliklar
+                varliklar: varliklarDizisi
             };
             
             let toplamServet = sunucudaServetHesapla(portfoy, ayarlar, kurlar);
@@ -1377,7 +1392,7 @@ app.get('/api/zenginler-listesi-ortak', (req, res) => {
             };
         });
 
-        // 4. Hepsini birleştir, servete göre büyükten küçüğe sırala ve gönder
+        // 5. Hepsini birleştir, servete göre sırala ve gönder
         const tumListe = [...kullaniciListesi, ...botListesi];
         tumListe.sort((a, b) => b.servet - a.servet);
 
@@ -1387,12 +1402,6 @@ app.get('/api/zenginler-listesi-ortak', (req, res) => {
         console.error("Zenginler listesi hatası:", err.message);
         res.status(500).json({ hata: "Liste alınırken bir hata oluştu." });
     }
-});
-
-// --- 🚀 SUNUCUYU BAŞLAT ---
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-    console.log(`Sunucu ${PORT} portunda başarıyla çalışıyor ve ekonomi motoru devrede!`);
 });
 
 io.on('connection', (socket) => {
