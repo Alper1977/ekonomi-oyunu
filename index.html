@@ -1581,12 +1581,11 @@ async function profilAdiGuncelle() {
     }
 }
 
-async function zenginlerListesiniGuncelle() {
-    if (typeof state === 'undefined' || !state) {
-        return; 
-    }
 
-    // 1. ÖNCE KENDİ GÜNCEL PORTFÖYÜNÜ SUNUCUYA KAYDET
+ async function zenginlerListesiniGuncelle() {
+    if (typeof state === 'undefined' || !state) return;
+
+    // 1. Önce kendi güncel portföyünü sunucuya kaydet
     try {
         await fetch('/api/portfoy-guncelle', {
             method: 'POST',
@@ -1599,7 +1598,6 @@ async function zenginlerListesiniGuncelle() {
 
     let sirketBaslikMali = document.getElementById('sirket-adi-mali');
     let sirketAdiSplash = document.getElementById('kurum-adi-baslik');
-    
     let kullaniciAdi = "STRATEJİK";
     
     if (sirketBaslikMali && sirketBaslikMali.innerText && !sirketBaslikMali.innerText.includes("Yükleniyor")) {
@@ -1609,60 +1607,26 @@ async function zenginlerListesiniGuncelle() {
     }
 
     let aktifSirketAdi = kullaniciAdi.toUpperCase() + " A.Ş.";
-
     if (sirketBaslikMali) sirketBaslikMali.innerText = aktifSirketAdi;
     if (sirketAdiSplash) sirketAdiSplash.innerText = aktifSirketAdi;
 
     let oyuncuListesi = [];
 
-    // 2. Kendi şirketimizi listeye ekle
-    oyuncuListesi.push({
-        isim: aktifSirketAdi,
-        servet: typeof hesaplaServet === 'function' ? hesaplaServet(state) : 0,
-        benim: true
-    });
-
-   // 3. Sunucudan diğer GERÇEK ÜYELERİ çek ve listeye dahil et
+    // 2. Sunucudan ortak zenginler listesini çek
     try {
-        let response = await fetch('/api/kullanicilar-liste');
+        let response = await fetch('/api/zenginler-listesi');
         let sonuc = await response.json();
         
-        console.log("Sunucudan gelen ham üye verisi:", sonuc); // Buraya bakarak kimlerin geldiğini görebilirsin
-
-        if (sonuc.basari && Array.isArray(sonuc.uyeler)) {
-            sonuc.uyeler.forEach(uye => {
-                let uyeSirketAdi = (uye.adsoyad || uye.isim || 'ŞİRKET').toUpperCase() + " A.Ş.";
-                
-                // Kendimizi tekrar eklememek için kontrol
-                if (uyeSirketAdi !== aktifSirketAdi) {
-                    let hedefVeri = uye.portfoy || uye.state || uye;
-                    let uyeServet = typeof hesaplaServet === 'function' ? hesaplaServet(hedefVeri) : (uye.servet || 0);
-                    
-                    oyuncuListesi.push({
-                        isim: uyeSirketAdi,
-                        servet: uyeServet,
-                        benim: false
-                    });
-                }
-            });
+        if (sonuc.basari && Array.isArray(sonuc.liste)) {
+            oyuncuListesi = sonuc.liste.map(item => ({
+                isim: item.isim,
+                servet: item.servet,
+                benim: item.isim === aktifSirketAdi
+            }));
         }
     } catch (e) {
-        console.error("Gerçek üyeler çekilemedi:", e);
+        console.error("Zenginler listesi sunucudan alınamadı:", e);
     }
-
-    // 4. BOTLARI da listeye ekle
-    if (typeof botlar !== 'undefined' && Array.isArray(botlar)) {
-        botlar.forEach(bot => {
-            oyuncuListesi.push({
-                isim: bot.isim,
-                servet: typeof hesaplaServet === 'function' ? hesaplaServet(bot) : (bot.servet || 0),
-                benim: false
-            });
-        });
-    }
-
-    // 5. Servete göre büyükten küçüğe sırala
-    oyuncuListesi.sort((a, b) => b.servet - a.servet);
 
     let benimSira = oyuncuListesi.findIndex(x => x.benim) + 1;
     if (benimSira <= 0) benimSira = 1; 
@@ -1704,7 +1668,7 @@ async function zenginlerListesiniGuncelle() {
         siralamaBilgisi.innerText = "Zenginler Listesi: " + benimSira + ". Sıradasınız";
     }
 }
-
+ 
 async function portfoyuSenkronizeEt() {
     try {
         let response = await fetch('/api/aktif-kullanici', { credentials: 'include' });
