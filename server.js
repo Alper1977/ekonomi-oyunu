@@ -1360,7 +1360,7 @@ app.get('/api/zenginler-listesi-ortak', (req, res) => {
 
         let tumListe = [];
 
-        // 1. Kullanıcıları al (Orijinal güvenli sütunlarla)
+        // 1. Kullanıcıları al (Admin dahil tüm kayıtları adsoyad veya kadi ile yakala)
         try {
             const kullanicilar = db.prepare(`SELECT id, kadi, adsoyad, portfoy FROM kullanicilar`).all();
             for (let u of kullanicilar) {
@@ -1370,9 +1370,13 @@ app.get('/api/zenginler-listesi-ortak', (req, res) => {
                 } catch (err) {}
 
                 let servet = sunucudaServetHesapla(portfoy, ayarlar, kurlar);
+                
+                // İsim belirleme: adsoyad varsa onu al, yoksa kadi, hiçbiri yoksa 'İsimsiz Şirket'
+                let hesapIsmi = (u.adsoyad && u.adsoyad.trim() !== "") ? u.adsoyad.trim() : (u.kadi ? u.kadi.trim() : "İsimsiz Şirket");
+
                 tumListe.push({
                     id: u.id,
-                    isim: u.adsoyad || u.kadi || "Yatırımcı",
+                    isim: hesapIsmi,
                     servet: Number(servet) || 0,
                     tip: "Kullanıcı"
                 });
