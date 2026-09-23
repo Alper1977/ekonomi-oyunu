@@ -1944,16 +1944,24 @@ function sozlesmeAc(tur) {
 
 let isimHavuzu = ["BUKET", "AHMET", "MEHMET", "AYŞE", "FATMA", "MUSTAFA", "EMEL", "CAN", "ZEYNEP", "BURAK", "SEDA", "EMRE", "DENİZ", "MURAT", "ELİF", "KEREM", "MERVE", "TOLGA", "SELİN", "ONUR", "ESRA", "KAAN", "BÜŞRA", "VOLKAN", "GAMZE", "CEM", "GİZEM", "OĞUZ", "CEREN", "BERK", "DERYA"];
 let soyisimHavuzu = ["ENERJİ", "İNŞAAT", "TAAHHÜT", "MAKİNA", "METAL", "SANAYİ", "TİCARET", "GRUP", "YAPI", "ENDÜSTRİ", "YILMAZ", "DEMİR", "KAYA", "ÇELİK", "ŞAHİN", "ÖZTÜRK", "YILDIZ", "AYDIN", "ARSLAN", "DOĞAN", "KILIÇ", "ASLAN", "ÇETİN", "KOÇ", "KURT", "ÖZKAN", "ŞİMŞEK", "POLAT", "ÖZDEMİR", "ERDOĞAN"];
+
 let botlar = [];
 for (let i = 1; i <= 500; i++) {
-    let rastgeleIsim = isimHavuzu[Math.floor(Math.random() * isimHavuzu.length)] + " " + soyisimHavuzu[Math.floor(Math.random() * soyisimHavuzu.length)] + " A.Ş.";
-    let baslangicNakit = Math.floor(Math.random() * 50000000) + 5000000;
+    // Math.random YERİNE i'ye bağlı sabit indeksler (Herkesin tarayıcısında aynı bot çıkar)
+    let isimIndex = (i * 7) % isimHavuzu.length;
+    let soyisimIndex = (i * 13) % soyisimHavuzu.length;
+    
+    let sabitIsim = isimHavuzu[isimIndex] + " " + soyisimHavuzu[soyisimIndex] + " A.Ş.";
+    
+    // Paraları da rastgelelikten çıkarıp i'ye göre sabitliyoruz
+    let sabitNakit = 5000000 + ((i * 123456) % 45000000);
+    let sabitVadeli = (i * 78910) % 10000000;
     
     botlar.push({
         id: 200 + i,
-        isim: rastgeleIsim,
-        nakit: baslangicNakit,
-        vadeli: Math.floor(Math.random() * 10000000),
+        isim: sabitIsim,
+        nakit: sabitNakit,
+        vadeli: sabitVadeli,
         altin: 0,
         dolar: 0,
         euro: 0,
@@ -1961,7 +1969,7 @@ for (let i = 1; i <= 500; i++) {
         varliklar: []
     });
 }
-
+ 
 if (state.ustUsteOdenmeyenTaksit === undefined) state.ustUsteOdenmeyenTaksit = 0;
 
 
