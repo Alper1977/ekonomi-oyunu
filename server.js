@@ -503,34 +503,169 @@ if (portfoy.kredi < 0.01) {
 }
 setInterval(() => {
     try {
+        // 1. Admin panelinden güncel oyun ayarlarını çek
         const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
         if (!ayarKaydi) return;
         const ayarlar = JSON.parse(ayarKaydi.ayarlari);
 
-        // Canlı kurları veritabanından çekiyoruz
-        const kurlarKaydi = db.prepare(`SELECT kurlar FROM oyun_kurlari WHERE id = 1`).get();
-        const kurlar = kurlarKaydi ? JSON.parse(kurlarKaydi.kurlar) : { dolar: {satis: 49}, euro: {satis: 54}, altin: {satis: 6000} };
+        // Admin panelinden gelen dinamik süre ve limit ayarları
+        const botHizi = ayarlar.botHizi || 8000;
+        const botIlanHizi = ayarlar.botIlanHizi || 15000;
+        const maksimumIlanSiniri = ayarlar.maksimumIlanSiniri || 5;
+        const beklemeSuresiMs = ayarlar.GLOBAL_BEKLEME_SURESI || 60000;
 
-        const kullanicilar = db.prepare(`SELECT id, portfoy, son_guncelleme FROM kullanicilar`).all();
-        
-        // Her kullanıcıyı kendi bağımsız transaction ve try-catch bloğuna alıyoruz
-        kullanicilar.forEach(user => {
-            try {
-                const userTransaction = db.transaction(() => {
-                    kullaniciEkonomisiniIslet(user, ayarlar, kurlar);
-                });
-                userTransaction();
-            } catch (userErr) {
-                console.error(`Kullanıcı ID ${user.id} ekonomi işletilirken hata oluştu:`, userErr.message);
-                // Bu kullanıcı patlasa bile diğer kullanıcıların parası, dövizi, kredisi etkilenmez
+        const simdiMs = Date.now();
+
+        // 2. Sistemdeki botları ve gerçek kullanıcıları veritabanından çek
+        const botlarRows = db.prepare(`SELECT * FROM botlar`).all();
+        // Botlar tablosunu JSON yapılarına göre parse et
+        let botlar = botlarRows.map(b => ({
+            ...b,
+            varliklar: typeof b.varliklar === 'string' ? JSON.parse(b.varliklar || '[]') : (b.varliklar || [])
+        }));
+
+        // Sabit satış fiyatları tablosu (İstemcideki satisFiyatlari karşılığı)
+        const satisFiyatlari = ayarlar.satisFiyatlari || {
+            "Konut": 2000000,
+            "Arsa": 1500000,
+            "Ticari": 5000000
+        };
+        let gercekVarliklar = Object.keys(satisFiyatlari);
+
+        // Zaman sayaçlarını sunucu belleğinde (global/module scope) tutuyoruz
+        global.sonBotZamani = global.sonBotZamani || 0;
+        global.sonBotIlanZamani = global.sonBotIlanZamani || 0;
+
+        // ===================================================================
+        // 1. BÖLÜM: Bot İşlemleri (Varlık alımı veya nakit artışı)
+        // ===================================================================
+        if (simdiMs - global.sonBotZamani >= botHizi) {
+            botlar.forEach(bot => {
+                for (let i = 0; i < 5; i++) {
+                    if (Math.random() < 0.30) {
+                        bot.nakit += Math.floor(Math.random() * 200000000) + 50000000;
+                    } else {
+                        let secilenUrun = gercekVarliklar[Math.floor(Math.random() * gercekVarliklar.length)];
+                        let bedel = satisFiyatlari[secilenUrun] || 2000000;
+
+                        if (bot.nakit >= bedel) {
+                            bot.nakit -= bedel;
+                            bot.varliklar.push({
+                                id: Date.now() + Math.random(),
+                                isim: secilenUrun,
+                                durum: 'sahip'
+                            });
+                        }
+                    }
+                }
+            });
+            global.sonBotZamani = simdiMs;
+        }
+
+        // ===================================================================
+        // 2. BÖLÜM: Bot İlan Açma Döngüsü (Global Ürün Başına Maksimum Sınır)
+        // ===================================================================
+        if (simdiMs - global.sonBotIlanZamani >= botIlanHizi) {
+            let aktifIlanSayilari = {};
+
+            // Veritabanındaki aktif ilanları da sayımımıza dahil edelim
+            const dbIlanlar = db.prepare(`SELECT ilan_tipi FROM ilanlar`).all();
+            dbIlanlar.forEach(ilan => {
+                aktifIlanSayilari[ilan.ilan_tipi] = (aktifIlanSayilari[ilan.ilan_tipi] || 0) + 1;
+            });
+
+            botlar.forEach(b => {
+                if (b.varliklar) {
+                    b.varliklar.forEach(v => {
+                        if (v.durum === 'ilan-aktif') {
+                            aktifIlanSayilari[v.isim] = (aktifIlanSayilari[v.isim] || 0) + 1;
+                        }
+                    });
+                }
+            });
+
+            botlar.forEach(bot => {
+                if (bot.varliklar && bot.varliklar.length > 0) {
+                    let sahipVarliklar = bot.varliklar.filter(v => v.durum === 'sahip');
+
+                    if (sahipVarliklar.length > 0 && Math.random() < 0.30) {
+                        let uygunVarliklar = sahipVarliklar.filter(v => {
+                            let mevcutSayi = aktifIlanSayilari[v.isim] || 0;
+                            return mevcutSayi < maksimumIlanSiniri;
+                        });
+
+                        if (uygunVarliklar.length > 0) {
+                            uygunVarliklar.sort(() => Math.random() - 0.5);
+                            let secilenVarlik = uygunVarliklar[0];
+                        
+                            secilenVarlik.durum = 'ilan-aktif';
+                            secilenVarlik.ilanSahibi = bot.isim;
+                            secilenVarlik.ilanVerilisZamani = simdiMs;
+                            
+                            aktifIlanSayilari[secilenVarlik.isim] = (aktifIlanSayilari[secilenVarlik.isim] || 0) + 1;
+
+                            // İlanlar tablosuna da ekleyelim ki oyuncular görebilsin
+                            db.prepare(`INSERT INTO ilanlar (kullanici_id, satici_adsoyad, ilan_tipi, fiyat, detaylar) VALUES (?, ?, ?, ?, ?)`)
+                              .run(0, bot.isim, secilenVarlik.isim, satisFiyatlari[secilenVarlik.isim] || 2000000, JSON.stringify({ varlikId: secilenVarlik.id }));
+                        }
+                    }
+                }
+            });
+
+            global.sonBotIlanZamani = simdiMs;
+        }
+
+        // ===================================================================
+        // 3. & 4. BÖLÜM: Garanti Satış ve Botlar Arası İlan Temizlik Döngüsü
+        // ===================================================================
+        const dbIlanlarFull = db.prepare(`SELECT * FROM ilanlar`).all();
+        dbIlanlarFull.forEach(ilan => {
+            let ilanZamani = ilan.ilanVerilisZamani || simdiMs; // Tabloda yoksa simdi al
+            let gecenSure = simdiMs - ilanZamani;
+
+            if (gecenSure >= beklemeSuresiMs) {
+                let satisBedeli = ilan.fiyat || 2000000;
+                let alabilecekBotlar = botlar.filter(b => b.nakit >= satisBedeli);
+                let aliciBot;
+
+                if (alabilecekBotlar.length > 0) {
+                    aliciBot = alabilecekBotlar[Math.floor(Math.random() * alabilecekBotlar.length)];
+                } else {
+                    aliciBot = botlar[Math.floor(Math.random() * botlar.length)];
+                    if (aliciBot) aliciBot.nakit += satisBedeli + 5000000;
+                }
+
+                if (aliciBot) {
+                    aliciBot.nakit -= satisBedeli;
+                    if (!aliciBot.varliklar) aliciBot.varliklar = [];
+                    aliciBot.varliklar.push({
+                        id: Date.now() + Math.random(),
+                        isim: ilan.ilan_tipi,
+                        durum: 'sahip'
+                    });
+
+                    // İlanı veritabanından kaldır
+                    db.prepare(`DELETE FROM ilanlar WHERE id = ?`).run(ilan.id);
+                }
             }
         });
 
-    } catch (err) {
-        console.error("Arka plan oyun döngüsü genel hata:", err.message);
-    }
-}, 30000);
+        // 5. Botların son durumunu veritabanına toplu kaydet
+        const updateStmt = db.prepare(`UPDATE botlar SET nakit = ?, varliklar = ? WHERE id = ?`);
+        const updateTransaction = db.transaction((botListesi) => {
+            botListesi.forEach(b => {
+                updateStmt.run(b.nakit, JSON.stringify(b.varliklar), b.id);
+            });
+        });
+        updateTransaction(botlar);
 
+        // Değişiklikleri bağlı tüm istemcilere bildir
+        io.emit('piyasaGuncellemesi', { zaman: Date.now() });
+
+    } catch (err) {
+        console.error("Sunucu tarafı otonom bot döngü hatası:", err.message);
+    }
+}, 3000);
 // --- API Rotaları ---
 
 app.get('/api/ilanlar', (req, res) => {
