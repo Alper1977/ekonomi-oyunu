@@ -1583,15 +1583,8 @@ async function profilAdiGuncelle() {
 
 
 async function zenginlerListesiniGuncelle() {
-let sirketBaslikMali = document.getElementById('sirket-adi-mali');
-    console.log("DOM'dan okunan şirket başlığı:", sirketBaslikMali ? sirketBaslikMali.innerText : "Element bulunamadı!");
-    console.log("Aktif kullanıcı adı kaydı:", typeof aktifKullaniciAdiKaydi !== 'undefined' ? aktifKullaniciAdiKaydi : "Tanımlı değil");
-
-
- 
     if (typeof state === 'undefined' || !state) return;
 
-    // 1. Kendi portföyünü sunucuya gönder
     try {
         await fetch('/api/portfoy-guncelle', {
             method: 'POST',
@@ -1602,14 +1595,14 @@ let sirketBaslikMali = document.getElementById('sirket-adi-mali');
             })
         });
     } catch (e) {
-        // 401 hatası verse bile listenin kalanı çalışmaya devam etsin
+        // Hata durumunda akış devam etsin
     }
 
-    let sirketBaslikMali = document.getElementById('sirket-adi-mali');
+    let sbMali = document.getElementById('sirket-adi-mali');
     let hamEkranAdi = "";
     
-    if (sirketBaslikMali && sirketBaslikMali.innerText && !sirketBaslikMali.innerText.includes("Yükleniyor")) {
-        hamEkranAdi = sirketBaslikMali.innerText.replace(" A.Ş.", "").trim();
+    if (sbMali && sbMali.innerText && !sbMali.innerText.includes("Yükleniyor")) {
+        hamEkranAdi = sbMali.innerText.replace(" A.Ş.", "").trim();
     } else if (typeof aktifKullaniciAdiKaydi !== 'undefined' && aktifKullaniciAdiKaydi) {
         hamEkranAdi = aktifKullaniciAdiKaydi;
     } else {
@@ -1623,7 +1616,6 @@ let sirketBaslikMali = document.getElementById('sirket-adi-mali');
 
     let hamListe = [];
 
-    // 2. Sunucudan ortak zenginler listesini çek
     try {
         let response = await fetch('/api/zenginler-listesi-ortak');
         let textData = await response.text();
@@ -1645,13 +1637,10 @@ let sirketBaslikMali = document.getElementById('sirket-adi-mali');
                 bHali += " A.Ş.";
             }
 
-            // Aynı isimli mükerrer kayıtları engelle (Adminin iki kere listeye girmesini önler)
             if (gorulenIsimler.has(bHali)) continue;
             gorulenIsimler.add(bHali);
 
             let servetDegeri = item.nakit !== undefined ? item.nakit : (item.servet !== undefined ? item.servet : (item.toplamServet || 0));
-            
-            // Aktif şirket eşleşmesi
             let isBenim = (bHali === aktifSirketAdi) || (item.benim === true);
 
             islenmisListe.push({
@@ -1662,10 +1651,8 @@ let sirketBaslikMali = document.getElementById('sirket-adi-mali');
         }
     }
 
-    // Servete göre büyükten küçüğe sırala
     islenmisListe.sort((a, b) => b.servet - a.servet);
 
-    // Aktif şirket adını listede bulup kesin olarak 'benim' bayrağını verelim
     if (aktifSirketAdi) {
         islenmisListe.forEach(item => {
             if (item.isim === aktifSirketAdi) {
