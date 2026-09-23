@@ -134,9 +134,6 @@ if (ayarSayisi.sayi === 0) {
     db.prepare(`INSERT OR IGNORE INTO oyun_ayarlari (id, ayarlar) VALUES (1, ?)`).run(JSON.stringify(varsayilanAyarlar));
 }
 
-const kayitliAyarlar = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
-const oyunAyarlari = kayitliAyarlar ? JSON.parse(kayitliAyarlar.ayarlar) : {};
-
 db.prepare(`CREATE TABLE IF NOT EXISTS ilanlar (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     kullanici_id INTEGER,
@@ -146,113 +143,6 @@ db.prepare(`CREATE TABLE IF NOT EXISTS ilanlar (
     detaylar TEXT,
     tarih DATETIME DEFAULT CURRENT_TIMESTAMP
 )`).run();
-
-db.exec(`
-    CREATE TABLE IF NOT EXISTS oyun_state (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        veri TEXT
-    );
-`);
-
-// --- 🌟 OYUN STATE YÜKLEME VE BAŞLATMA ---
-let dbStateKaydi = db.prepare(`SELECT veri FROM oyun_state WHERE id = 1`).get();
-let state;
-
-if (!dbStateKaydi) {
-    state = {
-        nakit: 0, 
-        dolar: 0, 
-        euro: 0, 
-        altin: 0, 
-        vadeli: 0, 
-        faiz: 0, 
-        kredi: 0, 
-        taksit: 0, 
-        krediLimiti: 0, 
-        gunlukGelir: 800000,
-        konutKiraGeliri: 0,
-        varliklar: [
-            { id: 1, isim: 'Bayi', durum: 'sahip', bloke: false, krediID: null }
-        ],
-        talepler: [
-            { tur: 'Bayi', isim: 'Bayi', bedel: 300000 },
-            { tur: 'Otel', isim: 'Otel', bedel: 4000000 },
-            { tur: 'Fabrika', isim: 'Fabrika', bedel: 1500000 }, 
-            { tur: 'Hastane', isim: 'Hastane', bedel: 2500000 }, 
-            { tur: 'Özel Okul', isim: 'Özel Okul', bedel: 600000 },
-            { tur: 'AVM', isim: 'AVM', bedel: 3000000 },
-            { tur: 'Hipermarket', isim: 'Hipermarket', bedel: 700000 }
-        ],
-        krediler: [],
-        ustUsteOdenmeyenTaksit: 0
-    };
-    db.prepare(`INSERT INTO oyun_state (id, veri) VALUES (1, ?)`).run(JSON.stringify(state));
-} else {
-    state = JSON.parse(dbStateKaydi.veri);
-    if (state.ustUsteOdenmeyenTaksit === undefined) {
-        state.ustUsteOdenmeyenTaksit = 0;
-    }
-}
-
-// Botlar tablosunu oluştur
-db.exec(`
-    CREATE TABLE IF NOT EXISTS botlar (
-        id INTEGER PRIMARY KEY,
-        isim TEXT,
-        nakit REAL,
-        vadeli REAL,
-        altin REAL,
-        dolar REAL,
-        euro REAL,
-        kredi REAL,
-        varliklar TEXT
-    );
-`);
-
-// Botlar veritabanında var mı kontrol et, yoksa 500 botu üret ve kaydet
-const botSayisi = db.prepare(`SELECT COUNT(*) as sayi FROM botlar`).get();
-let botlar = [];
-
-if (botSayisi.sayi === 0) {
-    let isimHavuzu = ["BUKET", "AHMET", "MEHMET", "AYŞE", "FATMA", "MUSTAFA", "EMEL", "CAN", "ZEYNEP", "BURAK", "SEDA", "EMRE", "DENİZ", "MURAT", "ELİF", "KEREM", "MERVE", "TOLGA", "SELİN", "ONUR", "ESRA", "KAAN", "BÜŞRA", "VOLKAN", "GAMZE", "CEM", "GİZEM", "OĞUZ", "CEREN", "BERK", "DERYA"];
-    let soyisimHavuzu = ["ENERJİ", "İNŞAAT", "TAAHHÜT", "MAKİNA", "METAL", "SANAYİ", "TİCARET", "GRUP", "YAPI", "ENDÜSTRİ", "YILMAZ", "DEMİR", "KAYA", "ÇELİK", "ŞAHİN", "ÖZTÜRK", "YILDIZ", "AYDIN", "ARSLAN", "DOĞAN", "KILIÇ", "ASLAN", "ÇETİN", "KOÇ", "KURT", "ÖZKAN", "ŞİMŞEK", "POLAT", "ÖZDEMİR", "ERDOĞAN"];
-
-    const insertBot = db.prepare(`INSERT INTO botlar (id, isim, nakit, vadeli, altin, dolar, euro, kredi, varliklar) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`);
-    
-    const insertMany = db.transaction((liste) => {
-        for (let bot of liste) {
-            insertBot.run(bot.id, bot.isim, bot.nakit, bot.vadeli, bot.altin, bot.dolar, bot.euro, bot.kredi, JSON.stringify(bot.varliklar));
-        }
-    });
-
-    let tempBotlar = [];
-    for (let i = 1; i <= 500; i++) {
-        let rastgeleIsim = isimHavuzu[Math.floor(Math.random() * isimHavuzu.length)] + " " + soyisimHavuzu[Math.floor(Math.random() * soyisimHavuzu.length)] + " A.Ş.";
-        let baslangicNakit = Math.floor(Math.random() * 50000000) + 5000000;
-        
-        tempBotlar.push({
-            id: 200 + i,
-            isim: rastgeleIsim,
-            nakit: baslangicNakit,
-            vadeli: Math.floor(Math.random() * 10000000),
-            altin: 0,
-            dolar: 0,
-            euro: 0,
-            kredi: 0,
-            varliklar: []
-        });
-    }
-
-    insertMany(tempBotlar);
-    botlar = tempBotlar;
-} else {
-    // Veritabanından botları belleğe çek
-    let hamBotlar = db.prepare(`SELECT * FROM botlar`).all();
-    botlar = hamBotlar.map(b => ({
-        ...b,
-        varliklar: JSON.parse(b.varliklar)
-    }));
-}
 
 // --- 🌟 ÇEVRİMİÇİ / ÇEVRİMDIŞI AKILLI EKONOMİ MOTORU (TAM KAPSAMLI) ---
 function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
@@ -1195,63 +1085,6 @@ app.post('/api/portfoy-guncelle', (req, res) => {
         return res.status(500).json({ basari: false, mesaj: err.message });
     }
 });
-
-app.get('/api/detayli-oyun-ayarlari', (req, res) => {
-    try {
-        const kayit = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
-        if (kayit && kayit.ayarlar) {
-            const parsedAyarlar = JSON.parse(kayit.ayarlar);
-            res.json({ 
-                basari: true, 
-                oyunAyar: parsedAyarlar.oyunAyar || {},
-                kurlar: parsedAyarlar.kurlar || {},
-                faizOranlari: parsedAyarlar.faizOranlari || {},
-                satisFiyatlari: parsedAyarlar.satisFiyatlari || {},
-                yatirimMaliyetleri: parsedAyarlar.yatirimMaliyetleri || {}
-            });
-        } else {
-            res.status(404).json({ basari: false, mesaj: "Oyun ayarları bulunamadı." });
-        }
-    } catch (err) {
-        res.status(500).json({ basari: false, mesaj: err.message });
-    }
-});
-
-
-// --- OYUN DURUMUNU (STATE VE BOTLAR) SUNUCUDAN SUNMA ---
-app.get('/api/oyun-durumu', (req, res) => {
-    try {
-        const stateKayit = db.prepare(`SELECT veri FROM oyun_state WHERE id = 1`).get();
-        let stateVerisi = stateKayit ? JSON.parse(stateKayit.veri) : { state: {}, botlar: [] };
-
-        res.json({
-            basari: true,
-            state: stateVerisi.state || {},
-            botlar: stateVerisi.botlar || []
-        });
-    } catch (err) {
-        res.status(500).json({ basari: false, mesaj: err.message });
-    }
-});
-
-
-// --- OYUN DURUMUNU GÜNCELLEME (İstemci veya Arka Plan Döngüsü İçin) ---
-app.post('/api/oyun-durumu-guncelle', (req, res) => {
-    try {
-        const { state, botlar } = req.body;
-        const paket = JSON.stringify({ state: state || {}, botlar: botlar || [] });
-        
-        db.prepare(`INSERT OR REPLACE INTO oyun_state (id, veri) VALUES (1, ?)`).run(paket);
-        
-        // Socket.io ile bağlı diğer istemcilere de anlık bildir
-        io.emit('stateDegisti', { state, botlar });
-
-        res.json({ basari: true, mesaj: "Oyun durumu güncellendi." });
-    } catch (err) {
-        res.status(500).json({ basari: false, mesaj: err.message });
-    }
-});
-
 app.get('/api/kullanicilar-liste', (req, res) => {
     try {
         const rows = db.prepare(`SELECT adsoyad, portfoy FROM kullanicilar`).all();
@@ -1291,9 +1124,10 @@ io.on('connection', (socket) => {
         console.log('Bir kullanıcı socket bağlantısını kesti:', socket.id);
     });
 });
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, '0.0.0.0', () => {
+
+server.listen(3000, '0.0.0.0', () => {
     console.log("Sunucumuz 3000 portunda ve çevrimdışı motor aktif şekilde çalışıyor.");
 }).on('error', (err) => {
     console.error("SUNUCU AÇILAMADI HATA ŞU:", err);
 });
+
