@@ -503,7 +503,6 @@ if (portfoy.kredi < 0.01) {
 }
 setInterval(() => {
     try {
-        // 1. Admin panelinden güncel oyun ayarlarını çek
         const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
         if (!ayarKaydi) return;
         const ayarlar = JSON.parse(ayarKaydi.ayarlari);
@@ -516,29 +515,20 @@ setInterval(() => {
 
         const simdiMs = Date.now();
 
-        // 2. Sistemdeki botları ve gerçek kullanıcıları veritabanından çek
+        // Veritabanındaki botları çek
         const botlarRows = db.prepare(`SELECT * FROM botlar`).all();
-        // Botlar tablosunu JSON yapılarına göre parse et
         let botlar = botlarRows.map(b => ({
             ...b,
             varliklar: typeof b.varliklar === 'string' ? JSON.parse(b.varliklar || '[]') : (b.varliklar || [])
         }));
 
-        // Sabit satış fiyatları tablosu (İstemcideki satisFiyatlari karşılığı)
-        const satisFiyatlari = ayarlar.satisFiyatlari || {
-            "Konut": 2000000,
-            "Arsa": 1500000,
-            "Ticari": 5000000
-        };
+        const satisFiyatlari = ayarlar.satisFiyatlari || { "Konut": 2000000, "Arsa": 1500000, "Ticari": 5000000 };
         let gercekVarliklar = Object.keys(satisFiyatlari);
 
-        // Zaman sayaçlarını sunucu belleğinde (global/module scope) tutuyoruz
         global.sonBotZamani = global.sonBotZamani || 0;
         global.sonBotIlanZamani = global.sonBotIlanZamani || 0;
 
-        // ===================================================================
-        // 1. BÖLÜM: Bot İşlemleri (Varlık alımı veya nakit artışı)
-        // ===================================================================
+        // 1. Bot İşlemleri (Admin botHizi süresine göre)
         if (simdiMs - global.sonBotZamani >= botHizi) {
             botlar.forEach(bot => {
                 for (let i = 0; i < 5; i++) {
@@ -562,13 +552,10 @@ setInterval(() => {
             global.sonBotZamani = simdiMs;
         }
 
-        // ===================================================================
-        // 2. BÖLÜM: Bot İlan Açma Döngüsü (Global Ürün Başına Maksimum Sınır)
-        // ===================================================================
+        // 2. Bot İlan Açma (Admin botIlanHizi ve maksimumIlanSiniri kurallarına göre)
         if (simdiMs - global.sonBotIlanZamani >= botIlanHizi) {
             let aktifIlanSayilari = {};
 
-            // Veritabanındaki aktif ilanları da sayımımıza dahil edelim
             const dbIlanlar = db.prepare(`SELECT ilan_tipi FROM ilanlar`).all();
             dbIlanlar.forEach(ilan => {
                 aktifIlanSayilari[ilan.ilan_tipi] = (aktifIlanSayilari[ilan.ilan_tipi] || 0) + 1;
@@ -604,7 +591,6 @@ setInterval(() => {
                             
                             aktifIlanSayilari[secilenVarlik.isim] = (aktifIlanSayilari[secilenVarlik.isim] || 0) + 1;
 
-                            // İlanlar tablosuna da ekleyelim ki oyuncular görebilsin
                             db.prepare(`INSERT INTO ilanlar (kullanici_id, satici_adsoyad, ilan_tipi, fiyat, detaylar) VALUES (?, ?, ?, ?, ?)`)
                               .run(0, bot.isim, secilenVarlik.isim, satisFiyatlari[secilenVarlik.isim] || 2000000, JSON.stringify({ varlikId: secilenVarlik.id }));
                         }
@@ -615,12 +601,10 @@ setInterval(() => {
             global.sonBotIlanZamani = simdiMs;
         }
 
-        // ===================================================================
-        // 3. & 4. BÖLÜM: Garanti Satış ve Botlar Arası İlan Temizlik Döngüsü
-        // ===================================================================
+        // 3. Garanti Satış / Süre Kontrolü (Admin GLOBAL_BEKLEME_SURESI kuralına göre)
         const dbIlanlarFull = db.prepare(`SELECT * FROM ilanlar`).all();
         dbIlanlarFull.forEach(ilan => {
-            let ilanZamani = ilan.ilanVerilisZamani || simdiMs; // Tabloda yoksa simdi al
+            let ilanZamani = ilan.ilanVerilisZamani || simdiMs;
             let gecenSure = simdiMs - ilanZamani;
 
             if (gecenSure >= beklemeSuresiMs) {
@@ -644,13 +628,12 @@ setInterval(() => {
                         durum: 'sahip'
                     });
 
-                    // İlanı veritabanından kaldır
                     db.prepare(`DELETE FROM ilanlar WHERE id = ?`).run(ilan.id);
                 }
             }
         });
 
-        // 5. Botların son durumunu veritabanına toplu kaydet
+        // Botların güncel halini veritabanına kaydet
         const updateStmt = db.prepare(`UPDATE botlar SET nakit = ?, varliklar = ? WHERE id = ?`);
         const updateTransaction = db.transaction((botListesi) => {
             botListesi.forEach(b => {
@@ -659,11 +642,8 @@ setInterval(() => {
         });
         updateTransaction(botlar);
 
-        // Değişiklikleri bağlı tüm istemcilere bildir
-        io.emit('piyasaGuncellemesi', { zaman: Date.now() });
-
     } catch (err) {
-        console.error("Sunucu tarafı otonom bot döngü hatası:", err.message);
+        console.error("Bot döngüsü hatası:", err.message);
     }
 }, 3000);
 // --- API Rotaları ---
