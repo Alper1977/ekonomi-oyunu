@@ -1505,79 +1505,46 @@ async function sistemdenCikisYap() {
 }
 
 async function profilAdiGuncelle() {
-    let yeniAdInput = document.getElementById('yeni-adsoyad-input'); 
+    let yeniAdInput = document.getElementById('yeni-adsoyad-input');
     let yeniAd = yeniAdInput ? yeniAdInput.value.trim() : "";
-    let hataDiv = document.getElementById('profil-hata'); 
+    let hataDiv = document.getElementById('profil-hata');
+    const temizle = () => { if (yeniAdInput) yeniAdInput.value = ''; };
+    const hataGoster = (m) => {
+        if (hataDiv) { hataDiv.innerText = m; hataDiv.style.display = 'block'; }
+        else modalGoster(m);
+    };
 
-    if (hataDiv) {
-        hataDiv.style.display = 'none';
-        hataDiv.innerText = "";
-    }
+    if (hataDiv) { hataDiv.style.display = 'none'; hataDiv.innerText = ""; }
 
-    if (!yeniAd) {
-        if (hataDiv) {
-            hataDiv.innerText = "⚠️ Ad ve soyad boş bırakılamaz!";
-            hataDiv.style.display = 'block';
-        } else {
-            modalGoster("Lütfen bir ad soyad girin!");
-        }
-        return;
-    }
+    if (!yeniAd) { hataGoster("⚠️ Ad ve soyad boş bırakılamaz!"); temizle(); return; }
 
-    let yasakliKelimeler = ["amk", "aq", "orospu", "piç", "sikerim", "göt", "sik", "anan", "yarrak", "amcık"]; 
-    let adSoyadKucuk = yeniAd.toLowerCase();
-    let uygunsuzMu = yasakliKelimeler.some(kelime => adSoyadKucuk.includes(kelime));
-
-    if (uygunsuzMu) {
-        if (hataDiv) {
-            hataDiv.innerText = "⚠️ Lütfen küfür veya uygunsuz kelime içermeyen geçerli bir ad soyad giriniz!";
-            hataDiv.style.display = "block";
-        } else {
-            modalGoster("Lütfen küfür veya uygunsuz kelime içermeyen geçerli bir ad soyad giriniz!");
-        }
-        return;
+    let yasakli = ["amk", "aq", "orospu", "piç", "sikerim", "göt", "sik", "anan", "yarrak", "amcık"];
+    if (yasakli.some(k => yeniAd.toLowerCase().includes(k))) {
+        hataGoster("⚠️ Lütfen küfür veya uygunsuz kelime içermeyen geçerli bir ad soyad giriniz!");
+        temizle(); return;
     }
 
     try {
         let response = await fetch('/api/profil-guncelle', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                yeniAdSoyad: yeniAd 
-            })
+            body: JSON.stringify({ yeniAdSoyad: yeniAd })
         });
-        
         let sonuc = await response.json();
 
-        if (!sonuc.basari) {
-            if (hataDiv) {
-                hataDiv.innerText = "⚠️ " + sonuc.mesaj;
-                hataDiv.style.display = 'block';
-            } else {
-                modalGoster("⚠️ " + sonuc.mesaj);
-            }
-            return;
-        }
+        if (!sonuc.basari) { hataGoster("⚠️ " + sonuc.mesaj); temizle(); return; }
 
         aktifKullaniciAdiKaydi = yeniAd;
         let sirketAdiTam = yeniAd.toUpperCase() + " A.Ş.";
-        
-        let sirketBaslikMali = document.getElementById('sirket-adi-mali');
-        if (sirketBaslikMali) sirketBaslikMali.innerText = sirketAdiTam;
-
-        let kurumBaslikSplash = document.getElementById('kurum-adi-baslik');
-        if (kurumBaslikSplash) kurumBaslikSplash.innerText = sirketAdiTam;
+        let a = document.getElementById('sirket-adi-mali'); if (a) a.innerText = sirketAdiTam;
+        let b = document.getElementById('kurum-adi-baslik'); if (b) b.innerText = sirketAdiTam;
 
         modalGoster(`✅ <b>BAŞARILI:</b> Profil bilgileriniz güncellendi!<br>Yeni Şirket Unvanınız: <b>${sirketAdiTam}</b>`);
-
-        if (yeniAdInput) yeniAdInput.value = '';
-
+        temizle();
     } catch (err) {
         console.error("Profil güncelleme hatası:", err);
-        if (hataDiv) {
-            hataDiv.innerText = "⚠️ Sunucuya bağlanılamadı!";
-            hataDiv.style.display = 'block';
-        }
+        hataGoster("⚠️ Sunucuya bağlanılamadı!");
+        temizle();
     }
 }
 
@@ -1778,6 +1745,11 @@ async function portfoyuSunucuyaKaydet(yeniPortfoy) {
         }
 
         let sonuc = await response.json();
+
+        if (sonuc.senkron && sonuc.portfoy) {
+        Object.assign(state, sonuc.portfoy);
+        return;
+        }
         if (!sonuc.basari) {
             console.error("Portföy kaydedilemedi:", sonuc.mesaj);
         }
@@ -4554,15 +4526,16 @@ state.krediler.push({
 }
     
 function islemiIptalEt() {
-    tempIslem = null; // Bekleyen geçici işlemi sıfırla
-    
-    // Projende modalın ID'si muhtemelen 'modal-overlay' veya benzeridir, 
-    // her ihtimale karşı yaygın olanları kapatalım:
+    if (tempIslem) {
+        let inp = document.getElementById(tempIslem.inputId);
+        if (inp) inp.value = '';
+        let sel = document.getElementById(tempIslem.vadeInputId);
+        if (sel) sel.value = '48';
+    }
+    tempIslem = null;
+
     let modalOverlay = document.getElementById('modal-overlay');
     if (modalOverlay) modalOverlay.style.display = 'none';
-    
-    let modal = document.getElementById('modal');
-    if (modal) modal.style.display = 'none';
 }
     
 function krediOde() {
