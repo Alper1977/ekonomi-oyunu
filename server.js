@@ -465,8 +465,7 @@ setInterval(() => {
         const ayarlar = JSON.parse(ayarKaydi.ayarlar);
 
         // Canlı kurları veritabanından çekiyoruz
-        const kurlarKaydi = db.prepare(`SELECT kurlar FROM ayarlar.kurlar WHERE id = 1`).get();
-        const kurlar = kurlarKaydi ? JSON.parse(kurlarKaydi.kurlar) : { dolar: {satis: 49}, euro: {satis: 54}, altin: {satis: 6000} };
+       const kurlar = ayarlar.kurlar || { dolar: { satis: 49 }, euro: { satis: 54 }, altin: { satis: 6000 } };
 
         const kullanicilar = db.prepare(`SELECT id, portfoy, son_guncelleme FROM kullanicilar`).all();
         
