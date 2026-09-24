@@ -1651,15 +1651,11 @@ async function zenginlerListesiniGuncelle() {
     }
 
     // 4. BOTLARI da listeye ekle
-    if (typeof botlar !== 'undefined' && Array.isArray(botlar)) {
-        botlar.forEach(bot => {
-            oyuncuListesi.push({
-                isim: bot.isim,
-                servet: typeof hesaplaServet === 'function' ? hesaplaServet(bot) : (bot.servet || 0),
-                benim: false
-            });
-        });
-    }
+ try {
+    let r = await fetch('/api/botlar');
+    let d = await r.json();
+    if (d.basari) d.botlar.forEach(b => oyuncuListesi.push({ isim: b.isim, servet: b.servet, benim: false }));
+} catch (e) { console.error("Botlar çekilemedi:", e); }
 
     // 5. Servete göre büyükten küçüğe sırala
     oyuncuListesi.sort((a, b) => b.servet - a.servet);
@@ -1945,22 +1941,7 @@ function sozlesmeAc(tur) {
 let isimHavuzu = ["BUKET", "AHMET", "MEHMET", "AYŞE", "FATMA", "MUSTAFA", "EMEL", "CAN", "ZEYNEP", "BURAK", "SEDA", "EMRE", "DENİZ", "MURAT", "ELİF", "KEREM", "MERVE", "TOLGA", "SELİN", "ONUR", "ESRA", "KAAN", "BÜŞRA", "VOLKAN", "GAMZE", "CEM", "GİZEM", "OĞUZ", "CEREN", "BERK", "DERYA"];
 let soyisimHavuzu = ["ENERJİ", "İNŞAAT", "TAAHHÜT", "MAKİNA", "METAL", "SANAYİ", "TİCARET", "GRUP", "YAPI", "ENDÜSTRİ", "YILMAZ", "DEMİR", "KAYA", "ÇELİK", "ŞAHİN", "ÖZTÜRK", "YILDIZ", "AYDIN", "ARSLAN", "DOĞAN", "KILIÇ", "ASLAN", "ÇETİN", "KOÇ", "KURT", "ÖZKAN", "ŞİMŞEK", "POLAT", "ÖZDEMİR", "ERDOĞAN"];
 let botlar = [];
-for (let i = 1; i <= 500; i++) {
-    let rastgeleIsim = isimHavuzu[Math.floor(Math.random() * isimHavuzu.length)] + " " + soyisimHavuzu[Math.floor(Math.random() * soyisimHavuzu.length)] + " A.Ş.";
-    let baslangicNakit = Math.floor(Math.random() * 50000000) + 5000000;
-    
-    botlar.push({
-        id: 200 + i,
-        isim: rastgeleIsim,
-        nakit: baslangicNakit,
-        vadeli: Math.floor(Math.random() * 10000000),
-        altin: 0,
-        dolar: 0,
-        euro: 0,
-        kredi: 0,
-        varliklar: []
-    });
-}
+
 
 if (state.ustUsteOdenmeyenTaksit === undefined) state.ustUsteOdenmeyenTaksit = 0;
 
@@ -2827,80 +2808,6 @@ if (simdiMs - sonSirketKazanci >= window.oyunAyarlari.sirketKazancSuresi) {
 
 if (typeof maksimumIlanSiniri === 'undefined') { var maksimumIlanSiniri = window.oyunAyarlari.maksimumIlanSiniri; }
 
-// 1. Bot İşlemleri (Her 8 saniyede bir botlar varlık alır veya para kazanır)
-if (typeof sonBotZamani === 'undefined') { sonBotZamani = 0; }
-
-if (simdiMs - sonBotZamani >= window.oyunAyarlari.botHizi) {
-    let gercekVarliklar = Object.keys(satisFiyatlari);
-
-    for (let i = 0; i < 5; i++) {
-        let rastgeleBot = botlar[Math.floor(Math.random() * botlar.length)];
-
-        if (!rastgeleBot.varliklar) rastgeleBot.varliklar = [];
-
-        if (Math.random() < 0.30) {
-            rastgeleBot.nakit += Math.floor(Math.random() * 200000000) + 50000000;
-        } else {
-            let secilenUrun = gercekVarliklar[Math.floor(Math.random() * gercekVarliklar.length)];
-            let bedel = satisFiyatlari[secilenUrun];
-
-            if (rastgeleBot.nakit >= bedel) {
-                rastgeleBot.nakit -= bedel;
-                rastgeleBot.varliklar.push({
-                    id: Date.now() + Math.random(),
-                    isim: secilenUrun,
-                    durum: 'sahip'
-                });
-            }
-        }
-    }
-    if (typeof zenginlerListesiniGuncelle === 'function') {
-        zenginlerListesiniGuncelle();
-    }
-    sonBotZamani = simdiMs;
-}
-
-// 2. Bot İlan Açma Döngüsü (Her 15 saniyede bir - Global Ürün Başına Maksimum Sınır)
-if (typeof sonBotIlanZamani === 'undefined') { sonBotIlanZamani = 0; }
-
-if (simdiMs - sonBotIlanZamani >= window.oyunAyarlari.botIlanHizi) {
-    let aktifIlanSayilari = {};
-
-    botlar.forEach(b => {
-        if (b.varliklar) {
-            b.varliklar.forEach(v => {
-                if (v.durum === 'ilan-aktif') {
-                    aktifIlanSayilari[v.isim] = (aktifIlanSayilari[v.isim] || 0) + 1;
-                }
-            });
-        }
-    });
-
-    botlar.forEach(bot => {
-        if (bot.varliklar && bot.varliklar.length > 0) {
-            let sahipVarliklar = bot.varliklar.filter(v => v.durum === 'sahip');
-
-            if (sahipVarliklar.length > 0 && Math.random() < 0.30) {
-                let uygunVarliklar = sahipVarliklar.filter(v => {
-                    let mevcutSayi = aktifIlanSayilari[v.isim] || 0;
-                    return mevcutSayi < maksimumIlanSiniri;
-                });
-
-                if (uygunVarliklar.length > 0) {
-                    uygunVarliklar.sort(() => Math.random() - 0.5);
-                    let secilenVarlik = uygunVarliklar[0];
-                
-                    secilenVarlik.durum = 'ilan-aktif';
-                    secilenVarlik.ilanSahibi = bot.isim;
-                    secilenVarlik.ilanVerilisZamani = simdiMs;
-                    aktifIlanSayilari[secilenVarlik.isim] = (aktifIlanSayilari[secilenVarlik.isim] || 0) + 1;
-                }
-            }
-        }
-    });
-
-    sonBotIlanZamani = simdiMs;
-}
 
 // 3. Senin İlanlarını Kontrol Eden Mekanizma (Garanti Satış)
 window.ilanZamanlari = window.ilanZamanlari || {};
@@ -2920,8 +2827,7 @@ if (satilikVarliklar.length > 0) {
         }
 
         let satisBedeli = (satisFiyatlari && satisFiyatlari[varlik.isim]) ? satisFiyatlari[varlik.isim] : 2000000;
-        let alabilecekBotlar = botlar.filter(b => b.nakit >= satisBedeli);
-        let aliciBot;
+        let aliciBot = { isim: 'Bir yatırımcı', nakit: 0, varliklar: [] };
 
         if (alabilecekBotlar.length > 0) {
             aliciBot = alabilecekBotlar[Math.floor(Math.random() * alabilecekBotlar.length)];
@@ -3012,61 +2918,7 @@ if (satilikVarliklar.length > 0) {
     }
 }
 
-// 4. DİĞER BOTLARIN İLANLARININ SÜRESİ DOLUNCA BAŞKA BOTLAR TARAFINDAN ALINMASI VE TEMİZLENMESİ
-botlar.forEach(tekilBot => {
-    if (!tekilBot.varliklar || !Array.isArray(tekilBot.varliklar)) return;
 
-    tekilBot.varliklar.forEach(varlik => {
-        if (varlik.durum !== 'ilan-aktif') return;
-        if (varlik.satinAlindi || varlik.islemde || varlik.durum === 'satildi-bekliyor' || varlik.durum === 'silinecek') return; 
-
-        if (!varlik.ilanVerilisZamani) {
-            varlik.ilanVerilisZamani = simdiMs;
-            return;
-        }
-        
-        let gecenSure = simdiMs - varlik.ilanVerilisZamani;
-        if (gecenSure < beklemeSuresiMs) return;
-
-        let satisBedeli = (satisFiyatlari && satisFiyatlari[varlik.isim]) ? satisFiyatlari[varlik.isim] : 2000000;
-        let alabilecekBotlar = botlar.filter(b => b.isim !== tekilBot.isim && b.nakit >= satisBedeli);
-        let aliciBot;
-
-        if (alabilecekBotlar.length > 0) {
-            aliciBot = alabilecekBotlar[Math.floor(Math.random() * alabilecekBotlar.length)];
-        } else {
-            let digerBotlar = botlar.filter(b => b.isim !== tekilBot.isim);
-            if (digerBotlar.length > 0) {
-                aliciBot = digerBotlar[Math.floor(Math.random() * digerBotlar.length)];
-                aliciBot.nakit += satisBedeli + 5000000;
-            }
-        }
-
-        if (aliciBot) {
-            aliciBot.nakit -= satisBedeli;
-            tekilBot.nakit += satisBedeli;
-            varlik.durum = 'satildi_isaretle';
-
-            // 🔥 ÇÖZÜM: Bot ilanı satıldığında global/yerel window.ilanlar dizisinden de uçuruyoruz ki ekranda kalmasın!
-            if (typeof window !== 'undefined' && Array.isArray(window.ilanlar)) {
-                window.ilanlar = window.ilanlar.filter(il => il.id !== varlik.id);
-            }
-
-            if (!aliciBot.varliklar) aliciBot.varliklar = [];
-            aliciBot.varliklar.push({
-                id: Date.now() + Math.random(),
-                isim: varlik.isim,
-                durum: 'sahip'
-            });
-
-            if (typeof veriDegisti !== 'undefined') {
-                veriDegisti = true;
-            }
-        }
-    });
-
-    tekilBot.varliklar = tekilBot.varliklar.filter(v => v.durum !== 'satildi_isaretle');
-});
 
 // 5. Arayüz ve Sunucu Güncellemeleri
 if (typeof guncelle === 'function') { guncelle(); }
@@ -3645,35 +3497,20 @@ async function ilanlariGuncelle() {
     let botMulkListesi = [];
     let botArsaListesi = [];
 
-    if (typeof botlar !== 'undefined' && Array.isArray(botlar)) {
-        botlar.forEach(bot => {
-            if (!bot.varliklar || !Array.isArray(bot.varliklar)) return;
-
-            bot.varliklar.forEach(varlik => {
-                if (varlik.durum !== 'ilan-aktif') return;
-
-                let satisBedeli = (typeof satisFiyatlari !== 'undefined' && satisFiyatlari && satisFiyatlari[varlik.isim]) ? satisFiyatlari[varlik.isim] : 2000000;
-                let uniqueId = varlik.id;
-                let inputId = `in-kredi-bot-${uniqueId}`;
-                let vadeInputId = `vade-kredi-bot-${uniqueId}`;
-
-                let haritalanabilirMulkler = ['arsası', 'otel', 'fabrika', 'hastane', 'özel okul', 'avm', 'hipermarket', 'konut'];
-                let arsaMi = haritalanabilirMulkler.some(tur => varlik.isim.toLowerCase().includes(tur));
-                
-                if (arsaMi && !varlik.atananKonum) {
-                    varlik.atananKonum = arsaKonumunuAl(varlik);
-                }
-
-                let veriObj = { bot, varlik, satisBedeli, uniqueId, inputId, vadeInputId, arsaMi };
-
-                if (varlik.isim.toLowerCase().includes('arsa')) {
-                    botArsaListesi.push(veriObj);
-                } else {
-                    botMulkListesi.push(veriObj);
-                }
-            });
-        });
-    }
+    try {
+    let r = await fetch('/api/bot-ilanlar');
+    let d = await r.json();
+    if (d.basari) d.ilanlar.forEach(il => {
+        let veriObj = {
+            bot: { isim: il.botIsmi },
+            varlik: { isim: il.isim, atananKonum: il.atananKonum },
+            satisBedeli: il.fiyat, uniqueId: il.id,
+            inputId: `in-kredi-bot-${il.id}`, vadeInputId: `vade-kredi-bot-${il.id}`,
+            arsaMi: true
+        };
+        (il.isim.toLowerCase().includes('arsa') ? botArsaListesi : botMulkListesi).push(veriObj);
+    });
+} catch (e) { console.error("Bot ilanları çekilemedi:", e); }
 
     let oyuncuMulkListesi = [];
     let oyuncuArsaListesi = [];
@@ -4093,11 +3930,7 @@ async function islemKesinOnayla(isim, bedel, tip, ilanId) {
     guncelle();
 
     if (tip === 'al' && typeof botlar !== 'undefined') {
-        botlar.forEach(b => {
-            if (b.varliklar && Array.isArray(b.varliklar)) {
-                b.varliklar = b.varliklar.filter(v => v.isim !== isim);
-            }
-        });
+      
         if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
     }
 
@@ -4198,67 +4031,32 @@ function baskasiSatinAlOnay(varlikId, botIsmi, fiyat) {
     modalGoster(`${botIsmi} kişisine ait ${fiyat.toLocaleString()} TL bedelli varlığı satın almak istiyor musunuz?`, butonlar);
 }
 
-function baskasiSatinAl(varlikId, botIsmi, fiyat, inputId) {
+async function baskasiSatinAl(varlikId, botIsmi, fiyat, inputId) {
     let modalOverlay = document.getElementById('modal-overlay');
-    
-    // 🌟 INPUT FAZLA PARA KONTROLÜ
     let inputEl = document.getElementById(inputId);
     if (inputEl && inputEl.value.trim() !== "") {
-        let girilenTutar = parseFloat(inputEl.value.replace(/\./g, '').replace(',', '.')) || 0;
-        if (girilenTutar > fiyat + 0.5) {
+        let girilen = parseFloat(inputEl.value.replace(/\./g, '').replace(',', '.')) || 0;
+        if (girilen > fiyat + 0.5) {
             if (modalOverlay) modalOverlay.style.display = 'none';
-            modalGoster(`Hata: Girdiğiniz tutar (${girilenTutar.toLocaleString()} TL), bu varlığın gerçek bedelinden (${fiyat.toLocaleString()} TL) fazla olamaz!`);
+            modalGoster(`Hata: Girdiğiniz tutar bu varlığın bedelinden fazla olamaz!`);
             return;
         }
     }
+    if (modalOverlay) modalOverlay.style.display = 'none';
+    if (state.nakit < fiyat) { modalGoster("Yetersiz Nakit!"); return; }
 
-    if (modalOverlay) {
-        modalOverlay.style.display = 'none';
-    }
-
-    if (state.nakit < fiyat) {
-        modalGoster("Yetersiz Nakit! Bu ilanı satın almak için yeterli paranız yok.");
-        return;
-    }
-
-    let hedefBot = botlar.find(b => b.isim === botIsmi);
-    if (!hedefBot) {
-        modalGoster("İlan sahibi bulunamadı!");
-        return;
-    }
-
-    let ilanVarligiIndex = hedefBot.varliklar.findIndex(v => v.id == varlikId);
-    if (ilanVarligiIndex === -1) {
-        modalGoster("Bu ilan artık geçerli değil veya satılmış!");
-        if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
-        if (typeof guncelle === 'function') guncelle();
-        return;
-    }
-
-    let satilanVarlik = hedefBot.varliklar[ilanVarligiIndex];
-
-    state.nakit -= fiyat;
-    hedefBot.nakit += fiyat;
-    hedefBot.varliklar.splice(ilanVarligiIndex, 1);
-    
-    let dogruIsim = satilanVarlik.isim;
-    let dogruKonum = satilanVarlik.atananKonum || (typeof arsaKonumunuAl === 'function' ? arsaKonumunuAl(satilanVarlik) : "Merkezi Konum");
-
-    state.varliklar.push({
-        id: Date.now() + Math.random(),
-        isim: dogruIsim, 
-        durum: 'sahip',
-        talepAktif: true, 
-        bloke: false,
-        krediID: null,
-        atananKonum: dogruKonum 
-    });
-
-    modalGoster(`Tebrikler! ${botIsmi} kişisinden ${dogruIsim} varlığını ${fiyat.toLocaleString()} TL ödeyerek satın aldınız.`);
-    
-    guncelle();
-    if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
-    if (typeof portfoyuSunucuyaKaydet === 'function') portfoyuSunucuyaKaydet(state);
+    try {
+        let res = await fetch('/api/ilan-satin-al', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            credentials: 'include', body: JSON.stringify({ ilanId: varlikId })
+        });
+        let s = await res.json();
+        if (!s.basari) { modalGoster(s.mesaj || "İşlem başarısız!"); ilanlariGuncelle(); return; }
+        state.nakit = s.yeniPortfoy.nakit;
+        state.varliklar = s.yeniPortfoy.varliklar;
+        guncelle(); ilanlariGuncelle();
+        modalGoster(`Tebrikler! ${botIsmi} kişisinden varlığı ${fiyat.toLocaleString()} TL ödeyerek satın aldınız.`);
+    } catch (e) { modalGoster("Bağlantı hatası oluştu."); }
 }
 // 1. Onay fonksiyonuna 'konum' parametresini de ekle
 function oyuncuIlaniSatinAlOnayla(ilanId, saticiAdi, varlikIsmi, fiyat, konum) {
@@ -4316,13 +4114,9 @@ async function oyuncuIlaniKesinSatinAl(isim, bedel, ilanId, gelenKonum, inputId)
             atananKonum: gelenKonum 
         });
 
-        if (typeof botlar !== 'undefined' && Array.isArray(botlar)) {
-            botlar.forEach(b => {
-                if (b.varliklar && Array.isArray(b.varliklar)) {
-                    b.varliklar = b.varliklar.filter(v => !(v.isim === isim && v.durum === 'ilan-aktif'));
-                }
-            });
-        }
+        if (typeof botlar !== 'undefined' && Array.isArray(botlar)) 
+            
+        
 
         let modalOverlay = document.getElementById('modal-overlay');
         if (modalOverlay) modalOverlay.style.display = 'none';
@@ -4462,432 +4256,6 @@ async function vazgec(uniqueId) {
     }
 }
     
-async function siralamayiGuncelle() {
-    let listeKapsayici = document.getElementById('siralama-listesi');
-    if (!listeKapsayici) return;
-
-    // 1. Önce kendi güncel portföyünü sunucuya kaydet
-    try {
-        await fetch('/api/portfoy-guncelle', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ portfoy: state })
-        });
-    } catch (e) {
-        console.error("Portföy kaydedilemedi:", e);
-    }
-
-    // 2. Botları listeye ekle
-    let tumSiralama = [];
-    if (typeof botlar !== 'undefined' && Array.isArray(botlar)) {
-        botlar.forEach(bot => {
-            tumSiralama.push({
-                isim: bot.isim,
-                nakit: typeof hesaplaServet === 'function' ? hesaplaServet(bot) : (bot.nakit || 0),
-                benMi: false
-            });
-        });
-    }
-
-    // 3. Sunucudan diğer GERÇEK ÜYELERİ çek
-    try {
-        let response = await fetch('/api/kullanicilar-liste');
-        let sonuc = await response.json();
-        
-        if (sonuc.basari && Array.isArray(sonuc.uyeler)) {
-            sonuc.uyeler.forEach(uye => {
-                let sirketAdi = (uye.adsoyad || 'ŞİRKET').toUpperCase() + " A.Ş.";
-                let servet = typeof hesaplaServet === 'function' ? hesaplaServet(uye.portfoy || {}) : 0;
-                
-                // Eğer bu kayıt sunucudaki oturum sahibi ile eşleşiyorsa veya genel kontrol
-                tumSiralama.push({
-                    isim: sirketAdi,
-                    nakit: servet,
-                    benim: false // Aşağıda güncellenecek
-                });
-            });
-        }
-    } catch (e) {
-        console.error("Gerçek üyeler çekilemedi:", e);
-    }
-
-    // 4. Kendi servetini hesapla ve listeye ekle
-    let toplamServetim = state.nakit + (state.vadeli || 0) + (state.altin || 0) * 3000 + (state.dolar || 0) * 35; 
-    
-    // Aktif kullanıcının adını HTML'den veya session'dan al
-    let sirketBaslik = document.getElementById('sirket-adi-mali');
-    let aktifIsim = (sirketBaslik && sirketBaslik.innerText && !sirketBaslik.innerText.includes("Yükleniyor")) 
-        ? sirketBaslik.innerText 
-        : "ALPER A.Ş.";
-
-    tumSiralama.push({
-        isim: aktifIsim,
-        nakit: toplamServetim,
-        benim: true
-    });
-
-    // 5. Büyükten küçüğe sırala
-    tumSiralama.sort((a, b) => b.nakit - a.nakit);
-
-    let benimIndexim = tumSiralama.findIndex(item => item.benMi) + 1;
-    let html = "";
-    
-    let sinir = Math.min(100, tumSiralama.length);
-    for (let i = 0; i < sinir; i++) {
-        let kisi = tumSiralama[i];
-        let satirSinifi = kisi.benMi ? "style='background-color: #fffae6; font-weight: bold;'" : "";
-        
-        html += `<tr ${satirSinifi}>
-            <td>${i + 1}</td>
-            <td>${kisi.isim} ${kisi.benMi ? "(Sen)" : ""}</td>
-            <td>${Math.floor(kisi.nakit).toLocaleString()} TL</td>
-        </tr>`;
-    }
-
-    if (benimIndexim > 100) {
-        html += `<tr><td colspan="3" style="text-align: center; font-weight: bold;">...</td></tr>`;
-        
-        let benimObjem = tumSiralama[benimIndexim - 1];
-        html += `<tr style="background-color: #fffae6; font-weight: bold;">
-            <td>${benimIndexim}</td>
-            <td>${benimObjem.isim} (Sen)</td>
-            <td>${Math.floor(benimObjem.nakit).toLocaleString()} TL</td>
-        </tr>`;
-    }
-
-    listeKapsayici.innerHTML = html;
-}
-
-function botIlaniniKrediliAl(varlikId, botIsmi, varlikIsmi, bedel) {
-    let miktarInput = document.getElementById(`kredi-miktar-${varlikId}`);
-    let vadeSelect = document.getElementById(`kredi-vade-${varlikId}`);
-
-    let cekilmekIstenenKredi = miktarInput ? parseFloat(miktarInput.value) || 0 : 0;
-    let vade = vadeSelect ? parseInt(vadeSelect.value) || 48 : 48;
-
-    if (cekilmekIstenenKredi > bedel) {
-        modalGoster("Çekebileceğiniz kredi miktarı ürün bedelinden fazla olamaz!");
-        return;
-    }
-
-    if (cekilmekIstenenKredi > state.krediLimiti) {
-        modalGoster("Kredi limitiniz yetersiz!");
-        return;
-    }
-
-    let gerekenPesinat = bedel - cekilmekIstenenKredi;
-    if (gerekenPesinat > 0 && state.nakit < gerekenPesinat) {
-        modalGoster("Yetersiz Nakit (Peşinat)!");
-        return;
-    }
-
-    let hedefBot = botlar.find(b => b.isim === botIsmi);
-    if (!hedefBot) {
-        modalGoster("İlan sahibi bot bulunamadı!");
-        return;
-    }
-
-    let ilanVarligiIndex = hedefBot.varliklar.findIndex(v => v.id == varlikId);
-    if (ilanVarligiIndex === -1) {
-        modalGoster("Bu ilan artık geçerli değil!");
-        
-        // Ekrandan hayalet ilanı hemen temizle
-        if (typeof ilanlariGuncelle === 'function') {
-            ilanlariGuncelle();
-        }
-        return;
-    }
-
-    let satilanVarlik = hedefBot.varliklar[ilanVarligiIndex];
-
-    let katsayi = faizOranlari.krediKatsayi || 1.05;
-    let toplamGeriOdeme = cekilmekIstenenKredi * katsayi;
-    let aylikTaksit = toplamGeriOdeme / vade;
-
-    state.nakit -= gerekenPesinat; 
-    hedefBot.nakit += bedel;        
-
-    state.kredi += toplamGeriOdeme;
-    state.taksit += aylikTaksit;
-
-    if (!state.krediler) state.krediler = [];
-    let yeniKrediID = Date.now() + Math.random();
-    
-    state.krediler.push({
-        id: yeniKrediID,
-        isim: varlikIsmi,
-        kalanBorc: toplamGeriOdeme,
-        taksit: aylikTaksit
-    });
-
-    hedefBot.varliklar.splice(ilanVarligiIndex, 1);
-    
-    state.varliklar.push({
-        id: Date.now() + Math.random(),
-        isim: satilanVarlik.isim,
-        durum: 'sahip',
-        bloke: cekilmekIstenenKredi > 0, 
-        krediID: cekilmekIstenenKredi > 0 ? yeniKrediID : null
-    });
-
-    guncelle();
-
-    // 🚀 İŞTE EN ÖNEMLİ SATIR: Satın alım bittiği an ilan listesini yenileyip o ilanı ekrandan siliyoruz!
-    if (typeof ilanlariGuncelle === 'function') {
-        ilanlariGuncelle();
-    }
-
-  modalGoster(
-    "İşlem Başarılı!\n\nVarlık satın alımı gerçekleştirildi.", 
-    '<button onclick="islemiIptalEt()" style="background-color: #d9534f; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; margin-right: 10px;">Vazgeç</button>' +
-    '<button onclick="kesinSatinAlVeKapat()" style="background-color: #28a745; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer;">Onayla</button>'
-);
-
-    // 🌟 Sunucuya Kaydet
-    if (typeof portfoyuSunucuyaKaydet === 'function') {
-        portfoyuSunucuyaKaydet(state);
-    }
-}
-
-
-async function botlarIlanlariSatinAl() {
-    if (typeof botlar === 'undefined' || !botlar) return;
-
-    // Her bot sırayla ve güvenli bir şekilde işlem yapsın
-    for (let alanBot of botlar) {
-        if (Math.random() >= 0.15) continue;
-
-        // Güncel aktif ilanları her defasında yeniden derle
-        let aktifIlanlar = [];
-        botlar.forEach(satanBot => {
-            if (satanBot.id !== alanBot.id && satanBot.varliklar) {
-                satanBot.varliklar.forEach(varlik => {
-                    if (varlik.durum === 'ilan-aktif') {
-                        aktifIlanlar.push({ bot: satanBot, varlik: varlik });
-                    }
-                });
-            }
-        });
-
-        if (aktifIlanlar.length === 0) continue;
-
-        let randomIndex = Math.floor(Math.random() * aktifIlanlar.length);
-        let ilanData = aktifIlanlar[randomIndex];
-
-        let satanBot = ilanData.bot;
-        let varlik = ilanData.varlik;
-
-        let satisBedeli = (satisFiyatlari && satisFiyatlari[varlik.isim]) ? satisFiyatlari[varlik.isim] : (varlik.bedel || 2000000);
-
-        if (alanBot.nakit >= satisBedeli) {
-            // Para transferi
-            alanBot.nakit -= satisBedeli;
-            satanBot.nakit += satisBedeli;
-
-            // Satan bottan varlığı bul ve çıkar
-            let index = satanBot.varliklar.findIndex(v => v.id === varlik.id);
-            if (index !== -1) {
-                // Önce durumunu değiştir
-                satanBot.varliklar[index].durum = 'sahip';
-                
-                // Envanterden tamamen sök al
-                let [satilanVarlik] = satanBot.varliklar.splice(index, 1);
-
-                // Alan botun envanterine ekle
-                alanBot.varliklar.push({
-                    id: Date.now() + Math.random(),
-                    isim: satilanVarlik.isim,
-                    durum: 'sahip',
-                    bloke: false,
-                    krediID: null,
-                    atananKonum: satilanVarlik.atananKonum || ''
-                });
-
-                console.log(`🤖 ${alanBot.isim}, ${satanBot.isim} kişisinden ${satilanVarlik.isim} varlığını ${satisBedeli.toLocaleString()} TL'ye satın aldı!`);
-            }
-        }
-    }
-
-    // Pazar ekranını ve zenginler listesini güvenle güncelle
-    if (typeof ilanlariGuncelle === 'function') {
-        await ilanlariGuncelle();
-    }
-    if (typeof zenginlerListesiniGuncelle === 'function') {
-        await zenginlerListesiniGuncelle();
-    }
-}
-
-function botlarIlanlariKontrolEt() { 
-    let simdiMs = Date.now();
-    let beklemeSuresiMs = (window.oyunAyar && window.oyunAyar.GLOBAL_BEKLEME_SURESI) || (3 * 24 * 60 * 60 * 1000);
-
-    if (typeof maksimumIlanSiniri === 'undefined') { var maksimumIlanSiniri = 3; }
-    if (typeof sonBotZamani === 'undefined') { sonBotZamani = 0; }
-    if (typeof sonBotIlanZamani === 'undefined') { sonBotIlanZamani = 0; }
-
-    let gercekVarliklar = Object.keys(satisFiyatlari); 
-
-    // 🌟 KESİN ÇÖZÜM: Her arsa türü için havuzdaki listeden tamamen rastgele ve benzersiz bir bölge seçer
-    function tamKarmaliBolgeUret(arsaIsmi) {
-        if (typeof arsaKonumHaritasi !== 'undefined' && arsaKonumHaritasi[arsaIsmi]) {
-            let veri = arsaKonumHaritasi[arsaIsmi];
-            if (veri && veri.liste && veri.liste.length > 0) {
-                let listeKopya = [...veri.liste];
-                listeKopya.sort(() => Math.random() - 0.5);
-                return listeKopya[Math.floor(Math.random() * listeKopya.length)];
-            }
-        }
-        return "Merkezi Konum";
-    }
-
-    // 1. Botların yeni varlık alması (Her 8 saniyede bir)
-    if (simdiMs - sonBotZamani >= 8000) {
-        for (let i = 0; i < 5; i++) {
-            let rastgeleBot = botlar[Math.floor(Math.random() * botlar.length)];
-            if (!rastgeleBot.varliklar) rastgeleBot.varliklar = [];
-
-            if (Math.random() < 0.30) {
-                rastgeleBot.nakit += Math.floor(Math.random() * 200000000) + 50000000; 
-            } else {
-                let secilenUrun = gercekVarliklar[Math.floor(Math.random() * gercekVarliklar.length)];
-                let bedel = satisFiyatlari[secilenUrun];
-
-                if (rastgeleBot.nakit >= bedel) {
-                    rastgeleBot.nakit -= bedel;
-                    
-                    let atananBolge = "Merkezi Konum";
-                    if (secilenUrun.toLowerCase().includes('arsası')) {
-                        atananBolge = tamKarmaliBolgeUret(secilenUrun);
-                    }
-
-                    rastgeleBot.varliklar.push({
-                        id: Date.now() + Math.random(),
-                        isim: secilenUrun,
-                        durum: 'sahip',
-                        atananKonum: atananBolge
-                    });
-                }
-            }
-        }
-        if (typeof zenginlerListesiniGuncelle === 'function') {
-            zenginlerListesiniGuncelle();
-        }
-        sonBotZamani = simdiMs;
-    }
-
-    // 2. Botların ilan açması (Her 15 saniyede bir)
-    if (simdiMs - sonBotIlanZamani >= 15000) { 
-        let aktifIlanSayilari = {};
-        botlar.forEach(b => {
-            if (b.varliklar) {
-                b.varliklar.forEach(v => {
-                    if (v.durum === 'ilan-aktif') {
-                        aktifIlanSayilari[v.isim] = (aktifIlanSayilari[v.isim] || 0) + 1;
-                    }
-                });
-            }
-        });
-
-        botlar.forEach(satanBot => {
-            if (satanBot.varliklar && satanBot.varliklar.length > 0) {
-                let sahipVarliklar = satanBot.varliklar.filter(v => v.durum === 'sahip');
-                
-                if (sahipVarliklar.length > 0 && Math.random() < 0.30) {
-                    let uygunVarliklar = sahipVarliklar.filter(v => {
-                        let mevcutSayi = aktifIlanSayilari[v.isim] || 0;
-                        return mevcutSayi < maksimumIlanSiniri; 
-                    });
-
-                    if (uygunVarliklar.length > 0) {
-                        uygunVarliklar.sort(() => Math.random() - 0.5);
-                        let secilenVarlik = uygunVarliklar[0]; 
-                        
-                        secilenVarlik.durum = 'ilan-aktif';
-                        secilenVarlik.ilanSahibi = satanBot.isim;
-                        secilenVarlik.ilanVerilisZamani = simdiMs;
-                        
-                        if (secilenVarlik.isim.toLowerCase().includes('arsası')) {
-                            secilenVarlik.atananKonum = tamKarmaliBolgeUret(secilenVarlik.isim);
-                        }
-
-                        aktifIlanSayilari[secilenVarlik.isim] = (aktifIlanSayilari[secilenVarlik.isim] || 0) + 1;
-                    }
-                }
-            }
-        });
-        sonBotIlanZamani = simdiMs;
-    }
-
-    // 3. Senin ilanlarının süresi dolduğunda ONAY PENCERESİNİ tetiklemesi
-    let satilikVarliklar = state.varliklar.filter(v => v.durum === 'ilan-aktif' && v.ilanSahibi === 'ben');
-
-    if (satilikVarliklar.length > 0) {
-        satilikVarliklar.forEach(varlik => {
-            if (!varlik.ilanVerilisZamani) {
-                varlik.ilanVerilisZamani = simdiMs;
-                return;
-            }
-
-            if ((simdiMs - varlik.ilanVerilisZamani) < beklemeSuresiMs) return;
-
-            if (!varlik.onayBekliyor) {
-                varlik.onayBekliyor = true;
-                let satisBedeli = (satisFiyatlari && satisFiyatlari[varlik.isim]) ? satisFiyatlari[varlik.isim] : 2000000;
-                
-                if (typeof onayPenceresi === 'function') {
-                    onayPenceresi(varlik.isim, satisBedeli, 'ilan-satis');
-                }
-            }
-        });
-    }
-
-    // 4. Diğer botların ilanlarının arka planda kendi aralarında dönmesi ve transferi
-    botlar.forEach(satanBot => {
-        if (!satanBot.varliklar || !Array.isArray(satanBot.varliklar)) return;
-
-        satanBot.varliklar.forEach((varlik, index) => {
-            if (varlik.durum === 'ilan-aktif') {
-                if (!varlik.ilanVerilisZamani) {
-                    varlik.ilanVerilisZamani = simdiMs;
-                    return;
-                }
-
-                if ((simdiMs - varlik.ilanVerilisZamani) < beklemeSuresiMs) return;
-
-                let satisBedeli = (satisFiyatlari && satisFiyatlari[varlik.isim]) ? satisFiyatlari[varlik.isim] : 2000000;
-                let alabilecekBotlar = botlar.filter(b => b.isim !== satanBot.isim && b.nakit >= satisBedeli);
-                let aliciBot = alabilecekBotlar.length > 0 ? 
-                            alabilecekBotlar[Math.floor(Math.random() * alabilecekBotlar.length)] : 
-                            botlar.filter(b => b.isim !== satanBot.isim)[Math.floor(Math.random() * (botlar.length - 1))];
-
-                if (aliciBot) {
-                    if (!alabilecekBotlar.length) aliciBot.nakit += satisBedeli + 5000000;
-
-                    aliciBot.nakit -= satisBedeli;
-                    satanBot.nakit += satisBedeli;
-
-                    // Varlığı satan botun envanterinden çıkarıp alan botun envanterine ekleyelim
-                    satanBot.varliklar.splice(index, 1);
-
-                    if (!aliciBot.varliklar) aliciBot.varliklar = [];
-                    aliciBot.varliklar.push({
-                        id: Date.now() + Math.random(),
-                        isim: varlik.isim,
-                        durum: 'sahip',
-                        atananKonum: varlik.atananKonum || tamKarmaliBolgeUret(varlik.isim)
-                    });
-                }
-            }
-        });
-    });
-
-    // 5. Güncellemeler
-    guncelle();
-    if (typeof ilanlariGuncelle === 'function') { ilanlariGuncelle(); }
-    if (typeof portfoyuSunucuyaKaydet === 'function') { portfoyuSunucuyaKaydet(state); }
-}
-
-
 function changePage(p) {
     let hedefSayfa = document.getElementById(p);
     if (!hedefSayfa) {
@@ -5132,13 +4500,9 @@ function krediyiKesinOnayla() {
 
     state.varliklar = state.varliklar.filter(v => v.durum !== 'silinecek');
 
-    if (kapsam === 'ilan' && typeof botlar !== 'undefined') {
-        botlar.forEach(b => {
-            if (b.varliklar && Array.isArray(b.varliklar)) {
-                b.varliklar = b.varliklar.filter(v => v.isim !== isim);
-            }
-        });
-    }
+    if (kapsam === 'ilan' && typeof botlar !== 'undefined') 
+        
+  
 
     if (miktarInput) miktarInput.value = '';
     if (vadeSelect) vadeSelect.value = "48";
