@@ -23,6 +23,19 @@ app.get('/', (req, res) => {
 const db = new Database('./database.db');
 console.log("SQLite veritabanına başarıyla bağlanıldı."); 
 
+const bots = require('./bots');
+bots.baslat(db);
+function ayarOku() {
+  const k = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
+  return k ? JSON.parse(k.ayarlar) : {};
+}
+setInterval(() => {
+  try { bots.dongu(db, ayarOku()); } catch (e) { console.error('Bot döngüsü:', e.message); }
+}, 1000);
+app.get('/api/botlar', (req, res) =>
+  res.json({ basari: true, botlar: bots.liste(ayarOku().satisFiyatlari || {}) }));
+app.get('/api/bot-ilanlar', (req, res) =>
+  res.json({ basari: true, ilanlar: bots.ilanlar(ayarOku().satisFiyatlari || {}) }));
 // Oturumları çakışmayı önlemek için ayrı bir veritabanında (sessions.db) saklıyoruz
 app.use(session({
     store: new SQLiteStore({
@@ -562,7 +575,7 @@ app.post('/api/ilan-satin-al', (req, res) => {
             let ilanFiyat = 0;
             let ilanTipi = "";
             let detaylarObj = {};
-
+            let botIlan = null;
             if (ilan) {
                 // GERÇEK KULLANICI İLANI (P2P)
                 if (ilan.kullanici_id === aliciId) {
@@ -576,11 +589,21 @@ app.post('/api/ilan-satin-al', (req, res) => {
                 } catch (e) {
                     detaylarObj = {};
                 }
-            } else {
-                // KAMU VEYA BOT İLANI (Veritabanında yoksa doğrudan istemciden gelen verileri baz al)
-                ilanFiyat = ilanTipiBedel || (odenenNakit ? Number(odenenNakit) * 10/7 : 0);
-                ilanTipi = ilanIsmi || "Kamu Mülkü";
-            }
+                } else {
+    const gecerliId = ilanId !== null && ilanId !== undefined && ilanId !== 'null' && ilanId !== '';
+    if (gecerliId) {
+        // Bot ilanı: fiyat ve tür sunucudan gelir, istemciye güvenilmez
+        botIlan = bots.bul(ilanId);
+        if (!botIlan) throw new Error("Bu ilan artık geçerli değil veya satılmış!");
+        ilanFiyat = (ayarOku().satisFiyatlari || {})[botIlan.isim] || 2000000;
+        ilanTipi = botIlan.isim;
+        detaylarObj.atananKonum = botIlan.atananKonum;
+    } else {
+        // Kamu (banka icra) satışı, şimdilik eskisi gibi
+        ilanFiyat = ilanTipiBedel || (odenenNakit ? Number(odenenNakit) * 10/7 : 0);
+        ilanTipi = ilanIsmi || "Kamu Mülkü";
+    }
+}
 
             // ALICI İŞLEMLERİ
             const aliciRow = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(aliciId);
@@ -725,7 +748,7 @@ if (saticiId) {
             if (ilan) {
                 db.prepare(`DELETE FROM ilanlar WHERE id = ?`).run(ilanId);
             }
-
+            if (botIlan) bots.al(db, ilanId, ilanFiyat);
             return true;
         });
 
