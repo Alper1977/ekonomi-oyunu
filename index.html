@@ -213,7 +213,7 @@
 
 <div id="modal-overlay">
     <div class="modal-pencere">
-        <span class="close-btn" onclick="document.getElementById('modal-overlay').style.display='none'">x</span>
+        <span class="close-btn" onclick="islemiIptalEt()">x</span>
         <p id="modal-yazi"></p>
         <div id="modal-buton-alani"></div>
     </div>
@@ -733,7 +733,7 @@
 <script>
 
 let sirketGrafigiObjesi = null;
-
+let tempIslem = null;
 // Grafiği ilk kez oluşturan fonksiyon (Mali Tablo sayfası açıldığında veya oyun başladığında çağrılır)
 function maliGrafigiBaslat() {
     let canvas = document.getElementById('maliGrafik');
@@ -4087,7 +4087,7 @@ function ilanaCikar(id) {
     }
     
     let atananKonumVal = v.atananKonum || null;
-    let saticiAdi = (typeof aktifKullaniciAdi !== 'undefined' && aktifKullaniciAdi) ? aktifKullaniciAdi : 'Ben';
+    let saticiAdi = aktifKullaniciAdiKaydi || 'Ben';
 
     // Sunucuya gönder
     fetch('/api/ilan-ekle', {
@@ -4147,6 +4147,9 @@ async function vazgec(uniqueId) {
         ilanlariGuncelle();
     }
 
+    guncelle();
+
+ 
     // 3. SUNUCU İSTEĞİNİ ARKADA YAP: Kullanıcı bunu hiç hissetmez
     try {
         let response = await fetch('/api/ilan-sil', {
