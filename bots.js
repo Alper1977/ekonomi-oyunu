@@ -1,5 +1,5 @@
 const KONUM = require('./konumlar');
-const ISIM = [/* istemcideki isimHavuzu */];
+const ISIM = ["BUKET", "AHMET", "MEHMET", "AYŞE", "FATMA", "MUSTAFA", "EMEL", "CAN", "ZEYNEP", "BURAK", "SEDA", "EMRE", "DENİZ", "MURAT", "ELİF", "KEREM", "MERVE", "TOLGA", "SELİN", "ONUR", "ESRA", "KAAN", "BÜŞRA", "VOLKAN", "GAMZE", "CEM", "GİZEM", "OĞUZ", "CEREN", "BERK", "DERYA"];
 const SOY  = [/* istemcideki soyisimHavuzu */];
 
 let botlar = [], sonId = 1000000000, sonHareket = 0, sonIlan = 0;
