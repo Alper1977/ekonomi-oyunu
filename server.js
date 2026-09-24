@@ -144,88 +144,6 @@ db.prepare(`CREATE TABLE IF NOT EXISTS ilanlar (
     tarih DATETIME DEFAULT CURRENT_TIMESTAMP
 )`).run();
 
-// Botlar tablosu yoksa otomatik oluşturur
-db.prepare(`
-    CREATE TABLE IF NOT EXISTS botlar (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        isim TEXT,
-        nakit REAL,
-        vadeli REAL DEFAULT 0,
-        altin REAL DEFAULT 0,
-        dolar REAL DEFAULT 0,
-        euro REAL DEFAULT 0,
-        kredi REAL DEFAULT 0,
-        varliklar TEXT
-    )
-`).run();
-
-// --- 1. Bot Havuzu Tanımları ve Üretimi (Sunucu Başlangıcı) ---
-const isimHavuzu = ["BUKET", "AHMET", "MEHMET", "AYŞE", "FATMA", "MUSTAFA", "EMEL", "CAN", "ZEYNEP", "BURAK", "SEDA", "EMRE", "DENİZ", "MURAT", "ELİF", "KEREM", "MERVE", "TOLGA", "SELİN", "ONUR", "ESRA", "KAAN", "BÜŞRA", "VOLKAN", "GAMZE", "CEM", "GİZEM", "OĞUZ", "CEREN", "BERK", "DERYA"];
-const soyisimHavuzu = ["ENERJİ", "İNŞAAT", "TAAHHÜT", "MAKİNA", "METAL", "SANAYİ", "TİCARET", "GRUP", "YAPI", "ENDÜSTRİ", "YILMAZ", "DEMİR", "KAYA", "ÇELİK", "ŞAHİN", "ÖZTÜRK", "YILDIZ", "AYDIN", "ARSLAN", "DOĞAN", "KILIÇ", "ASLAN", "ÇETİN", "KOÇ", "KURT", "ÖZKAN", "ŞİMŞEK", "POLAT", "ÖZDEMİR", "ERDOĞAN"];
-
-// Eğer botlar tablosu boşsa sunucu açılışında 500 botu oluşturup veritabanına kaydedebilirsin
-function botlariBaslat() {
-    const mevcutBotSayisi = db.prepare(`SELECT COUNT(*) as sayi FROM botlar`).get().sayi;
-    if (mevcutBotSayisi > 0) return;
-
-    const insertBot = db.prepare(`INSERT INTO botlar (id, isim, nakit, varliklar) VALUES (?, ?, ?, ?)`);
-    const insertTransaction = db.transaction(() => {
-        for (let i = 1; i <= 500; i++) {
-            let rastgeleIsim = isimHavuzu[Math.floor(Math.random() * isimHavuzu.length)] + " " + soyisimHavuzu[Math.floor(Math.random() * soyisimHavuzu.length)] + " A.Ş.";
-            let baslangicNakit = Math.floor(Math.random() * 50000000) + 5000000;
-            
-            insertBot.run(
-                200 + i, 
-                rastgeleIsim, 
-                baslangicNakit, 
-                JSON.stringify([])
-            );
-        }
-    });
-    insertTransaction();
-}
-botlariBaslat();
-
-// Servet hesaplama fonksiyonunun sunucu versiyonu (istemcinin aynısı)
-function sunucudaServetHesapla(oyuncu, ayarlar, kurlar) {
-    if (!oyuncu) return 0;
-
-    let varlikDegeri = 0;
-    // Ayarlar veya satisFiyatlari undefined gelirse varsayılanı kullan
-    let satisFiyatlari = { "Konut": 2000000, "Arsa": 1500000, "Ticari": 5000000 };
-    try {
-        if (ayarlar && ayarlar.satisFiyatlari) {
-            satisFiyatlari = ayarlar.satisFiyatlari;
-        }
-    } catch (e) {}
-    
-    // Varlıklar dizi değilse veya string olarak geldiyse güvenle parse et
-    let varliklarDizisi = oyuncu.varliklar;
-    if (typeof varliklarDizisi === 'string') {
-        try { varliklarDizisi = JSON.parse(varliklarDizisi); } catch (e) { varliklarDizisi = []; }
-    }
-
-    if (Array.isArray(varliklarDizisi)) {
-        varlikDegeri = varliklarDizisi
-            .filter(v => v && v.durum === 'sahip')
-            .reduce((toplam, v) => toplam + (satisFiyatlari[v.isim] || 0), 0);
-    }
-    
-    let nakit = Number(oyuncu.nakit) || 0;
-    let vadeli = Number(oyuncu.vadeli) || 0;
-    let kredi = Number(oyuncu.kredi) || 0;
-
-    let altinFiyat = (kurlar && kurlar.altin && kurlar.altin.satis) ? Number(kurlar.altin.satis) : 6000;
-    let dolarFiyat = (kurlar && kurlar.dolar && kurlar.dolar.satis) ? Number(kurlar.dolar.satis) : 49;
-    let euroFiyat = (kurlar && kurlar.euro && kurlar.euro.satis) ? Number(kurlar.euro.satis) : 54;
-
-    let altinTL = (Number(oyuncu.altin) || 0) * altinFiyat;
-    let dolarTL = (Number(oyuncu.dolar) || 0) * dolarFiyat;
-    let euroTL = (Number(oyuncu.euro) || 0) * euroFiyat;
-    
-    return nakit + vadeli + varlikDegeri + altinTL + dolarTL + euroTL - kredi;
-}
-
 // --- 🌟 ÇEVRİMİÇİ / ÇEVRİMDIŞI AKILLI EKONOMİ MOTORU (TAM KAPSAMLI) ---
 function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
     if (!userRow || !userRow.portfoy) return null;
@@ -537,169 +455,25 @@ setInterval(() => {
         const kurlarKaydi = db.prepare(`SELECT kurlar FROM oyun_kurlari WHERE id = 1`).get();
         const kurlar = kurlarKaydi ? JSON.parse(kurlarKaydi.kurlar) : { dolar: {satis: 49}, euro: {satis: 54}, altin: {satis: 6000} };
 
-        // -------------------------------------------------------------
-        // 1. BOT VE GLOBAL İLAN/PİYASA İŞLEMLERİ (Sunucu Tarafı)
-        // -------------------------------------------------------------
-        try {
-            const satisFiyatlari = ayarlar.satisFiyatlari || { "Konut": 2000000, "Arsa": 1500000, "Ticari": 5000000 };
-            const maksimumIlanSiniri = ayarlar.maksimumIlanSiniri || 5;
-            const beklemeSuresiMs = ayarlar.GLOBAL_BEKLEME_SURESI || 60000;
-            const botHizi = ayarlar.botHizi || 8000;
-            const botIlanHizi = ayarlar.botIlanHizi || 15000;
-            const simdiMs = Date.now();
-
-            let botlarRows = db.prepare(`SELECT * FROM botlar`).all();
-            let botlar = botlarRows.map(b => ({
-                ...b,
-                varliklar: typeof b.varliklar === 'string' ? JSON.parse(b.varliklar || '[]') : (b.varliklar || [])
-            }));
-
-            global.sonBotZamani = global.sonBotZamani || 0;
-            global.sonBotIlanZamani = global.sonBotIlanZamani || 0;
-
-          // --- A. Bot İşlemleri (Varlık Alımı / Nakit Artışı) ---
-// global kontrolünü kaldırıp her döngüde oransal/garanti işlem yapmasını sağlayalım
-let gercekVarliklar = Object.keys(satisFiyatlari);
-for (let i = 0; i < 5; i++) {
-    let rastgeleBot = botlar[Math.floor(Math.random() * botlar.length)];
-    if (!rastgeleBot.varliklar) rastgeleBot.varliklar = [];
-
-    if (Math.random() < 0.50) { // Şansı biraz artır ki hemen aksiyon alılsın
-        rastgeleBot.nakit += Math.floor(Math.random() * 200000000) + 50000000;
-    } else {
-        let secilenUrun = gercekVarliklar[Math.floor(Math.random() * gercekVarliklar.length)];
-        let bedel = satisFiyatlari[secilenUrun] || 2000000;
-
-        if (rastgeleBot.nakit >= bedel) {
-            rastgeleBot.nakit -= bedel;
-            rastgeleBot.varliklar.push({
-                id: Date.now() + Math.random(),
-                isim: secilenUrun,
-                durum: 'sahip'
-            });
-        }
-    }
-}
-             
-
-            // --- B. Bot İlan Açma Döngüsü ---
-            if (simdiMs - global.sonBotIlanZamani >= botIlanHizi) {
-                let aktifIlanSayilari = {};
-                botlar.forEach(b => {
-                    if (b.varliklar) {
-                        b.varliklar.forEach(v => {
-                            if (v.durum === 'ilan-aktif') {
-                                aktifIlanSayilari[v.isim] = (aktifIlanSayilari[v.isim] || 0) + 1;
-                            }
-                        });
-                    }
-                });
-
-                botlar.forEach(bot => {
-                    if (bot.varliklar && bot.varliklar.length > 0) {
-                        let sahipVarliklar = bot.varliklar.filter(v => v.durum === 'sahip');
-                        if (sahipVarliklar.length > 0 && Math.random() < 0.30) {
-                            let uygunVarliklar = sahipVarliklar.filter(v => {
-                                let mevcutSayi = aktifIlanSayilari[v.isim] || 0;
-                                return mevcutSayi < maksimumIlanSiniri;
-                            });
-
-                            if (uygunVarliklar.length > 0) {
-                                uygunVarliklar.sort(() => Math.random() - 0.5);
-                                let secilenVarlik = uygunVarliklar[0];
-                                secilenVarlik.durum = 'ilan-aktif';
-                                secilenVarlik.ilanSahibi = bot.isim;
-                                secilenVarlik.ilanVerilisZamani = simdiMs;
-                                aktifIlanSayilari[secilenVarlik.isim] = (aktifIlanSayilari[secilenVarlik.isim] || 0) + 1;
-                            }
-                        }
-                    }
-                });
-                global.sonBotIlanZamani = simdiMs;
-            }
-
-            // --- C. Diğer Botların İlanlarının Süresi Dolması ---
-            botlar.forEach(tekilBot => {
-                if (!tekilBot.varliklar || !Array.isArray(tekilBot.varliklar)) return;
-
-                tekilBot.varliklar.forEach(varlik => {
-                    if (varlik.durum !== 'ilan-aktif') return;
-                    if (varlik.satinAlindi || varlik.islemde || varlik.durum === 'satildi-bekliyor' || varlik.durum === 'silinecek') return; 
-
-                    if (!varlik.ilanVerilisZamani) {
-                        varlik.ilanVerilisZamani = simdiMs;
-                        return;
-                    }
-                    
-                    let gecenSure = simdiMs - varlik.ilanVerilisZamani;
-                    if (gecenSure < beklemeSuresiMs) return;
-
-                    let satisBedeli = (satisFiyatlari && satisFiyatlari[varlik.isim]) ? satisFiyatlari[varlik.isim] : 2000000;
-                    let alabilecekBotlar = botlar.filter(b => b.isim !== tekilBot.isim && b.nakit >= satisBedeli);
-                    let aliciBot;
-
-                    if (alabilecekBotlar.length > 0) {
-                        aliciBot = alabilecekBotlar[Math.floor(Math.random() * alabilecekBotlar.length)];
-                    } else {
-                        let digerBotlar = botlar.filter(b => b.isim !== tekilBot.isim);
-                        if (digerBotlar.length > 0) {
-                            aliciBot = digerBotlar[Math.floor(Math.random() * digerBotlar.length)];
-                            aliciBot.nakit += satisBedeli + 5000000;
-                        }
-                    }
-
-                    if (aliciBot) {
-                        aliciBot.nakit -= satisBedeli;
-                        tekilBot.nakit += satisBedeli;
-                        varlik.durum = 'satildi_isaretle';
-
-                        if (!aliciBot.varliklar) aliciBot.varliklar = [];
-                        aliciBot.varliklar.push({
-                            id: Date.now() + Math.random(),
-                            isim: varlik.isim,
-                            durum: 'sahip'
-                        });
-                    }
-                });
-                tekilBot.varliklar = tekilBot.varliklar.filter(v => v.durum !== 'satildi_isaretle');
-            });
-
-            // Bot verilerini kaydet
-            const updateStmt = db.prepare(`UPDATE botlar SET nakit = ?, varliklar = ? WHERE id = ?`);
-            const saveBotTransaction = db.transaction((botListesi) => {
-                botListesi.forEach(b => {
-                    updateStmt.run(b.nakit, JSON.stringify(b.varliklar), b.id);
-                });
-            });
-            saveBotTransaction(botlar);
-
-        } catch (botErr) {
-            console.error("Bot ve piyasa döngüsü hatası:", botErr.message);
-        }
-
-        // -------------------------------------------------------------
-        // 2. KULLANICI EKONOMİSİ VE İLAN SATIN ALMA İŞLEMLERİ
-        // -------------------------------------------------------------
-        const kullanicilar = db.prepare(`SELECT id, portfoy, krediler, son_guncelleme FROM kullanicilar`).all();
+        const kullanicilar = db.prepare(`SELECT id, portfoy, son_guncelleme FROM kullanicilar`).all();
         
         // Her kullanıcıyı kendi bağımsız transaction ve try-catch bloğuna alıyoruz
         kullanicilar.forEach(user => {
             try {
                 const userTransaction = db.transaction(() => {
-                    // Önce kullanıcının kendi aktif ilanlarının botlar tarafından garanti satış kontrolü yapılabilir
-                    // Veya mevcut ekonomi fonksiyonu çağrılır:
                     kullaniciEkonomisiniIslet(user, ayarlar, kurlar);
                 });
                 userTransaction();
             } catch (userErr) {
                 console.error(`Kullanıcı ID ${user.id} ekonomi işletilirken hata oluştu:`, userErr.message);
+                // Bu kullanıcı patlasa bile diğer kullanıcıların parası, dövizi, kredisi etkilenmez
             }
         });
 
     } catch (err) {
         console.error("Arka plan oyun döngüsü genel hata:", err.message);
     }
-}, 10000);
+}, 30000);
 
 // --- API Rotaları ---
 
@@ -1159,27 +933,22 @@ app.post('/api/profil-guncelle', (req, res) => {
 });
 
 app.get('/api/portfoy-getir', (req, res) => {
-    // Hem normal kullanıcı hem de admin oturumunu destekle
-    let sessionUser = req.session.kullanici || req.session.admin;
-    if (!req.session || !sessionUser) {
+    if (!req.session || !req.session.kullanici) {
         return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı!" });
     }
 
     try {
-        const userId = sessionUser.id;
+        const userId = req.session.kullanici.id;
         const user = db.prepare(`SELECT * FROM kullanicilar WHERE id = ?`).get(userId);
         
         if (!user) {
-            // Eğer admin veritabanında kullanicilar tablosunda yoksa bile çökmesini engellemek için geçici bir nesne üretelim
-            if (req.session.admin) {
-                return res.json({ basari: true, nakit: 0, varliklar: [], gunlukGelir: 0, konutKiraGeliri: 0, krediler: [], kredi: 0, taksit: 0 });
-            }
             return res.status(404).json({ basari: false, mesaj: "Kullanıcı bulunamadı!" });
         }
 
         const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
         const ayarlar = ayarKaydi ? JSON.parse(ayarKaydi.ayarlar) : {};
 
+        // 🌟 Çevrimdışı geçen süredeki gelirleri hesaba kat!
         const guncelPortfoy = kullaniciEkonomisiniIslet(user, ayarlar) || JSON.parse(user.portfoy || '{}');
 
         res.json({
@@ -1188,6 +957,7 @@ app.get('/api/portfoy-getir', (req, res) => {
             varliklar: guncelPortfoy.varliklar || [],
             gunlukGelir: guncelPortfoy.gunlukGelir || 0,
             konutKiraGeliri: guncelPortfoy.konutKiraGeliri || 0,
+            // 🌟 İŞTE EKSİK OLAN VE EKRANI GÜNCELLEYECEK KRİTİK ALANLAR BURASI:
             krediler: guncelPortfoy.krediler || [],
             kredi: guncelPortfoy.kredi || 0,
             taksit: guncelPortfoy.taksit || 0
@@ -1277,16 +1047,19 @@ app.get('/api/aktif-kullanici', (req, res) => {
 });
 
 app.post('/api/portfoy-guncelle', (req, res) => {
-    let sessionUser = req.session.kullanici || req.session.admin;
-    if (!req.session || !sessionUser) {
-        return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı!" });  
+    if (!req.session || !req.session.kullanici) {
+        return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı!" }); 
     }
 
-    const userId = sessionUser.id;
+    const userId = req.session.kullanici.id;
     let yeniPortfoy = req.body.portfoy || {};
 
+    // 🌟 SUNUCU TARAFi TEMİZLİK FİLTRESİ (Frontend'den gelen bozuk/eski borçları engelle!)
     if (yeniPortfoy.krediler && Array.isArray(yeniPortfoy.krediler)) {
+        // Gerçekten kalan borcu olanları filtrele
         yeniPortfoy.krediler = yeniPortfoy.krediler.filter(k => k && (k.kalanBorc || 0) > 0.01);
+        
+        // Yeniden hesapla
         yeniPortfoy.kredi = yeniPortfoy.krediler.reduce((toplam, kr) => toplam + (kr.kalanBorc || 0), 0);
         yeniPortfoy.taksit = yeniPortfoy.krediler.reduce((toplam, kr) => {
             if (kr.icradanKalanBorc) return toplam;
@@ -1294,6 +1067,7 @@ app.post('/api/portfoy-guncelle', (req, res) => {
         }, 0);
     }
 
+    // Eğer toplam kredi borcu sıfıra yakınsa, tüm kredi alanlarını kökten sıfırla
     if (!yeniPortfoy.krediler || yeniPortfoy.krediler.length === 0 || yeniPortfoy.kredi < 0.01) {
         yeniPortfoy.kredi = 0;
         yeniPortfoy.taksit = 0;
@@ -1303,25 +1077,19 @@ app.post('/api/portfoy-guncelle', (req, res) => {
     const portfoyStr = JSON.stringify(yeniPortfoy);
 
     try {
-        // Eğer admin tablosunda ID eşleşmiyorsa hata vermemesi için kontrol ekleyelim
-        const userCheck = db.prepare(`SELECT id FROM kullanicilar WHERE id = ?`).get(userId);
-        if (userCheck) {
-            db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`).run(portfoyStr, Date.now(), userId);
-        }
-        
-        sessionUser.portfoy = yeniPortfoy;
+        db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`).run(portfoyStr, Date.now(), userId);
+        req.session.kullanici.portfoy = yeniPortfoy;
         res.json({ basari: true, mesaj: "Portföy kaydedildi.", portfoy: yeniPortfoy });
     } catch (err) {
         console.error("Portföy güncelleme hatası:", err.message);
         return res.status(500).json({ basari: false, mesaj: err.message });
     }
 });
-
 app.get('/api/kullanicilar-liste', (req, res) => {
     try {
         const rows = db.prepare(`SELECT adsoyad, portfoy FROM kullanicilar`).all();
 
-        let uyeler = rows.map(row => { 
+        let uyeler = rows.map(row => {
             let portfoyData = {};
             try {
                 if (typeof row.portfoy === 'string') {
@@ -1342,93 +1110,6 @@ app.get('/api/kullanicilar-liste', (req, res) => {
         res.json({ basari: true, uyeler: uyeler });
     } catch (err) {
         return res.status(500).json({ basari: false, mesaj: err.message });
-    }
-});
-
-// --- 🌟 ORTAK ZENGİNLER LİSTESİ API ROTASI ---
-app.get('/api/zenginler-listesi-ortak', (req, res) => {
-    try {
-        let ayarlar = { satisFiyatlari: { "Konut": 2000000, "Arsa": 1500000, "Ticari": 5000000 } };
-        try {
-            const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
-            if (ayarKaydi && ayarKaydi.ayarlari) {
-                ayarlar = JSON.parse(ayarKaydi.ayarlari);
-            }
-        } catch (e) {}
-
-        let kurlar = { dolar: { satis: 49 }, euro: { satis: 54 }, altin: { satis: 6000 } };
-        try {
-            const kurlarKaydi = db.prepare(`SELECT kurlar FROM oyun_kurlari WHERE id = 1`).get();
-            if (kurlarKaydi && kurlarKaydi.kurlar) {
-                kurlar = JSON.parse(kurlarKaydi.kurlar);
-            }
-        } catch (e) {}
-
-        let tumListe = [];
-
-        // 1. Kullanıcıları al (Admin dahil tüm kayıtları adsoyad veya kadi ile yakala)
-        try {
-            const kullanicilar = db.prepare(`SELECT id, kadi, adsoyad, portfoy FROM kullanicilar`).all();
-            for (let u of kullanicilar) {
-                let portfoy = {};
-                try {
-                    portfoy = typeof u.portfoy === 'string' ? JSON.parse(u.portfoy) : (u.portfoy || {});
-                } catch (err) {}
-
-                let servet = sunucudaServetHesapla(portfoy, ayarlar, kurlar);
-                
-                // İsim belirleme: adsoyad varsa onu al, yoksa kadi, hiçbiri yoksa 'İsimsiz Şirket'
-                let hesapIsmi = (u.adsoyad && u.adsoyad.trim() !== "") ? u.adsoyad.trim() : (u.kadi ? u.kadi.trim() : "İsimsiz Şirket");
-
-                tumListe.push({
-                    id: u.id,
-                    isim: hesapIsmi,
-                    servet: Number(servet) || 0,
-                    tip: "Kullanıcı"
-                });
-            }
-        } catch (err) {
-            console.error("Kullanıcı çekme hatası:", err.message);
-        }
-
-        // 2. Botları al
-        try {
-            const botlar = db.prepare(`SELECT id, isim, nakit, vadeli, altin, dolar, euro, kredi, varliklar FROM botlar`).all();
-            for (let b of botlar) {
-                let varliklar = [];
-                try {
-                    varliklar = typeof b.varliklar === 'string' ? JSON.parse(b.varliklar) : (b.varliklar || []);
-                } catch (err) {}
-
-                let botPortfoy = {
-                    nakit: b.nakit || 0,
-                    vadeli: b.vadeli || 0,
-                    altin: b.altin || 0,
-                    dolar: b.dolar || 0,
-                    euro: b.euro || 0,
-                    kredi: b.kredi || 0,
-                    varliklar: varliklar
-                };
-
-                let servet = sunucudaServetHesapla(botPortfoy, ayarlar, kurlar);
-                tumListe.push({
-                    id: b.id,
-                    isim: b.isim || "Bot",
-                    servet: Number(servet) || 0,
-                    tip: "Bot"
-                });
-            }
-        } catch (err) {
-            console.error("Bot çekme hatası:", err.message);
-        }
-
-        // Büyükten küçüğe sırala
-        tumListe.sort((a, b) => b.servet - a.servet);
-        res.json(tumListe);
-
-    } catch (err) {
-        console.error("Zenginler listesi kritik hata:", err.message);
-        res.status(500).json({ hata: err.message });
     }
 });
 
