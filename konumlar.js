@@ -1,0 +1,1 @@
+module.exports = { ...arsaKonumHaritasi içeriği... };
