@@ -1,1 +1,15 @@
-module.exports = { ...arsaKonumHaritasi içeriği... };
+module.exports = { 'Konut Arsası': { liste: ['Ankara (Çankaya, İncek)', 'İstanbul (Etiler, Nişantaşı)', 'İzmir (Alsancak)', 'Bursa (Nilüfer, Özlüce)', 'Antalya (Lara, Konyaaltı)', 'Adana (Seyhan, Ziyapaşa)', 'Mersin (Yenişehir, Pozcu)'] },
+    'Hastane Arsası': { liste: ['Ankara (Çukurambar)', 'İstanbul (Maslak, Şişli)', 'İzmir (Bornova, Bayraklı)', 'Bursa (Nilüfer)', 'Antalya (Muratpaşa)', 'Adana (Çukurova)', 'Mersin (Mezitli)'] },
+    'Özel Okul Arsası': { liste: ['Ankara (Ümitköy, Çayyolu)', 'İstanbul (Ataşehir, Zekeriyaköy)', 'İzmir (Urla, Güzelbahçe)', 'Bursa (Bademli)', 'Antalya (Döşemealtı)', 'Adana (Seyhan)', 'Mersin (Tarsus yolu)'] },
+    'AVM Arsası': { liste: ['Ankara (Eskişehir Yolu, Söğütözü)', 'İstanbul (Levent, Maslak)', 'İzmir (Mavişehir)', 'Bursa (Nilüfer)', 'Antalya (Kepez)', 'Adana (Yüreğir)', 'Mersin (Forum çevresi)'] },
+    'Hipermarket Arsası': { liste: ['Ankara ( Batıkent)', 'İstanbul (İkitelli, Hadımköy)', 'İzmir (Çiğli, Kemalpaşa)', 'Bursa (Nilüfer Sanayi)', 'Antalya (Aksu)', 'Adana (D-400 Karayolu)', 'Mersin (Serbest Bölge)'] },
+    'Fabrika Arsası': { liste: ['Ankara (OSTİM OSB)', 'İstanbul (Dudullu OSB)', 'İzmir (Atatürk OSB)', 'Adana (Hacı Sabancı OSB)', 'Bursa (Demirtaş OSB)', 'Gaziantep (Başpınar OSB)'] },
+    'Otel Arsası': { liste: ['Alanya (Kleopatra Sahili)', 'Fethiye (Ölüdeniz)', 'Bodrum (Yalıkavak)', 'Marmaris (İçmeler)', 'Çeşme (Alaçatı)', 'Side (Kemer mah.)'] },
+    'Konut': { liste: ['Ankara (Çankaya, İncek)', 'İstanbul (Etiler, Nişantaşı)', 'İzmir (Alsancak)', 'Bursa (Nilüfer, Özlüce)', 'Antalya (Lara, Konyaaltı)', 'Adana (Seyhan, Ziyapaşa)', 'Mersin (Yenişehir, Pozcu)'] },
+    'Hastane': { liste: ['Ankara (Çukurambar)', 'İstanbul (Maslak, Şişli)', 'İzmir (Bornova, Bayraklı)', 'Bursa (Nilüfer)', 'Antalya (Muratpaşa)', 'Adana (Çukurova)', 'Mersin (Mezitli)'] },
+    'Özel Okul': { liste: ['Ankara (Ümitköy, Çayyolu)', 'İstanbul (Ataşehir, Zekeriyaköy)', 'İzmir (Urla, Güzelbahçe)', 'Bursa (Bademli)', 'Antalya (Döşemealtı)', 'Adana (Seyhan)', 'Mersin (Tarsus yolu)'] },
+    'AVM': { liste: ['Ankara (Eskişehir Yolu, Söğütözü)', 'İstanbul (Levent, Maslak)', 'İzmir (Mavişehir)', 'Bursa (Nilüfer)', 'Antalya (Kepez)', 'Adana (Yüreğir)', 'Mersin (Forum çevresi)'] },
+    'Hipermarket': { liste: ['Ankara ( Batıkent)', 'İstanbul (İkitelli, Hadımköy)', 'İzmir (Çiğli, Kemalpaşa)', 'Bursa (Nilüfer Sanayi)', 'Antalya (Aksu)', 'Adana (D-400 Karayolu)', 'Mersin (Serbest Bölge)'] },
+    'Fabrika': { liste: ['Ankara (OSTİM OSB)', 'İstanbul (Dudullu OSB)', 'İzmir (Atatürk OSB)', 'Adana (Hacı Sabancı OSB)', 'Bursa (Demirtaş OSB)', 'Gaziantep (Başpınar OSB)'] },
+    'Otel': { liste: ['Alanya (Kleopatra Sahili)', 'Fethiye (Ölüdeniz)', 'Bodrum (Yalıkavak)', 'Marmaris (İçmeler)', 'Çeşme (Alaçatı)', 'Side (Kemer mah.)'] }
+    };
