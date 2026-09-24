@@ -521,6 +521,11 @@ app.post('/api/ilan-ekle', (req, res) => {
 
     try {
         const transaction = db.transaction(() => {
+            if (varlikId) {
+    const mevcut = db.prepare(`SELECT id, detaylar FROM ilanlar WHERE kullanici_id = ?`).all(userId)
+        .find(r => { try { return String(JSON.parse(r.detaylar || '{}').varlikId) === String(varlikId); } catch (e) { return false; } });
+    if (mevcut) return mevcut.id;   // zaten ilanda, ikinci ilan açma
+}
             const stmt = db.prepare(`INSERT INTO ilanlar (kullanici_id, satici_adsoyad, ilan_tipi, fiyat, detaylar) VALUES (?, ?, ?, ?, ?)`);
             const info = stmt.run(userId, userAdSoyad, ilan_tipi, fiyat, JSON.stringify(detaylar || {}));
 
@@ -533,6 +538,7 @@ app.post('/api/ilan-ekle', (req, res) => {
                             if (v.id == varlikId) {
                                 v.durum = 'ilan-aktif';
                                 v.sunucuIlanId = info.lastInsertRowid;
+                                v.ilanSahibi = 'ben';
                             }
                         });
                         db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`).run(JSON.stringify(portfoyObj), Date.now(), userId);
@@ -1096,7 +1102,17 @@ app.post('/api/portfoy-guncelle', (req, res) => {
         yeniPortfoy.taksit = 0;
         yeniPortfoy.krediler = [];
     }
-
+const mevcutRow = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(userId);
+if (mevcutRow && mevcutRow.portfoy) {
+    let mevcut = {};
+    try { mevcut = JSON.parse(mevcutRow.portfoy); } catch (e) {}
+    const mevcutIdler = new Set((mevcut.varliklar || []).map(v => String(v.id)));
+    const ilanIdler = new Set(db.prepare(`SELECT id FROM ilanlar WHERE kullanici_id = ?`).all(userId).map(r => String(r.id)));
+    const bayat = (yeniPortfoy.varliklar || []).some(v =>
+        v && v.durum === 'ilan-aktif' && v.sunucuIlanId &&
+        !mevcutIdler.has(String(v.id)) && !ilanIdler.has(String(v.sunucuIlanId)));
+    if (bayat) return res.json({ basari: true, senkron: true, portfoy: mevcut }); // satılmış, bayat state'i reddet
+}
     const portfoyStr = JSON.stringify(yeniPortfoy);
 
     try {
