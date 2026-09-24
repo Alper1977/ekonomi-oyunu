@@ -2827,15 +2827,7 @@ if (satilikVarliklar.length > 0) {
         }
 
         let satisBedeli = (satisFiyatlari && satisFiyatlari[varlik.isim]) ? satisFiyatlari[varlik.isim] : 2000000;
-        let aliciBot = { isim: 'Bir yatırımcı', nakit: 0, varliklar: [] };
-
-        if (alabilecekBotlar.length > 0) {
-            aliciBot = alabilecekBotlar[Math.floor(Math.random() * alabilecekBotlar.length)];
-        } else {
-            aliciBot = botlar[Math.floor(Math.random() * botlar.length)];
-            aliciBot.nakit += satisBedeli + 5000000;
-        }
-
+        let aliciBot = { isim: 'Bir yatırımcı', nakit: 0, varliklar: [] };    
         let dusulenBorc = 0;
 
         if (varlik.bloke && varlik.krediID && state.krediler) {
@@ -4113,11 +4105,6 @@ async function oyuncuIlaniKesinSatinAl(isim, bedel, ilanId, gelenKonum, inputId)
             krediID: null,
             atananKonum: gelenKonum 
         });
-
-        if (typeof botlar !== 'undefined' && Array.isArray(botlar)) 
-            
-        
-
         let modalOverlay = document.getElementById('modal-overlay');
         if (modalOverlay) modalOverlay.style.display = 'none';
 
@@ -4499,11 +4486,6 @@ function krediyiKesinOnayla() {
     }
 
     state.varliklar = state.varliklar.filter(v => v.durum !== 'silinecek');
-
-    if (kapsam === 'ilan' && typeof botlar !== 'undefined') 
-        
-  
-
     if (miktarInput) miktarInput.value = '';
     if (vadeSelect) vadeSelect.value = "48";
 
