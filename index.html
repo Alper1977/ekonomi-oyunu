@@ -725,10 +725,7 @@
     </div>
 </div>
 
-<div style="margin-top: 20px; background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
-    <h3 style="margin-bottom: 10px; font-size: 14px; color: #2c3e50; text-align: center;">Şirket Net Değer Grafiği</h3>
-    <canvas id="maliGrafik" width="400" height="200"></canvas>
-</div>
+
 
 <script>
 
@@ -739,14 +736,20 @@ function maliGrafigiBaslat() {
     let canvas = document.getElementById('maliGrafik');
     if (!canvas) return;
 
-    let ctx = canvas.getContext('2d');
-    
-    // Eğer grafik zaten varsa baştan oluşturma
-    if (sirketGrafigiObjesi) return;
+    let guncelServet = (typeof hesaplaServet === 'function' && typeof state !== 'undefined')
+        ? hesaplaServet(state) : 100000000;
+    if (!guncelServet || guncelServet <= 0) guncelServet = 100000000;
 
-    // Örnek başlangıç verileri (Burayı kendi oyunundaki net değer değişkeninle bağlayabilirsin)
+    if (sirketGrafigiObjesi) {
+        maliGrafikGuncelle(guncelServet);
+        return;
+    }
+
+    let ctx = canvas.getContext('2d');
     let etiketler = ['1. Ay', '2. Ay', '3. Ay', '4. Ay', 'Şimdi'];
-    let degerler = [10000000, 25000000, 45000000, 60000000, (typeof netDeger !== 'undefined' ? netDeger : 100000000)];
+    // Servete göre kademeli, gerçekçi bir büyüme eğrisi üret
+    let oranlar = [0.35, 0.55, 0.72, 0.88, 1.0];
+    let degerler = oranlar.map(o => Math.round(guncelServet * o));
 
     sirketGrafigiObjesi = new Chart(ctx, {
         type: 'line',
@@ -764,25 +767,18 @@ function maliGrafigiBaslat() {
         },
         options: {
             responsive: true,
-            plugins: {
-                legend: {
-                    display: false
-                }
-            },
+            plugins: { legend: { display: false } },
             scales: {
                 y: {
                     beginAtZero: false,
                     ticks: {
-                        callback: function(value) {
-                            return (value / 1000000).toLocaleString() + ' M TL';
-                        }
+                        callback: v => (v / 1000000).toLocaleString() + ' M TL'
                     }
                 }
             }
         }
     });
 }
-
 // Oyun içinde net değer değiştikçe grafiği güncelleyen fonksiyon
 function maliGrafikGuncelle(yeniNetDeger) {
     if (!sirketGrafigiObjesi) {
@@ -1202,6 +1198,21 @@ function uyeligiTamamlaBasildi() {
         return;
     }
 
+try {
+        let res = await fetch('/api/email-kontrol?email=' + encodeURIComponent(email));
+        let sonuc = await res.json();
+        if (sonuc.basari && sonuc.kullanimda) {
+            if (hataDiv) {
+                hataDiv.innerText = "⚠️ Bu e-posta adresi zaten kullanılıyor!";
+                hataDiv.style.display = 'block';
+            }
+            return;
+        }
+    } catch (e) {
+        console.error("E-posta kontrolü yapılamadı:", e);
+        // Bağlantı hatasında akışı engellemiyoruz; nihai kontrol zaten /api/kayit'te var
+    }
+ 
     kullaniciAdSoyad = girilenAd;
 
     // 6 haneli rastgele kod üret
@@ -3108,7 +3119,9 @@ if (tList) {
 
     if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
     if (typeof zenginlerListesiniGuncelle === 'function') await zenginlerListesiniGuncelle();
-
+    if (sirketGrafigiObjesi && typeof hesaplaServet === 'function') {
+        maliGrafikGuncelle(hesaplaServet(state));
+    }
     if (typeof portfoyuSunucuyaKaydet === 'function') {
         portfoyuSunucuyaKaydet(state);
     }
@@ -4102,23 +4115,31 @@ function ilanaCikar(id) {
     })
     .then(res => res.json())
     .then(data => {
-     window._sonIlanIslemZamani = Date.now();
-     
-        v._islemde = false; // İşlem bitti, kilidi aç
-        if (data.basari) {
-            v.ilanSahibi = 'ben';  
-            v.ilanZamanKaydi = Date.now();
-            v.sunucuIlanId = data.id;
-
-            if (typeof guncelle === 'function') guncelle();
-            if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
-            if (typeof portfoyuSunucuyaKaydet === 'function') portfoyuSunucuyaKaydet(state);
-        } else {
-            v.durum = 'sahip'; // Hata olursa geri al
-            if (typeof guncelle === 'function') guncelle();
-            modalGoster(data.mesaj || "İlan yayınlanamadı!");
+    window._sonIlanIslemZamani = Date.now();
+    v._islemde = false;
+    if (data.basari) {
+        // 🌟 Kullanıcı istek beklerken vazgeçtiyse, sunucudaki ilanı hemen temizle
+        if (v.durum !== 'ilan-aktif') {
+            fetch('/api/ilan-sil', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: data.id, sunucuIlanId: data.id })
+            }).catch(() => {});
+            return;
         }
-    })
+        v.ilanSahibi = 'ben';
+        v.ilanZamanKaydi = Date.now();
+        v.sunucuIlanId = data.id;
+
+        if (typeof guncelle === 'function') guncelle();
+        if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
+        if (typeof portfoyuSunucuyaKaydet === 'function') portfoyuSunucuyaKaydet(state);
+    } else {
+        v.durum = 'sahip';
+        if (typeof guncelle === 'function') guncelle();
+        modalGoster(data.mesaj || "İlan yayınlanamadı!");
+    }
+})
     .catch(err => {
         console.error("İlan ekleme hatası:", err);
         v._islemde = false;
