@@ -2618,8 +2618,7 @@ if (kr.icradanKalanBorc) {
                 // Eğer 3. taksit dolduysa İCRA İŞLEMİ
                 if (kr.ustUsteOdenmeyen >= 3) {
                     if (ilgiliVarlik) {
-                        let satisFiyatlari = window.oyunAyarlari.satisFiyatlari || {};
-                        let satisFiyati = satisFiyatlari[ilgiliVarlik.isim] ? satisFiyatlari[ilgiliVarlik.isim] : 10000000;
+                        let satisFiyati = (satisFiyatlari && satisFiyatlari[ilgiliVarlik.isim]) ? satisFiyatlari[ilgiliVarlik.isim] : 10000000;
 
                         // Varlığı sistemden kaldır (Haciz)
                         state.varliklar = state.varliklar.filter(v => v && v.id !== ilgiliVarlik.id);
@@ -4347,6 +4346,15 @@ function krediyiKesinOnayla() {
         return;
     }
 
+// 🌟 ARSA MUAFİYETİ: İnşaat (yap) için gereken arsa sahipse ve blokeli değilse %70 şartı aranmaz
+let arsaMuaf = false;
+if (kapsam !== 'ilan' && isim !== 'Bayi') {
+    let arsaIsmi = (isim === 'Konut') ? "Konut Arsası" : isim + " Arsası";
+    let mevcutArsa = state.varliklar.find(v => v.isim === arsaIsmi && v.durum === 'sahip' && v.bloke !== true);
+    arsaMuaf = !!mevcutArsa;
+}
+
+if (!arsaMuaf) {
     let maksimumKrediLimiti = bedel * 0.70;
     if (miktar > maksimumKrediLimiti) {
         if (miktarInput) miktarInput.value = '';
@@ -4355,17 +4363,18 @@ function krediyiKesinOnayla() {
         modalGoster(`⚠️ <b>Kredi Sınırı Aşıldı!</b><br><br>Bir varlık için en fazla <b>%70</b> oranında kredi kullanabilirsiniz (Max Kredi: ${maksimumKrediLimiti.toLocaleString()} TL). En az %30 peşinat ödemelisiniz.`);
         return;
     }
+}
 
-    let gerekenPesinat = bedel - miktar; 
-    let verilenPesinatYuzdesi = (gerekenPesinat / bedel) * 100;
+let gerekenPesinat = bedel - miktar; 
+let verilenPesinatYuzdesi = (gerekenPesinat / bedel) * 100;
 
-    if (verilenPesinatYuzdesi < 30) {
-        if (miktarInput) miktarInput.value = '';
-        if (vadeSelect) vadeSelect.value = "48";
-        tempIslem = null;
-        modalGoster(`⚠️ <b>Yetersiz Peşinat Oranı!</b><br><br>Vereceğiniz peşinat oranı (%${verilenPesinatYuzdesi.toFixed(1)}) <b>en az %30</b> olmalıdır. Daha fazla peşinat ödeyerek kredi miktarını düşürebilirsiniz.`);
-        return;
-    }
+if (!arsaMuaf && verilenPesinatYuzdesi < 30) {
+    if (miktarInput) miktarInput.value = '';
+    if (vadeSelect) vadeSelect.value = "48";
+    tempIslem = null;
+    modalGoster(`⚠️ <b>Yetersiz Peşinat Oranı!</b><br><br>Vereceğiniz peşinat oranı (%${verilenPesinatYuzdesi.toFixed(1)}) <b>en az %30</b> olmalıdır. Daha fazla peşinat ödeyerek kredi miktarını düşürebilirsiniz.`);
+    return;
+}
 
     if (state.nakit < gerekenPesinat) {
         if (miktarInput) miktarInput.value = '';
