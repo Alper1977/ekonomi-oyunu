@@ -1428,7 +1428,8 @@ async function sistemeGirisYap() {
         }
         
         let katsayi = (typeof faizOranlari !== 'undefined' && faizOranlari.krediKatsayi) ? faizOranlari.krediKatsayi : 1;
-        state.krediLimiti = Math.floor(((state.gunlukGelir + kiraGeliri + (aktifTalepGeliri * 3) - state.taksit) * 0.60) * 48 / katsayi);
+        let taksitKapasitesiGiris = ((state.gunlukGelir + kiraGeliri + (aktifTalepGeliri * 3)) * 0.60) - state.taksit;
+        state.krediLimiti = Math.floor(Math.max(0, taksitKapasitesiGiris) * 48 / katsayi);
 
         let limitElementleri = document.getElementsByClassName('val-limit');
         for (let el of limitElementleri) {
@@ -2885,7 +2886,7 @@ async function guncelle() {
     let mevcutTaksit = (typeof state !== 'undefined' && state.taksit) ? state.taksit : 0;
 
     // Aylık taksit ödeme kapasitesi (%60)
-    let aylikTaksitKapasitesi = (gGelir + kGelir + (tGelir * 3) - mevcutTaksit) * 0.60;
+    let aylikTaksitKapasitesi = ((gGelir + kGelir + (tGelir * 3)) * 0.60) - mevcutTaksit;
     
     // Varsayılan 48 aya göre standart net limit hesabı
     let aylikFaizOrani = (typeof oyunAyar !== 'undefined' && oyunAyar.faizOranlari) ? oyunAyar.faizOranlari.yatirimKredisiYuzde : 0.05;
