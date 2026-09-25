@@ -4149,18 +4149,23 @@ function ilanaCikar(id) {
 }
     
 async function vazgec(uniqueId) {
- window._sonIlanIslemZamani = Date.now();
-    // 1. BEKLEMEDEN ANINDA DEĞİŞTİR: Tarayıcının yerel hafızasını hemen güncelle
+    window._sonIlanIslemZamani = Date.now();
+
+    let gercekIlanId = uniqueId; // İlanlar sayfasından geliyorsa zaten doğru ID budur
+
     if (typeof state !== 'undefined' && state.varliklar && Array.isArray(state.varliklar)) {
         let varlik = state.varliklar.find(v => v.id == uniqueId || v.sunucuIlanId == uniqueId);
         if (varlik) {
+            // 🌟 Varlıklar sayfasından çağrıldıysa gerçek sunucu ID'sini sıfırlamadan önce yakala
+            if (varlik.sunucuIlanId) {
+                gercekIlanId = varlik.sunucuIlanId;
+            }
             varlik.durum = 'sahip';
             varlik.ilanSahibi = null;
             varlik.sunucuIlanId = null;
         }
     }
 
-    // 2. ARAYÜZÜ ANINDA YENİDEN ÇİZ: Sfır gecikmeyle "Sat" butonuna dönüştür
     if (typeof portfoyuGuncelle === 'function') {
         portfoyuGuncelle();
     }
@@ -4170,15 +4175,11 @@ async function vazgec(uniqueId) {
 
     guncelle();
 
- 
-    // 3. SUNUCU İSTEĞİNİ ARKADA YAP: Kullanıcı bunu hiç hissetmez
     try {
         let response = await fetch('/api/ilan-sil', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ id: uniqueId, sunucuIlanId: uniqueId })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: uniqueId, sunucuIlanId: gercekIlanId })
         });
         window._sonIlanIslemZamani = Date.now();
         let data = await response.json();
