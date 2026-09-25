@@ -867,6 +867,17 @@ app.post('/api/admin/ayar-guncelle', (req, res) => {
     }
 });
 
+app.get('/api/email-kontrol', (req, res) => {
+    const email = (req.query.email || '').trim().toLowerCase();
+    if (!email) return res.json({ basari: false, mesaj: 'E-posta gerekli' });
+    try {
+        const row = db.prepare(`SELECT id FROM kullanicilar WHERE LOWER(TRIM(email)) = ?`).get(email);
+        res.json({ basari: true, kullanimda: !!row });
+    } catch (err) {
+        res.status(500).json({ basari: false, mesaj: err.message });
+    }
+});
+
 app.post('/api/kayit', (req, res) => {
     const { kadi, email, sifre, adsoyad, portfoy } = req.body; 
     
