@@ -2340,9 +2340,9 @@ setInterval(async () => {
         state.nakit = portfoyVerisi.nakit;
         state.para = portfoyVerisi.nakit;
         }
-            if (portfoyVerisi.krediler) state.krediler = portfoyVerisi.krediler;
-            if (portfoyVerisi.kredi !== undefined) state.kredi = portfoyVerisi.kredi;
-            if (portfoyVerisi.taksit !== undefined) state.taksit = portfoyVerisi.taksit;
+            if (portfoyVerisi.krediler && !ilanKilidi) state.krediler = portfoyVerisi.krediler;
+            if (portfoyVerisi.kredi !== undefined && !ilanKilidi) state.kredi = portfoyVerisi.kredi;
+            if (portfoyVerisi.taksit !== undefined && !ilanKilidi) state.taksit = portfoyVerisi.taksit;
 
             if (typeof arayuzuGuncelle === 'function') {
                 arayuzuGuncelle();
@@ -2844,6 +2844,7 @@ if (satilikVarliklar.length > 0) {
 // 5. Arayüz ve Sunucu Güncellemeleri
 if (typeof guncelle === 'function') { guncelle(); }
 if (typeof ilanlariGuncelle === 'function') { ilanlariGuncelle(); }
+if (typeof yatirimlariGuncelle === 'function') { yatirimlariGuncelle(); }
 
 if (typeof veriDegisti !== 'undefined' && veriDegisti && typeof portfoyuSunucuyaKaydet === 'function') {
     portfoyuSunucuyaKaydet(state);
@@ -4302,7 +4303,7 @@ function krediIslem(inputId, vadeInputId, isim, bedel, kapsam, ilanId = null) {
     
 function krediyiKesinOnayla() {
     if (!tempIslem) return;
-
+    window._sonIlanIslemZamani = Date.now();
     let sorunluKrediVar = state.krediler && state.krediler.some(kr => (kr.ustUsteOdenmeyen || 0) > 0 || (kr.icradanKalanBorc === true));
     if (sorunluKrediVar) {
         tempIslem = null; 
@@ -4574,6 +4575,8 @@ function islemiIptalEt() {
 } 
     
 function krediOde() {
+window._sonIlanIslemZamani = Date.now();
+ 
     let input = document.getElementById('in-kredi-ode');
     if (!input) return;
     
