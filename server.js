@@ -587,8 +587,11 @@ app.post('/api/ilan-satin-al', (req, res) => {
                     throw new Error("Kendi ilanınızı satın alamazsınız!");
                 }
                 saticiId = ilan.kullanici_id;
-                ilanFiyat = ilan.fiyat;
+                saticiId = ilan.kullanici_id;
                 ilanTipi = ilan.ilan_tipi;
+                const guncelFiyatlar = (ayarOku().satisFiyatlari || {});
+                ilanFiyat = guncelFiyatlar[ilanTipi] !== undefined ? guncelFiyatlar[ilanTipi] : ilan.fiyat;
+                
                 try {
                     detaylarObj = JSON.parse(ilan.detaylar || '{}');
                 } catch (e) {
