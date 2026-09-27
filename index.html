@@ -1522,8 +1522,18 @@ async function profilAdiGuncelle() {
     let hataDiv = document.getElementById('profil-hata');
     const temizle = () => { if (yeniAdInput) yeniAdInput.value = ''; };
     const hataGoster = (m) => {
-        if (hataDiv) { hataDiv.innerText = m; hataDiv.style.display = 'block'; }
-        else modalGoster(m);
+    if (hataDiv) {
+        hataDiv.innerText = m;
+        hataDiv.style.display = 'block';
+        // 🌟 Önceki zamanlayıcı varsa iptal et, üst üste binmesin
+        if (hataDiv._gizlemeZamanlayici) clearTimeout(hataDiv._gizlemeZamanlayici);
+        hataDiv._gizlemeZamanlayici = setTimeout(() => {
+            hataDiv.style.display = 'none';
+            hataDiv.innerText = '';
+        }, 4000); // 4 saniye sonra otomatik kaybolur
+    } else {
+        modalGoster(m);
+    }
     };
 
     if (hataDiv) { hataDiv.style.display = 'none'; hataDiv.innerText = ""; }
