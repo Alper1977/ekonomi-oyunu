@@ -300,7 +300,10 @@
                        <a href="#" onclick="sozlesmeAc('sozlesme'); return false;" style="color: #00ffcc;">Kullanıcı Sözleşmesi</a>'ni ve <a href="#" onclick="sozlesmeAc('gizlilik'); return false;" style="color: #00ffcc;">Gizlilik Politikası</a>'nı okudum ve kabul ediyorum.
                     </label>
                 </div>
-                
+                <div style="display: flex; align-items: center; gap: 5px; font-size: 11px; color: #aaa; margin-top: 5px; text-align: left;">
+                   <input type="checkbox" id="yas-onay" style="width: auto !important;">
+                   <label for="yas-onay">18 yaşından büyük olduğumu beyan ederim.</label>
+                </div>
                 <p id="form-hata" style="color: #ff4444; font-size: 12px; margin: 0; display: none; text-align: center; background: rgba(255, 68, 68, 0.1); padding: 6px; border-radius: 4px; border: 1px solid rgba(255, 68, 68, 0.3);"></p>
                 
                 <button type="button" class="btn-green" onclick="uyeligiTamamlaBasildi()" style="padding: 10px; width: 100%; box-sizing: border-box; margin-top: 5px; border-radius: 6px; font-weight: bold; cursor: pointer;">ÜYELİĞİ TAMAMLA</button>
@@ -1159,6 +1162,16 @@ async function uyeligiTamamlaBasildi() {
         return; 
     }
 
+    let yasCheckbox = document.getElementById('yas-onay');
+    if (!yasCheckbox || !yasCheckbox.checked) {
+    let yasHata = document.getElementById('form-hata');
+    if (yasHata) {
+        yasHata.innerText = "⚠️ Devam etmek için 18 yaşından büyük olduğunuzu onaylamalısınız.";
+        yasHata.style.display = 'block';
+    }
+    return;
+    }
+ 
     let emailInput = document.getElementById('uye-email');
     let sifreInput = document.getElementById('uye-sifre');
     let sifreTekrarInput = document.getElementById('uye-sifre-tekrar');
@@ -1257,13 +1270,16 @@ async function uyeligiOlustur() {
         let response = await fetch('/api/kayit', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                kadi: email, 
-                email: email,
-                sifre: sifre,
-                adsoyad: adsoyad,
-                portfoy: { para: 1000000, hisseler: [] }
-            })
+        body: JSON.stringify({ 
+           kadi: email, 
+           email: email,
+           sifre: sifre,
+           adsoyad: adsoyad,
+           portfoy: { para: 1000000, hisseler: [] },
+           yasOnay: !!(document.getElementById('yas-onay') || {}).checked,
+           sozlesmeOnay: !!(document.getElementById('sozlesme-onay') || {}).checked,
+           sozlesmeVersiyon: SOZLESME_VERSIYON
+           })
         });
         
         let sonuc = await response.json();
@@ -1871,44 +1887,56 @@ async function sifreyiSifirlaVeKaydet() {
     }
 }
 
+const SOZLESME_VERSIYON = '2026-09-28-v1';
+
 function sozlesmeAc(tur) {
-    let modalIcerik = document.getElementById('modal-icerik');
-    
-    if (modalIcerik) {
-        if (tur === 'sozlesme') {
-            modalIcerik.innerHTML = `
-                <h3 style="color:#ffcc00; margin-top:0;">Kullanıcı ve Üyelik Sözleşmesi</h3>
-                <div style="max-height: 250px; overflow-y: auto; padding-right: 5px; text-align: left;">
-                    <p style="font-size:12px; color:#ccc;"><strong>1. Taraflar ve Konu:</strong> Bu sözleşme, oyun içerisindeki sanal varlıkların, pazar yerinin ve finansal simülasyon mekanizmalarının kullanım koşullarını belirler. Oyuna kayıt olan her kullanıcı bu şartları peşinen kabul etmiş sayılır.</p>
-        
-                    <p style="font-size:12px; color:#ccc;"><strong>2. Sanal Varlıklar ve Para Birimleri:</strong> Oyunda geçen tüm paralar, varlıklar, gayrimenkuller ve dövizler tamamen <strong>sanal ve kurgusaldır</strong>. Hiçbir gerçek maddi karşılığı yoktur, nakde çevrilemez ve gerçek dünya parasıyla alınıp satılamaz.</p>
-        
-                    <p style="font-size:12px; color:#ccc;"><strong>3. Hesap Güvenliği ve Sorumluluk:</strong> Oyuncu, hesap bilgilerinin (kullanıcı adı ve şifre) güvenliğinden bizzat sorumludur. Hesabın üçüncü şahıslar tarafından ele geçirilmesinden doğacak kayıplardan geliştirici sorumlu tutulamaz.</p>
-        
-                    <p style="font-size:12px; color:#ccc;"><strong>4. Oyun Kuralları ve Hile Politikası:</strong> Oyunda hile yapmak, açık (bug) arayıp kötüye kullanmak, makro/bot yazılımlar kullanmak veya diğer oyuncuları dolandırmak kesinlikle yasaktır. Tespit edilen hesaplar uyarı verilmeksizin sıfırlanır veya kalıcı olarak kapatılır.</p>
-        
-                    <p style="font-size:12px; color:#ccc;"><strong>5. Teknik Kesintiler ve Veri Kaybı:</strong> Geliştirici; sunucu güncellemeleri, altyapı değişiklikleri veya beklenmeyen teknik aksaklıklar nedeniyle yaşanabilecek veri kayıplarından, kur sıfırlanmalarından veya kesintilerden sorumlu tutulamaz. Gerekli görüldüğü durumlarda oyun ekonomisinde ve kurallarında değişiklik yapılabilir.</p>
-        
-                    <p style="font-size:12px; color:#ccc;"><strong>6. İletişim ve Destek:</strong> Oyun içi sorunlar ve destek talepleri için belirlenen resmi iletişim kanalları kullanılır.</p>
-                </div>
-            `;
-        } else if (tur === 'gizlilik') {
-            modalIcerik.innerHTML = `
-                <h3 style="color:#ffcc00; margin-top:0;">Gizlilik Politikası</h3>
-                <div style="max-height: 250px; overflow-y: auto; padding-right: 5px; text-align: left;">
-                    <p style="font-size:12px; color:#ccc;"><strong>1. Veri Toplama:</strong> Sistemimiz yalnızca hesap oluşturmanız ve oyun içi işlemlerinizi yürütebilmeniz için gereken kullanıcı adı, şifre ve oyun verilerini saklar.</p>
-                    <p style="font-size:12px; color:#ccc;"><strong>2. Güvenlik:</strong> Verileriniz üçüncü şahıslarla kesinlikle paylaşılmaz ve güvenli sunucularda saklanır.</p>
-                    <p style="font-size:12px; color:#ccc;"><strong>3. Çerezler ve Oturum:</strong> Oturum güvenliğiniz, tercihlerinizin hatırlanması ve oyun deneyiminizin kesintisiz sürmesi için tarayıcı depolama alanları ve çerezler kullanılabilir.</p>
-                    <p style="font-size:12px; color:#ccc;"><strong>4. Haklar ve Silme:</strong> Kullanıcılar istedikleri zaman hesaplarının ve buna bağlı verilerinin tamamen silinmesini talep etme hakkına sahiptir.</p>
-                </div>
-            `;
-        }
+    // 🌟 BURAYI DOLDUR
+    const UYGULAMA = '[Uygulama Adı]';
+    const ILETISIM = '[iletişim e-postası]';
+    const SEHIR = '[şehir, örn. İstanbul]';
+
+    const p = (b, m) => `<p style="font-size:12px; color:#ccc;"><strong>${b}</strong> ${m}</p>`;
+    let html = '';
+
+    if (tur === 'sozlesme') {
+        html = `<h3 style="color:#ffcc00; margin-top:0;">Kullanıcı ve Üyelik Sözleşmesi</h3>
+        <div style="max-height: 250px; overflow-y: auto; padding-right: 5px; text-align: left;">
+        ${p('1. Taraflar ve Konu:', `Bu sözleşme, ${UYGULAMA} tarafından işletilen oyun/simülasyon uygulamasının ("Hizmet") kullanım koşullarını düzenler. Hizmete kayıt olan veya kullanan her kişi bu sözleşmeyi peşinen kabul etmiş sayılır.`)}
+        ${p('2. Yaş ve Ehliyet Şartı:', `Hizmeti kullanabilmek için 18 yaşını doldurmuş ve fiil ehliyetine sahip olmak gerekir. Kullanıcı, kayıt sırasında 18 yaşından büyük olduğunu beyan eder. 18 yaşından küçük veya kısıtlı kişilerin hizmeti kullanması yasaktır; ihlal halinde hesap bildirimsiz kapatılabilir.`)}
+        ${p('3. Hesap Oluşturma ve Güvenlik:', `Kullanıcı, verdiği bilgilerin doğru ve güncel olduğunu taahhüt eder. Hesap bilgilerinin (kullanıcı adı, şifre) gizliliğinden bizzat sorumludur. Hesabın üçüncü şahıslarca ele geçirilmesinden doğacak zararlardan ${UYGULAMA} sorumlu tutulamaz; kullanıcı böyle bir durumu fark eder etmez bildirmekle yükümlüdür.`)}
+        ${p('4. Sanal Varlıklar ve Para Birimleri:', `Hizmet içerisindeki tüm paralar, varlıklar, gayrimenkuller ve dövizler tamamen <strong>sanal ve kurgusaldır</strong>. Hiçbir gerçek maddi karşılığı yoktur, nakde çevrilemez, gerçek dünya parasıyla alınıp satılamaz ve üçüncü taraflara devredilemez. Bu varlıklar üzerinde kullanıcının mülkiyet hakkı doğmaz; yalnızca hizmet dahilinde kullanım hakkı verilir.`)}
+        ${p('5. Yasaklı Davranışlar:', `Hile yapmak, yazılım açıklarından (bug) yararlanmak, makro/bot/otomasyon yazılımları kullanmak, birden fazla hesapla haksız avantaj sağlamak, diğer kullanıcıları aldatmak veya taciz etmek ve sistemin işleyişine müdahale etmeye çalışmak kesinlikle yasaktır. İhlallerde hesap uyarı verilmeksizin askıya alınabilir veya kalıcı olarak kapatılabilir.`)}
+        ${p('6. Fikri Mülkiyet:', `Hizmetin yazılımı, tasarımı, arayüzü, logosu ve tüm içeriği ${UYGULAMA}'na veya lisans verenlerine aittir. Kullanıcıya yalnızca kişisel ve ticari olmayan kullanım için sınırlı, devredilemez bir kullanım hakkı tanınır. Kullanıcının seçtiği şirket ismi hizmet dahilinde görüntülenmek üzere kullanılır; bu isim üzerinde kullanıcı üçüncü kişilere karşı hak iddia edemez.`)}
+        ${p('7. Hizmetin Kapsamı ve Değişiklikler:', `${UYGULAMA}; hizmetin içeriğini, kurallarını, ekonomik parametrelerini (faiz oranları, fiyatlar, süreler vb.) önceden bildirmeksizin değiştirme, güncelleme veya hizmeti durdurma hakkını saklı tutar.`)}
+        ${p('8. Sorumluluğun Sınırlandırılması:', `${UYGULAMA}; sunucu güncellemeleri, altyapı değişiklikleri, üçüncü taraf hizmet kesintileri veya beklenmeyen teknik aksaklıklar nedeniyle oluşabilecek veri kayıplarından ve kesintilerden, kasıt veya ağır kusur bulunmadığı sürece sorumlu tutulamaz. Hizmet "olduğu gibi" sunulur; kesintisiz veya hatasız çalışacağına dair garanti verilmez.`)}
+        ${p('9. Askıya Alma ve Fesih:', `${UYGULAMA}, sözleşmenin ihlali halinde hesabı önceden bildirimde bulunmaksızın askıya alma veya kapatma hakkına sahiptir. Kullanıcı dilediği zaman hesabının kapatılmasını talep edebilir.`)}
+        ${p('10. Kişisel Veriler:', `Kişisel verilerin işlenmesi ayrı belge olan Gizlilik Politikası / KVKK Aydınlatma Metni'nde düzenlenmiştir ve bu sözleşmenin ayrılmaz parçasıdır.`)}
+        ${p('11. Sözleşmede Değişiklik:', `${UYGULAMA} bu sözleşmeyi güncelleyebilir. Güncel metin hizmet içerisinde yayınlanır; hizmeti kullanmaya devam etmek güncel metnin kabulü anlamına gelir.`)}
+        ${p('12. Yetkili Mahkeme:', `Bu sözleşmeden doğan uyuşmazlıklarda ${SEHIR} Mahkemeleri ve İcra Daireleri yetkilidir.`)}
+        ${p('13. Yürürlük:', `Sözleşme, kullanıcının kayıt formundaki onay kutularını işaretlemesiyle yürürlüğe girer. (Sürüm: ${SOZLESME_VERSIYON})`)}
+        </div>`;
+    } else if (tur === 'gizlilik') {
+        html = `<h3 style="color:#ffcc00; margin-top:0;">Gizlilik Politikası / KVKK Aydınlatma Metni</h3>
+        <div style="max-height: 250px; overflow-y: auto; padding-right: 5px; text-align: left;">
+        ${p('1. Veri Sorumlusu:', `6698 sayılı KVKK uyarınca veri sorumlusu ${UYGULAMA}'dır. İletişim: ${ILETISIM}`)}
+        ${p('2. İşlenen Veriler:', `Kimlik bilgisi (ad-soyad), iletişim bilgisi (e-posta), işlem güvenliği bilgisi (şifre; karma alınarak saklanır) ve hizmet kullanım verileri (oyun içi işlemler, portföy verisi, oturum kayıtları).`)}
+        ${p('3. İşleme Amaçları:', `Hesap oluşturma ve kimlik doğrulama, hizmetin sunulması ve sürdürülmesi, hesap güvenliğinin sağlanması, kullanıcı taleplerinin (şifre sıfırlama, profil güncelleme vb.) yanıtlanması ve yasal yükümlülüklerin yerine getirilmesi.`)}
+        ${p('4. Hukuki Sebep:', `Veriler KVKK m. 5/2 kapsamında; sözleşmenin kurulması veya ifasıyla doğrudan ilgili olması ve veri sorumlusunun meşru menfaati hukuki sebeplerine dayanılarak işlenir.`)}
+        ${p('5. Toplanma Yöntemi:', `Veriler, kayıt formunun doldurulması, hizmetin kullanılması ve oturum çerezleri aracılığıyla elektronik ortamda otomatik yollarla toplanır.`)}
+        ${p('6. Saklama Süresi:', `Veriler hesap aktif olduğu sürece ve hesap kapatıldıktan sonra ilgili mevzuattaki zamanaşımı süreleri boyunca saklanır; süre sonunda silinir, yok edilir veya anonim hale getirilir.`)}
+        ${p('7. Aktarım:', `Veriler, yasal zorunluluk olmadıkça üçüncü taraflarla paylaşılmaz. Barındırma sağlayıcısı gibi teknik altyapı hizmeti veren taraflarla yalnızca hizmetin sunulması amacıyla sınırlı olarak paylaşılabilir.`)}
+        ${p('8. Çerezler:', `Oturum güvenliği ve kesintisiz kullanım için zorunlu oturum çerezleri kullanılır. Pazarlama amaçlı takip yapılmaz.`)}
+        ${p('9. Veri Güvenliği:', `Kişisel verilerin hukuka aykırı erişime, kaybolmaya veya ifşaya karşı korunması için makul teknik ve idari tedbirler alınır. Ancak internet üzerinden hiçbir veri iletiminin %100 güvenli olduğu garanti edilemez.`)}
+        ${p('10. Haklarınız (KVKK m. 11):', `Kişisel verinizin işlenip işlenmediğini öğrenme, işlenmişse bilgi talep etme, işleme amacını ve amacına uygun kullanılıp kullanılmadığını öğrenme, aktarıldığı üçüncü kişileri bilme, eksik/yanlış işlenmişse düzeltilmesini isteme, şartları oluşmuşsa silinmesini/yok edilmesini isteme, otomatik sistemlerle analiz sonucu aleyhinize bir sonuç çıkmasına itiraz etme ve kanuna aykırı işleme nedeniyle zarara uğramanız halinde zararın giderilmesini talep etme haklarına sahipsiniz.`)}
+        ${p('11. Başvuru:', `Talepler ${ILETISIM} adresine yazılı olarak iletilebilir ve en geç 30 gün içinde sonuçlandırılır.`)}
+        ${p('12. Değişiklik:', `Bu politika güncellenebilir; güncel metin hizmet içerisinde yayınlanır. (Sürüm: ${SOZLESME_VERSIYON})`)}
+        </div>`;
     }
-    
-    // Modali ekranda göster
+
+    let modalIcerik = document.getElementById('modal-icerik');
+    if (modalIcerik) modalIcerik.innerHTML = html;
     document.getElementById('sozlesme-modal').style.display = 'flex';
 }
-
 
     let state = {
     nakit: 0, 
