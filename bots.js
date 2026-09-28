@@ -98,7 +98,7 @@ function ilanlar(fiyat) {
   }));
   return out;
 }
-
+const isimler = () => botlar.map(b => b.isim);
 function bul(id) {
   for (const b of botlar) {
     const v = b.varliklar.find(x => x.durum === 'ilan-aktif' && String(x.id) === String(id));
@@ -115,4 +115,4 @@ function al(db, id, fiyat) {   // satın alma başarılıysa çağrılır
   return false;
 }
 
-module.exports = { baslat, dongu, liste, ilanlar, bul, al };
+module.exports = { baslat, dongu, liste, ilanlar, bul, al, isimler };
