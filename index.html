@@ -3261,13 +3261,13 @@ let konutSayisi = state.varliklar.filter(v => v.isim === 'Konut' && (v.durum ===
                          <button onclick="vazgec('${v.id}')" class="btn-red" style="margin-top: 4px; width: 100%; box-sizing: border-box;">Vazgeç</button>`;
 }
 
-            let goruntuleBtnVarlik = arsaMi ? `<button onclick="arsaKonumGoster('${v.isim}', '${v.atananKonum}')" style="background:#3498db; color:#fff; border:none; border-radius:4px; font-weight:bold; cursor:pointer; width: 100%; margin-top: 4px; box-sizing: border-box;">Görüntüle</button>` : '';
+            let goruntuleBtnVarlik = arsaMi ? `<button onclick="arsaKonumGoster('${v.isim}', '${v.atananKonum}')" style="background:#3498db; color:#fff; border:none; border-radius:4px; font-weight:bold; cursor:pointer; width: 100%; margin-top: 4px; box-sizing: border-box;">KONUM</button>` : '';
 
             let html = `
                 <div class="item-box-varlik">
                     <div>
                         <div style="font-weight: bold; color: #fff; font-size: 13px;">${v.isim} ${blokeYazisi}</div>
-                        <div style="font-size: 11px; color: #ffcc00; margin-top: 3px;">Günlük Kar: ${gunlukKar.toLocaleString()} TL</div>
+                        <div style="font-size: 11px; color: #ffcc00; margin-top: 3px;">Günlük Kar: ${gunlukKar.toLocaleString()} TL</div>                
                     </div>
                     <div style="display: flex; flex-direction: column; align-items: flex-end; min-width: 90px;">
                         ${sagButonlarHTML}
@@ -3557,7 +3557,7 @@ async function ilanlariGuncelle() {
 
   // 1. Fonksiyonun parametrelerine 'atananKonum' eklendi
     function kartHtmlUret(baslikMetni, botIsmi, varlikIsmi, satisBedeli, uniqueId, inputId, vadeInputId, arsaMi, atananKonum, tipKyn) {
-        let goruntuleBtnHTML = arsaMi ? `<button onclick="arsaKonumGoster('${varlikIsmi}', '${atananKonum}')" style="background:#3498db; color:#fff; border:none; padding:4px 8px; border-radius:4px; font-weight:bold; font-size:10px; cursor:pointer; width:100%; margin-bottom:6px;">GÖRÜNTÜLE</button>` : '';
+        let goruntuleBtnHTML = arsaMi ? `<button onclick="arsaKonumGoster('${varlikIsmi}', '${atananKonum}')" style="background:#3498db; color:#fff; border:none; padding:4px 8px; border-radius:4px; font-weight:bold; font-size:10px; cursor:pointer; width:100%; margin-bottom:6px;">KONUM</button>` : '';
         
         let ortaAlanHTML = '';
 
