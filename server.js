@@ -177,6 +177,45 @@ db.prepare(`CREATE TABLE IF NOT EXISTS ilanlar (
     tarih DATETIME DEFAULT CURRENT_TIMESTAMP
 )`).run();
 
+// --- 👑 ADMIN YETKİSİ ---
+const ADMIN_EMAIL = 'alpdo77@hotmail.com';
+
+function adminMi(req) {
+    return !!(req.session && req.session.kullanici && req.session.kullanici.kadi &&
+        String(req.session.kullanici.kadi).trim().toLowerCase() === ADMIN_EMAIL);
+}
+function adminZorunlu(req, res, next) {
+    if (!adminMi(req)) return res.status(403).json({ basari: false, mesaj: 'Yetkiniz yok!' });
+    next();
+}
+
+// --- 📊 GİRİŞ / OTURUM KAYITLARI ---
+db.prepare(`CREATE TABLE IF NOT EXISTS giris_kayitlari (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    kullanici_id INTEGER,
+    giris_tarihi INTEGER,
+    son_aktif INTEGER,
+    cikis_tarihi INTEGER
+)`).run();
+
+// Kullanıcı aktifken oturum kaydını açar / günceller
+function aktiviteIsle(req) {
+    try {
+        if (!req.session || !req.session.kullanici) return;
+        const uid = req.session.kullanici.id;
+        const simdi = Date.now();
+        const kid = req.session.girisKayitId;
+        const satir = kid ? db.prepare(`SELECT id, son_aktif, cikis_tarihi FROM giris_kayitlari WHERE id = ?`).get(kid) : null;
+
+        if (!satir || satir.cikis_tarihi || (simdi - satir.son_aktif) > 10 * 60 * 1000) {
+            const r = db.prepare(`INSERT INTO giris_kayitlari (kullanici_id, giris_tarihi, son_aktif) VALUES (?, ?, ?)`).run(uid, simdi, simdi);
+            req.session.girisKayitId = r.lastInsertRowid;
+        } else {
+            db.prepare(`UPDATE giris_kayitlari SET son_aktif = ? WHERE id = ?`).run(simdi, kid);
+        }
+    } catch (e) { /* kayıt hatası oyunu bozmasın */ }
+}
+
 // --- 🌟 ÇEVRİMİÇİ / ÇEVRİMDIŞI AKILLI EKONOMİ MOTORU (TAM KAPSAMLI) ---
 function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
     if (!userRow || !userRow.portfoy) return null;
@@ -865,7 +904,7 @@ app.get('/api/oyun-ayarlari', (req, res) => {
     }
 });
 
-app.post('/api/admin/ayar-guncelle', (req, res) => {
+app.post('/api/admin/ayar-guncelle', adminZorunlu, (req, res) => {
     const { ayarlar, sureler } = req.body;
     if (!ayarlar) {
         return res.status(400).json({ basari: false, mesaj: "Ayar verisi boş olamaz!" });
@@ -1002,7 +1041,7 @@ app.get('/api/portfoy-getir', (req, res) => {
     if (!req.session || !req.session.kullanici) {
         return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı!" });
     }
-
+aktiviteIsle(req);
     try {
         const userId = req.session.kullanici.id;
         const user = db.prepare(`SELECT * FROM kullanicilar WHERE id = ?`).get(userId);
@@ -1035,6 +1074,12 @@ app.get('/api/portfoy-getir', (req, res) => {
 });
 
 app.get('/api/cikis', (req, res) => {
+try {
+    if (req.session && req.session.girisKayitId) {
+        db.prepare(`UPDATE giris_kayitlari SET cikis_tarihi = ?, son_aktif = ? WHERE id = ?`).run(Date.now(), Date.now(), req.session.girisKayitId);
+    }
+} catch (e) {}
+    
     req.session.destroy((err) => {
         if (err) {
             console.error("Oturum yok etme hatası:", err);
@@ -1069,7 +1114,9 @@ app.post('/api/giris', (req, res) => {
                     adsoyad: row.adsoyad || '', 
                     portfoy: portfoyObj 
                 };
-
+                
+                aktiviteIsle(req);
+                
                 req.session.save((saveErr) => {
                     if (saveErr) {
                         return res.status(500).json({ basari: false, mesaj: saveErr.message });
@@ -1166,6 +1213,50 @@ if (mevcutRow && mevcutRow.portfoy) {
         return res.status(500).json({ basari: false, mesaj: err.message });
     }
 });
+// 👥 ADMIN: Üye listesi
+app.get('/api/admin/uyeler', adminZorunlu, (req, res) => {
+    try {
+        const uyeler = db.prepare(`
+            SELECT k.id, k.adsoyad, k.email, k.tarih AS kayit_tarihi,
+                   k.sozlesme_onay_tarihi, k.sozlesme_versiyon,
+                   (SELECT COUNT(*) FROM giris_kayitlari g WHERE g.kullanici_id = k.id) AS giris_sayisi,
+                   (SELECT MAX(g.giris_tarihi) FROM giris_kayitlari g WHERE g.kullanici_id = k.id) AS son_giris,
+                   (SELECT MAX(g.son_aktif) FROM giris_kayitlari g WHERE g.kullanici_id = k.id) AS son_aktif,
+                   (SELECT COALESCE(SUM(g.son_aktif - g.giris_tarihi), 0) FROM giris_kayitlari g WHERE g.kullanici_id = k.id) AS toplam_sure
+            FROM kullanicilar k
+            ORDER BY k.id DESC
+        `).all();
+        res.json({ basari: true, uyeler, simdi: Date.now() });
+    } catch (err) {
+        res.status(500).json({ basari: false, mesaj: err.message });
+    }
+});
+
+// 🗑️ ADMIN: Üye sil
+app.post('/api/admin/uye-sil', adminZorunlu, (req, res) => {
+    const id = Number(req.body.id);
+    if (!id) return res.status(400).json({ basari: false, mesaj: 'Geçersiz üye!' });
+
+    try {
+        const hedef = db.prepare(`SELECT id, email, kadi FROM kullanicilar WHERE id = ?`).get(id);
+        if (!hedef) return res.status(404).json({ basari: false, mesaj: 'Üye bulunamadı!' });
+
+        const hedefMail = String(hedef.kadi || hedef.email || '').trim().toLowerCase();
+        if (hedef.id === req.session.kullanici.id || hedefMail === ADMIN_EMAIL) {
+            return res.status(400).json({ basari: false, mesaj: 'Admin hesabı silinemez!' });
+        }
+
+        db.transaction(() => {
+            db.prepare(`DELETE FROM ilanlar WHERE kullanici_id = ?`).run(id);
+            db.prepare(`DELETE FROM giris_kayitlari WHERE kullanici_id = ?`).run(id);
+            db.prepare(`DELETE FROM kullanicilar WHERE id = ?`).run(id);
+        })();
+
+        res.json({ basari: true, mesaj: 'Üye silindi.' });
+    } catch (err) {
+        res.status(500).json({ basari: false, mesaj: err.message });
+    }
+});
 app.get('/api/kullanicilar-liste', (req, res) => {
     try {
         const rows = db.prepare(`SELECT adsoyad, portfoy FROM kullanicilar`).all();
@@ -1196,11 +1287,6 @@ app.get('/api/kullanicilar-liste', (req, res) => {
 
 io.on('connection', (socket) => {
     console.log('Bir kullanıcı socket üzerinden bağlandı:', socket.id);
-
-    socket.on('adminAyariGuncelle', (veri) => {
-        io.emit('ayarlarDegisti', veri);
-    });
-
     socket.on('disconnect', () => {
         console.log('Bir kullanıcı socket bağlantısını kesti:', socket.id);
     });
