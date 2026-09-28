@@ -1327,7 +1327,7 @@ async function uyeligiTamamlaBasildi() {
     let girilenAd = adSoyadInput ? adSoyadInput.value.trim() : "";
 
     // Küfür ve uygunsuz kelime kontrolü
-    let yasakliKelimeler = ["amk", "aq", "orospu", "piç", "sikerim", "göt", "sik", "anan", "yarrak", "amcık"]; 
+    let yasakliKelimeler = ["amk", "aq", "orospu", "piç", "sikerim", "göt", "sik", "anan", "yarrak", "amcık", "am", "fahişe", "kerhane", "genelev", "götveren", "yarrak", "pipi", "sikeyim", "meme"]; 
     let adSoyadKucuk = girilenAd.toLowerCase();
     let uygunsuzMu = yasakliKelimeler.some(kelime => adSoyadKucuk.includes(kelime));
 
