@@ -46,6 +46,21 @@ function ayarOku() {
   const k = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
   return k ? JSON.parse(k.ayarlar) : {};
 }
+
+function adNormalle(s) {
+    return String(s || '').toLocaleUpperCase('tr-TR').replace(/\s+/g, ' ').trim().replace(/\s+A\.?Ş\.?$/, '').trim();
+}
+
+// 'kullanici' | 'bot' | null döner
+function adKullanimda(ad, haricId) {
+    const n = adNormalle(ad);
+    if (!n) return null;
+    const satirlar = db.prepare(`SELECT id, adsoyad FROM kullanicilar`).all();
+    if (satirlar.some(r => r.id !== haricId && adNormalle(r.adsoyad) === n)) return 'kullanici';
+    if (bots.isimler().some(x => adNormalle(x) === n)) return 'bot';
+    return null;
+}
+
 setInterval(() => {
   try { bots.dongu(db, ayarOku()); } catch (e) { console.error('Bot döngüsü:', e.message); }
 }, 1000);
@@ -940,6 +955,14 @@ app.get('/api/email-kontrol', (req, res) => {
     }
 });
 
+app.get('/api/ad-kontrol', (req, res) => {
+    const ad = String(req.query.ad || '').trim();
+    if (!ad) return res.json({ basari: false, mesaj: 'Ad gerekli' });
+    const haric = req.session && req.session.kullanici ? req.session.kullanici.id : null;
+    const sebep = adKullanimda(ad, haric);
+    res.json({ basari: true, kullanimda: !!sebep, sebep });
+});
+
 app.post('/api/kayit', (req, res) => {
     const { kadi, email, sifre, adsoyad, portfoy, yasOnay, sozlesmeOnay, sozlesmeVersiyon } = req.body; 
 
@@ -958,10 +981,12 @@ app.post('/api/kayit', (req, res) => {
     const temizAdSoyad = adsoyad.trim();
 
     try {
-        const mevcutAd = db.prepare(`SELECT id FROM kullanicilar WHERE LOWER(TRIM(adsoyad)) = LOWER(TRIM(?))`).get(temizAdSoyad);
-        if (mevcutAd) {
-            return res.status(400).json({ basari: false, mesaj: 'Bu ad soyad (şirket ismi) daha önce alınmış! Lütfen başka bir tane seçin.' });
-        }
+        const cakisma = adKullanimda(temizAdSoyad, null);
+         if (cakisma) {
+         return res.status(400).json({ basari: false, mesaj: cakisma === 'bot'
+         ? 'Bu isim sistemdeki bir şirket tarafından kullanılıyor, lütfen başka bir isim seçin.'
+         : 'Bu ad soyad (şirket ismi) daha önce alınmış! Lütfen başka bir tane seçin.' });
+     }
 
         const varsayilanPortfoy = {
             ...(portfoy || { para: 1000000, hisseler: [] }) 
@@ -1022,11 +1047,12 @@ app.post('/api/profil-guncelle', (req, res) => {
     const temizAd = yeniAdSoyad.trim();
 
     try {
-        const baskaKullaniciVarmi = db.prepare(`SELECT id FROM kullanicilar WHERE LOWER(TRIM(adsoyad)) = LOWER(TRIM(?)) AND id != ?`).get(temizAd, userId);
-        
-        if (baskaKullaniciVarmi) {
-            return res.json({ basari: false, mesaj: "Bu ad soyad başka bir kullanıcı tarafından kullanılıyor!" });
-        }
+    const cakisma = adKullanimda(temizAd, userId);
+    if (cakisma) {
+       return res.json({ basari: false, mesaj: cakisma === 'bot'
+        ? "Bu isim sistemdeki bir şirket tarafından kullanılıyor!"
+        : "Bu ad soyad başka bir kullanıcı tarafından kullanılıyor!" });
+       }
 
         db.prepare(`UPDATE kullanicilar SET adsoyad = ? WHERE id = ?`).run(temizAd, userId);
         req.session.kullanici.adsoyad = temizAd;
