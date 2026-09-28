@@ -5,7 +5,24 @@ const session = require('express-session');
 const SQLiteStore = require('connect-sqlite3')(session); 
 const Database = require('better-sqlite3');
 const fs = require('fs');
+const crypto = require('crypto');
 
+function sifreHashle(sifre) {
+    const salt = crypto.randomBytes(16).toString('hex');
+    const hash = crypto.scryptSync(String(sifre), salt, 64).toString('hex');
+    return `scrypt$${salt}$${hash}`;
+}
+
+function sifreDogruMu(sifre, kayitli) {
+    if (typeof kayitli !== 'string') return false;
+    if (kayitli.startsWith('scrypt$')) {
+        const [, salt, hash] = kayitli.split('$');
+        const test = crypto.scryptSync(String(sifre), salt, 64);
+        const hashBuf = Buffer.from(hash, 'hex');
+        return hashBuf.length === test.length && crypto.timingSafeEqual(hashBuf, test);
+    }
+    return kayitli === String(sifre); // eski düz metin kayıtlar
+}
 const app = express(); 
 const server = http.createServer(app);  
 const io = new Server(server);   
@@ -65,6 +82,9 @@ try {
 } catch (e) {
     // Sütun zaten varsa hata verir, yoksayabiliriz
 }
+
+try { db.prepare(`ALTER TABLE kullanicilar ADD COLUMN sozlesme_onay_tarihi TEXT`).run(); } catch (e) {}
+try { db.prepare(`ALTER TABLE kullanicilar ADD COLUMN sozlesme_versiyon TEXT`).run(); } catch (e) {}
 
 // --- 🌟 MERKEZİ AYARLAR TABLOSU ---
 db.prepare(`CREATE TABLE IF NOT EXISTS oyun_ayarlari (
@@ -882,7 +902,11 @@ app.get('/api/email-kontrol', (req, res) => {
 });
 
 app.post('/api/kayit', (req, res) => {
-    const { kadi, email, sifre, adsoyad, portfoy } = req.body; 
+    const { kadi, email, sifre, adsoyad, portfoy, yasOnay, sozlesmeOnay, sozlesmeVersiyon } = req.body; 
+
+    if (!yasOnay || !sozlesmeOnay) {
+    return res.status(400).json({ basari: false, mesaj: 'Sözleşme ve yaş onayı zorunludur!' });
+    }
     
     if (!email) {
         return res.status(400).json({ basari: false, mesaj: 'E-posta adresi boş olamaz!' });
@@ -905,10 +929,10 @@ app.post('/api/kayit', (req, res) => {
         };
 
         const simdi = Date.now();
-        const stmt = db.prepare(`INSERT INTO kullanicilar (kadi, email, sifre, adsoyad, portfoy, son_guncelleme) VALUES (?, ?, ?, ?, ?, ?)`);
-        const info = stmt.run(kadi, email, sifre, temizAdSoyad, JSON.stringify(varsayilanPortfoy), simdi);
+        const stmt = db.prepare(`INSERT INTO kullanicilar (kadi, email, sifre, adsoyad, portfoy, son_guncelleme, sozlesme_onay_tarihi, sozlesme_versiyon) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`);
+        const info = stmt.run(kadi, email, sifreHashle(sifre), temizAdSoyad, JSON.stringify(varsayilanPortfoy), simdi, new Date().toISOString(), String(sozlesmeVersiyon || ''));
         res.json({ basari: true, id: info.lastInsertRowid, mesaj: 'Kayıt başarılı!' });
-    } catch (err) {
+        } catch (err) {
         console.error("Kayıt hatası:", err.message); 
         if (err.message.includes('UNIQUE constraint failed')) {
             if (err.message.includes('adsoyad')) {
@@ -933,7 +957,7 @@ app.post('/api/sifre-sifirla', (req, res) => {
     }
 
     try {
-        const info = db.prepare(`UPDATE kullanicilar SET sifre = ? WHERE email = ?`).run(yeniSifre, email);
+       const info = db.prepare(`UPDATE kullanicilar SET sifre = ? WHERE email = ?`).run(sifreHashle(yeniSifre), email);
         if (info.changes === 0) {
             return res.json({ basarili: false, mesaj: "Bu e-posta adresine sahip kullanıcı bulunamadı." });
         }
@@ -1024,7 +1048,12 @@ app.get('/api/cikis', (req, res) => {
 app.post('/api/giris', (req, res) => {
     const { kadi, sifre } = req.body;
     try {
-        const row = db.prepare(`SELECT * FROM kullanicilar WHERE kadi = ? AND sifre = ?`).get(kadi, sifre);
+       const row0 = db.prepare(`SELECT * FROM kullanicilar WHERE kadi = ?`).get(kadi);
+       const row = (row0 && sifreDogruMu(sifre, row0.sifre)) ? row0 : null;
+    if (row && !String(row.sifre).startsWith('scrypt$')) {
+    // Eski düz metin şifreyi ilk girişte hash'e yükselt
+    db.prepare(`UPDATE kullanicilar SET sifre = ? WHERE id = ?`).run(sifreHashle(sifre), row.id);
+    }
         if (row) {
             req.session.regenerate((err) => {
                 if (err) return res.status(500).json({ basari: false, mesaj: err.message });
