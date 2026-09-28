@@ -458,11 +458,18 @@
         <!-- Butonlar -->
         <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 30px;">
             <button onclick="adminAyarlariniKaydet()" style="width: 100%; background: #28a745; color: white; border: none; padding: 14px; border-radius: 5px; font-size: 16px; font-weight: bold; cursor: pointer;">💾 Tüm Ayarları Kaydet ve Uygula</button>
+            <button onclick="changePage('page-admin-uyeler'); uyeleriYukle();" style="width: 100%; background: #17a2b8; color: white; border: none; padding: 14px; border-radius: 5px; font-size: 16px; font-weight: bold; cursor: pointer;">👥 Üyeleri Yönet</button>
             <button onclick="changePage('page-mali')" style="width: 100%; background: #6c757d; color: white; border: none; padding: 12px; border-radius: 5px; font-size: 16px; cursor: pointer;">⬅️ Oyuna Dön</button>
         </div>
     </div>
 </div>
-
+<div id="page-admin-uyeler" class="page" style="display:none; background:#1a1a1a; overflow-y:auto; padding-bottom:30px;">
+    <h2 style="color:#ffc107; margin-top:0;">👥 Üye Yönetimi</h2>
+    <div id="uye-ozet" style="font-size:12px; color:#aaa; text-align:center; margin-bottom:8px;"></div>
+    <input type="text" id="uye-ara" placeholder="Ad veya e-posta ara..." oninput="uyeListesiCiz()" style="width:100%; box-sizing:border-box; text-align:left; margin-bottom:8px;">
+    <div id="uye-listesi"></div>
+    <button onclick="changePage('page-admin')" style="width:100%; background:#6c757d; color:#fff; padding:10px; margin-top:10px; font-size:13px;">⬅️ Admin Paneline Dön</button>
+</div>
 
 <div id="page-mali" class="page">
  <button id="admin-panel-buton" onclick="adminPaneliniAc()" style="display: none; background: #dc3545; color: white; border: none; padding: 8px 15px; border-radius: 5px; font-weight: bold; cursor: pointer; margin-left: 10px;">🛡️ Admin Paneli</button>
@@ -794,6 +801,104 @@ function maliGrafikGuncelle(yeniNetDeger) {
     veriSeti[veriSeti.length - 1] = yeniNetDeger; // En son veriyi güncelle
     
     sirketGrafigiObjesi.update();
+ 
+}
+
+let adminUyeler = [];
+let adminSunucuSimdi = Date.now();
+
+function htmlKacis(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+function tarihYaz(v, utc) {
+    if (!v) return '—';
+    let d = utc ? new Date(String(v).replace(' ', 'T') + 'Z') : new Date(Number(v));
+    return isNaN(d) ? '—' : d.toLocaleString('tr-TR');
+}
+function sureYaz(ms) {
+    let dk = Math.floor((ms || 0) / 60000);
+    if (dk < 1) return '1 dk\'dan az';
+    let sa = Math.floor(dk / 60);
+    return sa > 0 ? `${sa} sa ${dk % 60} dk` : `${dk} dk`;
+}
+
+async function uyeleriYukle() {
+    let liste = document.getElementById('uye-listesi');
+    if (liste) liste.innerHTML = '<p style="color:#aaa; text-align:center;">Yükleniyor...</p>';
+    try {
+        let res = await fetch('/api/admin/uyeler', { credentials: 'include' });
+        let d = await res.json();
+        if (!d.basari) {
+            if (liste) liste.innerHTML = `<p style="color:#ff4444; text-align:center;">${htmlKacis(d.mesaj || 'Hata!')}</p>`;
+            return;
+        }
+        adminUyeler = d.uyeler || [];
+        adminSunucuSimdi = d.simdi || Date.now();
+        uyeListesiCiz();
+    } catch (e) {
+        if (liste) liste.innerHTML = '<p style="color:#ff4444; text-align:center;">Sunucuya bağlanılamadı!</p>';
+    }
+}
+
+function uyeListesiCiz() {
+    let liste = document.getElementById('uye-listesi');
+    if (!liste) return;
+    let ara = (document.getElementById('uye-ara')?.value || '').trim().toLowerCase();
+
+    let cevrimici = adminUyeler.filter(u => u.son_aktif && (adminSunucuSimdi - u.son_aktif) < 2 * 60 * 1000).length;
+    let ozet = document.getElementById('uye-ozet');
+    if (ozet) ozet.innerText = `Toplam ${adminUyeler.length} üye • ${cevrimici} çevrimiçi`;
+
+    let filtreli = adminUyeler.filter(u =>
+        !ara || (u.adsoyad || '').toLowerCase().includes(ara) || (u.email || '').toLowerCase().includes(ara));
+
+    if (filtreli.length === 0) {
+        liste.innerHTML = '<p style="color:#aaa; text-align:center;">Üye bulunamadı.</p>';
+        return;
+    }
+
+    liste.innerHTML = filtreli.map(u => {
+        let online = u.son_aktif && (adminSunucuSimdi - u.son_aktif) < 2 * 60 * 1000;
+        return `
+        <div style="background:#2a2a2a; border:1px solid #444; border-radius:8px; padding:10px; margin-bottom:8px; font-size:12px; color:#ddd; line-height:1.6;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <strong style="color:#fff; font-size:13px;">${online ? '🟢' : '⚪'} ${htmlKacis(u.adsoyad)}</strong>
+                <button class="btn-red" data-uye-id="${u.id}" onclick="uyeSilOnay(this.dataset.uyeId)" style="font-size:10px;">SİL</button>
+            </div>
+            <div>✉️ ${htmlKacis(u.email)}</div>
+            <div>📅 Kayıt: ${tarihYaz(u.kayit_tarihi, true)}</div>
+            <div>🔑 Son giriş: ${tarihYaz(u.son_giris)}</div>
+            <div>🔁 Giriş sayısı: <b>${u.giris_sayisi || 0}</b> • ⏱️ Toplam süre: <b>${sureYaz(u.toplam_sure)}</b></div>
+            <div>📝 Sözleşme onayı: ${u.sozlesme_onay_tarihi ? htmlKacis(new Date(u.sozlesme_onay_tarihi).toLocaleString('tr-TR')) + ' (' + htmlKacis(u.sozlesme_versiyon || '-') + ')' : '—'}</div>
+        </div>`;
+    }).join('');
+}
+
+function uyeSilOnay(id) {
+    let u = adminUyeler.find(x => String(x.id) === String(id));
+    if (!u) return;
+    let butonlar = `
+        <button class="btn-red" onclick="uyeSil(${Number(u.id)})">EVET, SİL</button>
+        <button onclick="document.getElementById('modal-overlay').style.display='none'" style="background-color:#6c757d; color:white; margin-left:10px;">VAZGEÇ</button>`;
+    modalGoster(`<b>${htmlKacis(u.adsoyad)}</b> (${htmlKacis(u.email)}) üyeliği, ilanları ve giriş kayıtlarıyla birlikte kalıcı olarak silinecek. Bu işlem geri alınamaz!`, butonlar);
+}
+
+async function uyeSil(id) {
+    document.getElementById('modal-overlay').style.display = 'none';
+    try {
+        let res = await fetch('/api/admin/uye-sil', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ id })
+        });
+        let d = await res.json();
+        if (!d.basari) { modalGoster('⚠️ ' + htmlKacis(d.mesaj || 'Silinemedi!')); return; }
+        await uyeleriYukle();
+        modalGoster('✅ Üye silindi.');
+    } catch (e) {
+        modalGoster('⚠️ Sunucuya bağlanılamadı!');
+    }
 }
 
 async function adminPaneliniAc() {
