@@ -202,10 +202,18 @@
     border-color: #ff4444 !important;
 }
 
+       #zenginler-listesi {max-height: 480px;overflow-y: auto;padding-right: 5px;padding-bottom: 10px;}
 
-
-        #zenginler-listesi {max-height: 480px;overflow-y: auto;padding-right: 5px;padding-bottom: 10px;}
-
+     .kural-metin { font-size: 13px; color: #ddd; line-height: 1.6; text-align: left; }
+.kural-metin h3 { color: #ffcc00; font-size: 15px; margin: 18px 0 6px; padding-bottom: 4px; border-bottom: 1px solid #444; }
+.kural-metin p { margin: 6px 0; }
+.kural-metin ul { margin: 6px 0; padding-left: 18px; }
+.kural-metin li { margin-bottom: 5px; }
+.kural-metin b { color: #fff; }
+.kural-not { font-size: 11px; color: #aaa; font-style: italic; }
+.kural-tablo { width: 100%; border-collapse: collapse; font-size: 11px; margin: 8px 0; }
+.kural-tablo th { background: #ffcc00; color: #000; padding: 5px; text-align: left; }
+.kural-tablo td { border: 1px solid #444; padding: 5px; }
     </style>
 </head>
 <body>
@@ -669,100 +677,115 @@
         <div class="nav-btn" onclick="changePage('page-ilan')">İLANLAR</div>
     </div>
 </div>
-<div id="page-kurallar" class="page" style="display: none; padding: 20px; color: #fff; max-width: 900px; margin: 0 auto;">
-    
-    <!-- Üst Başlık Kutusu -->
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border: 2px solid #f39c12; border-radius: 6px; padding: 10px;">
-        <h2 style="margin: 0; color: #f39c12; font-size: 16px;">📜 Oyun Kuralları</h2>
-    </div>
+<div id="page-kurallar" class="page" style="display:none;">
+    <div class="content">
+        <div style="border: 2px solid #f39c12; border-radius: 6px; padding: 8px; margin-bottom: 12px;">
+            <h2 style="margin: 0; color: #f39c12; font-size: 16px;">📜 Oyun Kuralları</h2>
+        </div>
 
-    <!-- Word'den Kopyaladığın Metinlerin Çıkacağı Alan -->
-    <div style="background: #1a1a1a; padding: 30px; border-radius: 12px; line-height: 1.8; border: 1px solid #333; box-shadow: 0 4px 15px rgba(0,0,0,0.4);">
-        
-        <!-- Word'den kopyaladığın metni buradaki <p> veya <div> etiketlerinin arasına yapıştırabilirsin -->
-        <div id="word-metin-alani" style="font-size: 15px; color: #ddd;">
-            <p style="color: #888; font-style: italic;">STRATEJİK HOLDİNG
-Oyun Kuralları
-Not: Aşağıdaki oran, süre ve fiyatlar varsayılan değerlerdir. Yönetici bunları oyun sırasında değiştirebilir ve değişiklikler tüm oyunculara anında yansır.
-1. Zaman Sistemi: 1 Gün = 1 Ay
-Oyunda gerçek hayattaki aylık finansal döngüler hızlandırılmıştır. Gerçek hayatta ayda bir gerçekleşen işlemler oyunda günde bir gerçekleşir. Yani gerçek dünyadaki 1 gün, oyunda 1 ay sayılır.
-İşlem	Gerçek hayatta	Oyunda
-Kredi taksiti	Ayda bir	Günde bir (24 saatte bir)
-Vadeli hesap faizi	Ayda bir	Günde bir (24 saatte bir)
-Konut kira geliri	Ayda bir	Günde bir (24 saatte bir)
-Şirket geliri	Ayda bir	Günde bir (24 saatte bir)
-48 ay vadeli kredi	4 yıl	48 gün
-Tesis tahsilatı	Ayda bir	Günde 3 kez (tahsilat pencereleri)
+        <div class="kural-metin" style="background:#1a1a1a; padding:14px; border-radius:10px; border:1px solid #333;">
+            <p class="kural-not">Oran, süre ve fiyatlar varsayılan değerlerdir. Yönetici bunları oyun sırasında değiştirebilir; değişiklikler tüm oyunculara anında yansır.</p>
 
-•	Çevrimdışı işleme: Bu işlemler siz oyunda olmasanız bile arka planda işlemeye devam eder. Oyuna döndüğünüzde geçen sürenin geliri, faizi ve taksitleri hesabınıza yansımış olur.
-•	Kredi vadeleri: Kredi vadesindeki "ay" ifadesi oyunda 1 gün demektir. Örneğin 12 aylık kredi 12 günde, 48 aylık kredi 48 günde biter.
-2. Başlangıç ve Amaç
-•	Her oyuncu bir şirket kurar. Şirket ünvanı sistemde benzersizdir; aynı isim iki oyuncuda olamaz.
-•	Oyuna bir Bayi ile başlanır. Nakit, döviz, altın ve vadeli hesap gibi varlıklarla şirketinizi büyütürsünüz.
-•	Amaç, şirket servetini artırarak Zenginler Listesi'nde en üst sıraya çıkmaktır.
-•	Şirket unvanı Mali Tablo sayfasından değiştirilebilir. Küfürlü veya uygunsuz isimler ile başkasının kullandığı isimler kabul edilmez.
-3. Gelir Kaynakları
-3.1 Günlük şirket geliri: Her oyun ayında (24 saatte bir) şirketinize sabit bir gelir yatar.
-3.2 Konut kira geliri: Sahip olduğunuz her konut, her oyun ayında kira getirir. Kira otomatik olarak kasanıza eklenir.
-3.3 Tesis tahsilatları: Bayi, Otel, Fabrika, Hastane, Özel Okul, AVM ve Hipermarket günlük gelir üretir. Bu gelir otomatik yatmaz, elle tahsil edilir.
-•	Tahsilat pencereleri: Günde 3 tahsilat penceresi vardır (varsayılan saatler: 10:00, 13:00 ve 16:00). Her pencere başladıktan sonra 60 dakika açık kalır.
-•	Tahsilat: Pencere açıkken TAHSİLAT YAP sayfasındaki "TAHSİL ET" düğmesine basarak geliri kasaya alırsınız. Pencere kaçırılırsa o dönemin geliri kaybolur.
-•	Arsa ve konut: Arsalar gelir üretmez. Konutların geliri tahsilatla değil, kira olarak otomatik işler.
-4. Yatırım Yapmak
-•	Arsa şartı: Bayi dışındaki tüm tesisler için önce ilgili arsaya sahip olmanız gerekir (örneğin Otel için Otel Arsası, Konut için Konut Arsası).
-•	Bayi: Bayi yatırımı için arsa gerekmez.
-•	Dönüşüm: Yatırım yapıldığında arsa, tesise dönüşür. Tesis, arsanın konumunu korur.
-•	İnşaat süresi: Yatırımlar inşaat süresi sonunda tamamlanır (varsayılan: Bayi 3 gün, diğer tesisler 12 gün). İnşaat bitmeden tesis gelir üretmez.
-•	Konut: Konut yatırımı tamamlandığında 30 daire teslim edilir.
-•	Ödeme: Yatırım nakit veya kredi ile yapılabilir.
-5. Kredi Sistemi
-5.1 Faiz ve vade: Yatırım kredisi aylık faizlidir. Vade seçenekleri 12, 24, 36 ve 48 aydır. Taksitler eşit ödemelidir.
-5.2 Kredi limiti: Limit, gelirinizin taşıyabileceği taksit gücüne göre hesaplanır:
-•	Toplam gelir = günlük şirket geliri + kira geliri + (tesis tahsilat geliri × 3).
-•	Toplam taksitleriniz, toplam gelirinizin %60'ını geçemez.
-•	Yeni kredi limiti = (toplam gelir × %60 − mevcut taksitler), 48 aylık vadeye göre hesaplanır.
-•	Yeni bir gelirli mülk (kira veya tahsilat) edindiğinizde limitiniz bu gelirin %60'ı oranında artar.
-5.3 Peşinat ve kredi oranı: Bir varlık için en fazla %70 kredi kullanabilirsiniz, en az %30 peşinat ödemeniz gerekir.
-•	İstisna: İnşaat yatırımı için gereken arsa sizdeyse ve bloke değilse %70/%30 şartı aranmaz. Ancak kredi tutarı, yatırım bedelini geçemez.
-5.4 Bloke: Krediyle alınan veya yapılan varlık, borç bitene kadar blokelidir. Kredi tamamen ödenince bloke otomatik kalkar.
-5.5 Erken ödeme: Mali Tablo sayfasından kredi borcunuzun bir kısmını veya tamamını istediğiniz zaman kapatabilirsiniz.
-5.6 Yeni kredi engeli: Gecikmiş taksitiniz veya icradan kalan borcunuz varsa, bu borç kapanana kadar yeni kredi kullanamazsınız.
-6. Taksit Ödeme, Gecikme ve İcra
-•	Otomatik tamamlama: Taksit günü nakit yetmezse sistem eksik tutarı sırasıyla Dolar, Euro, Altın ve Vadeli Hesaptan bozdurarak tamamlar.
-•	Gecikme: Yeterli likidite bulunamazsa taksit ödenmemiş sayılır. Ödenmeyen her dönem için gecikme sayacı artar.
-•	İcra: Taksit üst üste 3 dönem ödenmezse krediye bağlı blokeli varlık haczedilir ve güncel satış fiyatından satılır.
-•	Borç kapanırsa: Satış bedeli borcu karşılarsa borç kapanır, artan tutar kasanıza eklenir.
-•	Borç kapanmazsa: Satış bedeli yetmezse kalan tutar "icradan kalan borç" olarak hesapta kalır. Bu borç için taksit işlemez; kasanıza para girdiği anda kalan bakiyeden otomatik düşülür.
-7. Döviz, Altın ve Vadeli Hesap
-7.1 Döviz ve altın: Dolar, Euro ve Altın alınıp satılabilir. Alış ve satış kurları farklıdır ve yönetici tarafından belirlenir. Satış yapabilmek için yeterli miktarda varlığınız olmalıdır.
-7.2 Vadeli hesap: Nakdinizi vadeli hesaba yatırıp her oyun ayında (24 saatte bir) faiz kazanabilirsiniz. İstediğiniz zaman para çekebilirsiniz.
-7.3 Onay: Tüm döviz, altın ve vadeli hesap işlemleri onay penceresi ile tamamlanır.
-8. İlanlar ve Alım-Satım
-8.1 İlan türleri: İlanlar sayfasında Emlak İlanları ve Arsa İlanları bulunur. 
-8.2 Fiyatlar: Tüm mülklerin satış fiyatı yönetici tarafından belirlenir. Yönetici fiyatı değiştirdiğinde ilanlardaki fiyatlar da güncellenir.
-8.3 Satın alma: İlanları nakit veya kredi ile satın alabilirsiniz. Kredi kullanırken 5. bölümdeki peşinat kuralları geçerlidir. Satın alınan mülk, ilandaki konumuyla envanterinize eklenir.
-8.4 Satışa çıkarma: Varlıklarım sayfasındaki SAT düğmesi ile mülkünüzü ilana çıkarırsınız. VAZGEÇ ile ilanı istediğiniz zaman geri çekebilirsiniz. Aynı mülk için tek ilan açılabilir. Bayi satılamaz.
-8.5 Kredili varlık satışı: Krediyle alınmış bir varlık satılırsa satış bedelinden önce ilgili kredi borcu kapatılır, kalan tutar nakde eklenir. Satış bedeli borca yetmezse kalan tutar icradan kalan borç olarak devam eder.
-9. Zenginler Listesi
-•	Şirket serveti şu şekilde hesaplanır: nakit + vadeli hesap + varlıkların satış değeri + döviz ve altın karşılığı − kredi borcu.
-•	Oyuncular listede yarışır. İlk 100 sıra gösterilir; ilk 100'de değilseniz kendi sıranız listenin altında görünür.
-•	Şirketiniz listede altın çerçeveyle vurgulanır.
-10. Konumlar ve Görüntüleme
-•	Her arsa ve mülkün bir konumu vardır (şehir)Bu konum ilanda ve varlıklarınızda "Görüntüle" düğmesiyle görülebilir.
-•	Arsa, tesise dönüştüğünde konumunu korur.
-11. Genel Kurallar
-•	Oyundaki tüm para, varlık, gayrimenkul ve dövizler tamamen sanaldır. Gerçek para karşılığı yoktur; nakde çevrilemez, gerçek parayla alınıp satılamaz.
-•	Oyuna katılmak için 18 yaşını doldurmuş olmak gerekir.
-•	Hile, açık (bug) kötüye kullanımı, bot/makro kullanımı, birden fazla hesapla haksız avantaj sağlama ve diğer oyunculara zarar verme yasaktır. İhlalde hesap kapatılabilir.
-•	Hesap güvenliği oyuncunun sorumluluğundadır. Şifrenizi kimseyle paylaşmayın.
-•	Yönetici; oran, fiyat, süre ve kuralları oyun dengesi için değiştirebilir. Değişiklikler tüm oyunculara anında uygulanır.
-•	Ayrıntılar için Kullanıcı Sözleşmesi ve Gizlilik Politikası geçerlidir.
-İyi oyunlar ve bol kazançlar!
-</p>
+            <h3>1. Zaman Sistemi: 1 Gün = 1 Ay</h3>
+            <p>Gerçek hayatta aylık gerçekleşen finansal döngüler oyunda günlüktür. Gerçek dünyadaki 1 gün, oyunda 1 ay sayılır.</p>
+            <table class="kural-tablo">
+                <tr><th>İşlem</th><th>Gerçek hayat</th><th>Oyunda</th></tr>
+                <tr><td>Kredi taksiti</td><td>Ayda bir</td><td>Günde bir</td></tr>
+                <tr><td>Vadeli faiz</td><td>Ayda bir</td><td>Günde bir</td></tr>
+                <tr><td>Konut kirası</td><td>Ayda bir</td><td>Günde bir</td></tr>
+                <tr><td>Şirket geliri</td><td>Ayda bir</td><td>Günde bir</td></tr>
+                <tr><td>48 ay vade</td><td>4 yıl</td><td>48 gün</td></tr>
+                <tr><td>Tesis tahsilatı</td><td>Ayda bir</td><td>Günde 3 kez</td></tr>
+            </table>
+            <ul>
+                <li><b>Çevrimdışı işleme:</b> Bu işlemler siz oyunda olmasanız da işler. Döndüğünüzde geliriniz, faiziniz ve taksitleriniz hesabınıza yansımış olur.</li>
+                <li><b>Kredi vadeleri:</b> Vadedeki "ay", oyunda 1 gündür. 12 aylık kredi 12 günde biter.</li>
+            </ul>
+
+            <h3>2. Başlangıç ve Amaç</h3>
+            <ul>
+                <li>Her oyuncu bir şirket kurar. Şirket ünvanı benzersizdir.</li>
+                <li>Oyuna bir <b>Bayi</b> ile başlarsınız.</li>
+                <li>Amaç, servetinizi artırıp <b>Zenginler Listesi</b>'nde en üste çıkmaktır.</li>
+                <li>Ünvanı Mali Tablo'dan değiştirebilirsiniz. Uygunsuz veya kullanılmış isimler kabul edilmez.</li>
+            </ul>
+
+            <h3>3. Gelir Kaynakları</h3>
+            <ul>
+                <li><b>Günlük şirket geliri:</b> Her oyun ayında şirketinize sabit gelir yatar.</li>
+                <li><b>Konut kirası:</b> Her konut, her oyun ayında kira getirir ve otomatik yatar.</li>
+                <li><b>Tesis tahsilatı:</b> Bayi, Otel, Fabrika, Hastane, Özel Okul, AVM ve Hipermarket gelir üretir. Bu gelir <b>elle tahsil edilir</b>.</li>
+                <li><b>Tahsilat pencereleri:</b> Günde 3 pencere vardır (varsayılan 10:00, 15:00, 18:46). Her pencere 60 dakika açık kalır. "TAHSİL ET" ile geliri alırsınız; kaçırılan pencerenin geliri kaybolur.</li>
+                <li>Arsalar gelir üretmez.</li>
+            </ul>
+
+            <h3>4. Yatırım Yapmak</h3>
+            <ul>
+                <li>Bayi hariç tesisler için önce ilgili <b>arsaya</b> sahip olmalısınız (örn. Otel için Otel Arsası).</li>
+                <li>Yatırımda arsa, tesise dönüşür ve konumunu korur.</li>
+                <li><b>İnşaat süresi:</b> Bayi 3 gün, diğerleri 12 gün (varsayılan). Bitmeden gelir üretmez.</li>
+                <li>Konut yatırımı bitince <b>30 daire</b> teslim edilir.</li>
+                <li>Yatırım nakit veya kredi ile yapılabilir.</li>
+            </ul>
+
+            <h3>5. Kredi Sistemi</h3>
+            <ul>
+                <li><b>Faiz ve vade:</b> Aylık faiz varsayılan %5'tir. Vade 12, 24, 36 veya 48 ay; taksitler eşittir.</li>
+                <li><b>Kredi limiti:</b> Toplam taksitleriniz, toplam gelirinizin <b>%60</b>'ını geçemez. Toplam gelir = şirket geliri + kira + (tesis tahsilatı × 3). Limit = (gelir × %60 − mevcut taksitler), 48 ay vadeye göre.</li>
+                <li>Gelirli yeni bir mülk aldığınızda limitiniz, o gelirin %60'ı kadar artar.</li>
+                <li><b>Peşinat:</b> Bir varlık için en fazla <b>%70</b> kredi, en az <b>%30</b> peşinat.</li>
+                <li><b>İstisna:</b> İnşaat için gereken arsa sizdeyse ve bloke değilse %70/%30 şartı aranmaz. Kredi yine yatırım bedelini geçemez.</li>
+                <li><b>Bloke:</b> Krediyle alınan varlık borç bitene kadar blokelidir; borç bitince bloke kalkar.</li>
+                <li><b>Erken ödeme:</b> Mali Tablo'dan borcu istediğiniz zaman kapatabilirsiniz.</li>
+                <li>Gecikmiş taksidiniz veya icradan kalan borcunuz varsa <b>yeni kredi kullanamazsınız</b>.</li>
+            </ul>
+
+            <h3>6. Taksit, Gecikme ve İcra</h3>
+            <ul>
+                <li><b>Otomatik tamamlama:</b> Nakit yetmezse eksik tutar sırasıyla Dolar, Euro, Altın ve Vadeli Hesaptan bozdurularak tamamlanır.</li>
+                <li><b>Gecikme:</b> Likidite de yetmezse taksit ödenmemiş sayılır.</li>
+                <li><b>İcra:</b> Üst üste <b>3 dönem</b> ödenmezse blokeli varlık haczedilir ve güncel satış fiyatından satılır.</li>
+                <li>Satış borcu karşılarsa artan tutar kasaya eklenir.</li>
+                <li>Karşılamazsa kalan tutar <b>icradan kalan borç</b> olarak kalır. Taksit işlemez; kasaya para girince otomatik düşülür.</li>
+            </ul>
+
+            <h3>7. Döviz, Altın ve Vadeli Hesap</h3>
+            <ul>
+                <li><b>Döviz/Altın:</b> Dolar, Euro ve Altın alınıp satılır. Alış ve satış kurları farklıdır ve yönetici tarafından belirlenir.</li>
+                <li><b>Vadeli hesap:</b> Her oyun ayında faiz kazandırır (varsayılan günlük %2). İstediğiniz zaman çekebilirsiniz.</li>
+                <li>Tüm işlemler onay penceresiyle tamamlanır.</li>
+            </ul>
+
+            <h3>8. İlanlar ve Alım-Satım</h3>
+            <ul>
+                <li><b>Kaynaklar:</b> Emlak ve Arsa ilanları; diğer oyunculardan, botlardan ve Banka İcra Satışı'ndan gelir.</li>
+                <li><b>Fiyatlar:</b> Satış fiyatlarını yönetici belirler; değişince ilanlar da güncellenir.</li>
+                <li><b>Satın alma:</b> Nakit veya kredi ile. Kredide 5. bölümdeki peşinat kuralları geçerlidir.</li>
+                <li><b>Satışa çıkarma:</b> Varlıklarım'dan <b>SAT</b> ile ilana çıkarırsınız, <b>VAZGEÇ</b> ile geri çekersiniz. Aynı mülke tek ilan açılır. Bayi satılamaz.</li>
+                <li><b>Garantili satış:</b> İlanınız bekleme süresi sonunda (varsayılan 3 gün) satış fiyatından satılır.</li>
+                <li><b>Kredili varlık satışı:</b> Önce ilgili kredi borcu kapatılır, kalan tutar nakde eklenir. Yetmezse kalan tutar icradan kalan borç olur.</li>
+            </ul>
+
+            <h3>9. Zenginler Listesi</h3>
+            <ul>
+                <li><b>Servet</b> = nakit + vadeli hesap + varlıkların satış değeri + döviz/altın karşılığı − kredi borcu.</li>
+                <li>Oyuncular ve bot şirketler birlikte yarışır. İlk 100 gösterilir; dışındaysanız sıranız altta görünür.</li>
+            </ul>
+
+            <h3>10. Genel Kurallar</h3>
+            <ul>
+                <li>Tüm para ve varlıklar <b>tamamen sanaldır</b>; gerçek karşılığı yoktur, nakde çevrilemez.</li>
+                <li>Oyuna katılmak için 18 yaşını doldurmuş olmak gerekir.</li>
+                <li>Hile, açık kötüye kullanımı, bot/makro ve birden fazla hesapla haksız avantaj yasaktır. İhlalde hesap kapatılabilir.</li>
+                <li>Hesap güvenliği oyuncuya aittir; şifrenizi paylaşmayın.</li>
+                <li>Yönetici oran, fiyat ve süreleri oyun dengesi için değiştirebilir.</li>
+                <li>Ayrıntılar için Kullanıcı Sözleşmesi ve Gizlilik Politikası geçerlidir.</li>
+            </ul>
+
+            <p style="text-align:center; color:#ffcc00; font-weight:bold; margin-top:16px;">İyi oyunlar ve bol kazançlar! 🎉</p>
         </div>
     </div>
 
-    <!-- Alt Menü -->
     <div class="nav-bar">
         <div class="nav-btn" onclick="changePage('page-mali')">MALİ TABLO</div>
         <div class="nav-btn" onclick="changePage('page-varlik')">VARLIKLARIM</div>
@@ -770,16 +793,7 @@ Tesis tahsilatı	Ayda bir	Günde 3 kez (tahsilat pencereleri)
         <div class="nav-btn" onclick="changePage('page-yatirim')">YATIRIM YAP</div>
         <div class="nav-btn" onclick="changePage('page-ilan')">İLANLAR</div>
     </div>
-    
 </div>
-
-
-
-
-
-
-
-
     
    <div id="page-liste" class="page" style="display:none;">
     <h2>Zenginler Listesi</h2>
