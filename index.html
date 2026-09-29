@@ -4626,19 +4626,21 @@ if (!arsaMuaf && verilenPesinatYuzdesi < 30) {
         return;
     }
 
-    if (kapsam !== 'ilan' && isim !== 'Bayi') {
-        let arsaIsmi = (isim === 'Konut') ? "Konut Arsası" : isim + " Arsası";
-        let arsa = state.varliklar.find(v => v.isim === arsaIsmi && v.durum === 'sahip');
-        
-        if (!arsa) {
-            if (miktarInput) miktarInput.value = '';
-            if (vadeSelect) vadeSelect.value = "48";
-            tempIslem = null;
-            modalGoster(arsaIsmi + " bulunmamaktadır!");
-            return;
-        }
-        arsa.durum = 'silinecek';
+let krediArsaKonumu = null;
+if (kapsam !== 'ilan' && isim !== 'Bayi') {
+    let arsaIsmi = (isim === 'Konut') ? "Konut Arsası" : isim + " Arsası";
+    let arsa = state.varliklar.find(v => v.isim === arsaIsmi && v.durum === 'sahip');
+    
+    if (!arsa) {
+        if (miktarInput) miktarInput.value = '';
+        if (vadeSelect) vadeSelect.value = "48";
+        tempIslem = null;
+        modalGoster(arsaIsmi + " bulunmamaktadır!");
+        return;
     }
+    krediArsaKonumu = arsa.atananKonum || (typeof arsaKonumunuAl === 'function' ? arsaKonumunuAl(arsa) : null);
+    arsa.durum = 'silinecek';
+}
 
     state.kredi += toplamGeriOdeme; 
     state.taksit += aylikTaksit;
@@ -4664,17 +4666,18 @@ if (!arsaMuaf && verilenPesinatYuzdesi < 30) {
 
     let sure = (isim === 'Bayi') ? bayiSure : digerSure;
     
-    if (kapsam !== 'ilan') {
-        let yeniVarlik = {
-            id: Date.now() + Math.random(),
-            isim: isim,
-            durum: (islemTipi === 'yap' ? 'inşaat' : 'sahip'),
-            bitis: (islemTipi === 'yap' ? Date.now() + sure : null),
-            bloke: true,
-            krediID: yeniKrediID
-        };
-        state.varliklar.push(yeniVarlik);
-    }
+ if (kapsam !== 'ilan') {
+    let yeniVarlik = {
+        id: Date.now() + Math.random(),
+        isim: isim,
+        durum: (islemTipi === 'yap' ? 'inşaat' : 'sahip'),
+        bitis: (islemTipi === 'yap' ? Date.now() + sure : null),
+        bloke: true,
+        krediID: yeniKrediID,
+        atananKonum: krediArsaKonumu
+    };
+    state.varliklar.push(yeniVarlik);
+}
 
     state.varliklar = state.varliklar.filter(v => v.durum !== 'silinecek');
     if (miktarInput) miktarInput.value = '';
