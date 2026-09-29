@@ -2026,7 +2026,7 @@ function sifremiUnuttumSayfasiniAc() {
 
 
 
-function kodUretVeGoster() {
+async function kodUretVeGoster() {
     let email = document.getElementById('sifirla-email').value.trim();
     let hataKutusu = document.getElementById('sifre-hata');
     let kodKutusu = document.getElementById('ekrandaki-kod-kutusu');
@@ -2039,23 +2039,34 @@ function kodUretVeGoster() {
 
     hataKutusu.style.display = 'none';
 
+    // 🌟 Kod üretmeden ÖNCE bu mail kayıtlı mı kontrol et
+    try {
+        let res = await fetch('/api/email-kontrol?email=' + encodeURIComponent(email));
+        let sonuc = await res.json();
+        if (!sonuc.basari || !sonuc.kullanimda) {
+            hataKutusu.style.display = 'block';
+            hataKutusu.innerText = "Bu e-posta adresine kayıtlı bir üyelik bulunamadı.";
+            return;
+        }
+    } catch (e) {
+        hataKutusu.style.display = 'block';
+        hataKutusu.innerText = "Sunucuya bağlanılamadı, lütfen tekrar deneyin.";
+        return;
+    }
+
     // 6 haneli rastgele kod üret
     uretilenSifirlaKodu = Math.floor(100000 + Math.random() * 900000).toString();
     hedefEmail = email;
 
-    // Kodu ekranda göster
     kodKutusu.style.display = 'block';
     kodKutusu.innerHTML = `🔑 Doğrulama Kodunuz: <b style="font-size:16px;">${uretilenSifirlaKodu}</b>`;
 
-    // Alanları aç/kapat
     document.getElementById('sifirla-kod').style.display = 'block';
     document.getElementById('yeni-sifre').style.display = 'block';
     document.getElementById('yeni-sifre-tekrar').style.display = 'block';
     document.getElementById('btn-kod-gonder').style.display = 'none';
     document.getElementById('btn-sifre-guncelle').style.display = 'block';
-
 }
-
 async function sifreyiSifirlaVeKaydet() {
     let girilenKod = document.getElementById('sifirla-kod').value.trim();
     let yeniSifre = document.getElementById('yeni-sifre').value.trim();
