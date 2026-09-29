@@ -681,10 +681,13 @@ app.post('/api/ilan-satin-al', (req, res) => {
         ilanTipi = botIlan.isim;
         detaylarObj.atananKonum = botIlan.atananKonum;
     } else {
-        // Kamu (banka icra) satışı, şimdilik eskisi gibi
-        ilanFiyat = ilanTipiBedel || (odenenNakit ? Number(odenenNakit) * 10/7 : 0);
-        ilanTipi = ilanIsmi || "Kamu Mülkü";
+    // Kamu (banka icra) satışı, şimdilik eskisi gibi
+    ilanFiyat = ilanTipiBedel || (odenenNakit ? Number(odenenNakit) * 10/7 : 0);
+    ilanTipi = ilanIsmi || "Kamu Mülkü";
+    if (req.body.detaylarAtananKonum) {
+        detaylarObj.atananKonum = req.body.detaylarAtananKonum;
     }
+}
 }
 
             // ALICI İŞLEMLERİ
