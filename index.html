@@ -1222,9 +1222,17 @@ try {
         
         if (sonuc.basari) {
             if (typeof state !== 'undefined') {
+               if (state.varliklar) {
+               state.varliklar.forEach(v => {
+               v.talepAktif = false;
+               v.aktifPencereBaslangic = undefined;
+               v.sonTahsilatGunu = undefined;
+               });
+               }
+             
                 state.gunlukGelir = window.oyunAyar.gunlukGelir;
                 state.konutKiraGeliri = window.oyunAyar.konutKiraGeliri;
-            }
+               }
     
             // Yerel/global değişkenleri güncelle
             kazancTablosu = window.oyunAyar.kazancTablosu;
@@ -1585,7 +1593,7 @@ async function sistemeGirisYap() {
         if (sonuc.kullanici && sonuc.kullanici.portfoy) {
             let gelenPortfoy = sonuc.kullanici.portfoy;
             
-            state.nakit = Number(gelenPortfoy.nakit) || 311900000;
+            state.nakit = gelenPortfoy.nakit !== undefined && gelenPortfoy.nakit !== null ? Number(gelenPortfoy.nakit) : 311900000;
             state.dolar = Number(gelenPortfoy.dolar) || 0;
             state.euro = Number(gelenPortfoy.euro) || 0;
             state.altin = Number(gelenPortfoy.altin) || 0;
@@ -3045,7 +3053,17 @@ if (typeof veriDegisti !== 'undefined' && veriDegisti && typeof portfoyuSunucuya
 }
 }, 3000);
     
+let _guncelleCalisiyor = false;
 async function guncelle() {
+    if (_guncelleCalisiyor) return;
+    _guncelleCalisiyor = true;
+    try {
+        await guncelleIcerik();
+    } finally {
+        _guncelleCalisiyor = false;
+    }
+}
+async function guncelleIcerik() {
 
     if (typeof kalanBorclariOtomatikOde === 'function') {
         kalanBorclariOtomatikOde();
@@ -3391,6 +3409,10 @@ function yatirimlariGuncelle() {
     let kapsayici = document.getElementById('yatirimlar-kapsayici');
     if (!kapsayici) return;
 
+    let aktifEl = document.activeElement;
+    if (aktifEl && (aktifEl.tagName === 'INPUT' || aktifEl.tagName === 'SELECT') && kapsayici.contains(aktifEl)) {
+    return;
+    }
     kapsayici.innerHTML = '';
 
     let yatirimUrunleri = [
