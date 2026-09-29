@@ -172,54 +172,12 @@
     color: #fff;
     /* font-weight'e dokunmuyoruz, standart boyutta ve kalınlıkta kalıyor */
 }
-
-@keyframes bounce {
+     @keyframes bounce {
     from { transform: translateY(0); }
     to { transform: translateY(-6px); }
 }
-@media (max-width: 480px) {
-    html, body {
-        height: auto;
-        min-height: 100vh;
-        display: block;
-        margin: 0;
-    }
-    .phone-frame {
-        width: 100%;
-        max-width: 480px;
-        margin: 0 auto;
-        height: 100dvh;
-        min-height: 100vh;
-        border-radius: 0;
-        border-width: 0;
-        overflow: hidden;
-    }
-    .page {
-        display: flex;
-        flex-direction: column;
-        height: 100%;
-    }
-    .page > .content {
-        flex: 1 1 auto;
-        height: auto;
-        min-height: 0;
-        overflow-y: auto;
-        -webkit-overflow-scrolling: touch;
-    }
-    .page > .nav-bar {
-        position: static;
-        flex-shrink: 0;
-        width: 100%;
-    }
-    #zenginler-listesi {
-        max-height: none;
-        flex: 1 1 auto;
-        min-height: 0;
-    }
-    #page-liste > h2 {
-        flex-shrink: 0;
-    }
-}
+
+
 
 
         .demand-box { background: rgba(0,0,0,0.3); padding: 12px; margin-bottom: 8px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #ccc; }
@@ -244,9 +202,9 @@
     border-color: #ff4444 !important;
 }
 
-       
+ #zenginler-listesi {max-height: 480px;overflow-y: auto;padding-right: 5px;padding-bottom: 10px;}    
 
-     .kural-metin { font-size: 13px; color: #ddd; line-height: 1.6; text-align: left; }
+.kural-metin { font-size: 13px; color: #ddd; line-height: 1.6; text-align: left; }
 .kural-metin h3 { color: #ffcc00; font-size: 15px; margin: 18px 0 6px; padding-bottom: 4px; border-bottom: 1px solid #444; }
 .kural-metin p { margin: 6px 0; }
 .kural-metin ul { margin: 6px 0; padding-left: 18px; }
@@ -413,7 +371,7 @@
 
 
 <!-- 🌟 GİZLİ ADMIN PANELİ SAYFASI -->
-<div id="page-admin" class="page" style="display: none; padding: 20px; padding-bottom: 200px; background: #1a1a1a; color: #fff; height: 100vh; overflow-y: auto; box-sizing: border-box;">
+<div id="page-admin" class="page" style="display: none; padding: 20px; padding-bottom: 80px; background: #1a1a1a; color: #fff; height: 100vh; overflow-y: auto; box-sizing: border-box;">
     <div style="max-width: 650px; margin: 0 auto; background: #2a2a2a; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
         <h2 style="color: #ffc107; border-bottom: 2px solid #444; padding-bottom: 10px; margin-bottom: 20px;">🛡️ Merkezi Yönetim & Admin Paneli</h2>
         <p style="color: #aaa; margin-bottom: 20px;">Tüm satış fiyatları, yatırım maliyetleri, limitler ve süreler aşağıdadır.</p>
@@ -522,7 +480,7 @@
         </div>
 
         <!-- Butonlar -->
-        <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 100px;">
+        <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 30px;">
             <button onclick="adminAyarlariniKaydet()" style="width: 100%; background: #28a745; color: white; border: none; padding: 14px; border-radius: 5px; font-size: 16px; font-weight: bold; cursor: pointer;">💾 Tüm Ayarları Kaydet ve Uygula</button>
             <button onclick="changePage('page-admin-uyeler'); uyeleriYukle();" style="width: 100%; background: #17a2b8; color: white; border: none; padding: 14px; border-radius: 5px; font-size: 16px; font-weight: bold; cursor: pointer;">👥 Üyeleri Yönet</button>
             <button onclick="changePage('page-mali')" style="width: 100%; background: #6c757d; color: white; border: none; padding: 12px; border-radius: 5px; font-size: 16px; cursor: pointer;">⬅️ Oyuna Dön</button>
