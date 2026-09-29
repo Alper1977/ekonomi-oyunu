@@ -182,22 +182,42 @@
         height: auto;
         min-height: 100vh;
         display: block;
-        overflow-y: auto;
+        margin: 0;
     }
     .phone-frame {
         width: 100%;
-        max-width: 420px;
+        max-width: 480px;
+        margin: 0 auto;
         height: 100dvh;
         min-height: 100vh;
-        margin: 0 auto;
         border-radius: 0;
         border-width: 0;
-        overflow: visible;
+        overflow: hidden;
     }
     .page {
+        display: flex;
+        flex-direction: column;
         height: 100%;
+    }
+    .page > .content {
+        flex: 1 1 auto;
+        height: auto;
+        min-height: 0;
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
+    }
+    .page > .nav-bar {
+        position: static;
+        flex-shrink: 0;
+        width: 100%;
+    }
+    #zenginler-listesi {
+        max-height: none;
+        flex: 1 1 auto;
+        min-height: 0;
+    }
+    #page-liste > h2 {
+        flex-shrink: 0;
     }
 }
 
@@ -224,7 +244,7 @@
     border-color: #ff4444 !important;
 }
 
-       #zenginler-listesi {max-height: 480px;overflow-y: auto;padding-right: 5px;padding-bottom: 10px;}
+       
 
      .kural-metin { font-size: 13px; color: #ddd; line-height: 1.6; text-align: left; }
 .kural-metin h3 { color: #ffcc00; font-size: 15px; margin: 18px 0 6px; padding-bottom: 4px; border-bottom: 1px solid #444; }
@@ -4465,7 +4485,7 @@ function changePage(p) {
     });
     
     // İstenen sayfayı aç
-    hedefSayfa.style.display = 'block';
+    hedefSayfa.style.display = 'flex';
     state.aktifSayfa = p;
 
     // Sayfa açıldığında dinamik listeleri güncelle
