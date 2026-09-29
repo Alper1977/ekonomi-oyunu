@@ -236,6 +236,21 @@
 .kural-tablo { width: 100%; border-collapse: collapse; font-size: 11px; margin: 8px 0; }
 .kural-tablo th { background: #ffcc00; color: #000; padding: 5px; text-align: left; }
 .kural-tablo td { border: 1px solid #444; padding: 5px; }
+
+.yagan-sembol {
+    position: absolute;
+    top: -40px;
+    animation-name: paraDus;
+    animation-timing-function: linear;
+    animation-fill-mode: forwards;
+    filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5));
+}
+@keyframes paraDus {
+    from { transform: translateY(0) rotate(0deg); opacity: 1; }
+    to { transform: translateY(680px) rotate(360deg); opacity: 0.15; }
+}
+
+     
     </style>
 </head>
 <body>
@@ -368,8 +383,9 @@
     </div>
 
     <!-- 2. YÜKLENİYOR EKRANI -->
-   <div id="page-splash" class="page">
-    <div class="splash-content" style="text-align: center; margin-top: 100px;">
+  <div id="page-splash" class="page">
+    <div id="para-yagmuru" style="position:absolute; top:0; left:0; width:100%; height:100%; overflow:hidden; pointer-events:none; z-index:1;"></div>
+    <div class="splash-content" style="text-align: center; margin-top: 100px; position:relative; z-index:2;">
         <h1 id="kurum-adi-baslik" style="color: #ffcc00; font-size: 22px;">ŞİRKET YÜKLENİYOR...</h1>
         <p style="color: #aaa; margin-top: 10px;">Lütfen bekleyin...</p>
     </div>
@@ -1708,14 +1724,12 @@ async function sistemeGirisYap() {
             }
         }
 
-        changePage('page-mali');
-
-
-
-
-        if (typeof zenginlerListesiniGuncelle === 'function') {
-            zenginlerListesiniGuncelle();
-        }
+          splashGosterVeGec(() => {
+            changePage('page-mali');
+            if (typeof zenginlerListesiniGuncelle === 'function') {
+                zenginlerListesiniGuncelle();
+            }
+        });
 
     } catch (err) {
         console.error("Giriş hatası:", err);
@@ -4406,7 +4420,38 @@ async function vazgec(uniqueId) {
         console.error("İlan silme isteği başarısız:", err);
     }
 }
-    
+
+function paraYagmuruBaslat() {
+    let konteyner = document.getElementById('para-yagmuru');
+    if (!konteyner) return;
+    konteyner.innerHTML = '';
+    let semboller = ['💰', '💵', '💶', '🪙', '💴'];
+    for (let i = 0; i < 18; i++) {
+        let el = document.createElement('div');
+        el.className = 'yagan-sembol';
+        el.innerText = semboller[Math.floor(Math.random() * semboller.length)];
+        el.style.left = Math.random() * 100 + '%';
+        el.style.animationDelay = (Math.random() * 1.2) + 's';
+        el.style.animationDuration = (1.6 + Math.random() * 1.2) + 's';
+        el.style.fontSize = (18 + Math.random() * 16) + 'px';
+        konteyner.appendChild(el);
+    }
+}
+
+function paraYagmuruDurdur() {
+    let konteyner = document.getElementById('para-yagmuru');
+    if (konteyner) konteyner.innerHTML = '';
+}
+
+function splashGosterVeGec(devamFonksiyonu) {
+    changePage('page-splash');
+    paraYagmuruBaslat();
+    setTimeout(() => {
+        paraYagmuruDurdur();
+        if (typeof devamFonksiyonu === 'function') devamFonksiyonu();
+    }, 2000);
+}
+ 
 function changePage(p) {
     let hedefSayfa = document.getElementById(p);
     if (!hedefSayfa) {
@@ -5471,10 +5516,14 @@ window.addEventListener('DOMContentLoaded', async () => {
                 console.log("Aktif oturum bulundu:", data);
 
                 let sirketBaslik = document.getElementById('sirket-adi-mali');
-                if (sirketBaslik) {
+                let gorunenSirketAdi = 'STRATEJİK HOLDİNG A.Ş.';
+                if (data.adsoyad || data.kadi) {
                     let gorunenIsim = (data.adsoyad && data.adsoyad.trim() !== "") ? data.adsoyad : data.kadi;
-                    sirketBaslik.innerText = gorunenIsim.toUpperCase() + " A.Ş.";
+                    gorunenSirketAdi = gorunenIsim.toUpperCase() + " A.Ş.";
                 }
+                if (sirketBaslik) sirketBaslik.innerText = gorunenSirketAdi;
+                let kurumBaslikSplash = document.getElementById('kurum-adi-baslik');
+                if (kurumBaslikSplash) kurumBaslikSplash.innerText = gorunenSirketAdi;
 
                 if (data.portfoy) {
                     state = data.portfoy;
@@ -5493,26 +5542,20 @@ window.addEventListener('DOMContentLoaded', async () => {
                     }
                 }
 
-                changePage('page-mali');
-              
-                guncelle(); 
-
-                if (typeof zenginlerListesiniGuncelle === 'function') {
-                    zenginlerListesiniGuncelle();
-                }
-                if (typeof zenginlerListesiniGuncelle === 'function') {
-                    zenginlerListesiniGuncelle();
-                }
-
-                // 🌟 İŞTE EKSİK OLAN VE KREDİYİ UYANDIRACAK TETİKLEYİCİ BURASI:
-                // Sayfa yüklenip portföy çekildikten sonra arka plan zaman döngülerini (faiz, kredi, taksit) zorla başlat:
-                if (typeof finansalDonguyuBaslat === 'function') {
-                    finansalDonguyuBaslat();
-                } else if (typeof donguyuBaslat === 'function') {
-                    donguyuBaslat();
-                } else if (typeof krediDongusuBaslat === 'function') {
-                    krediDongusuBaslat();
-                }
+              splashGosterVeGec(() => {
+                    changePage('page-mali');
+                    guncelle();
+                    if (typeof zenginlerListesiniGuncelle === 'function') {
+                        zenginlerListesiniGuncelle();
+                    }
+                    if (typeof finansalDonguyuBaslat === 'function') {
+                        finansalDonguyuBaslat();
+                    } else if (typeof donguyuBaslat === 'function') {
+                        donguyuBaslat();
+                    } else if (typeof krediDongusuBaslat === 'function') {
+                        krediDongusuBaslat();
+                    }
+                });
 
                 return;
             }
