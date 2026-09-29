@@ -2305,7 +2305,7 @@ window._sonSecilenKonumlar = window._sonSecilenKonumlar || {};
 
 function arsaKonumunuAl(arsaObjesiVeyaId) {
     if (typeof arsaObjesiVeyaId === 'object' && arsaObjesiVeyaId !== null) {
-        if (!arsaObjesiVeyaId.atananKonum || arsaObjesiVeyaId.durum === 'ilan-aktif') {
+        if (!arsaObjesiVeyaId.atananKonum) {
             let veri = arsaKonumHaritasi[arsaObjesiVeyaId.isim];
             let rastgeleKonum = "Merkezi Konum";
             if (veri && veri.liste && veri.liste.length > 0) {
@@ -2616,7 +2616,9 @@ veriDegisti = false;
 
 if (aktifOdemePenceresi) {
     state.varliklar.forEach(v => {
-        if ((v.durum === 'sahip' || v.durum === 'ilan-aktif') && v.isim !== 'Konut') {
+        let isimKucuk = (v.isim || '').toLowerCase();
+        let arsaMi = isimKucuk.includes('arsa');
+        if ((v.durum === 'sahip' || v.durum === 'ilan-aktif') && v.isim !== 'Konut' && !arsaMi) {
             let talepAnahtari = `${bugunStr}-${aktifOdemePenceresi.saat}-${v.dakika || 0}-${v.id || v.isim}`;
             
             if (!v.sonTahsilatGunu || v.sonTahsilatGunu !== talepAnahtari) {
@@ -3201,7 +3203,11 @@ let konutSayisi = state.varliklar.filter(v => v.isim === 'Konut' && (v.durum ===
         }
     });
     
-    aktifTalepVar = state.varliklar.some(v => v.talepAktif);
+    aktifTalepVar = state.varliklar.some(v => {
+    if (!v.talepAktif) return false;
+    let isimKucuk = (v.isim || '').toLowerCase();
+    return isimKucuk !== 'konut' && !isimKucuk.includes('arsa');
+    });
     let tahsilatButonlari = document.querySelectorAll('.nav-btn-tahsilat-cls');
     tahsilatButonlari.forEach(btn => {
         if (aktifTalepVar) {
