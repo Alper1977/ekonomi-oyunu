@@ -4684,16 +4684,19 @@ if (kapsam !== 'ilan' && isim !== 'Bayi') {
     if (vadeSelect) vadeSelect.value = "48";
 
     if (kapsam === 'ilan') {
-        fetch('/api/ilan-satin-al', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                ilanId: ilanId || null, 
-                odenenNakit: gerekenPesinat,
-                ilanTipiBedel: bedel,
-                ilanIsmi: isim 
-            })
-        })
+        let kamuKonumGonder = (!ilanId && typeof arsaKonumunuAl === 'function') ? arsaKonumunuAl(isim) : null;
+
+fetch('/api/ilan-satin-al', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ 
+        ilanId: ilanId || null, 
+        odenenNakit: gerekenPesinat,
+        ilanTipiBedel: bedel,
+        ilanIsmi: isim,
+        detaylarAtananKonum: kamuKonumGonder
+    })
+})
         .then(res => res.json())
         .then(sonuc => {
             if (!sonuc.basari) {
