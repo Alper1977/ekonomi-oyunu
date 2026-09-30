@@ -935,7 +935,12 @@ app.post('/api/admin/ayar-guncelle', adminZorunlu, (req, res) => {
 
     try {
         db.prepare(`INSERT OR REPLACE INTO oyun_ayarlari (id, ayarlar) VALUES (1, ?)`).run(JSON.stringify(kayitPaketi));
-        
+
+        // 🌟 YENİ: Süreler değiştiği anda tüm kullanıcıların son_guncelleme'sini
+        // şu ana çekiyoruz ki eski süreyle biriken zaman, yeni süreye bölünüp
+        // yanlış sayıda dönem (yanlış tutarda kira/faiz/taksit) üretmesin.
+        db.prepare(`UPDATE kullanicilar SET son_guncelleme = ?`).run(Date.now());
+
         io.emit('ayarlarDegisti', {
             ayarlar: kayitPaketi,
             sureler: kayitPaketi.sureler
