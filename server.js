@@ -1085,16 +1085,20 @@ aktiviteIsle(req);
         // 🌟 Çevrimdışı geçen süredeki gelirleri hesaba kat!
         const guncelPortfoy = kullaniciEkonomisiniIslet(user, ayarlar) || JSON.parse(user.portfoy || '{}');
 
-        res.json({
+           res.json({
             basari: true,
             nakit: guncelPortfoy.nakit !== undefined ? guncelPortfoy.nakit : (guncelPortfoy.para || 0),
             varliklar: guncelPortfoy.varliklar || [],
             gunlukGelir: guncelPortfoy.gunlukGelir || 0,
             konutKiraGeliri: guncelPortfoy.konutKiraGeliri || 0,
-            // 🌟 İŞTE EKSİK OLAN VE EKRANI GÜNCELLEYECEK KRİTİK ALANLAR BURASI:
             krediler: guncelPortfoy.krediler || [],
             kredi: guncelPortfoy.kredi || 0,
-            taksit: guncelPortfoy.taksit || 0
+            taksit: guncelPortfoy.taksit || 0,
+            // 🌟 YENİ: Vadeli hesap ve döviz/altın artık polling ile senkron ediliyor
+            vadeli: guncelPortfoy.vadeli !== undefined ? guncelPortfoy.vadeli : (guncelPortfoy.vadeliHesap || 0),
+            dolar: guncelPortfoy.dolar || 0,
+            euro: guncelPortfoy.euro || 0,
+            altin: guncelPortfoy.altin || 0
         });
     } catch (err) {
         console.error("Portföy getirme hatası:", err.message);
@@ -1201,6 +1205,28 @@ app.post('/api/portfoy-guncelle', (req, res) => {
     const userId = req.session.kullanici.id;
     let yeniPortfoy = req.body.portfoy || {};
 
+  // 🌟 YENİ: Önce sunucu ekonomisini (kira/faiz/taksit/icra) güncel zamana getir.
+    // Eğer bu sırada dönemsel bir gelir/kesinti uygulandıysa, client'ın elindeki
+    // (eski) nakit/kredi/taksit/vadeli değerleri artık bayattır — bunları kabul
+    // etmek yerine sunucunun güncel halini geri gönderip client'ı senkronize ederiz.
+    try {
+        const tamMevcutRow = db.prepare(`SELECT id, portfoy, son_guncelleme FROM kullanicilar WHERE id = ?`).get(userId);
+        if (tamMevcutRow) {
+            const oncekiSonGuncelleme = tamMevcutRow.son_guncelleme;
+            const ayarKaydi2 = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
+            const ayarlar2 = ayarKaydi2 ? JSON.parse(ayarKaydi2.ayarlar) : {};
+            const guncellenmisPortfoy = kullaniciEkonomisiniIslet(tamMevcutRow, ayarlar2);
+
+            const guncelSatir = db.prepare(`SELECT son_guncelleme FROM kullanicilar WHERE id = ?`).get(userId);
+            if (guncelSatir && guncelSatir.son_guncelleme !== oncekiSonGuncelleme) {
+                req.session.kullanici.portfoy = guncellenmisPortfoy;
+                return res.json({ basari: true, senkron: true, portfoy: guncellenmisPortfoy });
+            }
+        }
+    } catch (e) {
+        console.error("Ön-senkron kontrolü hatası:", e.message);
+    }
+    
     // 🌟 SUNUCU TARAFi TEMİZLİK FİLTRESİ (Frontend'den gelen bozuk/eski borçları engelle!)
     if (yeniPortfoy.krediler && Array.isArray(yeniPortfoy.krediler)) {
         // Gerçekten kalan borcu olanları filtrele
