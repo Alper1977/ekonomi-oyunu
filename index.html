@@ -2384,6 +2384,7 @@ let sonFaizZamani = Date.now();
 let sonSirketKazanci = Date.now();
 
 function islem(tur, tip) {
+ window._sonIlanIslemZamani = Date.now();
     let input = document.getElementById('in-' + tur);
     let miktar = paraAl('in-' + tur);
     
@@ -2420,6 +2421,8 @@ function islem(tur, tip) {
 
 
 function vadeli(tip) {
+    window._sonIlanIslemZamani = Date.now();
+    
     let miktar = geciciVadeliMiktar;
     let input = document.getElementById('in-vadeli');
 
@@ -2555,6 +2558,10 @@ setInterval(async () => {
             if (portfoyVerisi.krediler && !ilanKilidi) state.krediler = portfoyVerisi.krediler;
             if (portfoyVerisi.kredi !== undefined && !ilanKilidi) state.kredi = portfoyVerisi.kredi;
             if (portfoyVerisi.taksit !== undefined && !ilanKilidi) state.taksit = portfoyVerisi.taksit;
+            if (portfoyVerisi.vadeli !== undefined && !ilanKilidi) state.vadeli = portfoyVerisi.vadeli;
+            if (portfoyVerisi.dolar !== undefined && !ilanKilidi) state.dolar = portfoyVerisi.dolar;
+            if (portfoyVerisi.euro !== undefined && !ilanKilidi) state.euro = portfoyVerisi.euro;
+            if (portfoyVerisi.altin !== undefined && !ilanKilidi) state.altin = portfoyVerisi.altin;
 
             if (typeof arayuzuGuncelle === 'function') {
                 arayuzuGuncelle();
