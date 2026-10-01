@@ -2524,13 +2524,24 @@ let sonKiraZamani = Date.now();
 
 
 setInterval(async () => {
-    try {
+ try {
         let res = await fetch('/api/oyun-ayarlari');
         let sonuc = await res.json();
         if (sonuc.basari && sonuc.ayarlar) {
             window.oyunAyar = sonuc.ayarlar;
             if (sonuc.ayarlar.sureler) {
                 window.oyunAyarlari = sonuc.ayarlar.sureler;
+            }
+            // 🌟 YENİ: Admin değerleri değiştirdiğinde ekrandaki "Günlük Şirket
+            // Geliri" ve kira oranı artık sayfa yenilemeden, en geç bu döngünün
+            // bir sonraki turunda (3 sn içinde) güncellensin.
+            if (typeof state !== 'undefined' && state) {
+                if (sonuc.ayarlar.gunlukGelir !== undefined) {
+                    state.gunlukGelir = Number(sonuc.ayarlar.gunlukGelir);
+                }
+                if (sonuc.ayarlar.konutKiraGeliri !== undefined) {
+                    state.konutKiraGeliri = Number(sonuc.ayarlar.konutKiraGeliri);
+                }
             }
         }
     } catch (e) {
