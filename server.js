@@ -257,6 +257,7 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
     const kiraPeriyodu = sureler.kiraSuresi || 86400000;    // 24 Saat (veya ayarlanan)
     const faizPeriyodu = sureler.faizSuresi || 86400000;    // Vadeli faiz periyodu
     const taksitPeriyodu = sureler.taksitSuresi || 86400000; // Kredi taksit periyodu
+    const sirketKazancPeriyodu = sureler.sirketKazancSuresi || 86400000;
     const kazancTablosu = ayarlar.kazancTablosu || {};
     const faizOranlari = ayarlar.faizOranlari || { vadeliGunluk: 0.02, krediKatsayi: 1.25 };
     const satisFiyatlari = ayarlar.satisFiyatlari || {};
@@ -291,6 +292,16 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
             portfoy.para = mevcutNakit;
             degisiklikOldu = true;
         }
+    }
+
+    // --- 2. ŞİRKET GÜNLÜK (SABİT) GELİRİ ---
+    const sirketKazancPeriyotSayisi = Math.floor(gecenSure / sirketKazancPeriyodu);
+    if (sirketKazancPeriyotSayisi > 0 && ayarlar.gunlukGelir > 0) {
+        let mevcutNakit = portfoy.nakit !== undefined ? Number(portfoy.nakit) : (portfoy.para !== undefined ? Number(portfoy.para) : 0);
+        mevcutNakit += (ayarlar.gunlukGelir * sirketKazancPeriyotSayisi);
+        portfoy.nakit = mevcutNakit;
+        portfoy.para = mevcutNakit;
+        degisiklikOldu = true;
     }
 
     // --- 2. VADELİ HESAP / FAİZ GELİRLERİ ---
@@ -514,8 +525,8 @@ if (portfoy.kredi < 0.01) {
 }
 
     // Yeni son güncelleme zamanını hesaplanan periyotlar üzerinden ileri taşı
-    const tuketilenPeriyot = Math.max(kiraPeriyotSayisi, faizPeriyotSayisi, taksitPeriyotSayisi);
-    const bazSureMs = Math.min(kiraPeriyodu, faizPeriyodu, taksitPeriyodu);
+    const tuketilenPeriyot = Math.max(kiraPeriyotSayisi, sirketKazancPeriyotSayisi, faizPeriyotSayisi, taksitPeriyotSayisi);
+    const bazSureMs = Math.min(kiraPeriyodu, sirketKazancPeriyodu, faizPeriyodu, taksitPeriyodu);
     
     let yeniSonGuncelleme = sonGuncelleme;
     if (tuketilenPeriyot > 0) {
@@ -614,7 +625,7 @@ app.post('/api/ilan-ekle', (req, res) => {
                                 v.ilanSahibi = 'ben';
                             }
                         });
-                        db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`).run(JSON.stringify(portfoyObj), Date.now(), userId);
+                        db.prepare(`UPDATE kullanicilar SET portfoy = ? WHERE id = ?`).run(JSON.stringify(portfoyObj), userId);
                         req.session.kullanici.portfoy = portfoyObj;
                     }
                 }
@@ -718,7 +729,7 @@ app.post('/api/ilan-satin-al', (req, res) => {
                 atananKonum: detaylarObj.atananKonum || null
             });
 
-            db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`).run(JSON.stringify(aliciPortfoy), Date.now(), aliciId);
+            db.prepare(`UPDATE kullanicilar SET portfoy = ? WHERE id = ?`).run(JSON.stringify(aliciPortfoy), aliciId);
             guncelAliciPortfoy = aliciPortfoy;
 
 // SATICI İŞLEMLERİ (Sadece gerçek kullanıcılar için)
@@ -827,7 +838,7 @@ if (saticiId) {
             }
         }
 
-        db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`).run(JSON.stringify(saticiPortfoy), Date.now(), saticiId);
+        db.prepare(`UPDATE kullanicilar SET portfoy = ? WHERE id = ?`).run(JSON.stringify(saticiPortfoy), saticiId);
     }
 }
             if (ilan) {
@@ -882,8 +893,8 @@ app.post('/api/ilan-sil', (req, res) => {
                         }
                     });
 
-                    db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`)
-                      .run(JSON.stringify(portfoyObj), Date.now(), userId);
+                    db.prepare(`UPDATE kullanicilar SET portfoy = ? WHERE id = ?`)
+                    .run(JSON.stringify(portfoyObj), userId);
                     req.session.kullanici.portfoy = portfoyObj;
                 }
             }
@@ -1265,7 +1276,7 @@ if (mevcutRow && mevcutRow.portfoy) {
     const portfoyStr = JSON.stringify(yeniPortfoy);
 
     try {
-        db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`).run(portfoyStr, Date.now(), userId);
+        db.prepare(`UPDATE kullanicilar SET portfoy = ? WHERE id = ?`).run(portfoyStr, userId);
         req.session.kullanici.portfoy = yeniPortfoy;
         res.json({ basari: true, mesaj: "Portföy kaydedildi.", portfoy: yeniPortfoy });
     } catch (err) {
