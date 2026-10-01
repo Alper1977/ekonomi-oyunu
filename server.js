@@ -264,18 +264,10 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
 
     let degisiklikOldu = false;
 
-    // --- 1. KİRA / ŞİRKET GELİRLERİ ---
+ // --- 1. KONUT KİRA GELİRİ (SADECE KONUT — tesis gelirleri elle tahsil edilir!) ---
     const kiraPeriyotSayisi = Math.floor(gecenSure / kiraPeriyodu);
     if (kiraPeriyotSayisi > 0) {
         let toplamEklenenGelir = 0;
-
-        if (portfoy.varliklar && Array.isArray(portfoy.varliklar)) {
-            portfoy.varliklar.forEach(v => {
-                if (v && v.durum === 'sahip' && kazancTablosu[v.isim]) {
-                    toplamEklenenGelir += (kazancTablosu[v.isim] * kiraPeriyotSayisi);
-                }
-            });
-        }
 
         if (ayarlar.konutKiraGeliri > 0 && portfoy.varliklar) {
             portfoy.varliklar.forEach(v => {
