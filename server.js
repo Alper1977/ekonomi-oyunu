@@ -191,7 +191,7 @@ db.prepare(`CREATE TABLE IF NOT EXISTS ilanlar (
     detaylar TEXT,
     tarih DATETIME DEFAULT CURRENT_TIMESTAMP
 )`).run();
-
+db.prepare(`CREATE INDEX IF NOT EXISTS idx_ilanlar_kullanici ON ilanlar(kullanici_id)`).run();
 // --- 👑 ADMIN YETKİSİ ---
 const ADMIN_EMAIL = 'alpdo77@hotmail.com';
 
@@ -212,7 +212,7 @@ db.prepare(`CREATE TABLE IF NOT EXISTS giris_kayitlari (
     son_aktif INTEGER,
     cikis_tarihi INTEGER
 )`).run();
-
+db.prepare(`CREATE INDEX IF NOT EXISTS idx_giris_kullanici ON giris_kayitlari(kullanici_id)`).run();
 // Kullanıcı aktifken oturum kaydını açar / günceller
 function aktiviteIsle(req) {
     try {
