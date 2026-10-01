@@ -544,7 +544,10 @@ setInterval(() => {
         // Canlı kurları veritabanından çekiyoruz
        const kurlar = ayarlar.kurlar || { dolar: { satis: 49 }, euro: { satis: 54 }, altin: { satis: 6000 } };
 
-        const kullanicilar = db.prepare(`SELECT id, portfoy, son_guncelleme FROM kullanicilar`).all();
+        const yediGunOnce = Date.now() - (7 * 24 * 60 * 60 * 1000);
+        const kullanicilar = db.prepare(
+            `SELECT id, portfoy, son_guncelleme FROM kullanicilar WHERE son_guncelleme > ?`
+        ).all(yediGunOnce);
         
         // Her kullanıcıyı kendi bağımsız transaction ve try-catch bloğuna alıyoruz
         kullanicilar.forEach(user => {
