@@ -114,7 +114,7 @@ const ayarSayisi = db.prepare(`SELECT COUNT(*) as sayi FROM oyun_ayarlari`).get(
 if (ayarSayisi.sayi === 0) {
     const varsayilanAyarlar = {
         gunlukGelir: 800000,
-        konutKiraGeliri: 0,
+        konutKiraGeliri: 200000,
         kazancTablosu: {
             "Bayi": 300000,
             "Otel": 4000000,
@@ -153,7 +153,7 @@ if (ayarSayisi.sayi === 0) {
             'Hipermarket Arsası': 125000000
         },
         yatirimMaliyetleri: {
-            "Bayi": 10000000,
+            "Bayi": 25000000,
             "Otel": 600000000,
             "Fabrika": 125000000,
             "Hastane": 500000000,
@@ -164,8 +164,8 @@ if (ayarSayisi.sayi === 0) {
         },
         odemeProgrami: [
             { saat: 10, dakika: 0 },
-            { saat: 15, dakika: 0 },
-            { saat: 18, dakika: 46 }
+            { saat: 13, dakika: 0 },
+            { saat: 16, dakika: 0 }
         ],
         GLOBAL_BEKLEME_SURESI: 3 * 24 * 60 * 60 * 1000,
         sureler: {
