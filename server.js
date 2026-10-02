@@ -4,7 +4,6 @@ const { Server } = require('socket.io');
 const session = require('express-session');
 const SQLiteStore = require('connect-sqlite3')(session); 
 const Database = require('better-sqlite3');
-const fs = require('fs');
 const crypto = require('crypto');
 
 function sifreHashle(sifre) {
@@ -37,7 +36,9 @@ app.get('/', (req, res) => {
 });
 
 // Ana oyun veritabanı (better-sqlite3 senkron yapısı)
-const db = new Database('./database.db');
+const fs = require('fs');
+const veriKlasoru = fs.existsSync('/data') ? '/data' : '.';
+const db = new Database(`${veriKlasoru}/database.db`);
 console.log("SQLite veritabanına başarıyla bağlanıldı."); 
 
 const bots = require('./bots');
@@ -72,7 +73,7 @@ app.get('/api/bot-ilanlar', (req, res) =>
 app.use(session({
     store: new SQLiteStore({
         db: 'sessions.db',
-        dir: '.'
+        dir: veriKlasoru
     }),
     secret: 'cok-gizli-bir-anahtar-2026',
     resave: false,
