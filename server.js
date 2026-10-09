@@ -246,7 +246,11 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
 
     const simdi = Date.now();
     let sonGuncelleme = (userRow.son_guncelleme && !isNaN(userRow.son_guncelleme)) ? Number(userRow.son_guncelleme) : simdi;
-    
+    if (sonGuncelleme > simdi) {
+        console.error(`[ZAMAN DÜZELTİLDİ] Kullanıcı ID ${userRow.id}: son_guncelleme gelecekteydi, şimdiye çekildi.`);
+        sonGuncelleme = simdi;
+        db.prepare(`UPDATE kullanicilar SET son_guncelleme = ? WHERE id = ?`).run(simdi, userRow.id);
+    }
     if (!userRow.son_guncelleme) {
         db.prepare(`UPDATE kullanicilar SET son_guncelleme = ? WHERE id = ?`).run(simdi, userRow.id);
         return portfoy;
