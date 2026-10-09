@@ -299,7 +299,7 @@
             <p style="color: #aaa; font-size: 13px; margin-bottom: 15px;">Lütfen bilgilerinizi doldurun.</p>
             
             <div style="width: 100%; display: flex; flex-direction: column; gap: 8px; max-width: 280px; margin: 0 auto;">
-                <input type="text" id="uye-adsoyad" placeholder="Şirket Unvanı (sonuna otomatik A.Ş. eklenecektir)" style="width: 100%; box-sizing: border-box; padding: 10px; background: #222; color: #fff; border: 1px solid #444; border-radius: 6px; font-size: 13px;">
+                <input type="text" id="uye-adsoyad" placeholder="Şirket Adı(sonuna otomatik A.Ş. eklenecek)" style="width: 100%; box-sizing: border-box; padding: 10px; background: #222; color: #fff; border: 1px solid #444; border-radius: 6px; font-size: 13px;">
                 
                 <input type="email" id="uye-email" placeholder="E-Posta Adresi" style="width: 100%; box-sizing: border-box; padding: 10px; background: #222; color: #fff; border: 1px solid #444; border-radius: 6px; font-size: 13px;">
                 
@@ -1492,6 +1492,7 @@ async function uyeligiOlustur() {
     }
 
     let adsoyad = adsoyadInput ? adsoyadInput.value.trim() : "";
+    adsoyad = adsoyad.replace(/\s*a\.?\s*ş\.?\s*$/i, '').trim();
     let email = emailInput ? emailInput.value.trim() : "";
     let sifre = sifreInput ? sifreInput.value : "";
 
