@@ -994,7 +994,7 @@ app.post('/api/kayit', (req, res) => {
         return res.status(400).json({ basari: false, mesaj: 'Ad Soyad (Şirket ismi) boş olamaz!' });
     }
 
-    const temizAdSoyad = adsoyad.trim();
+    const temizAdSoyad = adsoyad.trim().replace(/\s*a\.?\s*ş\.?\s*$/i, '').trim();
 
     try {
         const cakisma = adKullanimda(temizAdSoyad, null);
