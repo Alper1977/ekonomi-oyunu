@@ -13,6 +13,8 @@
 
                body { background-color: #000; color: #fff; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: Arial, sans-serif; }
         .phone-frame { width: 360px; height: 640px; background-color: #002366; border: 8px solid #333; border-radius: 30px; position: relative; overflow: hidden; box-sizing: border-box; }
+        body.capacitor-app { height: 100%; }
+        body.capacitor-app .phone-frame { width: 100%; height: 100vh; border: none; border-radius: 0; }
         @media (display-mode: standalone), (display-mode: fullscreen) {
         body { height: auto; }
         .phone-frame { width: 100%; height: 100vh; border: none; border-radius: 0; }
@@ -297,7 +299,7 @@
             <p style="color: #aaa; font-size: 13px; margin-bottom: 15px;">Lütfen bilgilerinizi doldurun.</p>
             
             <div style="width: 100%; display: flex; flex-direction: column; gap: 8px; max-width: 280px; margin: 0 auto;">
-                <input type="text" id="uye-adsoyad" placeholder="Ad Soyad" style="width: 100%; box-sizing: border-box; padding: 10px; background: #222; color: #fff; border: 1px solid #444; border-radius: 6px; font-size: 13px;">
+                <input type="text" id="uye-adsoyad" placeholder="Şirket Unvanı (sonuna otomatik A.Ş. eklenecektir)" style="width: 100%; box-sizing: border-box; padding: 10px; background: #222; color: #fff; border: 1px solid #444; border-radius: 6px; font-size: 13px;">
                 
                 <input type="email" id="uye-email" placeholder="E-Posta Adresi" style="width: 100%; box-sizing: border-box; padding: 10px; background: #222; color: #fff; border: 1px solid #444; border-radius: 6px; font-size: 13px;">
                 
@@ -832,7 +834,9 @@
 
 
 <script>
-
+if (window.Capacitor) {
+    document.body.classList.add('capacitor-app');
+}
 let sirketGrafigiObjesi = null;
 let tempIslem = null;
 // Grafiği ilk kez oluşturan fonksiyon (Mali Tablo sayfası açıldığında veya oyun başladığında çağrılır)
@@ -1343,7 +1347,7 @@ async function uyeligiTamamlaBasildi() {
     let yasakliKelimeler = ["amk", "aq", "orospu", "piç", "sikerim", "göt", "sik", "anan", "yarrak", "amcık", "am", "fahişe", "kerhane", "genelev", "götveren", "yarrak", "pipi", "sikeyim", "meme"]; 
     let adSoyadKucuk = girilenAd.toLowerCase();
     let uygunsuzMu = yasakliKelimeler.some(kelime => adSoyadKucuk.includes(kelime));
-
+    girilenAd = girilenAd.replace(/\s*a\.?\s*ş\.?\s*$/i, '').trim();
     if (uygunsuzMu) {
         let hataP = document.getElementById('form-hata');
         if (hataP) {
@@ -1759,6 +1763,7 @@ async function sistemdenCikisYap() {
 async function profilAdiGuncelle() {
     let yeniAdInput = document.getElementById('yeni-adsoyad-input');
     let yeniAd = yeniAdInput ? yeniAdInput.value.trim() : "";
+    yeniAd = yeniAd.replace(/\s*a\.?\s*ş\.?\s*$/i, '').trim();
     let hataDiv = document.getElementById('profil-hata');
     const temizle = () => { if (yeniAdInput) yeniAdInput.value = ''; };
     const hataGoster = (m) => {
@@ -4209,7 +4214,9 @@ function changePage(p) {
     // İstenen sayfayı aç
     hedefSayfa.style.display = 'block';
     state.aktifSayfa = p;
-
+     hedefSayfa.scrollTop = 0;
+    let icerikAlani = hedefSayfa.querySelector('.content');
+    if (icerikAlani) icerikAlani.scrollTop = 0;
     // Sayfa açıldığında dinamik listeleri güncelle
     if (typeof yatirimlariGuncelle === 'function') yatirimlariGuncelle();
     if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
@@ -5272,7 +5279,10 @@ window.addEventListener('DOMContentLoaded', async () => {
                 if (data.portfoy) {
                     state = data.portfoy;
                 }
-
+                let adminBtnYenile = document.getElementById('admin-panel-buton');
+                if (adminBtnYenile) {
+                    adminBtnYenile.style.display = data.admin ? 'inline-block' : 'none';
+                }
                 // Sunucudan güncel oyun ayarlarını çek
                 let ayarRes = await fetch('/api/oyun-ayarlari');
                 let ayarSonuc = await ayarRes.json();
