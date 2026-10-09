@@ -3,7 +3,7 @@
 <head>
 
  
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=overlays-content">
     <meta charset="UTF-8">
     <title>Stratejik Holding</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>    
@@ -15,6 +15,8 @@
         .phone-frame { width: 360px; height: 640px; background-color: #002366; border: 8px solid #333; border-radius: 30px; position: relative; overflow: hidden; box-sizing: border-box; }
         body.capacitor-app { height: 100%; }
         body.capacitor-app .phone-frame { width: 100%; height: 100vh; border: none; border-radius: 0; }
+        body.capacitor-app { position: fixed; width: 100%; height: 100%; overflow: hidden; }
+        body.capacitor-app .phone-frame { position: fixed; top: 0; left: 0; }
         @media (display-mode: standalone), (display-mode: fullscreen) {
         body { height: auto; }
         .phone-frame { width: 100%; height: 100vh; border: none; border-radius: 0; }
