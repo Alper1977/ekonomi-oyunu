@@ -1200,10 +1200,12 @@ app.get('/api/aktif-kullanici', (req, res) => {
         const portfoyObj = kullaniciEkonomisiniIslet(dbUser, ayarlar) || JSON.parse(dbUser.portfoy || '{}');
         req.session.kullanici.portfoy = portfoyObj;
 
+       const adminMi = String(dbUser.kadi || '').trim().toLowerCase() === ADMIN_EMAIL;
         res.json({
             id: dbUser.id,
             adsoyad: dbUser.adsoyad,
-            portfoy: portfoyObj
+            portfoy: portfoyObj,
+            admin: adminMi
         });
     } catch (err) {
         res.status(500).json({ basari: false, mesaj: err.message });
