@@ -195,6 +195,7 @@
         .btn-green { background: #00c853 !important; color: #fff !important; }
         input { width: 60px; background: #ffffff !important; border: 1px solid #ccc; color: #000000 !important; border-radius: 4px; padding: 5px; text-align: center; font-weight: bold; }
         .nav-bar { position: absolute; bottom: 0; left: 0; width: 100%; height: 60px; display: flex; border-top: 2px solid #333; background: #000; }
+        body.capacitor-app .nav-bar { position: fixed; bottom: 0; left: 0; z-index: 999; }
         .nav-btn { flex: 1; background: #ffcc00; color: #000; display: flex; align-items: center; justify-content: center; font-weight: bold; cursor: pointer; border: 1px solid #000; text-decoration: none; font-size: 9px; text-align: center; padding: 2px; }
         .header-brand { text-align: center; color: #ffcc00; font-size: 16px; font-weight: bold; margin-bottom: 10px; border-bottom: 2px solid #333; padding-bottom: 5px; }
         
@@ -241,7 +242,7 @@
 <div class="phone-frame">
     
     <!-- 1. GİRİŞ YAP SAYFASI -->
-    <div id="page-giris-yap" class="page active">
+    <div id="page-giris-yap" class="page">
         <div class="splash-content" style="text-align: center; margin-top: 30px; padding: 10px;">
             <h2 style="color: #ffcc00; font-size: 18px; margin-bottom: 5px;">SİSTEME GİRİŞ</h2>
             <p style="color: #aaa; font-size: 13px; margin-bottom: 15px;">Hesabınıza erişmek için bilgilerinizi girin.</p>
@@ -354,7 +355,7 @@
     </div>
 
     <!-- 2. YÜKLENİYOR EKRANI -->
-   <div id="page-splash" class="page">
+   <div id="page-splash" class="page active">
     <div class="splash-content" style="text-align: center; margin-top: 100px;">
         <h1 id="kurum-adi-baslik" style="color: #ffcc00; font-size: 22px;">ŞİRKET YÜKLENİYOR...</h1>
         <p style="color: #aaa; margin-top: 10px;">Lütfen bekleyin...</p>
