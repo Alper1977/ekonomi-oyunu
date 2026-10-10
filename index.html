@@ -5314,7 +5314,11 @@ window.addEventListener('DOMContentLoaded', async () => {
                     let gorunenIsim = (data.adsoyad && data.adsoyad.trim() !== "") ? data.adsoyad : data.kadi;
                     sirketBaslik.innerText = gorunenIsim.toUpperCase() + " A.Ş.";
                 }
-
+                  let splashBaslikGuncelle = document.getElementById('kurum-adi-baslik');
+                if (splashBaslikGuncelle) {
+                    let gorunenIsimSplash = (data.adsoyad && data.adsoyad.trim() !== "") ? data.adsoyad : data.kadi;
+                    splashBaslikGuncelle.innerText = gorunenIsimSplash.toUpperCase() + " A.Ş.";
+                }
                 if (data.portfoy) {
                     state = data.portfoy;
                 }
