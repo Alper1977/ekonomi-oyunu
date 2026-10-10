@@ -79,7 +79,7 @@ app.use(session({
     secret: 'cok-gizli-bir-anahtar-2026',
     resave: false,
     saveUninitialized: false,
-    cookie: { maxAge: 1000 * 60 * 60 * 24 * 7 }
+    cookie: { maxAge: 1000 * 60 * 60 * 24 * 7, sameSite: 'none', secure: true }
 }));
 
 db.prepare(`CREATE TABLE IF NOT EXISTS kullanicilar (
