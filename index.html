@@ -1741,7 +1741,14 @@ async function sistemeGirisYap() {
             }
         }
 
-        changePage('page-mali');
+           let splashBaslikGiristen = document.getElementById('kurum-adi-baslik');
+        if (splashBaslikGiristen && sonuc.kullanici && sonuc.kullanici.adsoyad) {
+            splashBaslikGiristen.innerText = sonuc.kullanici.adsoyad.toUpperCase() + " A.Ş.";
+        }
+        paraYagmuruBaslat();
+        splashBaslangicZamani = Date.now();
+        changePage('page-splash');
+        await splashBekleVeGec('page-mali');
 
 
 
@@ -1749,7 +1756,6 @@ async function sistemeGirisYap() {
         if (typeof zenginlerListesiniGuncelle === 'function') {
             zenginlerListesiniGuncelle();
         }
-
     } catch (err) {
         console.error("Giriş hatası:", err);
         if (hataDiv) {
