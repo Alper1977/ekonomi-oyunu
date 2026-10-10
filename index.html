@@ -25,6 +25,9 @@
         .active { display: block; }
         .content { height: 530px; overflow-y: auto; padding-bottom: 20px; }
         .splash-content { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; color: #ffcc00; text-align: center; }
+        .para-yagmuru { position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; pointer-events: none; z-index: 1; }
+        .para-sembol { position: absolute; top: -50px; animation: paraDustu linear infinite; }
+        @keyframes paraDustu { to { transform: translateY(700px); } }
         h2 { color: #ffcc00; font-size: 18px; margin: 15px 0 5px 0; text-align: center; }
         .item-box {display: flex;justify-content: space-between; /* İsim sola, içerik sağa yaslanır */align-items: center;            /* Dikeyde ortalar */padding: 10px;border-bottom: 1px solid #ddd;}
         .demand-box {background-color: #ddd;padding: 10px;margin: 5px;border-radius: 5px;cursor: pointer;display: flex;justify-content: space-between;}
@@ -355,10 +358,11 @@
     </div>
 
     <!-- 2. YÜKLENİYOR EKRANI -->
-   <div id="page-splash" class="page active">
-    <div class="splash-content" style="text-align: center; margin-top: 100px;">
+ <div id="page-splash" class="page active">
+    <div class="para-yagmuru" id="para-yagmuru-alani"></div>
+    <div class="splash-content" style="text-align: center; margin-top: 100px; position: relative; z-index: 2;">
         <h1 id="kurum-adi-baslik" style="color: #ffcc00; font-size: 22px;">ŞİRKET YÜKLENİYOR...</h1>
-        <p style="color: #aaa; margin-top: 10px;">Lütfen bekleyin...</p>
+        <p style="color: #aaa; margin-top: 10px;">Yükleniyor...</p>
     </div>
 </div>
 
@@ -841,6 +845,35 @@
 if (window.Capacitor) {
     document.body.classList.add('capacitor-app');
 }
+
+let splashBaslangicZamani = Date.now();
+
+function paraYagmuruBaslat() {
+    let alan = document.getElementById('para-yagmuru-alani');
+    if (!alan) return;
+    alan.innerHTML = '';
+    let semboller = ['💵', '💶', '💴', '🪙', '💰'];
+    for (let i = 0; i < 24; i++) {
+        let s = document.createElement('div');
+        s.className = 'para-sembol';
+        s.innerText = semboller[Math.floor(Math.random() * semboller.length)];
+        s.style.left = Math.random() * 90 + '%';
+        s.style.fontSize = (22 + Math.random() * 16) + 'px';
+        s.style.animationDuration = (1.8 + Math.random() * 1.6) + 's';
+        s.style.animationDelay = (Math.random() * 1.2) + 's';
+        alan.appendChild(s);
+    }
+}
+
+async function splashBekleVeGec(sayfa) {
+    let gecenSure = Date.now() - splashBaslangicZamani;
+    let kalanSure = Math.max(0, 2000 - gecenSure);
+    if (kalanSure > 0) {
+        await new Promise(r => setTimeout(r, kalanSure));
+    }
+    changePage(sayfa);
+}
+ 
 let sirketGrafigiObjesi = null;
 let tempIslem = null;
 // Grafiği ilk kez oluşturan fonksiyon (Mali Tablo sayfası açıldığında veya oyun başladığında çağrılır)
@@ -5245,6 +5278,7 @@ if (typeof socket !== 'undefined' && socket) {
 
 // 🌟 2. SAYFA YÜKLENME (DOM) KONTROLÜ
 window.addEventListener('DOMContentLoaded', async () => {
+  paraYagmuruBaslat();
 // 🌟 TÜM BUTONLAR İÇİN OTOMATİK SPAM / ÇİFT TIKLAMA KORUMASI
     document.addEventListener('click', (e) => {
         let hedefBtn = e.target.closest('button');
@@ -5301,9 +5335,9 @@ window.addEventListener('DOMContentLoaded', async () => {
                     }
                 }
 
-                changePage('page-mali');
+                await splashBekleVeGec('page-mali');
               
-                guncelle(); 
+                guncelle();
 
                 if (typeof zenginlerListesiniGuncelle === 'function') {
                     zenginlerListesiniGuncelle();
@@ -5325,10 +5359,10 @@ window.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
         }
-        changePage('page-giris-yap');
+         await splashBekleVeGec('page-giris-yap');
     } catch (e) {
         console.error("Kullanıcı bilgisi sunucudan alınamadı:", e);
-        changePage('page-giris-yap');
+        await splashBekleVeGec('page-giris-yap');
     }
 });
 
