@@ -1266,19 +1266,11 @@ try {
 
         let sonuc = await response.json();
         
-        if (sonuc.basari) {
-            if (typeof state !== 'undefined') {
-               if (state.varliklar) {
-               state.varliklar.forEach(v => {
-               v.talepAktif = false;
-               v.aktifPencereBaslangic = undefined;
-               v.sonTahsilatGunu = undefined;
-               });
-               }
-             
-                state.gunlukGelir = window.oyunAyar.gunlukGelir;
-                state.konutKiraGeliri = window.oyunAyar.konutKiraGeliri;
-               }
+       if (sonuc.basari) {
+    if (typeof state !== 'undefined') {
+        state.gunlukGelir = window.oyunAyar.gunlukGelir;
+        state.konutKiraGeliri = window.oyunAyar.konutKiraGeliri;
+    }
     
             // Yerel/global değişkenleri güncelle
             kazancTablosu = window.oyunAyar.kazancTablosu;
