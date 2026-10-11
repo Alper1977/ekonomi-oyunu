@@ -1255,9 +1255,24 @@ app.post('/api/portfoy-guncelle', (req, res) => {
             const guncellenmisPortfoy = kullaniciEkonomisiniIslet(tamMevcutRow, ayarlar2);
 
             const guncelSatir = db.prepare(`SELECT son_guncelleme FROM kullanicilar WHERE id = ?`).get(userId);
+            const guncelSatir = db.prepare(`SELECT son_guncelleme FROM kullanicilar WHERE id = ?`).get(userId);
             if (guncelSatir && guncelSatir.son_guncelleme !== oncekiSonGuncelleme) {
-                req.session.kullanici.portfoy = guncellenmisPortfoy;
-                return res.json({ basari: true, senkron: true, portfoy: guncellenmisPortfoy });
+                let birlesikPortfoy = {
+                    ...yeniPortfoy,
+                    nakit: guncellenmisPortfoy.nakit,
+                    para: guncellenmisPortfoy.nakit,
+                    vadeli: guncellenmisPortfoy.vadeli,
+                    vadeliHesap: guncellenmisPortfoy.vadeliHesap,
+                    kredi: guncellenmisPortfoy.kredi,
+                    taksit: guncellenmisPortfoy.taksit,
+                    krediler: guncellenmisPortfoy.krediler,
+                    dolar: guncellenmisPortfoy.dolar,
+                    euro: guncellenmisPortfoy.euro,
+                    altin: guncellenmisPortfoy.altin
+                };
+                db.prepare(`UPDATE kullanicilar SET portfoy = ? WHERE id = ?`).run(JSON.stringify(birlesikPortfoy), userId);
+                req.session.kullanici.portfoy = birlesikPortfoy;
+                return res.json({ basari: true, senkron: true, portfoy: birlesikPortfoy });
             }
         }
     } catch (e) {
