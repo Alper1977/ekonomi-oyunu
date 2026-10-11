@@ -948,12 +948,28 @@ app.post('/api/admin/ayar-guncelle', adminZorunlu, (req, res) => {
     };
 
     try {
+        // 🌟 ÖNCE eski ayarları oku, sadece "sureler" kısmı gerçekten değişti mi diye kontrol edelim
+        let eskiSurelerStr = '{}';
+        try {
+            const eskiKayit = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
+            if (eskiKayit && eskiKayit.ayarlar) {
+                const eskiAyarlar = JSON.parse(eskiKayit.ayarlar);
+                eskiSurelerStr = JSON.stringify(eskiAyarlar.sureler || {});
+            }
+        } catch (e) { /* okunamazsa güvenli tarafta kal, aşağıda sıfırlama yapılır */ }
+
+        const yeniSurelerStr = JSON.stringify(kayitPaketi.sureler || {});
+        const surelerDegisti = (eskiSurelerStr !== yeniSurelerStr);
+
         db.prepare(`INSERT OR REPLACE INTO oyun_ayarlari (id, ayarlar) VALUES (1, ?)`).run(JSON.stringify(kayitPaketi));
 
-        // 🌟 YENİ: Süreler değiştiği anda tüm kullanıcıların son_guncelleme'sini
-        // şu ana çekiyoruz ki eski süreyle biriken zaman, yeni süreye bölünüp
-        // yanlış sayıda dönem (yanlış tutarda kira/faiz/taksit) üretmesin.
-        db.prepare(`UPDATE kullanicilar SET son_guncelleme = ?`).run(Date.now());
+        // 🌟 DÜZELTME: Sadece süreler (faizSuresi, taksitSuresi, kiraSuresi, sirketKazancSuresi vb.)
+        // gerçekten değiştiyse kullanıcıların zaman sayacını sıfırla. Fiyat, kur, gelir gibi
+        // sürelerle ilgisi olmayan bir değişiklikte kullanıcıların birikmiş ilerlemesi kaybolmasın.
+        if (surelerDegisti) {
+            db.prepare(`UPDATE kullanicilar SET son_guncelleme = ?`).run(Date.now());
+            console.log('[SÜRE DEĞİŞTİ] Süre ayarları değişti, tüm kullanıcıların zaman sayacı sıfırlandı.');
+        }
 
         io.emit('ayarlarDegisti', {
             ayarlar: kayitPaketi,
