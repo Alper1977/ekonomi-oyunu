@@ -1259,8 +1259,6 @@ app.post('/api/portfoy-guncelle', (req, res) => {
             const ayarKaydi2 = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
             const ayarlar2 = ayarKaydi2 ? JSON.parse(ayarKaydi2.ayarlar) : {};
             const guncellenmisPortfoy = kullaniciEkonomisiniIslet(tamMevcutRow, ayarlar2);
-
-            const guncelSatir = db.prepare(`SELECT son_guncelleme FROM kullanicilar WHERE id = ?`).get(userId);
             const guncelSatir = db.prepare(`SELECT son_guncelleme FROM kullanicilar WHERE id = ?`).get(userId);
             if (guncelSatir && guncelSatir.son_guncelleme !== oncekiSonGuncelleme) {
                 let birlesikPortfoy = {
