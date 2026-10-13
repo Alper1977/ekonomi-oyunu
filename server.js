@@ -5,7 +5,8 @@ const session = require('express-session');
 const SQLiteStore = require('connect-sqlite3')(session);
 const Database = require('better-sqlite3');
 const fs = require('fs');
-const crypto = require('crypto');   
+const crypto = require('crypto');
+const rateLimit = require('express-rate-limit');
 
 function sifreHashle(sifre) { 
     const salt = crypto.randomBytes(16).toString('hex');
@@ -78,7 +79,7 @@ app.use(session({
         db: 'sessions.db',
         dir: veriKlasoru
     }),
-    secret: 'cok-gizli-bir-anahtar-2026',
+    secret: process.env.SESSION_SECRET || 'cok-gizli-bir-anahtar-2026',
     resave: false,
     saveUninitialized: false,
     cookie: { maxAge: 1000 * 60 * 60 * 24 * 7, sameSite: 'none', secure: true }
@@ -197,7 +198,7 @@ db.prepare(`CREATE TABLE IF NOT EXISTS ilanlar (
 )`).run();
 db.prepare(`CREATE INDEX IF NOT EXISTS idx_ilanlar_kullanici ON ilanlar(kullanici_id)`).run();
 // --- 👑 ADMIN YETKİSİ ---
-const ADMIN_EMAIL = 'alpdo77@hotmail.com';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'alpdo77@hotmail.com';
 
 function adminMi(req) {
     return !!(req.session && req.session.kullanici && req.session.kullanici.kadi &&
@@ -1157,8 +1158,13 @@ try {
         res.json({ basari: true, mesaj: "Oturum başarıyla kapatıldı." });
     });
 });
-
-app.post('/api/giris', (req, res) => {
+   const girisLimiti = rateLimit({
+    windowMs: 5 * 60 * 1000,
+    max: 10,
+    message: { basari: false, mesaj: 'Çok fazla giriş denemesi yaptınız. Lütfen 5 dakika sonra tekrar deneyin.' }
+    });
+app.post('/api/giris', girisLimiti, (req, res) => {
+ 
     const { kadi, sifre } = req.body;
     try {
        const row0 = db.prepare(`SELECT * FROM kullanicilar WHERE kadi = ?`).get(kadi);
