@@ -1120,9 +1120,11 @@ aktiviteIsle(req);
 
         // 🌟 Çevrimdışı geçen süredeki gelirleri hesaba kat!
         const guncelPortfoy = kullaniciEkonomisiniIslet(user, ayarlar) || JSON.parse(user.portfoy || '{}');
+        const guncelSatirZaman = db.prepare(`SELECT son_guncelleme FROM kullanicilar WHERE id = ?`).get(userId);
 
            res.json({
             basari: true,
+            sonGuncelleme: guncelSatirZaman ? guncelSatirZaman.son_guncelleme : Date.now(),
             nakit: guncelPortfoy.nakit !== undefined ? guncelPortfoy.nakit : (guncelPortfoy.para || 0),
             varliklar: guncelPortfoy.varliklar || [],
             gunlukGelir: guncelPortfoy.gunlukGelir || 0,
@@ -1252,15 +1254,21 @@ app.post('/api/portfoy-guncelle', (req, res) => {
     // Eğer bu sırada dönemsel bir gelir/kesinti uygulandıysa, client'ın elindeki
     // (eski) nakit/kredi/taksit/vadeli değerleri artık bayattır — bunları kabul
     // etmek yerine sunucunun güncel halini geri gönderip client'ı senkronize ederiz.
-    try {
+     try {
         const tamMevcutRow = db.prepare(`SELECT id, portfoy, son_guncelleme FROM kullanicilar WHERE id = ?`).get(userId);
         if (tamMevcutRow) {
-            const oncekiSonGuncelleme = tamMevcutRow.son_guncelleme;
             const ayarKaydi2 = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
             const ayarlar2 = ayarKaydi2 ? JSON.parse(ayarKaydi2.ayarlar) : {};
-            const guncellenmisPortfoy = kullaniciEkonomisiniIslet(tamMevcutRow, ayarlar2);
+            const guncellenmisPortfoy = kullaniciEkonomisiniIslet(tamMevcutRow, ayarlar2) || JSON.parse(tamMevcutRow.portfoy || '{}');
+
             const guncelSatir = db.prepare(`SELECT son_guncelleme FROM kullanicilar WHERE id = ?`).get(userId);
-            if (guncelSatir && guncelSatir.son_guncelleme !== oncekiSonGuncelleme) {
+            const sunucununGuncelZamani = guncelSatir ? Number(guncelSatir.son_guncelleme) : 0;
+            const istemcininBildigiZaman = Number(req.body.sonGuncelleme) || 0;
+
+            // 🌟 YENİ KONTROL: Artık sadece "bu istek sırasında bir şey değişti mi" değil,
+            // "client'ın son bildiği zaman, sunucunun şu anki gerçeğiyle uyuşuyor mu" kontrol ediyoruz.
+            // Bu, arka plan motorunun client'tan bağımsız yaptığı güncellemeleri de yakalar.
+            if (!istemcininBildigiZaman || sunucununGuncelZamani !== istemcininBildigiZaman) {
                 let birlesikPortfoy = {
                     ...yeniPortfoy,
                     nakit: guncellenmisPortfoy.nakit,
