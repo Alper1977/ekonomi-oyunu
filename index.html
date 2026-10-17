@@ -2034,7 +2034,7 @@ async function portfoyuSunucuyaKaydet(yeniPortfoy) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include', // 🌟 İŞTE BU KISIM EKSİK! Oturum çerezini sunucuya gönderir.
-            body: JSON.stringify({ portfoy: yeniPortfoy })
+            body: JSON.stringify({ portfoy: yeniPortfoy, sonGuncelleme: state._sonGuncelleme })
         });
 
         if (response.status === 401) {
@@ -2601,6 +2601,9 @@ setInterval(async () => {
     try {
         let res = await fetch('/api/portfoy-getir'); 
         let data = await res.json();
+        if (data.sonGuncelleme) {
+            state._sonGuncelleme = data.sonGuncelleme;
+        }
         let portfoyVerisi = data.portfoy || data;
 
         if (portfoyVerisi) {
