@@ -6,7 +6,7 @@ const SQLiteStore = require('connect-sqlite3')(session);
 const Database = require('better-sqlite3');
 const fs = require('fs');
 const crypto = require('crypto');
-const rateLimit = require('express-rate-limit');
+const rateLimit = require('express-rate-limit'); 
 
 function sifreHashle(sifre) { 
     const salt = crypto.randomBytes(16).toString('hex');
