@@ -4347,7 +4347,7 @@ function krediIslem(inputId, vadeInputId, isim, bedel, kapsam, ilanId = null) {
         <button onclick="islemiIptalEt()" style="background-color: #d9534f; color: white; margin-left: 10px;">VAZGEÇ</button>
     `;
 
-    modalGoster(`Kredi Tutarı: ${miktar.toLocaleString()} Aylık Taksit: ${Math.round(aylikTaksit).toLocaleString()} Toplam Geri Ödeme: ${Math.round(toplamGeriOdeme).toLocaleString()} TL\nVade: ${vade} Ay\n\nOnaylıyor musunuz?`, onayHTML);
+    modalGoster(`Kredi Tutarı: ${miktar.toLocaleString()} Aylık Taksit: ${Math.round(aylikTaksit).toLocaleString()} Toplam Geri Ödeme: ${Math.round(toplamGeriOdeme).toLocaleString()} Vade: ${vade} Ay\n\nOnaylıyor musunuz?`, onayHTML);
 }
     
 function krediyiKesinOnayla() {
