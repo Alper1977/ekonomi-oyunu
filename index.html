@@ -533,16 +533,16 @@
 
         <!-- Nakit Rezervleri -->
         <h2>Nakit Rezervleri</h2>
-        <div class="item-box-kucuk"><span>Kasa:</span> <span id="val-nakit">150.000.000,00</span></div>
-        <div class="item-box-kucuk"><span>Günlük Şirket Geliri:</span> <span id="yazi-gunluk-gelir">0</span></div>
-        <div class="item-box-kucuk"><span>Kira Geliri:</span> <span id="val-kira">0,00</span></div>
-        <div class="item-box-kucuk"><span>Ecacoin Portföyü:</span> <span id="val-dolar">0,00</span></div>
-        <div class="item-box-kucuk"><span>Ecatip Portföyü:</span> <span id="val-euro">0,00</span></div>
-        <div class="item-box-kucuk"><span>EcaAu Portföyü:</span> <span id="val-altin">200 gr</span></div>
-        <div class="item-box-kucuk"><span>Vadeli Hesap:</span> <span id="val-vadeli">50.000.000,00</span></div>
-        <div class="item-box-kucuk"><span>Vadeli Hesap Faizi:</span> <span id="val-faiz">0,00</span></div>
-        <div class="item-box-kucuk"><span>Kredi Borcu :</span> <span id="val-kredi">0,00</span></div>
-        <div class="item-box-kucuk" style="margin-bottom: 15px;"><span>Kredi Taksiti:</span> <span id="val-taksit">0,00</span></div>
+        <div class="item-box-kucuk"><span>Kasa:</span> <span id="val-nakit">150.000.000,00 TL</span></div>
+        <div class="item-box-kucuk"><span>Günlük Şirket Geliri:</span> <span id="yazi-gunluk-gelir">0 TL</span></div>
+        <div class="item-box-kucuk"><span>Kira Geliri:</span> <span id="val-kira">0,00 TL</span></div>
+        <div class="item-box-kucuk"><span>Ecacoin Portföyü:</span> <span id="val-dolar">$10.000,00</span></div>
+        <div class="item-box-kucuk"><span>Ecatip Portföyü:</span> <span id="val-euro">€5.000,00</span></div>
+        <div class="item-box-kucuk"><span>EcaAu Portföyü:</span> <span id="val-altin">200,00 gr</span></div>
+        <div class="item-box-kucuk"><span>Vadeli Hesap:</span> <span id="val-vadeli">50.000.000,00 TL</span></div>
+        <div class="item-box-kucuk"><span>Vadeli Hesap Faizi:</span> <span id="val-faiz">0,00 TL</span></div>
+        <div class="item-box-kucuk"><span>Kredi Borcu :</span> <span id="val-kredi">0,00 TL</span></div>
+        <div class="item-box-kucuk" style="margin-bottom: 15px;"><span>Kredi Taksiti:</span> <span id="val-taksit">0,00 TL</span></div>
         
         <!-- Kredi Borcu Kapat -->
         <div class="item-box" style="flex-direction: column; align-items: stretch; gap: 6px; margin-bottom: 15px;">
@@ -557,7 +557,7 @@
         
         <!-- DOLAR -->
         <div class="item-box" style="flex-direction: column; align-items: stretch; gap: 4px; margin-bottom: 10px;">
-            <div style="font-size: 14px; font-weight: bold; text-align: center; color: #b0b0b0;">Ecacoin (Alış: <span id="kur-dolar-alis">0</span> / Satış: <span id="kur-dolar-satis">0</span>)</div>
+            <div style="font-size: 14px; font-weight: bold; text-align: center; color: #b0b0b0;">Dolar (Alış: <span id="kur-dolar-alis">0</span> / Satış: <span id="kur-dolar-satis">0</span>)</div>
             <div style="display: flex; gap: 6px; width: 100%;">
                 <input type="text" id="in-dolar" class="in-para-birim" placeholder="Miktar" oninput="parayiFormatla(this)" value="" style="flex: 1; padding: 6px 10px; border-radius: 4px; border: 1px solid #444; background: #222; color: #fff; font-size: 12px; height: 32px; box-sizing: border-box;">
                 <button class="btn-green" onclick="finansalOnayIste('dolar', 'AL')" style="padding: 0 12px; height: 32px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">AL</button>
@@ -567,7 +567,7 @@
 
         <!-- EURO -->
         <div class="item-box" style="flex-direction: column; align-items: stretch; gap: 4px; margin-bottom: 10px;">
-            <div style="font-size: 14px; font-weight: bold; text-align: center; color: #b0b0b0;">Ecatip (Alış: <span id="kur-euro-alis">0</span> / Satış: <span id="kur-euro-satis">0</span>)</div>
+            <div style="font-size: 14px; font-weight: bold; text-align: center; color: #b0b0b0;">Euro (Alış: <span id="kur-euro-alis">0</span> / Satış: <span id="kur-euro-satis">0</span>)</div>
             <div style="display: flex; gap: 6px; width: 100%;">
                 <input type="text" id="in-euro" class="in-para-birim" placeholder="Miktar" oninput="parayiFormatla(this)" value="" style="flex: 1; padding: 6px 10px; border-radius: 4px; border: 1px solid #444; background: #222; color: #fff; font-size: 12px; height: 32px; box-sizing: border-box;">
                 <button class="btn-green" onclick="finansalOnayIste('euro', 'AL')" style="padding: 0 12px; height: 32px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">AL</button>
@@ -577,7 +577,7 @@
 
         <!-- ALTIN -->
         <div class="item-box" style="flex-direction: column; align-items: stretch; gap: 4px; margin-bottom: 15px;">
-            <div style="font-size: 14px; font-weight: bold; text-align: center; color: #b0b0b0;">EcaAu (Alış: <span id="kur-altin-alis">0</span> / Satış: <span id="kur-altin-satis">0</span>)</div>
+            <div style="font-size: 14px; font-weight: bold; text-align: center; color: #b0b0b0;">Altın (Alış: <span id="kur-altin-alis">0</span> / Satış: <span id="kur-altin-satis">0</span>)</div>
             <div style="display: flex; gap: 6px; width: 100%;">
                 <input type="text" id="in-altin" class="in-para-birim" placeholder="Miktar" oninput="parayiFormatla(this)" value="" style="flex: 1; padding: 6px 10px; border-radius: 4px; border: 1px solid #444; background: #222; color: #fff; font-size: 12px; height: 32px; box-sizing: border-box;">
                 <button class="btn-green" onclick="finansalOnayIste('altin', 'AL')" style="padding: 0 12px; height: 32px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">AL</button>
@@ -652,7 +652,7 @@
         <!-- Kredi limiti, faiz oranı ve başlık siyah fonlu tek bir sticky çerçeve içinde sabitlendi -->
         <div style="position: sticky; top: 0; background: #1a1a1a; color: #ffffff; z-index: 5; padding: 15px; margin: 0 -15px 15px -15px; border-radius: 0 0 8px 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.2);">
             <div class="kredi-bilgi" style="margin: 0 0 10px 0; padding: 10px; background: #e8f5e9; border: 1px solid #c8e6c9; border-radius: 5px; text-align: center; font-weight: bold; color: #2e7d32;">
-                Maksimum Kredi Limitiniz: <span class="val-limit">0</span>
+                Maksimum Kredi Limitiniz: <span class="val-limit">0 TL</span>
             </div>
             <div class="faiz-mavi" style="color: #4da6ff; margin-bottom: 5px; font-size: 13px;">Yatırım Kredisi Aylık Faiz Oranı %<span id="yazi-yatirim-faiz">5</span></div>
             <h2 style="margin: 0; color: #ffffff; font-size: 18px;">Yatırım İşlemleri</h2>
@@ -675,7 +675,7 @@
         <!-- Kredi limiti, faiz oranı ve başlık siyah fonlu tek bir sticky çerçeve içinde sabitlendi -->
         <div style="position: sticky; top: 0; background: #1a1a1a; color: #ffffff; z-index: 5; padding: 15px; margin: 0 -15px 15px -15px; border-radius: 0 0 8px 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.2);">
             <div class="kredi-bilgi" style="margin: 0 0 10px 0; padding: 10px; background: #e8f5e9; border: 1px solid #c8e6c9; border-radius: 5px; text-align: center; font-weight: bold; color: #2e7d32;">
-                Maksimum Kredi Limitiniz: <span class="val-limit">0</span>
+                Maksimum Kredi Limitiniz: <span class="val-limit">0 TL</span>
             </div>
             <div class="faiz-mavi" style="color: #4da6ff; margin-bottom: 5px; font-size: 13px;">Yatırım Kredisi Aylık Faiz Oranı %<span id="yazi-ilan-faiz">5</span></div>
             <h2 style="margin: 0; color: #ffffff; font-size: 18px;">Satılık İlanları</h2>
@@ -766,7 +766,7 @@
 
             <h3>7. Döviz, Altın ve Vadeli Hesap</h3>
             <ul>
-                <li><b>Döviz/Altın:</b> Ecacoin, Ecotip ve EcaAu alınıp satılır. Alış ve satış kurları farklıdır ve yönetici tarafından belirlenir.</li>
+                <li><b>Döviz/Altın:</b> Dolar, Euro ve Altın alınıp satılır. Alış ve satış kurları farklıdır ve yönetici tarafından belirlenir.</li>
                 <li><b>Vadeli hesap:</b> Her oyun ayında faiz kazandırır. İstediğiniz zaman çekebilirsiniz.</li>
                 <li>Tüm işlemler onay penceresiyle tamamlanır.</li>
             </ul>
@@ -917,7 +917,7 @@ function maliGrafigiBaslat() {
                 y: {
                     beginAtZero: false,
                     ticks: {
-                        callback: v => (v / 1000000).toLocaleString() + ' M '
+                        callback: v => (v / 1000000).toLocaleString() + ' M TL'
                     }
                 }
             }
@@ -956,9 +956,7 @@ function sureYaz(ms) {
     let sa = Math.floor(dk / 60);
     return sa > 0 ? `${sa} sa ${dk % 60} dk` : `${dk} dk`;
 }
-function paraAdi(tur) {
-    return ({ dolar: 'Ecacoin', euro: 'Ecatip', altin: 'EcaAu' })[tur] || tur;
-}
+
 async function uyeleriYukle() {
     let liste = document.getElementById('uye-listesi');
     if (liste) liste.innerHTML = '<p style="color:#aaa; text-align:center;">Yükleniyor...</p>';
@@ -1311,7 +1309,7 @@ try {
             
             let kiraValEl = document.getElementById('val-kira');
             if (kiraValEl) {
-                kiraValEl.innerText = yeniToplamKira.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ;
+                kiraValEl.innerText = yeniToplamKira.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
             }
 
             modalGoster("✅ Ayarlar ve süreler başarıyla güncellendi, kaydedildi ve tüm oyunculara yansıtıldı!",  
@@ -1700,7 +1698,7 @@ async function sistemeGirisYap() {
 
         let kiraGeliriElementleri = document.getElementsByClassName('val-kira-geliri');
         for (let el of kiraGeliriElementleri) {
-           el.innerText = Math.floor(kiraGeliri).toLocaleString() ;
+           el.innerText = Math.floor(kiraGeliri).toLocaleString() + " TL";
         }
         
         let katsayi = (typeof faizOranlari !== 'undefined' && faizOranlari.krediKatsayi) ? faizOranlari.krediKatsayi : 1;
@@ -1709,7 +1707,7 @@ async function sistemeGirisYap() {
 
         let limitElementleri = document.getElementsByClassName('val-limit');
         for (let el of limitElementleri) {
-            el.innerText = Math.floor(state.krediLimiti).toLocaleString() ;
+            el.innerText = Math.floor(state.krediLimiti).toLocaleString() + " TL";
         }
 
         if (typeof guncelle === 'function') {
@@ -1961,7 +1959,7 @@ async function zenginlerListesiniGuncelle() {
             return `
                 <div class="zengin-item-box ${benMi ? 'highlight-me' : ''}" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; margin-bottom: 6px; background: #1a1a1a; border: 1px solid #333; border-radius: 6px; font-size: 11px; color: ${benMi ? '#fff' : '#ddd'}; ${benMi ? 'border: 2px solid gold; background: rgba(255,215,0,0.1);' : ''}">
                     <span>${o.gercekIndex}. ${o.isim}</span>
-                    <span style="color: ${benMi ? 'gold' : '#00c853'};">${Math.floor(o.servet).toLocaleString()}</span>
+                    <span style="color: ${benMi ? 'gold' : '#00c853'};">${Math.floor(o.servet).toLocaleString()} TL</span>
                 </div>
             `;
         }).join('');
@@ -2509,18 +2507,18 @@ function vadeli(tip) {
         guncelle();
     } else {
         // Eğer manuel güncelliyorsan doğrudan akilliPara kullanalım:
-        document.getElementById('val-nakit').innerText = akilliPara(state.nakit, );
+        document.getElementById('val-nakit').innerText = akilliPara(state.nakit, " TL");
         
         // Vadeli bakiyesindeki eksi sıfır/küsurat oyununu engellemek için kontrol:
         let vadeliDeger = Number(state.vadeli || 0);
         if (Math.abs(vadeliDeger) < 0.01) vadeliDeger = 0; // 1 kuruştan azsa direkt 0 yap
         
-        document.getElementById('val-vadeli').innerText = akilliPara(vadeliDeger, );
+        document.getElementById('val-vadeli').innerText = akilliPara(vadeliDeger, " TL");
 
         let anlikGunlukFaiz = vadeliDeger * faizOranlari.vadeliGunluk;
         if (Math.abs(anlikGunlukFaiz) < 0.01) anlikGunlukFaiz = 0;
         
-        document.getElementById('val-faiz').innerText = akilliPara(anlikGunlukFaiz, );
+        document.getElementById('val-faiz').innerText = akilliPara(anlikGunlukFaiz, " TL");
     }
 
     if (typeof portfoyuSunucuyaKaydet === 'function') {
@@ -2847,11 +2845,11 @@ if (satilikVarliklar.length > 0) {
             ilanlariGuncelle();
         }
 
-        let mesaj = `Piyasa Hareketi (Süre Doldu):\n\n${aliciBot.isim}, ilanda bekleyen "${varlik.isim}" varlığını ${satisBedeli.toLocaleString()}  ödeyerek satın aldı!`;
+        let mesaj = `Piyasa Hareketi (Süre Doldu):\n\n${aliciBot.isim}, ilanda bekleyen "${varlik.isim}" varlığını ${satisBedeli.toLocaleString()} TL ödeyerek satın aldı!`;
         if (dusulenBorc > 0) {
-            mesaj += `\n\nKredi Borcu Kapandı: -${dusulenBorc.toLocaleString()} Kasanıza Eklenen Net Tutar: ${netKazanc.toLocaleString()}`;
+            mesaj += `\n\nKredi Borcu Kapandı: -${dusulenBorc.toLocaleString()} TL\nKasanıza Eklenen Net Tutar: ${netKazanc.toLocaleString()} TL`;
         } else {
-            mesaj += `\nKasanıza Eklenen Tutar: ${satisBedeli.toLocaleString()} `;
+            mesaj += `\nKasanıza Eklenen Tutar: ${satisBedeli.toLocaleString()} TL`;
         }
         
         if (typeof onayModalGoster === 'function') {
@@ -2942,7 +2940,7 @@ async function guncelleIcerik() {
 
     let limitElementleri = document.getElementsByClassName('val-limit');
     for (let el of limitElementleri) {
-        el.innerText = state.krediLimiti.toLocaleString() ;
+        el.innerText = state.krediLimiti.toLocaleString() + " TL";
     }
 
     // Akıllı gösterim fonksiyonu: Sayı 0 ise düz 0 yazar, para varsa kuruşlu gösterir
@@ -2955,24 +2953,24 @@ async function guncelleIcerik() {
     // 🌟 YENİ EKLENEN: Günlük gelir ve kira geliri yazı alanlarını ekrana anında yansıt
     let gunlukGelirEl = document.getElementById('gunluk-gelir') || document.getElementById('yazi-gunluk-gelir');
     if (gunlukGelirEl && state.gunlukGelir !== undefined) {
-        gunlukGelirEl.innerText = Number(state.gunlukGelir).toLocaleString() ;
+        gunlukGelirEl.innerText = Number(state.gunlukGelir).toLocaleString() + " TL";
     }
 
     let kiraGelirEl = document.getElementById('konut-kira-geliri') || document.getElementById('yazi-kira-geliri');
     if (kiraGelirEl && state.konutKiraGeliri !== undefined) {
-        kiraGelirEl.innerText = Number(state.konutKiraGeliri).toLocaleString() ;
+        kiraGelirEl.innerText = Number(state.konutKiraGeliri).toLocaleString() + " TL";
     }
 
-    document.getElementById('val-kredi').innerText = Number(state.kredi || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ;
-    document.getElementById('val-taksit').innerText = Number(state.taksit || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ;
-    document.getElementById('val-nakit').innerText = Number(state.nakit || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ;
-    document.getElementById('val-dolar').innerText =  Number(state.dolar || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    document.getElementById('val-euro').innerText = Number(state.euro || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    document.getElementById('val-kredi').innerText = Number(state.kredi || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
+    document.getElementById('val-taksit').innerText = Number(state.taksit || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
+    document.getElementById('val-nakit').innerText = Number(state.nakit || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
+    document.getElementById('val-dolar').innerText = "$" + Number(state.dolar || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    document.getElementById('val-euro').innerText = "€" + Number(state.euro || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     document.getElementById('val-altin').innerText = Number(state.altin || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " gr";
     
     // Vadeli hesap sıfırlandığında veya para çekildiğinde anında güncellenmesi için:
     let vadeliDeger = Number(state.vadeli || 0);
-    document.getElementById('val-vadeli').innerText = vadeliDeger.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ;
+    document.getElementById('val-vadeli').innerText = vadeliDeger.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
 
     let anlikGunlukFaiz = vadeliDeger * faizOranlari.vadeliGunluk;
     document.getElementById('val-faiz').innerText = Number(anlikGunlukFaiz || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
@@ -3005,7 +3003,7 @@ let konutSayisi = state.varliklar.filter(v => v.isim === 'Konut' && (v.durum ===
 
     // 🌟 DÜZELTME BURADA: Eğer konut sayısı 0 ise sonuç direkt 0 olsun, konut varsa adetle çarpılsın
     let toplamKiraBedeli = konutSayisi > 0 ? (konutSayisi * guncelKiraBirim) : 0;
-    document.getElementById('val-kira').innerText = toplamKiraBedeli.toLocaleString() + ;
+    document.getElementById('val-kira').innerText = toplamKiraBedeli.toLocaleString() + " TL";
 
     // 🌟 KRİTİK KONTROL: Hangi sayfada olursan ol, aktif "TAHSİL ET" var mı global olarak denetleniyor
     let aktifTalepVar = false;
@@ -3078,7 +3076,7 @@ let konutSayisi = state.varliklar.filter(v => v.isim === 'Konut' && (v.durum ===
                 <div class="item-box-varlik">
                     <div>
                         <div style="font-weight: bold; color: #fff; font-size: 13px;">${v.isim} ${blokeYazisi}</div>
-                        <div style="font-size: 11px; color: #ffcc00; margin-top: 3px;">Günlük Kar: ${gunlukKar.toLocaleString()} </div>                
+                        <div style="font-size: 11px; color: #ffcc00; margin-top: 3px;">Günlük Kar: ${gunlukKar.toLocaleString()} TL</div>                
                     </div>
                     <div style="display: flex; flex-direction: column; align-items: flex-end; min-width: 90px;">
                         ${sagButonlarHTML}
@@ -3132,7 +3130,7 @@ if (tList) {
         }
 
         let guncelBedel = talep.bedel || 0;
-        let altMetin = isAktif ? ('+' + guncelBedel.toLocaleString() ) : beklenenMetin;
+        let altMetin = isAktif ? ('+' + guncelBedel.toLocaleString() + ' TL') : beklenenMetin;
         // v.id yoksa v.isim kullanılsın ki fonksiyon patlamasın
         let kimlik = v.id || v.isim; 
 
@@ -3271,7 +3269,7 @@ itemBox.innerHTML = `
                 <span class="item-ilan-veren" style="text-align: left; font-weight: bold; margin-bottom: 4px;">${urun.etiket}</span>
                 <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                     <span class="item-bedel" style="text-align: left; font-weight: bold;">Maliyeti</span>
-                    <span class="item-bedel" style="text-align: right; font-weight: bold;">${maliyet.toLocaleString()} </span>
+                    <span class="item-bedel" style="text-align: right; font-weight: bold;">${maliyet.toLocaleString()} TL</span>
                 </div>
             </div>
             <div class="action-group">
@@ -3455,7 +3453,7 @@ async function ilanlariGuncelle() {
             <span class="item-ilan-veren" style="text-align: left; font-weight: bold; margin-bottom: 4px;">${baslikMetni}</span>
             <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                 <span class="item-bedel" style="text-align: left; font-weight: bold;">${varlikIsmi}</span>
-                <span class="item-bedel" style="text-align: right; font-weight: bold;">${satisBedeli.toLocaleString()} </span>
+                <span class="item-bedel" style="text-align: right; font-weight: bold;">${satisBedeli.toLocaleString()} TL</span>
             </div>
         </div>
         <div class="action-group">
@@ -3721,7 +3719,7 @@ function finansalOnayIste(tur, yon) {
         else if (tur === 'altin') sahipOlunan = state.altin;
 
         if (miktar > sahipOlunan) {
-            modalGoster(`Yeterli ${paraAdi(tur).toUpperCase())} varlığınız yok!<br>Mevcut miktar: ${sahipOlunan.toLocaleString()}`);
+            modalGoster(`Yeterli ${tur.toUpperCase()} varlığınız yok!<br>Mevcut miktar: ${sahipOlunan.toLocaleString()}`);
             inputElement.value = "";
             return;
         }
@@ -3744,7 +3742,7 @@ function finansalOnayIste(tur, yon) {
         }
     }
     
-    let islemAdi = `${paraAdi(tur).toUpperCase()} ${yon === 'AL' ? 'Alım' : 'Satım'}`;
+    let islemAdi = `${tur.toUpperCase()} ${yon === 'AL' ? 'Alım' : 'Satım'}`;
     
     // 🌟 DÜZELTME BURADA: ONAYLA veya VAZGEÇ denildiğinde inputElement.value = '' ekledik!
     let butonlar = `
