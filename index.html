@@ -533,16 +533,16 @@
 
         <!-- Nakit Rezervleri -->
         <h2>Nakit Rezervleri</h2>
-        <div class="item-box-kucuk"><span>Kasa:</span> <span id="val-nakit">150.000.000,00 TL</span></div>
-        <div class="item-box-kucuk"><span>Günlük Şirket Geliri:</span> <span id="yazi-gunluk-gelir">0 TL</span></div>
-        <div class="item-box-kucuk"><span>Kira Geliri:</span> <span id="val-kira">0,00 TL</span></div>
-        <div class="item-box-kucuk"><span>Ecacoin Portföyü:</span> <span id="val-dolar">$10.000,00</span></div>
-        <div class="item-box-kucuk"><span>Ecatip Portföyü:</span> <span id="val-euro">€5.000,00</span></div>
+        <div class="item-box-kucuk"><span>Kasa:</span> <span id="val-nakit">150.000.000,00</span></div>
+        <div class="item-box-kucuk"><span>Günlük Şirket Geliri:</span> <span id="yazi-gunluk-gelir">0</span></div>
+        <div class="item-box-kucuk"><span>Kira Geliri:</span> <span id="val-kira">0,00</span></div>
+        <div class="item-box-kucuk"><span>Ecacoin Portföyü:</span> <span id="val-dolar">0,00</span></div>
+        <div class="item-box-kucuk"><span>Ecatip Portföyü:</span> <span id="val-euro">0,00</span></div>
         <div class="item-box-kucuk"><span>EcaAu Portföyü:</span> <span id="val-altin">200,00 gr</span></div>
-        <div class="item-box-kucuk"><span>Vadeli Hesap:</span> <span id="val-vadeli">50.000.000,00 TL</span></div>
-        <div class="item-box-kucuk"><span>Vadeli Hesap Faizi:</span> <span id="val-faiz">0,00 TL</span></div>
-        <div class="item-box-kucuk"><span>Kredi Borcu :</span> <span id="val-kredi">0,00 TL</span></div>
-        <div class="item-box-kucuk" style="margin-bottom: 15px;"><span>Kredi Taksiti:</span> <span id="val-taksit">0,00 TL</span></div>
+        <div class="item-box-kucuk"><span>Vadeli Hesap:</span> <span id="val-vadeli">50.000.000,00</span></div>
+        <div class="item-box-kucuk"><span>Vadeli Hesap Faizi:</span> <span id="val-faiz">0,00</span></div>
+        <div class="item-box-kucuk"><span>Kredi Borcu :</span> <span id="val-kredi">0,00</span></div>
+        <div class="item-box-kucuk" style="margin-bottom: 15px;"><span>Kredi Taksiti:</span> <span id="val-taksit">0,00</span></div>
         
         <!-- Kredi Borcu Kapat -->
         <div class="item-box" style="flex-direction: column; align-items: stretch; gap: 6px; margin-bottom: 15px;">
@@ -557,7 +557,7 @@
         
         <!-- DOLAR -->
         <div class="item-box" style="flex-direction: column; align-items: stretch; gap: 4px; margin-bottom: 10px;">
-            <div style="font-size: 14px; font-weight: bold; text-align: center; color: #b0b0b0;">Dolar (Alış: <span id="kur-dolar-alis">0</span> / Satış: <span id="kur-dolar-satis">0</span>)</div>
+            <div style="font-size: 14px; font-weight: bold; text-align: center; color: #b0b0b0;">Ecacoin(Alış: <span id="kur-dolar-alis">0</span> / Satış: <span id="kur-dolar-satis">0</span>)</div>
             <div style="display: flex; gap: 6px; width: 100%;">
                 <input type="text" id="in-dolar" class="in-para-birim" placeholder="Miktar" oninput="parayiFormatla(this)" value="" style="flex: 1; padding: 6px 10px; border-radius: 4px; border: 1px solid #444; background: #222; color: #fff; font-size: 12px; height: 32px; box-sizing: border-box;">
                 <button class="btn-green" onclick="finansalOnayIste('dolar', 'AL')" style="padding: 0 12px; height: 32px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">AL</button>
@@ -567,7 +567,7 @@
 
         <!-- EURO -->
         <div class="item-box" style="flex-direction: column; align-items: stretch; gap: 4px; margin-bottom: 10px;">
-            <div style="font-size: 14px; font-weight: bold; text-align: center; color: #b0b0b0;">Euro (Alış: <span id="kur-euro-alis">0</span> / Satış: <span id="kur-euro-satis">0</span>)</div>
+            <div style="font-size: 14px; font-weight: bold; text-align: center; color: #b0b0b0;">Ecatip(Alış: <span id="kur-euro-alis">0</span> / Satış: <span id="kur-euro-satis">0</span>)</div>
             <div style="display: flex; gap: 6px; width: 100%;">
                 <input type="text" id="in-euro" class="in-para-birim" placeholder="Miktar" oninput="parayiFormatla(this)" value="" style="flex: 1; padding: 6px 10px; border-radius: 4px; border: 1px solid #444; background: #222; color: #fff; font-size: 12px; height: 32px; box-sizing: border-box;">
                 <button class="btn-green" onclick="finansalOnayIste('euro', 'AL')" style="padding: 0 12px; height: 32px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">AL</button>
@@ -577,7 +577,7 @@
 
         <!-- ALTIN -->
         <div class="item-box" style="flex-direction: column; align-items: stretch; gap: 4px; margin-bottom: 15px;">
-            <div style="font-size: 14px; font-weight: bold; text-align: center; color: #b0b0b0;">Altın (Alış: <span id="kur-altin-alis">0</span> / Satış: <span id="kur-altin-satis">0</span>)</div>
+            <div style="font-size: 14px; font-weight: bold; text-align: center; color: #b0b0b0;">EcaAu(Alış: <span id="kur-altin-alis">0</span> / Satış: <span id="kur-altin-satis">0</span>)</div>
             <div style="display: flex; gap: 6px; width: 100%;">
                 <input type="text" id="in-altin" class="in-para-birim" placeholder="Miktar" oninput="parayiFormatla(this)" value="" style="flex: 1; padding: 6px 10px; border-radius: 4px; border: 1px solid #444; background: #222; color: #fff; font-size: 12px; height: 32px; box-sizing: border-box;">
                 <button class="btn-green" onclick="finansalOnayIste('altin', 'AL')" style="padding: 0 12px; height: 32px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">AL</button>
@@ -652,7 +652,7 @@
         <!-- Kredi limiti, faiz oranı ve başlık siyah fonlu tek bir sticky çerçeve içinde sabitlendi -->
         <div style="position: sticky; top: 0; background: #1a1a1a; color: #ffffff; z-index: 5; padding: 15px; margin: 0 -15px 15px -15px; border-radius: 0 0 8px 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.2);">
             <div class="kredi-bilgi" style="margin: 0 0 10px 0; padding: 10px; background: #e8f5e9; border: 1px solid #c8e6c9; border-radius: 5px; text-align: center; font-weight: bold; color: #2e7d32;">
-                Maksimum Kredi Limitiniz: <span class="val-limit">0 TL</span>
+                Maksimum Kredi Limitiniz: <span class="val-limit">0</span>
             </div>
             <div class="faiz-mavi" style="color: #4da6ff; margin-bottom: 5px; font-size: 13px;">Yatırım Kredisi Aylık Faiz Oranı %<span id="yazi-yatirim-faiz">5</span></div>
             <h2 style="margin: 0; color: #ffffff; font-size: 18px;">Yatırım İşlemleri</h2>
@@ -675,7 +675,7 @@
         <!-- Kredi limiti, faiz oranı ve başlık siyah fonlu tek bir sticky çerçeve içinde sabitlendi -->
         <div style="position: sticky; top: 0; background: #1a1a1a; color: #ffffff; z-index: 5; padding: 15px; margin: 0 -15px 15px -15px; border-radius: 0 0 8px 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.2);">
             <div class="kredi-bilgi" style="margin: 0 0 10px 0; padding: 10px; background: #e8f5e9; border: 1px solid #c8e6c9; border-radius: 5px; text-align: center; font-weight: bold; color: #2e7d32;">
-                Maksimum Kredi Limitiniz: <span class="val-limit">0 TL</span>
+                Maksimum Kredi Limitiniz: <span class="val-limit">0</span>
             </div>
             <div class="faiz-mavi" style="color: #4da6ff; margin-bottom: 5px; font-size: 13px;">Yatırım Kredisi Aylık Faiz Oranı %<span id="yazi-ilan-faiz">5</span></div>
             <h2 style="margin: 0; color: #ffffff; font-size: 18px;">Satılık İlanları</h2>
@@ -757,7 +757,7 @@
 
             <h3>6. Taksit, Gecikme ve İcra</h3>
             <ul>
-                <li><b>Otomatik tamamlama:</b> Nakit yetmezse eksik tutar sırasıyla Dolar, Euro, Altın ve Vadeli Hesaptan bozdurularak tamamlanır.</li>
+                <li><b>Otomatik tamamlama:</b> Nakit yetmezse eksik tutar sırasıyla Ecacoin, Ecatip, EcaAu ve Vadeli Hesaptan bozdurularak tamamlanır.</li>
                 <li><b>Gecikme:</b> Likidite de yetmezse taksit ödenmemiş sayılır.</li>
                 <li><b>İcra:</b> Üst üste <b>3 dönem</b> ödenmezse blokeli varlık haczedilir ve güncel satış fiyatından satılır.</li>
                 <li>Satış borcu karşılarsa artan tutar kasaya eklenir.</li>
@@ -766,7 +766,7 @@
 
             <h3>7. Döviz, Altın ve Vadeli Hesap</h3>
             <ul>
-                <li><b>Döviz/Altın:</b> Dolar, Euro ve Altın alınıp satılır. Alış ve satış kurları farklıdır ve yönetici tarafından belirlenir.</li>
+                <li><b>Döviz/Altın:</b> Ecacoin, Ecatip ve EcaAu alınıp satılır. Alış ve satış kurları farklıdır ve yönetici tarafından belirlenir.</li>
                 <li><b>Vadeli hesap:</b> Her oyun ayında faiz kazandırır. İstediğiniz zaman çekebilirsiniz.</li>
                 <li>Tüm işlemler onay penceresiyle tamamlanır.</li>
             </ul>
@@ -917,7 +917,7 @@ function maliGrafigiBaslat() {
                 y: {
                     beginAtZero: false,
                     ticks: {
-                        callback: v => (v / 1000000).toLocaleString() + ' M TL'
+                        callback: v => (v / 1000000).toLocaleString() + ' M'
                     }
                 }
             }
@@ -956,7 +956,9 @@ function sureYaz(ms) {
     let sa = Math.floor(dk / 60);
     return sa > 0 ? `${sa} sa ${dk % 60} dk` : `${dk} dk`;
 }
-
+function paraAdi(tur) {
+    return ({ dolar: 'Ecacoin', euro: 'Ecatip', altin: 'EcaAu' })[tur] || tur;
+}
 async function uyeleriYukle() {
     let liste = document.getElementById('uye-listesi');
     if (liste) liste.innerHTML = '<p style="color:#aaa; text-align:center;">Yükleniyor...</p>';
@@ -1309,7 +1311,7 @@ try {
             
             let kiraValEl = document.getElementById('val-kira');
             if (kiraValEl) {
-                kiraValEl.innerText = yeniToplamKira.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
+                kiraValEl.innerText = yeniToplamKira.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ;
             }
 
             modalGoster("✅ Ayarlar ve süreler başarıyla güncellendi, kaydedildi ve tüm oyunculara yansıtıldı!",  
@@ -1698,7 +1700,7 @@ async function sistemeGirisYap() {
 
         let kiraGeliriElementleri = document.getElementsByClassName('val-kira-geliri');
         for (let el of kiraGeliriElementleri) {
-           el.innerText = Math.floor(kiraGeliri).toLocaleString() + " TL";
+           el.innerText = Math.floor(kiraGeliri).toLocaleString() ;
         }
         
         let katsayi = (typeof faizOranlari !== 'undefined' && faizOranlari.krediKatsayi) ? faizOranlari.krediKatsayi : 1;
@@ -1707,7 +1709,7 @@ async function sistemeGirisYap() {
 
         let limitElementleri = document.getElementsByClassName('val-limit');
         for (let el of limitElementleri) {
-            el.innerText = Math.floor(state.krediLimiti).toLocaleString() + " TL";
+            el.innerText = Math.floor(state.krediLimiti).toLocaleString() ;
         }
 
         if (typeof guncelle === 'function') {
@@ -1959,7 +1961,7 @@ async function zenginlerListesiniGuncelle() {
             return `
                 <div class="zengin-item-box ${benMi ? 'highlight-me' : ''}" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; margin-bottom: 6px; background: #1a1a1a; border: 1px solid #333; border-radius: 6px; font-size: 11px; color: ${benMi ? '#fff' : '#ddd'}; ${benMi ? 'border: 2px solid gold; background: rgba(255,215,0,0.1);' : ''}">
                     <span>${o.gercekIndex}. ${o.isim}</span>
-                    <span style="color: ${benMi ? 'gold' : '#00c853'};">${Math.floor(o.servet).toLocaleString()} TL</span>
+                    <span style="color: ${benMi ? 'gold' : '#00c853'};">${Math.floor(o.servet).toLocaleString()}</span>
                 </div>
             `;
         }).join('');
@@ -2845,11 +2847,11 @@ if (satilikVarliklar.length > 0) {
             ilanlariGuncelle();
         }
 
-        let mesaj = `Piyasa Hareketi (Süre Doldu):\n\n${aliciBot.isim}, ilanda bekleyen "${varlik.isim}" varlığını ${satisBedeli.toLocaleString()} TL ödeyerek satın aldı!`;
+        let mesaj = `Piyasa Hareketi (Süre Doldu):\n\n${aliciBot.isim}, ilanda bekleyen "${varlik.isim}" varlığını ${satisBedeli.toLocaleString()}  ödeyerek satın aldı!`;
         if (dusulenBorc > 0) {
-            mesaj += `\n\nKredi Borcu Kapandı: -${dusulenBorc.toLocaleString()} TL\nKasanıza Eklenen Net Tutar: ${netKazanc.toLocaleString()} TL`;
+            mesaj += `\n\nKredi Borcu Kapandı: -${dusulenBorc.toLocaleString()} TL\nKasanıza Eklenen Net Tutar: ${netKazanc.toLocaleString()} `;
         } else {
-            mesaj += `\nKasanıza Eklenen Tutar: ${satisBedeli.toLocaleString()} TL`;
+            mesaj += `\nKasanıza Eklenen Tutar: ${satisBedeli.toLocaleString()} `;
         }
         
         if (typeof onayModalGoster === 'function') {
@@ -2940,7 +2942,7 @@ async function guncelleIcerik() {
 
     let limitElementleri = document.getElementsByClassName('val-limit');
     for (let el of limitElementleri) {
-        el.innerText = state.krediLimiti.toLocaleString() + " TL";
+        el.innerText = state.krediLimiti.toLocaleString() ;
     }
 
     // Akıllı gösterim fonksiyonu: Sayı 0 ise düz 0 yazar, para varsa kuruşlu gösterir
@@ -2953,27 +2955,27 @@ async function guncelleIcerik() {
     // 🌟 YENİ EKLENEN: Günlük gelir ve kira geliri yazı alanlarını ekrana anında yansıt
     let gunlukGelirEl = document.getElementById('gunluk-gelir') || document.getElementById('yazi-gunluk-gelir');
     if (gunlukGelirEl && state.gunlukGelir !== undefined) {
-        gunlukGelirEl.innerText = Number(state.gunlukGelir).toLocaleString() + " TL";
+        gunlukGelirEl.innerText = Number(state.gunlukGelir).toLocaleString() ;
     }
 
     let kiraGelirEl = document.getElementById('konut-kira-geliri') || document.getElementById('yazi-kira-geliri');
     if (kiraGelirEl && state.konutKiraGeliri !== undefined) {
-        kiraGelirEl.innerText = Number(state.konutKiraGeliri).toLocaleString() + " TL";
+        kiraGelirEl.innerText = Number(state.konutKiraGeliri).toLocaleString() ;
     }
 
-    document.getElementById('val-kredi').innerText = Number(state.kredi || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
-    document.getElementById('val-taksit').innerText = Number(state.taksit || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
-    document.getElementById('val-nakit').innerText = Number(state.nakit || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
-    document.getElementById('val-dolar').innerText = "$" + Number(state.dolar || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    document.getElementById('val-euro').innerText = "€" + Number(state.euro || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    document.getElementById('val-kredi').innerText = Number(state.kredi || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ;
+    document.getElementById('val-taksit').innerText = Number(state.taksit || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ;
+    document.getElementById('val-nakit').innerText = Number(state.nakit || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ;
+    document.getElementById('val-dolar').innerText = Number(state.dolar || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    document.getElementById('val-euro').innerText = Number(state.euro || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     document.getElementById('val-altin').innerText = Number(state.altin || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " gr";
     
     // Vadeli hesap sıfırlandığında veya para çekildiğinde anında güncellenmesi için:
     let vadeliDeger = Number(state.vadeli || 0);
-    document.getElementById('val-vadeli').innerText = vadeliDeger.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
+    document.getElementById('val-vadeli').innerText = vadeliDeger.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ;
 
     let anlikGunlukFaiz = vadeliDeger * faizOranlari.vadeliGunluk;
-    document.getElementById('val-faiz').innerText = Number(anlikGunlukFaiz || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
+    document.getElementById('val-faiz').innerText = Number(anlikGunlukFaiz || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ;
 
     let vadeliYuzdeYazisi = document.getElementById('gosterge-vadeli-bilgi');
     if (vadeliYuzdeYazisi) {
@@ -3003,7 +3005,7 @@ let konutSayisi = state.varliklar.filter(v => v.isim === 'Konut' && (v.durum ===
 
     // 🌟 DÜZELTME BURADA: Eğer konut sayısı 0 ise sonuç direkt 0 olsun, konut varsa adetle çarpılsın
     let toplamKiraBedeli = konutSayisi > 0 ? (konutSayisi * guncelKiraBirim) : 0;
-    document.getElementById('val-kira').innerText = toplamKiraBedeli.toLocaleString() + " TL";
+    document.getElementById('val-kira').innerText = toplamKiraBedeli.toLocaleString() ;
 
     // 🌟 KRİTİK KONTROL: Hangi sayfada olursan ol, aktif "TAHSİL ET" var mı global olarak denetleniyor
     let aktifTalepVar = false;
@@ -3076,7 +3078,7 @@ let konutSayisi = state.varliklar.filter(v => v.isim === 'Konut' && (v.durum ===
                 <div class="item-box-varlik">
                     <div>
                         <div style="font-weight: bold; color: #fff; font-size: 13px;">${v.isim} ${blokeYazisi}</div>
-                        <div style="font-size: 11px; color: #ffcc00; margin-top: 3px;">Günlük Kar: ${gunlukKar.toLocaleString()} TL</div>                
+                        <div style="font-size: 11px; color: #ffcc00; margin-top: 3px;">Günlük Kar: ${gunlukKar.toLocaleString()}</div>                
                     </div>
                     <div style="display: flex; flex-direction: column; align-items: flex-end; min-width: 90px;">
                         ${sagButonlarHTML}
@@ -3130,7 +3132,7 @@ if (tList) {
         }
 
         let guncelBedel = talep.bedel || 0;
-        let altMetin = isAktif ? ('+' + guncelBedel.toLocaleString() + ' TL') : beklenenMetin;
+        let altMetin = isAktif ? ('+' + guncelBedel.toLocaleString() ) : beklenenMetin;
         // v.id yoksa v.isim kullanılsın ki fonksiyon patlamasın
         let kimlik = v.id || v.isim; 
 
@@ -3269,7 +3271,7 @@ itemBox.innerHTML = `
                 <span class="item-ilan-veren" style="text-align: left; font-weight: bold; margin-bottom: 4px;">${urun.etiket}</span>
                 <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                     <span class="item-bedel" style="text-align: left; font-weight: bold;">Maliyeti</span>
-                    <span class="item-bedel" style="text-align: right; font-weight: bold;">${maliyet.toLocaleString()} TL</span>
+                    <span class="item-bedel" style="text-align: right; font-weight: bold;">${maliyet.toLocaleString()}</span>
                 </div>
             </div>
             <div class="action-group">
@@ -3453,7 +3455,7 @@ async function ilanlariGuncelle() {
             <span class="item-ilan-veren" style="text-align: left; font-weight: bold; margin-bottom: 4px;">${baslikMetni}</span>
             <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                 <span class="item-bedel" style="text-align: left; font-weight: bold;">${varlikIsmi}</span>
-                <span class="item-bedel" style="text-align: right; font-weight: bold;">${satisBedeli.toLocaleString()} TL</span>
+                <span class="item-bedel" style="text-align: right; font-weight: bold;">${satisBedeli.toLocaleString()}</span>
             </div>
         </div>
         <div class="action-group">
@@ -3694,7 +3696,7 @@ function onayPenceresi(isim, bedel, tip, ilanId) {
         <button class="btn-green" onclick="${onayFonksiyonu}">ONAYLA</button>
         <button onclick="document.getElementById('modal-overlay').style.display='none'" style="background-color: #d9534f; color: white; margin-left: 10px;">VAZGEÇ</button>
     `;
-    modalGoster(isim + " için " + Number(gercekBedel).toLocaleString() + " TL ödeyeceksiniz.", butonlar);    
+    modalGoster(isim + " için " + Number(gercekBedel).toLocaleString() + "  ödeyeceksiniz.", butonlar);    
 }
 
 
@@ -3719,7 +3721,7 @@ function finansalOnayIste(tur, yon) {
         else if (tur === 'altin') sahipOlunan = state.altin;
 
         if (miktar > sahipOlunan) {
-            modalGoster(`Yeterli ${tur.toUpperCase()} varlığınız yok!<br>Mevcut miktar: ${sahipOlunan.toLocaleString()}`);
+            modalGoster(`Yeterli ${paraAdi(tur).toUpperCase()} varlığınız yok!<br>Mevcut miktar: ${sahipOlunan.toLocaleString()}`);
             inputElement.value = "";
             return;
         }
@@ -3736,13 +3738,13 @@ function finansalOnayIste(tur, yon) {
         let gerekenNakit = miktar * bankaSatisKuru;
 
         if (gerekenNakit > state.nakit) {
-            modalGoster(`Kasanızda yeterli nakitiniz yok!<br>Gereken: ${gerekenNakit.toLocaleString()} TL<br>Mevcut: ${state.nakit.toLocaleString()} TL`);
+            modalGoster(`Kasanızda yeterli nakitiniz yok!<br>Gereken: ${gerekenNakit.toLocaleString()}<br>Mevcut: ${state.nakit.toLocaleString()}`);
             inputElement.value = "";
             return;
         }
     }
     
-    let islemAdi = `${tur.toUpperCase()} ${yon === 'AL' ? 'Alım' : 'Satım'}`;
+    let islemAdi = `${paraAdi(tur).toUpperCase()} ${yon === 'AL' ? 'Alım' : 'Satım'}`;
     
     // 🌟 DÜZELTME BURADA: ONAYLA veya VAZGEÇ denildiğinde inputElement.value = '' ekledik!
     let butonlar = `
@@ -3775,7 +3777,7 @@ function vadeliOnayIste(yon) {
     if (yon === 'CEK') {
         let mevcutVadeli = Number(state.vadeli || 0);
         if (miktarKurus > Math.round(mevcutVadeli * 100)) {
-            modalGoster(`Vadeli hesabınızda yeterli bakiye yok!<br>Mevcut Vadeli: ${mevcutVadeli.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL`);
+            modalGoster(`Vadeli hesabınızda yeterli bakiye yok!<br>Mevcut Vadeli: ${mevcutVadeli.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} `);
             inputElement.value = ""; 
             return;
         }
@@ -3784,7 +3786,7 @@ function vadeliOnayIste(yon) {
     if (yon === 'YATIR') {
         let mevcutNakit = Number(state.nakit || 0);
         if (miktarKurus > Math.round(mevcutNakit * 100)) {
-            modalGoster(`Kasanızda yeterli nakit yok!<br>Mevcut Nakit: ${mevcutNakit.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL`);
+            modalGoster(`Kasanızda yeterli nakit yok!<br>Mevcut Nakit: ${mevcutNakit.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} `);
             inputElement.value = ""; 
             return;
         }
@@ -3801,7 +3803,7 @@ function vadeliOnayIste(yon) {
         <button onclick="document.getElementById('modal-overlay').style.display='none'; document.getElementById('in-vadeli').value='';" style="background-color: #d9534f; color: white; margin-left: 10px; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;">VAZGEÇ</button>
     `;
 
-    modalGoster(`${Number(miktar).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL tutarındaki ${islemAdi.toLowerCase()} işlemini onaylıyor musunuz?`, butonlar);
+    modalGoster(`${Number(miktar).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}  tutarındaki ${islemAdi.toLowerCase()} işlemini onaylıyor musunuz?`, butonlar);
 }
   
 async function islemKesinOnayla(isim, bedel, tip, ilanId) {
@@ -3819,7 +3821,7 @@ async function islemKesinOnayla(isim, bedel, tip, ilanId) {
         let girilenTutar = parseFloat(hamInputDegeri) || 0;
 
         if (girilenTutar > gercekBedel + 0.5) {
-            modalGoster(`Hata: Girdiğiniz tutar (${girilenTutar.toLocaleString()} TL), bu varlığın gerçek bedelinden (${gercekBedel.toLocaleString()} TL) fazla olamaz!`);
+            modalGoster(`Hata: Girdiğiniz tutar (${girilenTutar.toLocaleString()} ), bu varlığın gerçek bedelinden (${gercekBedel.toLocaleString()} ) fazla olamaz!`);
             return; // İşlemi durdur ve uyar
         }
     }
@@ -3828,7 +3830,7 @@ async function islemKesinOnayla(isim, bedel, tip, ilanId) {
 
     // 1. Kasa kontrolü ve nakit düşüşü
     if (state.nakit < sayisalBedel) {
-        modalGoster("Yetersiz bakiye! Kasadaki nakit: " + state.nakit.toLocaleString() + " TL");
+        modalGoster("Yetersiz bakiye! Kasadaki nakit: " + state.nakit.toLocaleString());
         return;
     }
     state.nakit -= sayisalBedel; // Kasadan para kesin olarak düşer
@@ -3932,9 +3934,9 @@ async function islemKesinOnayla(isim, bedel, tip, ilanId) {
 
 // 9. Tebrikler Mesajı (GÜNCELLENDİ)
     if (tip === 'yap') {
-        modalGoster(`Tebrikler! ${sayisalBedel.toLocaleString()} TL yatırılarak ${isim} için inşaat ve yatırım süreciniz başarıyla başladı.`);
+        modalGoster(`Tebrikler! ${sayisalBedel.toLocaleString()}  yatırılarak ${isim} için inşaat ve yatırım süreciniz başarıyla başladı.`);
     } else {
-        modalGoster(`Tebrikler! ${isim} varlığını ${sayisalBedel.toLocaleString()} TL ödeyerek başarıyla satın aldınız.`);
+        modalGoster(`Tebrikler! ${isim} varlığını ${sayisalBedel.toLocaleString()}  ödeyerek başarıyla satın aldınız.`);
     }
 }
 
@@ -3948,7 +3950,7 @@ function kamuMulkSatinAlOnay(mulkIsmi, fiyat) {
         <button onclick="document.getElementById('modal-overlay').style.display='none'" style="background-color: #d9534f; color: white; margin-left: 10px;">VAZGEÇ</button>
     `;
     
-    modalGoster(`${mulkIsmi} kamu mülkünü ${temizFiyat.toLocaleString()} TL ödeyerek satın almak istiyor musunuz?`, butonlar);
+    modalGoster(`${mulkIsmi} kamu mülkünü ${temizFiyat.toLocaleString()} ödeyerek satın almak istiyor musunuz?`, butonlar);
 }
 
 function kamuMulkKesinSatinAl(mulkIsmi, fiyat, inputId) {
@@ -3959,7 +3961,7 @@ function kamuMulkKesinSatinAl(mulkIsmi, fiyat, inputId) {
     if (inputEl && inputEl.value.trim() !== "") {
         let girilenTutar = parseFloat(inputEl.value.replace(/\./g, '').replace(',', '.')) || 0;
         if (girilenTutar > temizFiyat + 0.5) {
-            modalGoster(`Hata: Girdiğiniz tutar (${girilenTutar.toLocaleString()} TL), bu mülkün gerçek bedelinden (${temizFiyat.toLocaleString()} TL) fazla olamaz!`);
+            modalGoster(`Hata: Girdiğiniz tutar (${girilenTutar.toLocaleString()} ), bu mülkün gerçek bedelinden (${temizFiyat.toLocaleString()} ) fazla olamaz!`);
             return;
         }
     }
@@ -3997,7 +3999,7 @@ function baskasiSatinAlOnay(varlikId, botIsmi, fiyat) {
         <button class="btn-green" onclick="baskasiSatinAl(${varlikId}, '${botIsmi}', ${fiyat}, '${inputId}')">ONAYLA</button>
         <button onclick="document.getElementById('modal-overlay').style.display='none'" style="background-color: #d9534f; color: white; margin-left: 10px;">VAZGEÇ</button>
     `;
-    modalGoster(`${botIsmi} kişisine ait ${fiyat.toLocaleString()} TL bedelli varlığı satın almak istiyor musunuz?`, butonlar);
+    modalGoster(`${botIsmi} kişisine ait ${fiyat.toLocaleString()}  bedelli varlığı satın almak istiyor musunuz?`, butonlar);
 }
 
 async function baskasiSatinAl(varlikId, botIsmi, fiyat, inputId) {
@@ -4024,7 +4026,7 @@ async function baskasiSatinAl(varlikId, botIsmi, fiyat, inputId) {
         state.nakit = s.yeniPortfoy.nakit;
         state.varliklar = s.yeniPortfoy.varliklar;
         guncelle(); ilanlariGuncelle();
-        modalGoster(`Tebrikler! ${botIsmi} kişisinden varlığı ${fiyat.toLocaleString()} TL ödeyerek satın aldınız.`);
+        modalGoster(`Tebrikler! ${botIsmi} kişisinden varlığı ${fiyat.toLocaleString()} ödeyerek satın aldınız.`);
     } catch (e) { modalGoster("Bağlantı hatası oluştu."); }
 }
 // 1. Onay fonksiyonuna 'konum' parametresini de ekle
@@ -4037,7 +4039,7 @@ function oyuncuIlaniSatinAlOnayla(ilanId, saticiAdi, varlikIsmi, fiyat, konum) {
         <button onclick="document.getElementById('modal-overlay').style.display='none'" style="background-color: #d9534f; color: white; margin-left: 10px;">VAZGEÇ</button>
     `;
     
-    modalGoster(`${saticiAdi} kişisinden ${varlikIsmi} varlığını (${sehirAdi(konum)}) ${temizFiyat.toLocaleString()} TL ödeyerek satın almak istiyor musunuz?`, butonlar);
+    modalGoster(`${saticiAdi} kişisinden ${varlikIsmi} varlığını (${sehirAdi(konum)}) ${temizFiyat.toLocaleString()}  ödeyerek satın almak istiyor musunuz?`, butonlar);
 }  
 
 async function oyuncuIlaniKesinSatinAl(isim, bedel, ilanId, gelenKonum, inputId) {
@@ -4048,7 +4050,7 @@ async function oyuncuIlaniKesinSatinAl(isim, bedel, ilanId, gelenKonum, inputId)
         if (girilenTutar > bedel + 0.5) {
             let modalOverlay = document.getElementById('modal-overlay');
             if (modalOverlay) modalOverlay.style.display = 'none';
-            modalGoster(`Hata: Girdiğiniz tutar (${girilenTutar.toLocaleString()} TL), bu ilanın gerçek bedelinden (${bedel.toLocaleString()} TL) fazla olamaz!`);
+            modalGoster(`Hata: Girdiğiniz tutar (${girilenTutar.toLocaleString()} ), bu ilanın gerçek bedelinden (${bedel.toLocaleString()} ) fazla olamaz!`);
             return;
         }
     }
@@ -4296,7 +4298,7 @@ function krediIslem(inputId, vadeInputId, isim, bedel, kapsam, ilanId = null) {
 
     let maxLimit = (typeof state !== 'undefined' && state.krediLimiti) ? state.krediLimiti : 0;
     if (miktar > maxLimit) {
-        modalGoster(`Girilen miktar maksimum kredi limitini (${maxLimit.toLocaleString()} TL) aşıyor!`);
+        modalGoster(`Girilen miktar maksimum kredi limitini (${maxLimit.toLocaleString()} ) aşıyor!`);
         return;
     }
 
@@ -4345,7 +4347,7 @@ function krediIslem(inputId, vadeInputId, isim, bedel, kapsam, ilanId = null) {
         <button onclick="islemiIptalEt()" style="background-color: #d9534f; color: white; margin-left: 10px;">VAZGEÇ</button>
     `;
 
-    modalGoster(`Kredi Tutarı: ${miktar.toLocaleString()} TL\nAylık Taksit: ${Math.round(aylikTaksit).toLocaleString()} TL\nToplam Geri Ödeme: ${Math.round(toplamGeriOdeme).toLocaleString()} TL\nVade: ${vade} Ay\n\nOnaylıyor musunuz?`, onayHTML);
+    modalGoster(`Kredi Tutarı: ${miktar.toLocaleString()} Aylık Taksit: ${Math.round(aylikTaksit).toLocaleString()} Toplam Geri Ödeme: ${Math.round(toplamGeriOdeme).toLocaleString()} TL\nVade: ${vade} Ay\n\nOnaylıyor musunuz?`, onayHTML);
 }
     
 function krediyiKesinOnayla() {
@@ -4409,7 +4411,7 @@ if (!arsaMuaf) {
         if (miktarInput) miktarInput.value = '';
         if (vadeSelect) vadeSelect.value = "48";
         tempIslem = null;
-        modalGoster(`⚠️ <b>Kredi Sınırı Aşıldı!</b><br><br>Bir varlık için en fazla <b>%70</b> oranında kredi kullanabilirsiniz (Max Kredi: ${maksimumKrediLimiti.toLocaleString()} TL). En az %30 peşinat ödemelisiniz.`);
+        modalGoster(`⚠️ <b>Kredi Sınırı Aşıldı!</b><br><br>Bir varlık için en fazla <b>%70</b> oranında kredi kullanabilirsiniz (Max Kredi: ${maksimumKrediLimiti.toLocaleString()} ). En az %30 peşinat ödemelisiniz.`);
         return;
     }
 }
@@ -4429,7 +4431,7 @@ if (!arsaMuaf && verilenPesinatYuzdesi < 30) {
         if (miktarInput) miktarInput.value = '';
         if (vadeSelect) vadeSelect.value = "48";
         tempIslem = null;
-        modalGoster(`⚠️ <b>Yetersiz Nakit (Peşinat)!</b><br><br>Bu varlığı alabilmek için gereken <b>peşinat (${gerekenPesinat.toLocaleString()} TL)</b> kasanızda bulunmamaktadır. Kredi onaylanmadı.`);
+        modalGoster(`⚠️ <b>Yetersiz Nakit (Peşinat)!</b><br><br>Bu varlığı alabilmek için gereken <b>peşinat (${gerekenPesinat.toLocaleString()} )</b> kasanızda bulunmamaktadır. Kredi onaylanmadı.`);
         return;
     }
 
@@ -4549,7 +4551,7 @@ fetch('/api/ilan-satin-al', {
         }
 
         let basariMesaji = "Kredi onaylandı, Varlık üzerine bloke konuldu, arsa dönüştürüldü ve inşaat başlatıldı.";
-        basariMesaji += "\n\nKasanızdan peşinat için " + gerekenPesinat.toLocaleString() + " TL nakit tahsil edilmiştir.";
+        basariMesaji += "\n\nKasanızdan peşinat için " + gerekenPesinat.toLocaleString() + "  nakit tahsil edilmiştir.";
         modalGoster(basariMesaji);
     }
 
@@ -4677,7 +4679,7 @@ window._sonIlanIslemZamani = Date.now();
 
         input.value = '';
         guncelle();
-        modalGoster(`Ödeme başarıyla yapıldı. Kalan toplam borç: ${state.kredi.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2})} TL.`);
+        modalGoster(`Ödeme başarıyla yapıldı. Kalan toplam borç: ${state.kredi.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2})} `);
         
         if (typeof portfoyuSunucuyaKaydet === 'function') {
             portfoyuSunucuyaKaydet(state);
@@ -4756,7 +4758,7 @@ state.krediler = state.krediler.filter(kr => (kr.kalanBorc || 0) > 0.01 || kr.ic
     input.value = '';
     guncelle();
 
-    let sonucMetni = `Ödeme başarıyla yapıldı. Kalan toplam borç: ${state.kredi.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2})} TL.`;
+    let sonucMetni = `Ödeme başarıyla yapıldı. Kalan toplam borç: ${state.kredi.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2})} `;
     if (bildirimler.length > 0) {
         sonucMetni += `<br><br>` + bildirimler.join('<br>');
     } else if (kalkanBlokeSayisi > 0) {
