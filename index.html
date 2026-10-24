@@ -4895,10 +4895,10 @@ function taksitleriOdeVeyaKontrolEt() {
 
                 if (kalanSatis > 0) {
                     state.nakit += kalanSatis;
-                    yapilanIslemler.push(`<b>${ilgiliVarlik.isim}</b> haczedilerek satıldı. Borç kapandı, artan <b>${kalanSatis.toLocaleString()} TL</b> nakite eklendi.`);
+                    yapilanIslemler.push(`<b>${ilgiliVarlik.isim}</b> haczedilerek satıldı. Borç kapandı, artan <b>${kalanSatis.toLocaleString()}</b> nakite eklendi.`);
                 } else {
                     let guncelToplamBorc = state.krediler.reduce((t, k) => t + (k.kalanBorc || 0), 0);
-                    yapilanIslemler.push(`<b>${ilgiliVarlik.isim}</b> satıldı (${satisFiyati.toLocaleString()} TL), borca yetmedi. Kalan: <b>${guncelToplamBorc.toLocaleString()} TL</b>.`);
+                    yapilanIslemler.push(`<b>${ilgiliVarlik.isim}</b> satıldı (${satisFiyati.toLocaleString()}), borca yetmedi. Kalan: <b>${guncelToplamBorc.toLocaleString()}</b>.`);
                 }
             }
 
@@ -4912,7 +4912,7 @@ function taksitleriOdeVeyaKontrolEt() {
                 }];
                 state.nakit = 0; 
                 state.taksit = 0; 
-                yapilanIslemler.push(`🚨 <b>Başka mülk kalmadı!</b> Kalan <b>${toplamBorc.toLocaleString()} TL</b> bakiye borç olarak bırakıldı.`);
+                yapilanIslemler.push(`🚨 <b>Başka mülk kalmadı!</b> Kalan <b>${toplamBorc.toLocaleString()}</b> bakiye borç olarak bırakıldı.`);
             } else {
                 state.krediler = state.krediler.filter(kr => kr.kalanBorc > 0);
             }
@@ -5059,7 +5059,7 @@ function zorunluVarlikSatisiAndKapatma() {
             let artisFarki = satisFiyati - toplamKrediBorcu;
             state.nakit += artisFarki;
             
-            yapilanIslemler.push(`<b>${satilacakVarlik.isim}</b> (${satilacakVarlik.bloke ? 'Blokeli' : 'Serbest'}) haczedilerek satıldı (${satisFiyati.toLocaleString()} TL). Borç tamamen kapandı, artan <b>${artisFarki.toLocaleString()} TL</b> nakite eklendi.`);
+            yapilanIslemler.push(`<b>${satilacakVarlik.isim}</b> (${satilacakVarlik.bloke ? 'Blokeli' : 'Serbest'}) haczedilerek satıldı (${satisFiyati.toLocaleString()} TL). Borç tamamen kapandı, artan <b>${artisFarki.toLocaleString()}</b> nakite eklendi.`);
             
             toplamKrediBorcu = 0;
             state.krediler = [];
@@ -5068,7 +5068,7 @@ function zorunluVarlikSatisiAndKapatma() {
             break;
         } else {
             toplamKrediBorcu -= satisFiyati;
-            yapilanIslemler.push(`<b>${satilacakVarlik.isim}</b> (${satilacakVarlik.bloke ? 'Blokeli' : 'Serbest'}) haczedilerek satıldı (${satisFiyati.toLocaleString()} TL), yetmedi. Kalan borç: <b>${toplamKrediBorcu.toLocaleString()} TL</b>.`);
+            yapilanIslemler.push(`<b>${satilacakVarlik.isim}</b> (${satilacakVarlik.bloke ? 'Blokeli' : 'Serbest'}) haczedilerek satıldı (${satisFiyati.toLocaleString()} TL), yetmedi. Kalan borç: <b>${toplamKrediBorcu.toLocaleString()}</b>.`);
             
             // Kredilerden düş
             if (state.krediler && state.krediler.length > 0) {
@@ -5096,7 +5096,7 @@ function zorunluVarlikSatisiAndKapatma() {
         state.kredi = toplamKrediBorcu;
         state.taksit = 0;
         state.nakit = 0; 
-        yapilanIslemler.push(`🚨 <b>Haczedilecek başka mülk kalmadı!</b> Tüm varlıklar tükendi. Kalan <b>${toplamKrediBorcu.toLocaleString()} TL</b> bakiye kredi borcu olarak bırakıldı.`);
+        yapilanIslemler.push(`🚨 <b>Haczedilecek başka mülk kalmadı!</b> Tüm varlıklar tükendi. Kalan <b>${toplamKrediBorcu.toLocaleString()}</b> bakiye kredi borcu olarak bırakıldı.`);
     } else {
         state.kredi = 0;
         state.krediler = [];
@@ -5165,13 +5165,13 @@ function varlikSat(varlikId) {
                 state.nakit += artisFarki;
                 // Krediyi diziden tamamen sil
                 state.krediler = state.krediler.filter(k => String(k.id) !== String(varlik.krediID));
-                modalGoster(`🏠 <b>KREDİLİ VARLIK SATILDI:</b> ${varlik.isim} satıldı, borç tamamen kapandı ve artan ${artisFarki.toLocaleString()} TL nakite eklendi.`);
+                modalGoster(`🏠 <b>KREDİLİ VARLIK SATILDI:</b> ${varlik.isim} satıldı, borç tamamen kapandı ve artan ${artisFarki.toLocaleString()}  nakite eklendi.`);
             } else {
                 let kalanNetBorc = Math.abs(artisFarki);
                 ilgiliKredi.kalanBorc = kalanNetBorc;
                 ilgiliKredi.icradanKalanBorc = true;
                 state.nakit = 0;
-                modalGoster(`🏠 <b>KREDİLİ VARLIK SATILDI:</b> ${varlik.isim} satıldı ancak borcu kapatmaya yetmedi. Kalan ${kalanNetBorc.toLocaleString()} TL borç bakiye olarak kaldı.`);
+                modalGoster(`🏠 <b>KREDİLİ VARLIK SATILDI:</b> ${varlik.isim} satıldı ancak borcu kapatmaya yetmedi. Kalan ${kalanNetBorc.toLocaleString()}  borç bakiye olarak kaldı.`);
             }
         } else {
             // Kredi bulunamazsa parayı güvenle nakite at
