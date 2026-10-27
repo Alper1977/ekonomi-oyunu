@@ -2769,8 +2769,9 @@ if (typeof maksimumIlanSiniri === 'undefined') { var maksimumIlanSiniri = window
 
 // 3. Senin İlanlarını Kontrol Eden Mekanizma (Garanti Satış)
 window.ilanZamanlari = window.ilanZamanlari || {};
-let beklemeSuresiMs = window.oyunAyar.GLOBAL_BEKLEME_SURESI;
 
+let beklemeSuresiMs = Number(window.oyunAyar.GLOBAL_BEKLEME_SURESI);
+if (isNaN(beklemeSuresiMs)) beklemeSuresiMs = 3 * 24 * 60 * 60 * 1000;
 let satilikVarliklar = state.varliklar.filter(v => v.durum === 'ilan-aktif' && v.ilanSahibi === 'ben');
 
 if (satilikVarliklar.length > 0) {
@@ -2847,9 +2848,9 @@ if (satilikVarliklar.length > 0) {
             ilanlariGuncelle();
         }
 
-        let mesaj = `Piyasa Hareketi (Süre Doldu):\n\n${aliciBot.isim}, ilanda bekleyen "${varlik.isim}" varlığını ${satisBedeli.toLocaleString()}  ödeyerek satın aldı!`;
+        let mesaj = `Piyasa Hareketli\n\n${aliciBot.isim}, ilanda bekleyen "${varlik.isim}" varlığını ${satisBedeli.toLocaleString()}  ödeyerek satın aldı!`;
         if (dusulenBorc > 0) {
-            mesaj += `\n\nKredi Borcu Kapandı: -${dusulenBorc.toLocaleString()} TL\nKasanıza Eklenen Net Tutar: ${netKazanc.toLocaleString()} `;
+            mesaj += `\n\nKredi Borcu Kapandı: -${dusulenBorc.toLocaleString()} `\nKasanıza Eklenen Net Tutar: ${netKazanc.toLocaleString()} `;
         } else {
             mesaj += `\nKasanıza Eklenen Tutar: ${satisBedeli.toLocaleString()} `;
         }
@@ -4117,7 +4118,7 @@ function ilanaCikar(id) {
     // İşaretle ve kilitle
     v._islemde = true;
     v.durum = 'ilan-aktif';
-
+    v.ilanVerilisZamani = Date.now();
     // 🌟 Ekranın ve butonun anında güncellenmesini sağlayarak takılmayı önleyen DOM hamlesi
     let mulkKutulari = document.querySelectorAll('.item-box-varlik');
     mulkKutulari.forEach(kutu => {
@@ -4211,6 +4212,7 @@ async function vazgec(uniqueId) {
             varlik.durum = 'sahip';
             varlik.ilanSahibi = null;
             varlik.sunucuIlanId = null;
+            varlik.ilanVerilisZamani = null;
         }
     }
 
