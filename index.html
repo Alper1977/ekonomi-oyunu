@@ -2850,7 +2850,7 @@ if (satilikVarliklar.length > 0) {
 
         let mesaj = `Piyasa Hareketli\n\n${aliciBot.isim}, ilanda bekleyen "${varlik.isim}" varlığını ${satisBedeli.toLocaleString()}  ödeyerek satın aldı!`;
         if (dusulenBorc > 0) {
-            mesaj += `\n\nKredi Borcu Kapandı: -${dusulenBorc.toLocaleString()} `\nKasanıza Eklenen Net Tutar: ${netKazanc.toLocaleString()} `;
+            mesaj += `\n\nKredi Borcu Kapandı: -${dusulenBorc.toLocaleString()} \nKasanıza Eklenen Net Tutar: ${netKazanc.toLocaleString()} `;
         } else {
             mesaj += `\nKasanıza Eklenen Tutar: ${satisBedeli.toLocaleString()} `;
         }
