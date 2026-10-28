@@ -38,7 +38,13 @@ console.log("Klasördeki dosyalar:", fs.readdirSync(__dirname));
 app.get('/', (req, res) => {
     res.sendFile(__dirname + '/index.html'); 
 });
+app.get('/gizlilik-politikasi', (req, res) => {
+  res.send('<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Ecarix Gizlilik Politikası</title><style>body{font-family:Arial,sans-serif;max-width:700px;margin:20px auto;padding:0 16px;line-height:1.6;color:#222}h1{font-size:22px}h2{font-size:16px;margin-top:20px}</style></head><body><h1>Ecarix Gizlilik Politikası ve KVKK Aydınlatma Metni</h1><h2>1. Veri Sorumlusu</h2><p>Alper Halit Doğan (Ecarix), Ankara. İletişim: alpdo77@hotmail.com</p><h2>2. İşlenen Veriler</h2><p>Şirket adı (ad-soyad), e-posta adresi, şifre (şifrelenmiş olarak saklanır), oyun içi işlem ve portföy verileri, oturum kayıtları.</p><h2>3. Amaç</h2><p>Hesap oluşturma, kimlik doğrulama, oyunun sunulması, hesap güvenliği ve taleplerin yanıtlanması.</p><h2>4. Sanal Varlıklar</h2><p>Oyundaki tüm para ve varlıklar sanaldır, gerçek karşılığı yoktur, nakde çevrilemez.</p><h2>5. Aktarım</h2><p>Veriler yasal zorunluluk dışında üçüncü kişilerle paylaşılmaz. Sunucu altyapı hizmeti sağlayıcısı yalnızca hizmetin sunulması için verileri barındırır.</p><h2>6. Saklama ve Silme</h2><p>Veriler hesap açık olduğu sürece saklanır. Hesap silme talebi için: <a href="/hesap-silme">/hesap-silme</a></p><h2>7. Haklarınız (KVKK m.11)</h2><p>Verilerinizin işlenip işlenmediğini öğrenme, düzeltme, silme ve itiraz haklarına sahipsiniz. Başvuru: alpdo77@hotmail.com (en geç 30 gün içinde yanıtlanır).</p><h2>8. Yaş</h2><p>Uygulama 18 yaş ve üzeri kullanıcılar içindir.</p></body></html>');
+});
 
+app.get('/hesap-silme', (req, res) => {
+  res.send('<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Ecarix Hesap Silme</title><style>body{font-family:Arial,sans-serif;max-width:700px;margin:20px auto;padding:0 16px;line-height:1.6;color:#222}</style></head><body><h1>Ecarix Hesap ve Veri Silme</h1><p>Hesabınızın ve ilişkili tüm verilerin (şirket adı, e-posta, portföy, ilanlar, giriş kayıtları) silinmesini istiyorsanız, kayıtlı e-posta adresinizden <b>alpdo77@hotmail.com</b> adresine "Hesap Silme Talebi" konulu bir e-posta gönderin.</p><p>Talebiniz en geç 30 gün içinde işleme alınır ve verileriniz kalıcı olarak silinir. Silme sonrası geri alma mümkün değildir.</p></body></html>');
+});
 // Ana oyun veritabanı (better-sqlite3 senkron yapısı)
 
 const veriKlasoru = fs.existsSync('/data') ? '/data' : '.';
