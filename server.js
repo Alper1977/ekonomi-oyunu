@@ -1149,7 +1149,41 @@ aktiviteIsle(req);
         res.status(500).json({ basari: false, mesaj: err.message });
     }
 });
+app.post('/api/hesabi-sil', (req, res) => {
+    if (!req.session || !req.session.kullanici) {
+        return res.status(401).json({ basari: false, mesaj: 'Oturum bulunamadı!' });
+    }
+    const userId = req.session.kullanici.id;
+    const sifre = String((req.body && req.body.sifre) || '');
+    if (!sifre) return res.json({ basari: false, mesaj: 'Şifrenizi girmelisiniz.' });
 
+    try {
+        const row = db.prepare(`SELECT id, kadi, email, sifre FROM kullanicilar WHERE id = ?`).get(userId);
+        if (!row) return res.status(404).json({ basari: false, mesaj: 'Kullanıcı bulunamadı!' });
+
+        const hedefMail = String(row.kadi || row.email || '').trim().toLowerCase();
+        if (hedefMail === String(ADMIN_EMAIL).trim().toLowerCase()) {
+            return res.json({ basari: false, mesaj: 'Yönetici hesabı silinemez.' });
+        }
+        if (!sifreDogruMu(sifre, row.sifre)) {
+            return res.json({ basari: false, mesaj: 'Şifre yanlış!' });
+        }
+
+        db.transaction(() => {
+            db.prepare(`DELETE FROM ilanlar WHERE kullanici_id = ?`).run(userId);
+            db.prepare(`DELETE FROM giris_kayitlari WHERE kullanici_id = ?`).run(userId);
+            db.prepare(`DELETE FROM kullanicilar WHERE id = ?`).run(userId);
+        })();
+
+        req.session.destroy(() => {
+            res.clearCookie('connect.sid', { path: '/' });
+            res.json({ basari: true, mesaj: 'Hesabınız silindi.' });
+        });
+    } catch (err) {
+        console.error('Hesap silme hatası:', err.message);
+        res.status(500).json({ basari: false, mesaj: 'Hesap silinemedi!' });
+    }
+});
 app.get('/api/cikis', (req, res) => {
 try {
     if (req.session && req.session.girisKayitId) {
