@@ -43,7 +43,7 @@ app.get('/gizlilik-politikasi', (req, res) => {
 });
 
 app.get('/hesap-silme', (req, res) => {
-  res.send('<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Ecarix Hesap Silme</title><style>body{font-family:Arial,sans-serif;max-width:700px;margin:20px auto;padding:0 16px;line-height:1.6;color:#222}</style></head><body><h1>Ecarix Hesap ve Veri Silme</h1><p>Hesabınızın ve ilişkili tüm verilerin (şirket adı, e-posta, portföy, ilanlar, giriş kayıtları) silinmesini istiyorsanız, kayıtlı e-posta adresinizden <b>alpdo77@hotmail.com</b> adresine "Hesap Silme Talebi" konulu bir e-posta gönderin.</p><p>Talebiniz en geç 30 gün içinde işleme alınır ve verileriniz kalıcı olarak silinir. Silme sonrası geri alma mümkün değildir.</p></body></html>');
+  res.send('<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Ecarix Hesap Silme</title><style>body{font-family:Arial,sans-serif;max-width:700px;margin:20px auto;padding:0 16px;line-height:1.6;color:#222}</style></head><body><h1>Ecarix Hesap ve Veri Silme</h1><p><b>Uygulama içinden:</b> Mali Tablo sayfasının en altındaki "Hesabımı Sil" düğmesini kullanabilirsiniz.</p><p>Hesabınızın ve ilişkili tüm verilerin (şirket adı, e-posta, portföy, ilanlar, giriş kayıtları) silinmesini istiyorsanız, kayıtlı e-posta adresinizden <b>alpdo77@hotmail.com</b> adresine "Hesap Silme Talebi" konulu bir e-posta gönderin.</p><p>Talebiniz en geç 30 gün içinde işleme alınır ve verileriniz kalıcı olarak silinir. Silme sonrası geri alma mümkün değildir.</p></body></html>');
 });
 // Ana oyun veritabanı (better-sqlite3 senkron yapısı)
 
