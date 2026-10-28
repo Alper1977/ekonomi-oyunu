@@ -602,7 +602,9 @@
             <h3 style="margin-bottom: 10px; font-size: 14px; color: #2c3e50; text-align: center;">Şirket Net Değer Grafiği</h3>
             <canvas id="maliGrafik" width="400" height="200"></canvas>
         </div>
-
+        <div style="text-align:center; margin-bottom: 90px;">
+            <button onclick="hesabiSilOnayIste()" style="background: transparent; color: #ff6b6b; border: 1px solid #ff6b6b; padding: 8px 16px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer;">Hesabımı Sil</button>
+        </div>
 
     </div> <!-- /.content kapanışı -->
 
@@ -4240,7 +4242,31 @@ async function vazgec(uniqueId) {
         console.error("İlan silme isteği başarısız:", err);
     }
 }
-    
+function hesabiSilOnayIste() {
+    let butonlar = `
+        <button class="btn-red" onclick="hesabiSilKesin()">EVET, SİL</button>
+        <button onclick="document.getElementById('modal-overlay').style.display='none'" style="background-color:#6c757d; color:white; margin-left:10px;">VAZGEÇ</button>`;
+    modalGoster(`<b>Hesabınız ve tüm verileriniz (portföy, ilanlar, giriş kayıtları) kalıcı olarak silinecek. Bu işlem geri alınamaz!</b><br><br>Onaylamak için şifrenizi girin:<br><input type="password" id="hesap-sil-sifre" placeholder="Şifre" autocomplete="current-password" style="width:90%; margin-top:8px; box-sizing:border-box; padding:8px;">`, butonlar);
+}
+
+async function hesabiSilKesin() {
+    let sifreInput = document.getElementById('hesap-sil-sifre');
+    let sifre = sifreInput ? sifreInput.value : '';
+    if (!sifre) { modalGoster('⚠️ Lütfen şifrenizi girin.'); return; }
+    try {
+        let res = await fetch('/api/hesabi-sil', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ sifre })
+        });
+        let sonuc = await res.json();
+        if (!sonuc.basari) { modalGoster('⚠️ ' + (sonuc.mesaj || 'Hesap silinemedi!')); return; }
+        modalGoster('✅ Hesabınız ve verileriniz silindi.', '<button onclick="location.reload()">TAMAM</button>');
+    } catch (e) {
+        modalGoster('⚠️ Sunucuya bağlanılamadı!');
+    }
+}    
 function changePage(p) {
     let hedefSayfa = document.getElementById(p);
     if (!hedefSayfa) {
