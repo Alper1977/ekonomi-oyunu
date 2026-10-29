@@ -1636,7 +1636,7 @@ async function sistemeGirisYap() {
         if (sonuc.kullanici && sonuc.kullanici.portfoy) {
             let gelenPortfoy = sonuc.kullanici.portfoy;
             
-            state.nakit = gelenPortfoy.nakit !== undefined && gelenPortfoy.nakit !== null ? Number(gelenPortfoy.nakit) : 0;
+            state.nakit = gelenPortfoy.nakit !== undefined && gelenPortfoy.nakit !== null ? Number(gelenPortfoy.nakit) : 10000000;
             state.dolar = Number(gelenPortfoy.dolar) || 0;
             state.euro = Number(gelenPortfoy.euro) || 0;
             state.altin = Number(gelenPortfoy.altin) || 0;
