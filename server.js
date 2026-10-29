@@ -1033,8 +1033,11 @@ app.post('/api/kayit', (req, res) => {
          : 'Bu ad soyad (şirket ismi) daha önce alınmış! Lütfen başka bir tane seçin.' });
      }
 
+        const BASLANGIC_NAKIT = 10000000;
         const varsayilanPortfoy = {
-            ...(portfoy || { para: 1000000, hisseler: [] }) 
+            nakit: BASLANGIC_NAKIT,
+            para: BASLANGIC_NAKIT,
+            hisseler: []
         };
 
         const simdi = Date.now();
@@ -1309,19 +1312,13 @@ app.post('/api/portfoy-guncelle', (req, res) => {
             // "client'ın son bildiği zaman, sunucunun şu anki gerçeğiyle uyuşuyor mu" kontrol ediyoruz.
             // Bu, arka plan motorunun client'tan bağımsız yaptığı güncellemeleri de yakalar.
             if (!istemcininBildigiZaman || sunucununGuncelZamani !== istemcininBildigiZaman) {
-                let birlesikPortfoy = {
-                    ...yeniPortfoy,
-                    nakit: guncellenmisPortfoy.nakit,
-                    para: guncellenmisPortfoy.nakit,
-                    vadeli: guncellenmisPortfoy.vadeli,
-                    vadeliHesap: guncellenmisPortfoy.vadeliHesap,
-                    kredi: guncellenmisPortfoy.kredi,
-                    taksit: guncellenmisPortfoy.taksit,
-                    krediler: guncellenmisPortfoy.krediler,
-                    dolar: guncellenmisPortfoy.dolar,
-                    euro: guncellenmisPortfoy.euro,
-                    altin: guncellenmisPortfoy.altin
-                };
+                const sunucudan = {};
+                ['nakit','vadeli','vadeliHesap','kredi','taksit','krediler','dolar','euro','altin'].forEach(k => {
+                    if (guncellenmisPortfoy[k] !== undefined) sunucudan[k] = guncellenmisPortfoy[k];
+                });
+                if (sunucudan.nakit === undefined && guncellenmisPortfoy.para !== undefined) sunucudan.nakit = guncellenmisPortfoy.para;
+                if (sunucudan.nakit !== undefined) sunucudan.para = sunucudan.nakit;
+                let birlesikPortfoy = { ...yeniPortfoy, ...sunucudan };
                 db.prepare(`UPDATE kullanicilar SET portfoy = ? WHERE id = ?`).run(JSON.stringify(birlesikPortfoy), userId);
                 req.session.kullanici.portfoy = birlesikPortfoy;
                 return res.json({ basari: true, senkron: true, portfoy: birlesikPortfoy });
