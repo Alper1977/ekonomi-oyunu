@@ -1033,7 +1033,7 @@ app.post('/api/kayit', (req, res) => {
          : 'Bu ad soyad (şirket ismi) daha önce alınmış! Lütfen başka bir tane seçin.' });
      }
 
-        const BASLANGIC_NAKIT = 10000000;
+        const BASLANGIC_NAKIT = 0;
         const varsayilanPortfoy = {
             nakit: BASLANGIC_NAKIT,
             para: BASLANGIC_NAKIT,
