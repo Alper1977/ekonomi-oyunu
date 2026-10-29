@@ -4266,7 +4266,22 @@ async function hesabiSilKesin() {
     } catch (e) {
         modalGoster('⚠️ Sunucuya bağlanılamadı!');
     }
-}    
+}  
+
+function icerikYuksekligiAyarla() {
+    if (!document.body.classList.contains('capacitor-app')) return;
+    document.querySelectorAll('.page').forEach(p => {
+        if (getComputedStyle(p).display === 'none') return;
+        const c = p.querySelector('.content');
+        const nav = p.querySelector('.nav-bar');
+        if (!c || !nav) return;
+        const h = Math.floor(nav.getBoundingClientRect().top - c.getBoundingClientRect().top);
+        if (h > 100) c.style.height = h + 'px';
+    });
+}
+window.addEventListener('resize', icerikYuksekligiAyarla);
+setInterval(icerikYuksekligiAyarla, 1500);
+ 
 function changePage(p) {
     let hedefSayfa = document.getElementById(p);
     if (!hedefSayfa) {
@@ -4282,6 +4297,8 @@ function changePage(p) {
     // İstenen sayfayı aç
     hedefSayfa.style.display = 'block';
     state.aktifSayfa = p;
+    icerikYuksekligiAyarla();
+    setTimeout(icerikYuksekligiAyarla, 100);
      hedefSayfa.scrollTop = 0;
     let icerikAlani = hedefSayfa.querySelector('.content');
     if (icerikAlani) icerikAlani.scrollTop = 0;
