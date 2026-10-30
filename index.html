@@ -1650,15 +1650,9 @@ async function sistemeGirisYap() {
             state.gunlukGelir = (window.oyunAyar && window.oyunAyar.gunlukGelir !== undefined) ? Number(window.oyunAyar.gunlukGelir) : (Number(gelenPortfoy.gunlukGelir) || 900000);
             state.konutKiraGeliri = (window.oyunAyar && window.oyunAyar.konutKiraGeliri !== undefined) ? Number(window.oyunAyar.konutKiraGeliri) : (Number(gelenPortfoy.konutKiraGeliri) || 150000);
             
-            state.varliklar = Array.isArray(gelenPortfoy.varliklar) && gelenPortfoy.varliklar.length > 0 
+             state.varliklar = Array.isArray(gelenPortfoy.varliklar) && gelenPortfoy.varliklar.length > 0 
                 ? gelenPortfoy.varliklar 
-                : [{ id: 1, isim: 'Bayi', durum: 'sahip', bloke: false, krediID: null, talepAktif: true }];
-                
-            state.varliklar.forEach(v => {
-                if (v.durum === 'sahip' && v.talepAktif === undefined) {
-                    v.talepAktif = true;
-                }
-            });
+                : [{ id: 1, isim: 'Bayi', durum: 'sahip', bloke: false, krediID: null, talepAktif: false }];
 
             state.talepler = Array.isArray(gelenPortfoy.talepler) ? gelenPortfoy.talepler : [];
             
@@ -2695,7 +2689,12 @@ if (aktifOdemePenceresi) {
         }
     });
 }
-
+state.varliklar.forEach(v => {
+    if (v.talepAktif && v.aktifPencereBaslangic === undefined && !aktifOdemePenceresi) {
+        v.talepAktif = false;
+        veriDegisti = true;
+    }
+});
 // 🌟 KAPANIŞ KONTROLÜ: Pencere başlangıcından itibaren 60 dakika dolduysa kapat
 state.varliklar.forEach(v => {
     if (v.talepAktif && v.aktifPencereBaslangic !== undefined) {
