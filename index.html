@@ -3504,7 +3504,8 @@ async function ilanlariGuncelle() {
             </div>
         </div>
         <div class="action-group">
-            ${resimBtnHTML}${goruntuleBtnHTML}
+            ${resimBtnHTML}
+            ${goruntuleBtnHTML}
             ${ortaAlanHTML}
         </div>
     `;
@@ -3561,8 +3562,8 @@ async function ilanlariGuncelle() {
         vadeInputId, 
         arsaMi, 
         atananKonum: konum, 
-        tipKyn: benimIlanimMi ? 'benim-ilanim' : 'diger-oyuncu' 
-        resimNo: (ilan.detaylar && ilan.detaylar.resimNo !== undefined) ? Number(ilan.detaylar.resimNo) : hashNo('ilan' + ilan.id)
+        tipKyn: benimIlanimMi ? 'benim-ilanim' : 'diger-oyuncu', resimNo: (ilan.detaylar && ilan.detaylar.resimNo !== undefined) ? Number(ilan.detaylar.resimNo) : hashNo('ilan' + ilan.id) 
+        
     };
                 if (ilan.ilan_tipi.toLowerCase().includes('arsa')) {
                     oyuncuArsaListesi.push(veriObj);
