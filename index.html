@@ -4028,7 +4028,8 @@ function kamuMulkKesinSatinAl(mulkIsmi, fiyat, inputId) {
         durum: 'sahip',
         bloke: false,
         krediID: null,
-        atananKonum: typeof arsaKonumunuAl === 'function' ? arsaKonumunuAl(mulkIsmi) : ''resimNo: kamuResimAl(mulkIsmi):
+        atananKonum: typeof arsaKonumunuAl === 'function' ? arsaKonumunuAl(mulkIsmi) : '',
+        resimNo: kamuResimAl(mulkIsmi)
     });
 
     let modalOverlay = document.getElementById('modal-overlay');
