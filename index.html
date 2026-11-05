@@ -3635,15 +3635,15 @@ async function ilanlariGuncelle() {
     if (arsaIcerikDiv) {
         arsaIcerikDiv.innerHTML = '';
         oyuncuArsaListesi.forEach(item => {
-            let kutu = kartHtmlUret(item.baslikMetni, item.botIsmi, item.varlikIsmi, item.satisBedeli, item.uniqueId, item.inputId, item.vadeInputId, item.arsaMi, item.atananKonum, item.tipKyn);
+            let kutu = kartHtmlUret(item.baslikMetni, item.botIsmi, item.varlikIsmi, item.satisBedeli, item.uniqueId, item.inputId, item.vadeInputId, item.arsaMi, item.atananKonum, item.tipKyn, item.resimNo);
             arsaIcerikDiv.appendChild(kutu);
         });
         botArsaListesi.forEach(item => {
-            let kutu = kartHtmlUret(item.bot.isim, item.bot.isim, item.varlik.isim, item.satisBedeli, item.uniqueId, item.inputId, item.vadeInputId, item.arsaMi, item.varlik.atananKonum, 'bot');
+            let kutu = kartHtmlUret(item.bot.isim, item.bot.isim, item.varlik.isim, item.satisBedeli, item.uniqueId, item.inputId, item.vadeInputId, item.arsaMi, item.varlik.atananKonum, 'bot', item.resimNo);
             arsaIcerikDiv.appendChild(kutu);
         });
         kamuArsaListesi.forEach(item => {
-            let kutu = kartHtmlUret('BANKA İCRA SATIŞI', '', item.urun.isim, item.satisBedeli, null, item.inputId, item.vadeInputId, item.arsaMi, item.kamuKonumu, 'kamu');
+            let kutu = kartHtmlUret('BANKA İCRA SATIŞI', '', item.urun.isim, item.satisBedeli, null, item.inputId, item.vadeInputId, item.arsaMi, item.kamuKonumu, 'kamu', item.resimNo);
             arsaIcerikDiv.appendChild(kutu);
         });
     }
