@@ -3605,8 +3605,8 @@ async function ilanlariGuncelle() {
         let arsaMi = haritalanabilirMulkler.some(tur => urun.isim.toLowerCase().includes(tur));
         let kamuKonumu = arsaMi ? arsaKonumunuAl(urun.isim) : '';
 
-        let veriObj = { urun, satisBedeli, inputId, vadeInputId, arsaMi, kamuKonumu };
-        resimNo: kamuResimNo(urun.isim)
+        let veriObj = { urun, satisBedeli, inputId, vadeInputId, arsaMi, kamuKonumu, resimNo: kamuResimNo(urun.isim) };
+        
         if (urun.isim.toLowerCase().includes('arsa')) {
             kamuArsaListesi.push(veriObj);
         } else {
