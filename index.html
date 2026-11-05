@@ -3116,13 +3116,13 @@ sagButonlarHTML += `<div style="width:100%; min-width:110px;">
             let html = `
                 <div class="item-box-varlik">
                     <div>
-                        <div style="font-weight: bold; color: #fff; font-size: 13px; display:flex; align-items:center; gap:8px;"><span style="font-size:26px;">${tesisIkonu(v.isim)}</span><span style="width:64px; height:44px; flex-shrink:0; display:block; border-radius:6px; overflow:hidden;">${tesisResmi(v.isim, varlikResimNo(v), 'kucuk')}</span><span>${v.isim} ${blokeYazisi}</span></div>
+                        <div style="font-weight: bold; color: #fff; font-size: 13px; display:flex; align-items:center; gap:8px;"><span style="width:64px; height:44px; flex-shrink:0; display:block; border-radius:6px; overflow:hidden;">${tesisResmi(v.isim, varlikResimNo(v), 'kucuk')}</span><span>${v.isim} ${blokeYazisi}</span></div>
                         <div style="font-size: 11px; color: #ffcc00; margin-top: 3px;">Günlük Kar: ${gunlukKar.toLocaleString()}</div>                
                     </div>
                     <div style="display: flex; flex-direction: column; align-items: flex-end; min-width: 90px;">
                         ${sagButonlarHTML}
                         <button onclick="resimGoster('${v.isim}', ${varlikResimNo(v)})" style="background:#16a085; color:#fff; border:none; border-radius:4px; font-weight:bold; cursor:pointer; width:100%; margin-top:4px; box-sizing:border-box;">GÖRÜNTÜLE</button>
-                        ${goruntuleBtnVarlik}
+                        
                     </div>
                 </div>
             `;
