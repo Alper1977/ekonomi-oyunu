@@ -6,6 +6,7 @@ const SQLiteStore = require('connect-sqlite3')(session);
 const Database = require('better-sqlite3');
 const fs = require('fs');
 const crypto = require('crypto');
+function hashNo(s) { s = String(s); let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return h % 10; }
 const rateLimit = require('express-rate-limit'); 
 
 function sifreHashle(sifre) { 
@@ -676,6 +677,7 @@ app.post('/api/ilan-satin-al', (req, res) => {
             let ilanTipi = "";
             let detaylarObj = {};
             let botIlan = null;
+            let resimNoSonuc = Math.floor(Math.random() * 10);
             if (ilan) {
                 // GERÇEK KULLANICI İLANI (P2P)
                 if (ilan.kullanici_id === aliciId) {
@@ -689,6 +691,7 @@ app.post('/api/ilan-satin-al', (req, res) => {
                 
                 try {
                     detaylarObj = JSON.parse(ilan.detaylar || '{}');
+                    resimNoSonuc = (detaylarObj.resimNo !== undefined && detaylarObj.resimNo !== null) ? Number(detaylarObj.resimNo) % 10 : hashNo('ilan' + ilanId);
                 } catch (e) {
                     detaylarObj = {};
                 }
@@ -701,10 +704,12 @@ app.post('/api/ilan-satin-al', (req, res) => {
         ilanFiyat = (ayarOku().satisFiyatlari || {})[botIlan.isim] || 2000000;
         ilanTipi = botIlan.isim;
         detaylarObj.atananKonum = botIlan.atananKonum;
+        resimNoSonuc = hashNo('bot' + ilanId);
     } else {
     // Kamu (banka icra) satışı, şimdilik eskisi gibi
     ilanFiyat = ilanTipiBedel || (odenenNakit ? Number(odenenNakit) * 10/7 : 0);
     ilanTipi = ilanIsmi || "Kamu Mülkü";
+    if (req.body.detaylarResimNo !== undefined && req.body.detaylarResimNo !== null) resimNoSonuc = Number(req.body.detaylarResimNo) % 10;    
     if (req.body.detaylarAtananKonum) {
         detaylarObj.atananKonum = req.body.detaylarAtananKonum;
     }
@@ -736,7 +741,7 @@ app.post('/api/ilan-satin-al', (req, res) => {
                 durum: 'sahip',
                 bloke: yeniBlokeDurumu,
                 krediID: null,
-                atananKonum: detaylarObj.atananKonum || null
+                atananKonum: detaylarObj.atananKonum || null, resimNo: resimNoSonuc
             });
 
             db.prepare(`UPDATE kullanicilar SET portfoy = ? WHERE id = ?`).run(JSON.stringify(aliciPortfoy), aliciId);
