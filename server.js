@@ -25,6 +25,20 @@ function sifreDogruMu(sifre, kayitli) {
     }
     return kayitli === String(sifre); // eski düz metin kayıtlar
 }
+function krediErkenKapamaTutari(kr, faizOranlari) {
+    if (!kr || !(kr.kalanBorc > 0)) return 0;
+    if (kr.icradanKalanBorc) return kr.kalanBorc;
+    const taksit = Number(kr.taksit || kr.taksitTutu) || 0;
+    let i = (kr.faiz !== undefined && kr.faiz !== null) ? Number(kr.faiz) : NaN;
+    if (isNaN(i)) {
+        let y = (faizOranlari && faizOranlari.yatirimKredisiYuzde !== undefined) ? Number(faizOranlari.yatirimKredisiYuzde) : 5;
+        i = y > 1 ? y / 100 : y;
+    }
+    if (taksit <= 0 || i <= 0) return kr.kalanBorc;
+    const n = Math.max(1, Math.round(kr.kalanBorc / taksit));
+    const p = taksit * (1 - Math.pow(1 + i, -n)) / i;
+    return Math.min(kr.kalanBorc, Math.max(0, p));
+}
 const app = express(); 
 const server = http.createServer(app);  
 const io = new Server(server);   
@@ -454,15 +468,16 @@ if (kr.icradanKalanBorc) {
                             // Varlığı portföyden sil
                             portfoy.varliklar = portfoy.varliklar.filter(v => v && v.id !== ilgiliVarlik.id);
 
-                            if (satisFiyati >= kr.kalanBorc) {
-                                let artisFarki = satisFiyati - kr.kalanBorc;
+                            const tamKapamaTutari = krediErkenKapamaTutari(kr, faizOranlari);
+                            if (satisFiyati >= tamKapamaTutari) {
+                                let artisFarki = satisFiyati - tamKapamaTutari;
                                 portfoy.nakit += artisFarki;
                                 portfoy.para = portfoy.nakit;
                                 kr.kalanBorc = 0;
                                 kr.silinecek = true;
                             } else {
                                 // İCRA SONRASI KALAN BAKİYE BORÇ DURUMU:
-                                kr.kalanBorc = kr.kalanBorc - satisFiyati;
+                                kr.kalanBorc = tamKapamaTutari - satisFiyati;
                                 kr.ustUsteOdenmeyen = 0; 
                                 kr.silinecek = false;   
                                 kr.icradanKalanBorc = true; // --- 🌟 EKLENEN KORUMA BAYRAĞI ---
@@ -777,7 +792,7 @@ if (saticiId) {
         }
 
         if (ilgiliKredi) {
-            let kalanBorc = ilgiliKredi.kalanBorc || 0;
+            let kalanBorc = krediErkenKapamaTutari(ilgiliKredi, ayarOku().faizOranlari);
             let artisFarki = gelenSatisParasi - kalanBorc;
 
             if (artisFarki > 0) {
