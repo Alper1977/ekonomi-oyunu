@@ -413,12 +413,13 @@
 
   function projeSec(isim) {
     var secili = (G._secilenProje || {})[isim];
-    var h = '<div style="margin-bottom:6px;">' + isim + ' i\u00e7in proje se\u00e7in</div>' +
+    var h = '<div style="margin-bottom:2px;">' + isim + ' i\u00e7in proje se\u00e7in</div>' +
+      '<div style="font-size:10px;color:#666;font-weight:normal;margin-bottom:6px;">Se\u00e7ili projeye tekrar dokunursan\u0131z se\u00e7im kalkar.</div>' +
       '<div style="max-height:55vh;overflow-y:auto;display:grid;grid-template-columns:1fr 1fr;gap:6px;">';
     for (var i = 0; i < 10; i++) {
-      h += '<div onclick="projeSecildi(\'' + isim + '\',' + i + ')" style="cursor:pointer;border-radius:6px;overflow:hidden;border:2px solid ' +
+      h += '<div id="proje-kart-' + i + '" onclick="projeSecildi(\'' + isim + '\',' + i + ')" style="cursor:pointer;border-radius:6px;overflow:hidden;border:2px solid ' +
         (secili === i ? '#ffb300' : '#ccc') + ';"><div>' + tesisResmi(isim, i, 'buyuk') +
-        '</div><div style="font-size:11px;padding:2px 0;">Proje ' + (i + 1) + '</div></div>';
+        '</div><div id="proje-etiket-' + i + '" style="font-size:11px;padding:2px 0;">Proje ' + (i + 1) + (secili === i ? ' \u2713' : '') + '</div></div>';
     }
     h += '</div>';
     modalGoster(h, '<button onclick="document.getElementById(\'modal-overlay\').style.display=\'none\'" style="background:#6c757d;color:#fff;">KAPAT</button>');
@@ -426,8 +427,14 @@
 
   function projeSecildi(isim, no) {
     G._secilenProje = G._secilenProje || {};
-    G._secilenProje[isim] = no;
-    document.getElementById('modal-overlay').style.display = 'none';
+    G._secilenProje[isim] = (G._secilenProje[isim] === no) ? null : no;
+    var secili = G._secilenProje[isim];
+    for (var i = 0; i < 10; i++) {
+      var kart = document.getElementById('proje-kart-' + i);
+      var etiket = document.getElementById('proje-etiket-' + i);
+      if (kart) kart.style.borderColor = (secili === i) ? '#ffb300' : '#ccc';
+      if (etiket) etiket.innerText = 'Proje ' + (i + 1) + (secili === i ? ' \u2713' : '');
+    }
     if (typeof G.yatirimlariGuncelle === 'function') G.yatirimlariGuncelle();
   }
 
