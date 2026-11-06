@@ -4416,6 +4416,7 @@ function changePage(p) {
     // İstenen sayfayı aç
     hedefSayfa.style.display = 'block';
     state.aktifSayfa = p;
+    window._secilenProje = {};
     icerikYuksekligiAyarla();
     setTimeout(icerikYuksekligiAyarla, 100);
      hedefSayfa.scrollTop = 0;
