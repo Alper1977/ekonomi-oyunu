@@ -563,6 +563,7 @@
         <!-- Kredi Borcu Kapat -->
         <div class="item-box" style="flex-direction: column; align-items: stretch; gap: 6px; margin-bottom: 15px;">
             <span style="font-weight: bold; font-size: 14px; color: #b0b0b0;">Kredi Borcu Kapat</span>
+            <span id="erken-kapama-bilgi" style="font-size: 11px; color: #87CEFA;"></span>
             <div style="display: flex; gap: 6px; width: 100%;">
                 <input type="text" id="in-kredi-ode" class="in-para-birim" placeholder="Ödenecek Tutar" oninput="parayiFormatla(this)" value="" style="flex: 1; padding: 6px 10px; border-radius: 4px; border: 1px solid #444; background: #222; color: #fff; font-size: 12px; height: 32px; box-sizing: border-box;">
                 <button class="btn-red" onclick="krediOde()" style="padding: 0 15px; font-weight: bold; font-size: 12px; border-radius: 4px; height: 32px; cursor: pointer;">ÖDE</button>
@@ -2994,6 +2995,8 @@ async function guncelleIcerik() {
 
     document.getElementById('val-kredi').innerText = Number(state.kredi || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ;
     document.getElementById('val-taksit').innerText = Number(state.taksit || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ;
+    let ekBilgi = document.getElementById('erken-kapama-bilgi');
+    if (ekBilgi) ekBilgi.innerText = state.kredi > 0 ? 'Tamamını kapatmak için gereken: ' + Math.ceil(krediErkenKapamaToplami()).toLocaleString('tr-TR') : '';
     sayiAnimasyonu('val-nakit', Number(state.nakit || 0));
     document.getElementById('val-dolar').innerText = Number(state.dolar || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     document.getElementById('val-euro').innerText = Number(state.euro || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -4504,6 +4507,7 @@ function krediIslem(inputId, vadeInputId, isim, bedel, kapsam, ilanId = null) {
         miktar: miktar,
         vade: vade,
         toplamGeriOdeme: toplamGeriOdeme,
+        faiz: aylikFaizOrani,
         aylikTaksit: aylikTaksit
     };
 
@@ -4636,6 +4640,7 @@ if (kapsam !== 'ilan' && isim !== 'Bayi') {
         isim: isim,
         kalanBorc: toplamGeriOdeme,
         taksit: aylikTaksit,
+        faiz: tempIslem.faiz,
         ustUsteOdenmeyen: 0,
         icradanKalanBorc: false
     });
@@ -4795,14 +4800,42 @@ function islemiIptalEt() {
     if (modalOverlay) modalOverlay.style.display = 'none';
 } 
     
+function krediAylikFaiz(kr) {
+    let f = (kr && kr.faiz !== undefined && kr.faiz !== null) ? Number(kr.faiz) : NaN;
+    if (isNaN(f)) {
+        let y = (window.oyunAyar && window.oyunAyar.faizOranlari && window.oyunAyar.faizOranlari.yatirimKredisiYuzde !== undefined)
+            ? Number(window.oyunAyar.faizOranlari.yatirimKredisiYuzde) : 5;
+        f = y > 1 ? y / 100 : y;
+    }
+    return f;
+}
+
+// Bir kredinin bugün kapatılması için gereken tutar (kalan faizler hariç)
+function krediErkenKapamaTutari(kr) {
+    if (!kr || !(kr.kalanBorc > 0)) return 0;
+    if (kr.icradanKalanBorc) return kr.kalanBorc;
+    let taksit = Number(kr.taksit || kr.taksitTutu) || 0;
+    let i = krediAylikFaiz(kr);
+    if (taksit <= 0 || i <= 0) return kr.kalanBorc;
+    let n = Math.max(1, Math.round(kr.kalanBorc / taksit));
+    let p = taksit * (1 - Math.pow(1 + i, -n)) / i;
+    return Math.min(kr.kalanBorc, Math.max(0, p));
+}
+
+function krediErkenKapamaToplami() {
+    if (state.krediler && state.krediler.length > 0) {
+        return state.krediler.reduce((t, kr) => t + krediErkenKapamaTutari(kr), 0);
+    }
+    return Number(state.kredi || 0);
+}
+
 function krediOde() {
-window._sonIlanIslemZamani = Date.now();
- 
+    window._sonIlanIslemZamani = Date.now();
+
     let input = document.getElementById('in-kredi-ode');
     if (!input) return;
-    
-    let hamDeger = input.value;
-    let temizDeger = hamDeger.replace(/\./g, '').replace(',', '.');
+
+    let temizDeger = input.value.replace(/\./g, '').replace(',', '.');
     let miktar = parseFloat(temizDeger) || 0;
 
     if (isNaN(miktar) || miktar <= 0) {
@@ -4811,11 +4844,9 @@ window._sonIlanIslemZamani = Date.now();
         return;
     }
 
-    let diziBorcu = state.krediler ? state.krediler.reduce((top, kr) => top + (kr.kalanBorc || 0), 0) : 0;
-    let toplamBorc = (diziBorcu > 0) ? diziBorcu : (state.kredi || 0);
-
-    if (miktar > (toplamBorc + 0.5)) {
-        modalGoster("Hata: Ödeme miktarı toplam borcunuzdan fazla olamaz!");
+    let kapamaToplam = krediErkenKapamaToplami();
+    if (miktar > kapamaToplam + 0.5) {
+        modalGoster(`Hata: Ödeme miktarı erken kapama tutarınızdan (${Math.ceil(kapamaToplam).toLocaleString('tr-TR')}) fazla olamaz!`);
         input.value = '';
         return;
     }
@@ -4826,85 +4857,99 @@ window._sonIlanIslemZamani = Date.now();
         return;
     }
 
-    state.nakit -= miktar;
-
+    // Eski yapı: krediler dizisi yoksa sadece toplam borçtan düş
     if (!state.krediler || state.krediler.length === 0) {
+        state.nakit -= miktar;
         state.kredi = Math.max(0, state.kredi - miktar);
-        
         if (state.kredi === 0) {
             state.taksit = 0;
             if (state.varliklar) {
-                state.varliklar.forEach(v => {
-                    v.bloke = false;
-                    v.krediID = null;
-                });
+                state.varliklar.forEach(v => { v.bloke = false; v.krediID = null; });
             }
         } else {
             state.taksit = (state.kredi / 48) * (typeof faizOranlari !== 'undefined' ? faizOranlari.krediKatsayi : 1.25);
         }
-
         input.value = '';
         guncelle();
         modalGoster(`Ödeme başarıyla yapıldı. Kalan toplam borç: ${state.kredi.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2})} `);
-        
-        if (typeof portfoyuSunucuyaKaydet === 'function') {
-            portfoyuSunucuyaKaydet(state);
-        }
+        if (typeof portfoyuSunucuyaKaydet === 'function') portfoyuSunucuyaKaydet(state);
         return;
     }
 
-    state.krediler.sort((a, b) => b.kalanBorc - a.kalanBorc);
-
-    let odenecekKalan = miktar;
+    let odenecek = miktar;
+    let toplamHarcanan = 0;
+    let silinenFaiz = 0;
     let kalkanBlokeSayisi = 0;
     let bildirimler = [];
 
-    for (let i = 0; i < state.krediler.length; i++) {
-        let kr = state.krediler[i];
-        if (odenecekKalan <= 0) break;
+    state.krediler.sort((a, b) => b.kalanBorc - a.kalanBorc);
 
-        if (odenecekKalan >= kr.kalanBorc) {
-            odenecekKalan -= kr.kalanBorc;
-            kr.kalanBorc = 0; 
+    state.krediler.forEach(kr => {
+        if (odenecek <= 0.005 || !(kr.kalanBorc > 0)) return;
+
+        let eskiKalan = kr.kalanBorc;
+        let p = krediErkenKapamaTutari(kr);
+
+        if (odenecek >= p - 0.5) {
+            // Krediyi tamamen kapat: gelecekteki faizler silinir
+            toplamHarcanan += p;
+            odenecek -= p;
+            silinenFaiz += (eskiKalan - p);
+            kr.kalanBorc = 0;
             kr.icradanKalanBorc = false;
 
-            if (state.varliklar) {
-                // Hem ID eşleşmesine hem de genel blokelilere bakarak kaçırmayalım
-                let ilgiliVarlik = state.varliklar.find(v => v.krediID && String(v.krediID) === String(kr.id)) || state.varliklar.find(v => v.bloke === true);
-                if (ilgiliVarlik) {
-                    ilgiliVarlik.bloke = false;
-                    ilgiliVarlik.krediID = null; 
-                    kalkanBlokeSayisi++;
-                    bildirimler.push(`🔓 <b>KREDİ KAPANDI:</b> Borcunuz tamamen ödendiği için <b>${ilgiliVarlik.isim}</b> üzerindeki bloke kaldırıldı!`);
-                }
+            let ilgiliVarlik = state.varliklar && state.varliklar.find(v => v && v.krediID && String(v.krediID) === String(kr.id));
+            if (ilgiliVarlik) {
+                ilgiliVarlik.bloke = false;
+                ilgiliVarlik.krediID = null;
+                kalkanBlokeSayisi++;
+                bildirimler.push(`🔓 <b>KREDİ KAPANDI:</b> Borcunuz tamamen ödendiği için <b>${ilgiliVarlik.isim}</b> üzerindeki bloke kaldırıldı!`);
             }
+        } else if (kr.icradanKalanBorc) {
+            // İcradan kalan bakiyede faiz yok, düz düşülür
+            kr.kalanBorc -= odenecek;
+            toplamHarcanan += odenecek;
+            odenecek = 0;
         } else {
-            kr.kalanBorc -= odenecekKalan;
-            odenecekKalan = 0;
+            // Kısmi ödeme: anapara düşer, kalan vade korunur, taksit ve toplam faiz küçülür
+            let taksit = Number(kr.taksit || kr.taksitTutu) || 0;
+            let i = krediAylikFaiz(kr);
+            if (taksit <= 0 || i <= 0) {
+                kr.kalanBorc -= odenecek;
+                if (taksit > 0) {
+                    let nn = Math.max(1, Math.round(eskiKalan / taksit));
+                    kr.taksit = kr.kalanBorc / nn;
+                    kr.taksitTutu = kr.taksit;
+                }
+            } else {
+                let n = Math.max(1, Math.round(eskiKalan / taksit));
+                let yeniAnapara = p - odenecek;
+                let yeniTaksit = yeniAnapara * i / (1 - Math.pow(1 + i, -n));
+                kr.faiz = i;
+                kr.taksit = yeniTaksit;
+                kr.taksitTutu = yeniTaksit;
+                kr.kalanBorc = yeniTaksit * n;
+                silinenFaiz += (eskiKalan - kr.kalanBorc) - odenecek;
+            }
+            toplamHarcanan += odenecek;
+            odenecek = 0;
         }
-    }
+    });
 
-state.krediler = state.krediler.filter(kr => (kr.kalanBorc || 0) > 0.01 || kr.icradanKalanBorc);
-    
-    // Toplam borcu yeniden hesapla
-    state.kredi = state.krediler.reduce((toplam, kr) => toplam + (kr.kalanBorc || 0), 0);
+    state.nakit -= toplamHarcanan;
 
-    // EĞER TOPLAM BORÇ 0 VEYA 0'A ÇOK YAKINSA, HER ŞEYİ KÖKTEN SIFIRLA!
-    if (state.kredi < 0.01 || state.krediler.length === 0) {
+    state.krediler = state.krediler.filter(kr => (kr.kalanBorc || 0) > 0.01);
+    state.kredi = state.krediler.reduce((t, kr) => t + (kr.kalanBorc || 0), 0);
+
+    if (state.krediler.length === 0 || state.kredi < 0.01) {
         state.kredi = 0;
         state.taksit = 0;
         state.krediler = [];
     } else {
-        state.taksit = state.krediler.reduce((toplam, kr) => {
-            let kalanVade = kr.vade || 48;
-            let katsayi = (typeof faizOranlari !== 'undefined' && faizOranlari.krediKatsayi) ? faizOranlari.krediKatsayi : 1.25;
-            kr.taksitTutu = (kr.kalanBorc / kalanVade) * katsayi;
-            return toplam + kr.taksitTutu;
-        }, 0);
+        state.taksit = state.krediler.reduce((t, kr) => t + (kr.icradanKalanBorc ? 0 : (kr.taksit || 0)), 0);
     }
 
-  // 🌟 KESİN ÇÖZÜM: Borç bittiği an blokeli ve satışta olan tüm varlıkları serbest bırak
-// 🌟 GÜÇLENDİRİLMİŞ GÜVENLİK AĞI
+    // Güvenlik ağı: aktif kredisi olmayan varlıkların blokesini kaldır
     if (state.varliklar && Array.isArray(state.varliklar)) {
         let aktifKrediIds = state.krediler.map(k => String(k.id));
         state.varliklar.forEach(v => {
@@ -4912,9 +4957,7 @@ state.krediler = state.krediler.filter(kr => (kr.kalanBorc || 0) > 0.01 || kr.ic
                 if (state.kredi === 0 || !v.krediID || !aktifKrediIds.includes(String(v.krediID))) {
                     v.bloke = false;
                     v.krediID = null;
-                    if (v.durum === 'ilan-aktif') {
-                        v.durum = 'sahip';
-                    }
+                    if (v.durum === 'ilan-aktif') v.durum = 'sahip';
                     kalkanBlokeSayisi++;
                 }
             }
@@ -4924,18 +4967,18 @@ state.krediler = state.krediler.filter(kr => (kr.kalanBorc || 0) > 0.01 || kr.ic
     input.value = '';
     guncelle();
 
-    let sonucMetni = `Ödeme başarıyla yapıldı. Kalan toplam borç: ${state.kredi.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2})} `;
+    let sonucMetni = `Ödeme başarıyla yapıldı. Ödenen: ${Math.round(toplamHarcanan).toLocaleString('tr-TR')}<br>Kalan toplam borç: ${state.kredi.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2})} `;
+    if (silinenFaiz > 1) {
+        sonucMetni += `<br><br>💡 Erken ödeme sayesinde <b>${Math.round(silinenFaiz).toLocaleString('tr-TR')}</b> faiz borcunuzdan silindi.`;
+    }
     if (bildirimler.length > 0) {
         sonucMetni += `<br><br>` + bildirimler.join('<br>');
     } else if (kalkanBlokeSayisi > 0) {
         sonucMetni += `<br><br>Harika! Yaptığınız ödeme sayesinde <b>${kalkanBlokeSayisi} adet</b> varlığınızın blokesi kaldırıldı.`;
     }
-
     modalGoster(sonucMetni);
 
-    if (typeof portfoyuSunucuyaKaydet === 'function') {
-        portfoyuSunucuyaKaydet(state);
-    }
+    if (typeof portfoyuSunucuyaKaydet === 'function') portfoyuSunucuyaKaydet(state);
 }
 
 
