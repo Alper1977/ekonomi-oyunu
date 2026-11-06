@@ -2822,8 +2822,9 @@ if (satilikVarliklar.length > 0) {
             let ilgiliKredi = state.krediler.find(kr => kr.id === varlik.krediID);
 
             if (ilgiliKredi) {
-                dusulenBorc = ilgiliKredi.kalanBorc;
-                state.kredi = Math.max(0, state.kredi - dusulenBorc);
+                let tamBorcKalan = ilgiliKredi.kalanBorc;
+                dusulenBorc = krediErkenKapamaTutari(ilgiliKredi);
+                state.kredi = Math.max(0, state.kredi - tamBorcKalan);
                 ilgiliKredi.kalanBorc = 0;
                 state.krediler = state.krediler.filter(kr => kr.kalanBorc > 0);
 
