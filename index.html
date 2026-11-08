@@ -4419,6 +4419,132 @@ async function bildirimleriKontrolEt() {
 setInterval(bildirimleriKontrolEt, 12000);
 setTimeout(bildirimleriKontrolEt, 4000); 
 
+function krediyeOdemeUygula(kr, miktar) {
+    let eskiKalan = kr.kalanBorc;
+    let p = krediErkenKapamaTutari(kr);
+
+    if (miktar >= p - 0.5) {
+        kr.kalanBorc = 0;
+        kr.icradanKalanBorc = false;
+        return { harcanan: p, silinenFaiz: Math.max(0, eskiKalan - p), kapandi: true };
+    }
+    if (kr.icradanKalanBorc) {
+        kr.kalanBorc -= miktar;
+        return { harcanan: miktar, silinenFaiz: 0, kapandi: false };
+    }
+    let taksit = Number(kr.taksit || kr.taksitTutu) || 0;
+    let i = krediAylikFaiz(kr);
+    if (taksit <= 0 || i <= 0) {
+        kr.kalanBorc -= miktar;
+        if (taksit > 0) {
+            let nn = Math.max(1, Math.round(eskiKalan / taksit));
+            kr.taksit = kr.kalanBorc / nn;
+            kr.taksitTutu = kr.taksit;
+        }
+        return { harcanan: miktar, silinenFaiz: 0, kapandi: false };
+    }
+    let n = Math.max(1, Math.round(eskiKalan / taksit));
+    let yeniAnapara = p - miktar;
+    let yeniTaksit = yeniAnapara * i / (1 - Math.pow(1 + i, -n));
+    kr.faiz = i;
+    kr.taksit = yeniTaksit;
+    kr.taksitTutu = yeniTaksit;
+    kr.kalanBorc = yeniTaksit * n;
+    return { harcanan: miktar, silinenFaiz: Math.max(0, (eskiKalan - kr.kalanBorc) - miktar), kapandi: false };
+}
+
+// "ÖDE" veya "TAMAMINI KAPAT" düğmesine basılınca: kontrol + onay penceresi
+function krediOdeTekOnay(krediId, tamKapat) {
+    let kr = (state.krediler || []).find(k => String(k.id) === String(krediId));
+    if (!kr || !(kr.kalanBorc > 0)) { modalGoster('Bu kredi bulunamadı.'); return; }
+
+    let tam = krediErkenKapamaTutari(kr);
+    let girdi = document.querySelector('input[data-kredi-ode="' + String(krediId) + '"]');
+    let miktar = tamKapat ? tam : (parseFloat(((girdi && girdi.value) || '').replace(/\./g, '').replace(',', '.')) || 0);
+
+    if (!(miktar > 0)) { modalGoster('Lütfen geçerli bir miktar girin!'); return; }
+    if (miktar > tam + 0.5) {
+        modalGoster(`Hata: Bu kredi için erken kapama tutarı ${Math.ceil(tam).toLocaleString('tr-TR')}. Daha fazla ödeyemezsiniz.`);
+        if (girdi) girdi.value = '';
+        return;
+    }
+    if (state.nakit < miktar) {
+        modalGoster(`Yetersiz Nakit! Gereken: ${Math.ceil(miktar).toLocaleString('tr-TR')}`);
+        return;
+    }
+
+    let kopya = JSON.parse(JSON.stringify(kr));
+    let on = krediyeOdemeUygula(kopya, miktar);
+    let f = x => Math.round(x).toLocaleString('tr-TR');
+    let icra = kr.icradanKalanBorc === true;
+    let ad = icra ? 'İcradan kalan borç' : (htmlKacis(kr.isim || 'Yatırım') + ' kredisi');
+
+    let ozet;
+    if (on.kapandi) {
+        ozet = `<b>${ad}</b> tamamen kapatılacak.<br>Ödenecek: <b>${f(on.harcanan)}</b>`;
+    } else {
+        ozet = `<b>${ad}</b> için <b>${f(miktar)}</b> ödenecek.`;
+        if (!icra) ozet += `<br>Yeni aylık taksit: <b>${f(kopya.taksit || 0)}</b> (şimdi: ${f(kr.taksit || 0)})`;
+        ozet += `<br>Bu kredinin kalan borcu: <b>${f(kopya.kalanBorc)}</b>`;
+    }
+    if (on.silinenFaiz > 1) ozet += `<br>Silinecek faiz: <b>${f(on.silinenFaiz)}</b>`;
+
+    let butonlar = `
+        <button class="btn-green" onclick="krediOdeTekKesin('${kr.id}', ${miktar})">ONAYLA</button>
+        <button onclick="document.getElementById('modal-overlay').style.display='none'" style="background-color:#d9534f; color:white; margin-left:10px;">VAZGEÇ</button>`;
+    modalGoster(ozet + '<br><br>Onaylıyor musunuz?', butonlar);
+}
+
+function krediOdeTekKesin(krediId, miktar) {
+    document.getElementById('modal-overlay').style.display = 'none';
+    window._sonIlanIslemZamani = Date.now();
+    miktar = Number(miktar) || 0;
+
+    let kr = (state.krediler || []).find(k => String(k.id) === String(krediId));
+    if (!kr || !(kr.kalanBorc > 0) || miktar <= 0) return;
+    if (state.nakit < miktar - 0.01) { modalGoster('Yetersiz Nakit!'); return; }
+
+    let tam = krediErkenKapamaTutari(kr);
+    if (miktar > tam) miktar = tam;
+    let ad = kr.icradanKalanBorc ? 'İcradan kalan borç' : (htmlKacis(kr.isim || 'Yatırım') + ' kredisi');
+
+    let sonuc = krediyeOdemeUygula(kr, miktar);
+    state.nakit -= sonuc.harcanan;
+
+    state.krediler = state.krediler.filter(k => (k.kalanBorc || 0) > 0.01);
+    state.kredi = state.krediler.reduce((t, k) => t + (k.kalanBorc || 0), 0);
+    if (state.krediler.length === 0 || state.kredi < 0.01) {
+        state.kredi = 0;
+        state.taksit = 0;
+        state.krediler = [];
+    } else {
+        state.taksit = state.krediler.reduce((t, k) => t + (k.icradanKalanBorc ? 0 : (k.taksit || 0)), 0);
+    }
+
+    // Kapanan kredinin blokesini kaldır
+    let blokeKalkan = 0;
+    let aktifIds = state.krediler.map(k => String(k.id));
+    (state.varliklar || []).forEach(v => {
+        if (v && v.bloke && (!v.krediID || !aktifIds.includes(String(v.krediID)))) {
+            v.bloke = false;
+            v.krediID = null;
+            blokeKalkan++;
+        }
+    });
+
+    document.querySelectorAll('input[data-kredi-ode]').forEach(i => { i.value = ''; });
+    guncelle();
+
+    let f = x => Math.round(x).toLocaleString('tr-TR');
+    let m = sonuc.kapandi ? `✅ <b>${ad}</b> kapatıldı. Ödenen: ${f(sonuc.harcanan)}` : `✅ <b>${ad}</b> için ${f(sonuc.harcanan)} ödendi.`;
+    if (sonuc.silinenFaiz > 1) m += `<br>💡 Erken ödeme sayesinde ${f(sonuc.silinenFaiz)} faiz silindi.`;
+    if (blokeKalkan > 0) m += `<br>🔓 ${blokeKalkan} varlığınızın blokesi kaldırıldı.`;
+    m += `<br>Kalan toplam borç: ${f(state.kredi)}`;
+    modalGoster(m);
+
+    if (typeof portfoyuSunucuyaKaydet === 'function') portfoyuSunucuyaKaydet(state);
+}
+
 function krediDetaylariniGuncelle() {
     let liste = (state.krediler || []).filter(kr => kr && (kr.kalanBorc || 0) > 0.01);
     let fmt = v => Math.round(v).toLocaleString('tr-TR');
@@ -4434,6 +4560,15 @@ function krediDetaylariniGuncelle() {
     if (!kutu) return;
     if (liste.length === 0) { kutu.innerHTML = ''; return; }
 
+    // Kullanıcı bir kutuya yazarken listeyi yenileme (yazdığı silinmesin)
+    let aktifEl = document.activeElement;
+    if (aktifEl && aktifEl.tagName === 'INPUT' && kutu.contains(aktifEl)) return;
+
+    let eskiDegerler = {};
+    kutu.querySelectorAll('input[data-kredi-ode]').forEach(inp => {
+        if (inp.value) eskiDegerler[inp.getAttribute('data-kredi-ode')] = inp.value;
+    });
+
     kutu.innerHTML = liste.map(kr => {
         let icra = kr.icradanKalanBorc === true;
         let taksit = Number(kr.taksit || kr.taksitTutu) || 0;
@@ -4442,6 +4577,7 @@ function krediDetaylariniGuncelle() {
         let altYazi = icra ? 'Faizsiz bakiye, kasaya para girince otomatik düşer'
                            : ('Kalan ' + kalanAy + ' ay • Aylık taksit: ' + fmt(taksit));
         let tam = krediErkenKapamaTutari(kr);
+        let kid = htmlKacis(String(kr.id));
         return `<div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 8px 10px; margin-bottom: 6px; font-size: 12px; color: #ddd;">
             <div style="font-weight: bold; color: #fff;">${baslik}</div>
             <div style="font-size: 11px; color: #aaa; margin: 2px 0 6px 0;">${altYazi}</div>
@@ -4449,8 +4585,18 @@ function krediDetaylariniGuncelle() {
                 <div><div style="font-size: 10px; color: #aaa;">Faizli toplam</div><b>${fmt(kr.kalanBorc)}</b></div>
                 <div style="text-align: right;"><div style="font-size: 10px; color: #87CEFA;">Peşin kapama</div><b style="color: #00e676;">${fmt(tam)}</b></div>
             </div>
+            <div style="display: flex; gap: 6px; margin-top: 8px; align-items: center;">
+                <input type="text" data-kredi-ode="${kid}" placeholder="Tutar" oninput="parayiFormatla(this)" style="flex: 1; width: auto; min-width: 0; height: 30px; box-sizing: border-box; padding: 4px 8px; font-size: 12px;">
+                <button class="btn-green" onclick="krediOdeTekOnay('${kid}', false)" style="padding: 0 12px; height: 30px; font-size: 11px;">ÖDE</button>
+                <button class="btn-red" onclick="krediOdeTekOnay('${kid}', true)" style="padding: 0 8px; height: 30px; font-size: 9px; line-height: 1.1;">TAMAMINI<br>KAPAT</button>
+            </div>
         </div>`;
     }).join('');
+
+    kutu.querySelectorAll('input[data-kredi-ode]').forEach(inp => {
+        let v = eskiDegerler[inp.getAttribute('data-kredi-ode')];
+        if (v) inp.value = v;
+    });
 }
  
 function changePage(p) {
