@@ -114,5 +114,11 @@ function al(db, id, fiyat) {   // satın alma başarılıysa çağrılır
   }
   return false;
 }
-
-module.exports = { baslat, dongu, liste, ilanlar, bul, al, isimler };
+function oyuncudanAl(db, isim, fiyat, atananKonum) {
+  let alici = rnd(botlar.filter(x => x.nakit >= fiyat));
+  if (!alici) { alici = rnd(botlar); alici.nakit += fiyat; }
+  alici.nakit -= fiyat;
+  alici.varliklar.push({ id: ++sonId, isim, durum: 'sahip', atananKonum: atananKonum || konumSec(isim) });
+  kaydet(db);
+}
+module.exports = { baslat, dongu, liste, ilanlar, bul, al, isimler, oyuncudanAl };
