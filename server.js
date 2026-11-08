@@ -597,7 +597,136 @@ setInterval(() => {
         console.error("Arka plan oyun döngüsü genel hata:", err.message);
     }
 }, 30000);
+db.prepare(`CREATE TABLE IF NOT EXISTS bildirimler (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    kullanici_id INTEGER,
+    mesaj TEXT,
+    tarih INTEGER
+)`).run();
+db.prepare(`CREATE INDEX IF NOT EXISTS idx_bildirim_kullanici ON bildirimler(kullanici_id)`).run();
 
+function bildirimEkle(kullaniciId, mesaj) {
+    db.prepare(`INSERT INTO bildirimler (kullanici_id, mesaj, tarih) VALUES (?, ?, ?)`).run(kullaniciId, mesaj, Date.now());
+}
+
+function ilanSatisiniSaticiyaUygula(p, ilanTipi, hedefVarlikId, satisFiyati, faizOranlari) {
+    const liste = Array.isArray(p.varliklar) ? p.varliklar : [];
+    let idx = -1;
+    if (hedefVarlikId) idx = liste.findIndex(v => v && String(v.id) === String(hedefVarlikId));
+    if (idx === -1) idx = liste.findIndex(v => v && v.isim === ilanTipi && v.durum === 'ilan-aktif');
+    if (idx === -1) return null;
+
+    const varlik = liste[idx];
+    let nakit = p.nakit !== undefined ? Number(p.nakit) : Number(p.para || 0);
+    let krediler = Array.isArray(p.krediler) ? p.krediler : [];
+    let dusulenBorc = 0, silinenFaiz = 0, kalanBorc = 0;
+
+    const kr = varlik.krediID ? krediler.find(k => k && String(k.id) === String(varlik.krediID)) : null;
+    if (kr && (kr.kalanBorc || 0) > 0) {
+        const eskiKalan = kr.kalanBorc;
+        const tam = krediErkenKapamaTutari(kr, faizOranlari);
+        silinenFaiz = Math.max(0, eskiKalan - tam);
+        if (satisFiyati >= tam) {
+            dusulenBorc = tam;
+            nakit += satisFiyati - tam;
+            krediler = krediler.filter(k => String(k.id) !== String(kr.id));
+        } else {
+            dusulenBorc = satisFiyati;
+            kr.kalanBorc = tam - satisFiyati;
+            kr.icradanKalanBorc = true;
+            kr.taksit = 0;
+            kr.ustUsteOdenmeyen = 0;
+            kalanBorc = kr.kalanBorc;
+        }
+    } else {
+        nakit += satisFiyati;
+    }
+
+    liste.splice(idx, 1);
+    p.varliklar = liste;
+    p.nakit = nakit;
+    p.para = nakit;
+
+    krediler = krediler.filter(k => k && (k.kalanBorc || 0) > 0.01);
+    p.krediler = krediler;
+    p.kredi = krediler.reduce((t, k) => t + (k.kalanBorc || 0), 0);
+    p.taksit = krediler.reduce((t, k) => t + (k.icradanKalanBorc ? 0 : (k.taksit || k.taksitTutu || 0)), 0);
+    if (krediler.length === 0 || p.kredi < 0.01) { p.kredi = 0; p.taksit = 0; p.krediler = []; }
+
+    const aktif = new Set(p.krediler.map(k => String(k.id)));
+    p.varliklar.forEach(v => {
+        if (v && v.bloke && (!v.krediID || !aktif.has(String(v.krediID)))) { v.bloke = false; v.krediID = null; }
+    });
+
+    return { dusulenBorc, silinenFaiz, kalanBorc, netKazanc: Math.max(0, satisFiyati - dusulenBorc) };
+}
+
+function ilanSatisMesaji(ilanTipi, satisFiyati, s) {
+    const f = x => Math.round(x).toLocaleString('tr-TR');
+    let m = `<b>Piyasa Hareketli</b><br><br>Bir yatırımcı, ilanda bekleyen "${ilanTipi}" varlığınızı ${f(satisFiyati)} ödeyerek satın aldı!`;
+    if (s.dusulenBorc > 0) {
+        m += `<br><br>Kredi borcunuza mahsup edilen: -${f(s.dusulenBorc)}`;
+        if (s.silinenFaiz > 1) m += `<br>Peşin kapama sayesinde silinen faiz: ${f(s.silinenFaiz)}`;
+        if (s.kalanBorc > 1) m += `<br>Satış borcu karşılamadı, kalan <b>${f(s.kalanBorc)}</b> borç olarak bırakıldı.`;
+        else m += `<br>Kasanıza eklenen net tutar: ${f(s.netKazanc)}`;
+    } else {
+        m += `<br>Kasanıza eklenen tutar: ${f(satisFiyati)}`;
+    }
+    return m;
+}
+
+function oyuncuIlanlariniBotlaraSat() {
+    const ayar = ayarOku();
+    let beklemeMs = Number(ayar.GLOBAL_BEKLEME_SURESI);
+    if (isNaN(beklemeMs)) beklemeMs = 3 * 24 * 60 * 60 * 1000;
+    const fiyatlar = ayar.satisFiyatlari || {};
+    const simdi = Date.now();
+
+    db.prepare(`SELECT * FROM ilanlar`).all().forEach(ilan => {
+        try {
+            const ilanZamani = ilan.tarih ? Date.parse(String(ilan.tarih).replace(' ', 'T') + 'Z') : NaN;
+            if (isNaN(ilanZamani) || (simdi - ilanZamani) < beklemeMs) return;
+
+            let detay = {};
+            try { detay = JSON.parse(ilan.detaylar || '{}'); } catch (e) {}
+            const satisFiyati = fiyatlar[ilan.ilan_tipi] !== undefined ? Number(fiyatlar[ilan.ilan_tipi]) : Number(ilan.fiyat);
+
+            db.transaction(() => {
+                const row = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(ilan.kullanici_id);
+                if (!row) { db.prepare(`DELETE FROM ilanlar WHERE id = ?`).run(ilan.id); return; }
+
+                const p = JSON.parse(row.portfoy || '{}');
+                const sonuc = ilanSatisiniSaticiyaUygula(p, ilan.ilan_tipi, detay.varlikId, satisFiyati, ayar.faizOranlari);
+                if (!sonuc) { db.prepare(`DELETE FROM ilanlar WHERE id = ?`).run(ilan.id); return; }
+
+                db.prepare(`UPDATE kullanicilar SET portfoy = ? WHERE id = ?`).run(JSON.stringify(p), ilan.kullanici_id);
+                db.prepare(`DELETE FROM ilanlar WHERE id = ?`).run(ilan.id);
+                bildirimEkle(ilan.kullanici_id, ilanSatisMesaji(ilan.ilan_tipi, satisFiyati, sonuc));
+                bots.oyuncudanAl(db, ilan.ilan_tipi, satisFiyati, detay.atananKonum);
+            })();
+        } catch (e) {
+            console.error(`İlan ${ilan.id} bota satılırken hata:`, e.message);
+        }
+    });
+}
+
+setInterval(() => {
+    try { oyuncuIlanlariniBotlaraSat(); } catch (e) { console.error('Bot satış döngüsü:', e.message); }
+}, 15000);
+
+app.get('/api/bildirimler', (req, res) => {
+    if (!req.session || !req.session.kullanici) return res.status(401).json({ basari: false });
+    try {
+        const uid = req.session.kullanici.id;
+        const satirlar = db.prepare(`SELECT id, mesaj FROM bildirimler WHERE kullanici_id = ? ORDER BY id ASC LIMIT 20`).all(uid);
+        if (satirlar.length) {
+            db.prepare(`DELETE FROM bildirimler WHERE id IN (${satirlar.map(() => '?').join(',')})`).run(...satirlar.map(s => s.id));
+        }
+        res.json({ basari: true, bildirimler: satirlar });
+    } catch (e) {
+        res.status(500).json({ basari: false, mesaj: e.message });
+    }
+});
 // --- API Rotaları ---
 
 app.get('/api/ilanlar', (req, res) => {
