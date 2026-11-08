@@ -557,8 +557,10 @@
         <div class="item-box-kucuk"><span>EcarAu Portföyü:</span> <span id="val-altin">200,00 gr</span></div>
         <div class="item-box-kucuk"><span>Vadeli Hesap:</span> <span id="val-vadeli">50.000.000,00</span></div>
         <div class="item-box-kucuk"><span>Vadeli Hesap Faizi:</span> <span id="val-faiz">0,00</span></div>
-        <div class="item-box-kucuk"><span>Kredi Borcu :</span> <span id="val-kredi">0,00</span></div>
-        <div class="item-box-kucuk" style="margin-bottom: 15px;"><span>Kredi Taksiti:</span> <span id="val-taksit">0,00</span></div>
+        <div class="item-box-kucuk"><span>Kredi Borcu (faizli):</span> <span id="val-kredi">0,00</span></div>
+        <div class="item-box-kucuk"><span>Peşin Kapama Tutarı:</span> <span id="val-erken-kapama" style="color:#00e676;">0,00</span></div>
+        <div class="item-box-kucuk"><span>Kredi Taksiti:</span> <span id="val-taksit">0,00</span></div>
+        <div id="kredi-detay-listesi" style="margin-bottom: 15px;"></div>
         
         <!-- Kredi Borcu Kapat -->
         <div class="item-box" style="flex-direction: column; align-items: stretch; gap: 6px; margin-bottom: 15px;">
@@ -2801,7 +2803,7 @@ window.ilanZamanlari = window.ilanZamanlari || {};
 
 let beklemeSuresiMs = Number(window.oyunAyar.GLOBAL_BEKLEME_SURESI);
 if (isNaN(beklemeSuresiMs)) beklemeSuresiMs = 3 * 24 * 60 * 60 * 1000;
-let satilikVarliklar = state.varliklar.filter(v => v.durum === 'ilan-aktif' && v.ilanSahibi === 'ben');
+let satilikVarliklar = [];
 
 if (satilikVarliklar.length > 0) {
     satilikVarliklar.forEach(varlik => {
@@ -2996,8 +2998,7 @@ async function guncelleIcerik() {
 
     document.getElementById('val-kredi').innerText = Number(state.kredi || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ;
     document.getElementById('val-taksit').innerText = Number(state.taksit || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ;
-    let ekBilgi = document.getElementById('erken-kapama-bilgi');
-    if (ekBilgi) ekBilgi.innerText = state.kredi > 0 ? 'Tamamını kapatmak için gereken: ' + Math.ceil(krediErkenKapamaToplami()).toLocaleString('tr-TR') : '';
+    krediDetaylariniGuncelle();
     sayiAnimasyonu('val-nakit', Number(state.nakit || 0));
     document.getElementById('val-dolar').innerText = Number(state.dolar || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     document.getElementById('val-euro').innerText = Number(state.euro || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -4404,6 +4405,53 @@ function sayiAnimasyonu(id, hedef) {
     };
     el._anim = requestAnimationFrame(adim);
 } 
+async function bildirimleriKontrolEt() {
+    try {
+        let r = await fetch('/api/bildirimler', { credentials: 'include' });
+        if (!r.ok) return;
+        let d = await r.json();
+        if (d.basari && Array.isArray(d.bildirimler) && d.bildirimler.length > 0) {
+            if (typeof portfoyuSenkronizeEt === 'function') await portfoyuSenkronizeEt();
+            modalGoster(d.bildirimler.map(b => b.mesaj).join('<br><br>'));
+        }
+    } catch (e) {}
+}
+setInterval(bildirimleriKontrolEt, 12000);
+setTimeout(bildirimleriKontrolEt, 4000); 
+
+function krediDetaylariniGuncelle() {
+    let liste = (state.krediler || []).filter(kr => kr && (kr.kalanBorc || 0) > 0.01);
+    let fmt = v => Math.round(v).toLocaleString('tr-TR');
+
+    let toplamKapama = (state.kredi > 0) ? krediErkenKapamaToplami() : 0;
+    let ekEl = document.getElementById('val-erken-kapama');
+    if (ekEl) ekEl.innerText = Number(toplamKapama).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    let bilgi = document.getElementById('erken-kapama-bilgi');
+    if (bilgi) bilgi.innerText = state.kredi > 0 ? 'Tamamını kapatmak için gereken: ' + Math.ceil(toplamKapama).toLocaleString('tr-TR') : '';
+
+    let kutu = document.getElementById('kredi-detay-listesi');
+    if (!kutu) return;
+    if (liste.length === 0) { kutu.innerHTML = ''; return; }
+
+    kutu.innerHTML = liste.map(kr => {
+        let icra = kr.icradanKalanBorc === true;
+        let taksit = Number(kr.taksit || kr.taksitTutu) || 0;
+        let kalanAy = (!icra && taksit > 0) ? Math.max(1, Math.round(kr.kalanBorc / taksit)) : 0;
+        let baslik = icra ? 'İcradan kalan borç' : (htmlKacis(kr.isim || 'Yatırım') + ' kredisi');
+        let altYazi = icra ? 'Faizsiz bakiye, kasaya para girince otomatik düşer'
+                           : ('Kalan ' + kalanAy + ' ay • Aylık taksit: ' + fmt(taksit));
+        let tam = krediErkenKapamaTutari(kr);
+        return `<div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 8px 10px; margin-bottom: 6px; font-size: 12px; color: #ddd;">
+            <div style="font-weight: bold; color: #fff;">${baslik}</div>
+            <div style="font-size: 11px; color: #aaa; margin: 2px 0 6px 0;">${altYazi}</div>
+            <div style="display: flex; justify-content: space-between; gap: 8px;">
+                <div><div style="font-size: 10px; color: #aaa;">Faizli toplam</div><b>${fmt(kr.kalanBorc)}</b></div>
+                <div style="text-align: right;"><div style="font-size: 10px; color: #87CEFA;">Peşin kapama</div><b style="color: #00e676;">${fmt(tam)}</b></div>
+            </div>
+        </div>`;
+    }).join('');
+}
  
 function changePage(p) {
     let hedefSayfa = document.getElementById(p);
