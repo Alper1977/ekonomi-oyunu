@@ -39,6 +39,88 @@ function krediErkenKapamaTutari(kr, faizOranlari) {
     const p = taksit * (1 - Math.pow(1 + i, -n)) / i;
     return Math.min(kr.kalanBorc, Math.max(0, p));
 }
+function krediFaiziAl(kr, faizOranlari) {
+    let f = (kr && kr.faiz !== undefined && kr.faiz !== null) ? Number(kr.faiz) : NaN;
+    if (isNaN(f)) {
+        const y = (faizOranlari && faizOranlari.yatirimKredisiYuzde !== undefined) ? Number(faizOranlari.yatirimKredisiYuzde) : 5;
+        f = y > 1 ? y / 100 : y;
+    }
+    return f;
+}
+
+// Krediye anapara ödemesi: kalan vade korunur, taksit ve toplam faiz küçülür. Silinen faizi döner.
+function krediyeAnaparaOde(kr, miktar, faizOranlari) {
+    const eskiKalan = kr.kalanBorc;
+    const p = krediErkenKapamaTutari(kr, faizOranlari);
+    const taksit = Number(kr.taksit || kr.taksitTutu) || 0;
+    const i = krediFaiziAl(kr, faizOranlari);
+    if (taksit <= 0 || i <= 0) {
+        kr.kalanBorc = Math.max(0, kr.kalanBorc - miktar);
+        if (taksit > 0) {
+            const nn = Math.max(1, Math.round(eskiKalan / taksit));
+            kr.taksit = kr.kalanBorc / nn;
+            kr.taksitTutu = kr.taksit;
+        }
+        return 0;
+    }
+    const n = Math.max(1, Math.round(eskiKalan / taksit));
+    const yeniAnapara = Math.max(0, p - miktar);
+    const yeniTaksit = yeniAnapara * i / (1 - Math.pow(1 + i, -n));
+    kr.faiz = i;
+    kr.taksit = yeniTaksit;
+    kr.taksitTutu = yeniTaksit;
+    kr.kalanBorc = yeniTaksit * n;
+    return Math.max(0, (eskiKalan - kr.kalanBorc) - miktar);
+}
+
+// Grup kredilerinde (ör. 30 daire) kalan anaparaya göre fazla blokeleri kaldırır. Kaldırılan sayıyı döner.
+function krediGrupBlokeDengele(p, faizOranlari) {
+    let kalkan = 0;
+    (p.krediler || []).forEach(kr => {
+        if (!kr || !(kr.kalanBorc > 0) || kr.icradanKalanBorc) return;
+        const bagli = (p.varliklar || []).filter(v => v && v.bloke && v.krediID && String(v.krediID) === String(kr.id));
+        if (bagli.length === 0) return;
+        const pay = krediErkenKapamaTutari(kr, faizOranlari);
+        if (!(kr.birim > 0)) { kr.faiz = krediFaiziAl(kr, faizOranlari); kr.birim = pay / bagli.length; }
+        const izinli = Math.max(1, Math.ceil(pay / kr.birim - 1e-6));
+        const fazla = bagli.length - izinli;
+        bagli.sort((a, b) => (a.durum === 'ilan-aktif' ? 1 : 0) - (b.durum === 'ilan-aktif' ? 1 : 0));
+        for (let k = 0; k < fazla; k++) { bagli[k].bloke = false; bagli[k].krediID = null; kalkan++; }
+    });
+    return kalkan;
+}
+
+// İCRA: kredinin bağlı olduğu varlıklar, borç karşılanana kadar tek tek satılır
+function icraUygula(portfoy, kr, satisFiyatlari, faizOranlari) {
+    const bagliler = () => (portfoy.varliklar || []).filter(v => v && v.krediID && kr.id && String(v.krediID) === String(kr.id));
+    if (bagliler().length === 0) { kr.silinecek = false; return; }
+
+    const tam = krediErkenKapamaTutari(kr, faizOranlari);
+    let toplamSatis = 0;
+    while (tam - toplamSatis > 0.5 && bagliler().length > 0) {
+        const v = bagliler()[0];
+        const fiyat = (satisFiyatlari && satisFiyatlari[v.isim]) ? Number(satisFiyatlari[v.isim]) : 10000000;
+        portfoy.varliklar = portfoy.varliklar.filter(x => x && x.id !== v.id);
+        toplamSatis += fiyat;
+    }
+    let nakit = portfoy.nakit !== undefined ? Number(portfoy.nakit) : Number(portfoy.para || 0);
+    if (toplamSatis >= tam - 0.5) {
+        nakit += Math.max(0, toplamSatis - tam);
+        kr.kalanBorc = 0;
+        kr.silinecek = true;
+        portfoy.varliklar.forEach(v => {
+            if (v && v.krediID && String(v.krediID) === String(kr.id)) { v.bloke = false; v.krediID = null; }
+        });
+    } else {
+        kr.kalanBorc = tam - toplamSatis;
+        kr.ustUsteOdenmeyen = 0;
+        kr.silinecek = false;
+        kr.icradanKalanBorc = true;
+        kr.taksit = 0;
+    }
+    portfoy.nakit = nakit;
+    portfoy.para = nakit;
+}
 const app = express(); 
 const server = http.createServer(app);  
 const io = new Server(server);   
@@ -461,32 +543,8 @@ if (kr.icradanKalanBorc) {
 
                     // 3 Dönem üst üste ödenmediyse İCRA (Varlığa el koyma)
                     if (kr.ustUsteOdenmeyen >= 3 && portfoy.varliklar) {
-                        let ilgiliVarlik = portfoy.varliklar.find(v => v && v.krediID && kr.id && String(v.krediID) === String(kr.id));
-                        if (ilgiliVarlik) {
-                            let satisFiyati = (satisFiyatlari && satisFiyatlari[ilgiliVarlik.isim]) ? satisFiyatlari[ilgiliVarlik.isim] : 10000000;
-                            
-                            // Varlığı portföyden sil
-                            portfoy.varliklar = portfoy.varliklar.filter(v => v && v.id !== ilgiliVarlik.id);
-
-                            const tamKapamaTutari = krediErkenKapamaTutari(kr, faizOranlari);
-                            if (satisFiyati >= tamKapamaTutari) {
-                                let artisFarki = satisFiyati - tamKapamaTutari;
-                                portfoy.nakit += artisFarki;
-                                portfoy.para = portfoy.nakit;
-                                kr.kalanBorc = 0;
-                                kr.silinecek = true;
-                            } else {
-                                // İCRA SONRASI KALAN BAKİYE BORÇ DURUMU:
-                                kr.kalanBorc = tamKapamaTutari - satisFiyati;
-                                kr.ustUsteOdenmeyen = 0; 
-                                kr.silinecek = false;   
-                                kr.icradanKalanBorc = true; // --- 🌟 EKLENEN KORUMA BAYRAĞI ---
-                                kr.taksit = 0; 
-                            }
-                        } else {
-                            kr.silinecek = false;
-                        }
-                    }
+                      icraUygula(portfoy, kr, satisFiyatlari, faizOranlari);
+                  }
                 }
                 degisiklikOldu = true;
             });
@@ -509,7 +567,7 @@ if (kr.icradanKalanBorc) {
         });
         portfoy.krediler = portfoy.krediler.filter(kr => kr && kr.kalanBorc > 0);
     }
-
+if (krediGrupBlokeDengele(portfoy, faizOranlari) > 0) degisiklikOldu = true;
 // Genel borç ve taksit özet alanlarını güncelle
 if (portfoy.krediler && Array.isArray(portfoy.krediler)) {
     portfoy.kredi = portfoy.krediler.reduce((toplam, kr) => toplam + (kr.kalanBorc || 0), 0);
@@ -619,24 +677,36 @@ function ilanSatisiniSaticiyaUygula(p, ilanTipi, hedefVarlikId, satisFiyati, fai
     const varlik = liste[idx];
     let nakit = p.nakit !== undefined ? Number(p.nakit) : Number(p.para || 0);
     let krediler = Array.isArray(p.krediler) ? p.krediler : [];
-    let dusulenBorc = 0, silinenFaiz = 0, kalanBorc = 0;
+    let dusulenBorc = 0, silinenFaiz = 0, kalanBorc = 0, grup = false;
 
     const kr = varlik.krediID ? krediler.find(k => k && String(k.id) === String(varlik.krediID)) : null;
     if (kr && (kr.kalanBorc || 0) > 0) {
-        const eskiKalan = kr.kalanBorc;
+        const bagliSayi = liste.filter(v => v && v.krediID && String(v.krediID) === String(kr.id)).length;
         const tam = krediErkenKapamaTutari(kr, faizOranlari);
-        silinenFaiz = Math.max(0, eskiKalan - tam);
-        if (satisFiyati >= tam) {
-            dusulenBorc = tam;
-            nakit += satisFiyati - tam;
-            krediler = krediler.filter(k => String(k.id) !== String(kr.id));
+
+        if (bagliSayi > 1 && !kr.icradanKalanBorc) {
+            // Grup kredisi (ör. 30 daire): sadece satılan varlığın payı kapanır, kredi diğerleri için sürer
+            grup = true;
+            if (!(kr.birim > 0)) { kr.faiz = krediFaiziAl(kr, faizOranlari); kr.birim = tam / bagliSayi; }
+            const pay = tam / bagliSayi;
+            const odenen = Math.min(satisFiyati, pay);
+            silinenFaiz = krediyeAnaparaOde(kr, odenen, faizOranlari);
+            dusulenBorc = odenen;
+            nakit += satisFiyati - odenen;
         } else {
-            dusulenBorc = satisFiyati;
-            kr.kalanBorc = tam - satisFiyati;
-            kr.icradanKalanBorc = true;
-            kr.taksit = 0;
-            kr.ustUsteOdenmeyen = 0;
-            kalanBorc = kr.kalanBorc;
+            silinenFaiz = Math.max(0, kr.kalanBorc - tam);
+            if (satisFiyati >= tam) {
+                dusulenBorc = tam;
+                nakit += satisFiyati - tam;
+                krediler = krediler.filter(k => String(k.id) !== String(kr.id));
+            } else {
+                dusulenBorc = satisFiyati;
+                kr.kalanBorc = tam - satisFiyati;
+                kr.icradanKalanBorc = true;
+                kr.taksit = 0;
+                kr.ustUsteOdenmeyen = 0;
+                kalanBorc = kr.kalanBorc;
+            }
         }
     } else {
         nakit += satisFiyati;
@@ -657,8 +727,9 @@ function ilanSatisiniSaticiyaUygula(p, ilanTipi, hedefVarlikId, satisFiyati, fai
     p.varliklar.forEach(v => {
         if (v && v.bloke && (!v.krediID || !aktif.has(String(v.krediID)))) { v.bloke = false; v.krediID = null; }
     });
+    krediGrupBlokeDengele(p, faizOranlari);
 
-    return { dusulenBorc, silinenFaiz, kalanBorc, netKazanc: Math.max(0, satisFiyati - dusulenBorc) };
+    return { dusulenBorc, silinenFaiz, kalanBorc, grup, netKazanc: Math.max(0, satisFiyati - dusulenBorc) };
 }
 
 function ilanSatisMesaji(ilanTipi, satisFiyati, s) {
@@ -666,6 +737,7 @@ function ilanSatisMesaji(ilanTipi, satisFiyati, s) {
     let m = `<b>Piyasa Hareketli</b><br><br>Bir yatırımcı, ilanda bekleyen "${ilanTipi}" varlığınızı ${f(satisFiyati)} ödeyerek satın aldı!`;
     if (s.dusulenBorc > 0) {
         m += `<br><br>Kredi borcunuza mahsup edilen: -${f(s.dusulenBorc)}`;
+        if (s.grup) m += `<br>(Grup kredisi: sadece bu varlığın payı kapandı, kredi diğer varlıklar için devam ediyor.)`;
         if (s.silinenFaiz > 1) m += `<br>Peşin kapama sayesinde silinen faiz: ${f(s.silinenFaiz)}`;
         if (s.kalanBorc > 1) m += `<br>Satış borcu karşılamadı, kalan <b>${f(s.kalanBorc)}</b> borç olarak bırakıldı.`;
         else m += `<br>Kasanıza eklenen net tutar: ${f(s.netKazanc)}`;
@@ -674,7 +746,6 @@ function ilanSatisMesaji(ilanTipi, satisFiyati, s) {
     }
     return m;
 }
-
 function oyuncuIlanlariniBotlaraSat() {
     const ayar = ayarOku();
     let beklemeMs = Number(ayar.GLOBAL_BEKLEME_SURESI);
@@ -892,114 +963,22 @@ app.post('/api/ilan-satin-al', (req, res) => {
             guncelAliciPortfoy = aliciPortfoy;
 
 // SATICI İŞLEMLERİ (Sadece gerçek kullanıcılar için)
-if (saticiId) {
-    const saticiRow = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(saticiId);
-    
-    if (saticiRow && saticiRow.portfoy) {
-        let saticiPortfoy = JSON.parse(saticiRow.portfoy || '{}');
-        let saticiNakit = saticiPortfoy.nakit !== undefined ? saticiPortfoy.nakit : (saticiPortfoy.para || 0);
-        
-        let gelenSatisParasi = ilanFiyat;
-        let hedefVarlikId = detaylarObj.varlikId;
-        let satilanVarlik = null;
-
-        if (saticiPortfoy.varliklar && Array.isArray(saticiPortfoy.varliklar)) {
-            // 1. Önce ID ile birebir aramayı dene
-            if (hedefVarlikId) {
-                satilanVarlik = saticiPortfoy.varliklar.find(v => v && String(v.id) === String(hedefVarlikId));
-            }
-            // 2. ID ile bulunamadıysa, ismi ve ilan/sahip durumu eşleşen ilk varlığı al
-            if (!satilanVarlik) {
-                satilanVarlik = saticiPortfoy.varliklar.find(v => v && v.isim === ilanTipi && (v.durum === 'ilan-aktif' || v.durum === 'satildi' || v.durum === 'sahip' || v.bloke));
-            }
-        }
-
-// 🌟 KREDİ VE BLOKE KONTROLÜ (GÜNCELLENMİŞ VE KUSURSUZ)
-        let ilgiliKredi = null;
-        if (satilanVarlik && satilanVarlik.krediID && saticiPortfoy.krediler) {
-            ilgiliKredi = saticiPortfoy.krediler.find(k => String(k.id) === String(satilanVarlik.krediID));
-        }
-
-        if (ilgiliKredi) {
-            let kalanBorc = krediErkenKapamaTutari(ilgiliKredi, ayarOku().faizOranlari);
-            let artisFarki = gelenSatisParasi - kalanBorc;
-
-            if (artisFarki > 0) {
-                saticiNakit += artisFarki;
-                // Bu krediyi diziden tamamen uçur
-                saticiPortfoy.krediler = saticiPortfoy.krediler.filter(k => String(k.id) !== String(satilanVarlik.krediID));
-            } else {
-                let kalanNetBorc = Math.abs(artisFarki);
-                ilgiliKredi.kalanBorc = kalanNetBorc;
-                ilgiliKredi.icradanKalanBorc = true;
-                saticiNakit = 0; // Borcu kapatmaya yetmediği için gelen para borca gitti, nakit sıfırlandı
-            }
-        } else if (saticiPortfoy.krediler && saticiPortfoy.krediler.length > 0) {
-            // Eğer spesifik kredi bulunamazsa genel toplam üzerinden düş
-            let toplamKalanBorc = saticiPortfoy.krediler.reduce((toplam, kr) => toplam + (kr.kalanBorc || 0), 0);
-            
-            if (gelenSatisParasi >= toplamKalanBorc) {
-                let artisFarki = gelenSatisParasi - toplamKalanBorc;
-                saticiNakit += artisFarki;
-                saticiPortfoy.krediler = [];
-            } else {
-                saticiPortfoy.krediler[0].kalanBorc -= gelenSatisParasi;
-            }
-        } else {
-            saticiNakit += gelenSatisParasi;
-        }
-
-        saticiPortfoy.nakit = saticiNakit;
-
-        // Genel kredi toplamlarını ve 0.01 küsurat temizliğini güvenle yap
-        if (saticiPortfoy.krediler && Array.isArray(saticiPortfoy.krediler)) {
-            saticiPortfoy.krediler = saticiPortfoy.krediler.filter(kr => (kr.kalanBorc || 0) > 0.01);
-            
-            saticiPortfoy.kredi = saticiPortfoy.krediler.reduce((toplam, kr) => toplam + (kr.kalanBorc || 0), 0);
-            
-            if (saticiPortfoy.krediler.length === 0 || saticiPortfoy.kredi < 0.01) {
-                saticiPortfoy.kredi = 0;
-                saticiPortfoy.taksit = 0;
-                saticiPortfoy.krediler = [];
-            } else {
-                saticiPortfoy.taksit = saticiPortfoy.krediler.reduce((toplam, kr) => {
-                    if (kr.icradanKalanBorc) return toplam;
-                    return toplam + (kr.taksitTutu || kr.taksit || 0);
-                }, 0);
-            }
-        } else {
-            saticiPortfoy.kredi = 0;
-            saticiPortfoy.taksit = 0;
-            saticiPortfoy.krediler = [];
-        }
-// 🌟 SATICININ ENVANTERİNDEN VARLIĞI KESİN OLARAK DÜŞ (GARANTİCİ YÖNTEM)
-        if (saticiPortfoy.varliklar && Array.isArray(saticiPortfoy.varliklar)) {
-            let silinenIndex = -1;
-
-            // 1. Adım: Önce istekten gelen hedefVarlikId ile birebir eşleşeni ara
-            if (hedefVarlikId) {
-                silinenIndex = saticiPortfoy.varliklar.findIndex(v => v && String(v.id) === String(hedefVarlikId));
+            if (saticiId) {
+                const saticiRow = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(saticiId);
+                if (saticiRow && saticiRow.portfoy) {
+                    const saticiPortfoy = JSON.parse(saticiRow.portfoy || '{}');
+                    const sonuc = ilanSatisiniSaticiyaUygula(saticiPortfoy, ilanTipi, detaylarObj.varlikId, ilanFiyat, ayarOku().faizOranlari);
+                    if (!sonuc) {
+                        // Varlık portföyde bulunamadı: satış bedelini yine de nakde ekle
+                        const nk = (saticiPortfoy.nakit !== undefined ? Number(saticiPortfoy.nakit) : Number(saticiPortfoy.para || 0)) + ilanFiyat;
+                        saticiPortfoy.nakit = nk;
+                        saticiPortfoy.para = nk;
+                    }
+                    db.prepare(`UPDATE kullanicilar SET portfoy = ? WHERE id = ?`).run(JSON.stringify(saticiPortfoy), saticiId);
+                }
             }
 
-            // 2. Adım: ID ile bulunamadıysa, satilanVarlik nesnesinin ID'si ile ara
-            if (silinenIndex === -1 && satilanVarlik && satilanVarlik.id) {
-                silinenIndex = saticiPortfoy.varliklar.findIndex(v => v && String(v.id) === String(satilanVarlik.id));
-            }
 
-            // 3. Adım: Hala bulunamadıysa, ismi (boslukları temizleyerek) eşleşen ilk varlığı bul
-            if (silinenIndex === -1 && ilanTipi) {
-                silinenIndex = saticiPortfoy.varliklar.findIndex(v => v && v.isim && v.isim.trim() === ilanTipi.trim());
-            }
-
-            // Eğer eşleşen bir varlık index'i bulunduysa, diziden kesin olarak söküp at!
-            if (silinenIndex !== -1) {
-                saticiPortfoy.varliklar.splice(silinenIndex, 1);
-            }
-        }
-
-        db.prepare(`UPDATE kullanicilar SET portfoy = ? WHERE id = ?`).run(JSON.stringify(saticiPortfoy), saticiId);
-    }
-}
             if (ilan) {
                 db.prepare(`DELETE FROM ilanlar WHERE id = ?`).run(ilanId);
             }
