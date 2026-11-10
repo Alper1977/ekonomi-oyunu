@@ -622,7 +622,8 @@
             <canvas id="maliGrafik" width="400" height="200"></canvas>
         </div>
         <div style="text-align:center; margin-bottom: 90px;">
-            <button onclick="hesabiSilOnayIste()" style="background: transparent; color: #ff6b6b; border: 1px solid #ff6b6b; padding: 8px 16px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer;">Hesabımı Sil</button>
+            <button id="push-anahtar-btn" onclick="pushAnahtarDegistir()" style="display:none; background: transparent; color: #87CEFA; border: 1px solid #87CEFA; padding: 8px 16px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; margin-bottom: 10px;">🔔 Bildirimler</button><br>
+            <button onclick="hesabiSilOnayIste()"style="background: transparent; color: #ff6b6b; border: 1px solid #ff6b6b; padding: 8px 16px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer;">Hesabımı Sil</button>
         </div>
 
     </div> <!-- /.content kapanışı -->
@@ -1760,6 +1761,7 @@ async function sistemeGirisYap() {
         splashBaslangicZamani = Date.now();
         changePage('page-splash');
         await splashBekleVeGec('page-mali');
+        pushBaslat();
 
 
 
@@ -1777,6 +1779,9 @@ async function sistemeGirisYap() {
 }
 
 async function sistemdenCikisYap() {
+    try {
+        if (window._pushToken) await fetch('/api/push-sil', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ token: window._pushToken }) });
+    } catch (e) {}
     try {
         // await ile sunucudan cevap dönmesini bekliyoruz
         let response = await fetch('/api/cikis');
@@ -2222,7 +2227,7 @@ function sozlesmeAc(tur) {
         html = `<h3 style="color:#ffcc00; margin-top:0;">Gizlilik Politikası / KVKK Aydınlatma Metni</h3>
         <div style="max-height: 250px; overflow-y: auto; padding-right: 5px; text-align: left;">
         ${p('1. Veri Sorumlusu:', `6698 sayılı KVKK uyarınca veri sorumlusu ${UYGULAMA}'dır. İletişim: ${ILETISIM}`)}
-        ${p('2. İşlenen Veriler:', `Kimlik bilgisi (ad-soyad), iletişim bilgisi (e-posta), işlem güvenliği bilgisi (şifre; karma alınarak saklanır) ve hizmet kullanım verileri (oyun içi işlemler, portföy verisi, oturum kayıtları).`)}
+        ${p('2. İşlenen Veriler:', `Kimlik bilgisi (ad-soyad), iletişim bilgisi (e-posta), işlem güvenliği bilgisi (şifre; karma alınarak saklanır) ve hizmet kullanım verileri (oyun içi işlemler, portföy verisi, oturum kayıtları, bildirim için cihaz kimliği).`)}
         ${p('3. İşleme Amaçları:', `Hesap oluşturma ve kimlik doğrulama, hizmetin sunulması ve sürdürülmesi, hesap güvenliğinin sağlanması, kullanıcı taleplerinin (şifre sıfırlama, profil güncelleme vb.) yanıtlanması ve yasal yükümlülüklerin yerine getirilmesi.`)}
         ${p('4. Hukuki Sebep:', `Veriler KVKK m. 5/2 kapsamında; sözleşmenin kurulması veya ifasıyla doğrudan ilgili olması ve veri sorumlusunun meşru menfaati hukuki sebeplerine dayanılarak işlenir.`)}
         ${p('5. Toplanma Yöntemi:', `Veriler, kayıt formunun doldurulması, hizmetin kullanılması ve oturum çerezleri aracılığıyla elektronik ortamda otomatik yollarla toplanır.`)}
@@ -4652,6 +4657,108 @@ function krediDetaylariniGuncelle() {
         if (v) inp.value = v;
     });
 }
+
+// ---------- 🔔 PUSH BİLDİRİMLERİ (telefon) ----------
+function pushEklentisi() {
+    try {
+        let C = window.Capacitor;
+        if (!C || !C.Plugins || !C.Plugins.PushNotifications) return null;
+        if (typeof C.isNativePlatform === 'function' && !C.isNativePlatform()) return null;
+        return C.Plugins.PushNotifications;
+    } catch (e) { return null; }
+}
+
+async function pushKayitGonder(token) {
+    await fetch('/api/push-kaydet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ token: token })
+    });
+}
+
+function pushSonra() {
+    try { localStorage.setItem('pushSoruldu', '1'); } catch (e) {}
+    document.getElementById('modal-overlay').style.display = 'none';
+}
+
+async function pushIzinIste() {
+    document.getElementById('modal-overlay').style.display = 'none';
+    try { localStorage.setItem('pushSoruldu', '1'); } catch (e) {}
+    let PN = pushEklentisi();
+    if (!PN) return;
+    try {
+        let izin = await PN.requestPermissions();
+        if (izin.receive === 'granted') await PN.register();
+        else modalGoster('Bildirim izni verilmedi. İsterseniz telefon ayarlarından Ecarix bildirimlerini açabilirsiniz.');
+    } catch (e) { console.error('Push izin hatası:', e); }
+}
+
+// Giriş yapıldıktan sonra çağrılır
+async function pushBaslat() {
+    let PN = pushEklentisi();
+    if (!PN) return;
+    try {
+        if (!window._pushDinleyici) {
+            window._pushDinleyici = true;
+            PN.addListener('registration', t => {
+                window._pushToken = t.value;
+                pushKayitGonder(t.value).then(pushAnahtarYenile).catch(() => {});
+            });
+            PN.addListener('registrationError', e => console.error('Push kayıt hatası:', JSON.stringify(e)));
+            // Uygulama açıkken gelen bildirim: ekranda zaten güncel, sadece uygulama içi bildirimleri kontrol et
+            PN.addListener('pushNotificationReceived', () => {
+                if (typeof bildirimleriKontrolEt === 'function') bildirimleriKontrolEt();
+            });
+            // Bildirime dokununca Mali Tablo açılır
+            PN.addListener('pushNotificationActionPerformed', () => {
+                try { changePage('page-mali'); } catch (e) {}
+            });
+        }
+        let izin = await PN.checkPermissions();
+        if (izin.receive === 'granted') { await PN.register(); return; }
+        if (izin.receive === 'denied') return;
+
+        let sorulmus = false;
+        try { sorulmus = localStorage.getItem('pushSoruldu') === '1'; } catch (e) {}
+        if (sorulmus) return;
+
+        modalGoster('🔔 <b>Bildirimleri açmak ister misiniz?</b><br><br>İlanınız satılınca, tahsilat saatlerinde, taksit ödenemediğinde, vadeli faiziniz işlediğinde ve kur/faiz değiştiğinde haber verelim.',
+            '<button class="btn-green" onclick="pushIzinIste()">EVET, AÇ</button><button onclick="pushSonra()" style="background-color:#6c757d; color:white; margin-left:10px;">SONRA</button>');
+    } catch (e) { console.error('Push başlatma hatası:', e); }
+}
+
+// Mali Tablo'daki bildirim anahtarı
+async function pushAnahtarYenile() {
+    let btn = document.getElementById('push-anahtar-btn');
+    if (!btn) return;
+    if (!pushEklentisi()) { btn.style.display = 'none'; return; }
+    try {
+        let r = await fetch('/api/push-ayar', { credentials: 'include' });
+        if (!r.ok) return;
+        let d = await r.json();
+        btn.style.display = 'inline-block';
+        if (!d.kayitli) { btn.innerText = '🔔 Bildirimleri Aç'; btn.dataset.durum = 'kayitsiz'; }
+        else if (d.acik) { btn.innerText = '🔔 Bildirimler: AÇIK (kapat)'; btn.dataset.durum = 'acik'; }
+        else { btn.innerText = '🔕 Bildirimler: KAPALI (aç)'; btn.dataset.durum = 'kapali'; }
+    } catch (e) {}
+}
+
+async function pushAnahtarDegistir() {
+    let btn = document.getElementById('push-anahtar-btn');
+    if (!btn) return;
+    let durum = btn.dataset.durum;
+    if (durum === 'kayitsiz') { await pushIzinIste(); return; }
+    try {
+        await fetch('/api/push-ayar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ acik: durum !== 'acik' })
+        });
+    } catch (e) {}
+    pushAnahtarYenile();
+}
  
 function changePage(p) {
     let hedefSayfa = document.getElementById(p);
@@ -4685,6 +4792,7 @@ function changePage(p) {
     }
 
     // Eğer Mali Tablo açıldıysa grafiği tetikle
+    if (p === 'page-mali') pushAnahtarYenile();
     if (p === 'page-mali' && typeof maliGrafigiBaslat === 'function') {
         setTimeout(maliGrafigiBaslat, 50);
     }
@@ -5800,6 +5908,7 @@ window.addEventListener('DOMContentLoaded', async () => {
                 }
 
                 await splashBekleVeGec('page-mali');
+                pushBaslat();
               
                 guncelle();
 
