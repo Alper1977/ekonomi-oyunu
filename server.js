@@ -1314,7 +1314,7 @@ app.post('/api/admin/ayar-guncelle', adminZorunlu, (req, res) => {
 
         const yeniSurelerStr = JSON.stringify(kayitPaketi.sureler || {});
         const surelerDegisti = (eskiSurelerStr !== yeniSurelerStr);
- const  const eskiAyarlarPush = (() => { try { return ayarOku(); } catch (e) { return {}; } })();
+        const eskiAyarlarPush = (() => { try { return ayarOku(); } catch (e) { return {}; } })();
         db.prepare(`INSERT OR REPLACE INTO oyun_ayarlari (id, ayarlar) VALUES (1, ?)`).run(JSON.stringify(kayitPaketi));
         piyasaDegisimiBildir(eskiAyarlarPush, kayitPaketi);
 
