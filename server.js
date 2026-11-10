@@ -425,6 +425,7 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
             let yeniVadeli = anapara + toplamFaizGetirisi;
             portfoy.vadeli = yeniVadeli;
             portfoy.vadeliHesap = yeniVadeli;
+             pushKuyrugaEkle(userRow.id, 'faiz', 'Vadeli hesap faizi işledi 💸', `Vadeli hesabınıza ${Math.round(toplamFaizGetirisi).toLocaleString('tr-TR')} faiz eklendi. Bakiye: ${Math.round(yeniVadeli).toLocaleString('tr-TR')}`);
             degisiklikOldu = true;
         }
     }
@@ -540,10 +541,12 @@ if (kr.icradanKalanBorc) {
                 } else {
                     // Nakit yetmedi, ödenmedi sayılır
                     kr.ustUsteOdenmeyen++;
+                     pushKuyrugaEkle(userRow.id, 'taksit', 'Kredi taksidi ödenemedi ⚠️', `${kr.isim || 'Kredi'} taksidi ödenemedi (${kr.ustUsteOdenmeyen}/3). 3 taksit ödenmezse icra başlar!`);
 
                     // 3 Dönem üst üste ödenmediyse İCRA (Varlığa el koyma)
                     if (kr.ustUsteOdenmeyen >= 3 && portfoy.varliklar) {
                       icraUygula(portfoy, kr, satisFiyatlari, faizOranlari);
+                     pushKuyrugaEkle(userRow.id, 'icra', 'İcra işlemi 🚨', `Taksitler 3 kez ödenmediği için kredinize bağlı varlıklar icradan satıldı. Mali Tablo'yu kontrol edin.`);    
                   }
                 }
                 degisiklikOldu = true;
@@ -773,6 +776,7 @@ function oyuncuIlanlariniBotlaraSat() {
                 db.prepare(`UPDATE kullanicilar SET portfoy = ? WHERE id = ?`).run(JSON.stringify(p), ilan.kullanici_id);
                 db.prepare(`DELETE FROM ilanlar WHERE id = ?`).run(ilan.id);
                 bildirimEkle(ilan.kullanici_id, ilanSatisMesaji(ilan.ilan_tipi, satisFiyati, sonuc));
+                 pushKuyrugaEkle(ilan.kullanici_id, 'ilan', 'İlanınız satıldı 🎉', `${ilan.ilan_tipi} ${Math.round(satisFiyati).toLocaleString('tr-TR')} bedelle satıldı.`);
                 bots.oyuncudanAl(db, ilan.ilan_tipi, satisFiyati, detay.atananKonum);
             })();
         } catch (e) {
@@ -798,6 +802,219 @@ app.get('/api/bildirimler', (req, res) => {
         res.status(500).json({ basari: false, mesaj: e.message });
     }
 });
+
+// --- 🔔 PUSH BİLDİRİMLERİ (Firebase Cloud Messaging) ---
+db.prepare(`CREATE TABLE IF NOT EXISTS push_tokenlari (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    kullanici_id INTEGER,
+    token TEXT UNIQUE,
+    acik INTEGER DEFAULT 1,
+    tarih INTEGER
+)`).run();
+db.prepare(`CREATE INDEX IF NOT EXISTS idx_push_kullanici ON push_tokenlari(kullanici_id)`).run();
+db.prepare(`CREATE TABLE IF NOT EXISTS push_kuyrugu (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    kullanici_id INTEGER,
+    tur TEXT,
+    baslik TEXT,
+    govde TEXT,
+    zaman INTEGER
+)`).run();
+db.prepare(`CREATE TABLE IF NOT EXISTS push_isaret (anahtar TEXT PRIMARY KEY, zaman INTEGER)`).run();
+
+let _fcm = null;
+function fcmAl() {
+    if (_fcm !== null) return _fcm;
+    try {
+        const ham = process.env.FIREBASE_SERVICE_ACCOUNT;
+        if (!ham) { _fcm = false; console.log('Push kapalı: FIREBASE_SERVICE_ACCOUNT tanımlı değil.'); return _fcm; }
+        const admin = require('firebase-admin');
+        admin.initializeApp({ credential: admin.credential.cert(JSON.parse(ham)) });
+        _fcm = admin.messaging();
+        console.log('Firebase push hazır.');
+    } catch (e) {
+        console.error('Firebase başlatılamadı:', e.message);
+        _fcm = false;
+    }
+    return _fcm;
+}
+
+function istanbulSaat(d) { return Number(new Intl.DateTimeFormat('en-GB', { hour: 'numeric', hourCycle: 'h23', timeZone: 'Europe/Istanbul' }).format(d || new Date())); }
+function istanbulDakika(d) { return Number(new Intl.DateTimeFormat('en-GB', { minute: 'numeric', timeZone: 'Europe/Istanbul' }).format(d || new Date())); }
+function istanbulGun(d) { return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Istanbul' }).format(d || new Date()); }
+function sessizSaatMi(saat) { const h = (saat === undefined) ? istanbulSaat() : saat; return h >= 23 || h < 8; }
+
+function pushKuyrugaEkle(kullaniciId, tur, baslik, govde) {
+    try {
+        db.prepare(`INSERT INTO push_kuyrugu (kullanici_id, tur, baslik, govde, zaman) VALUES (?, ?, ?, ?, ?)`).run(kullaniciId, tur, baslik, govde, Date.now());
+    } catch (e) { console.error('Push kuyruğa eklenemedi:', e.message); }
+}
+
+function pushMetniBirlestir(liste) {
+    if (liste.length === 1) return { baslik: liste[0].baslik, govde: liste[0].govde };
+    let govde = liste.slice(0, 3).map(x => x.govde).join(' • ');
+    if (liste.length > 3) govde += ' …';
+    return { baslik: `Ecarix • ${liste.length} yeni bildirim`, govde };
+}
+
+async function pushGonder(tokenlar, baslik, govde, veri) {
+    const m = fcmAl();
+    if (!m || !tokenlar || tokenlar.length === 0) return;
+    for (let i = 0; i < tokenlar.length; i += 500) {
+        const parca = tokenlar.slice(i, i + 500);
+        try {
+            const r = await m.sendEachForMulticast({
+                tokens: parca,
+                notification: { title: baslik, body: govde },
+                data: veri || {},
+                android: { priority: 'high' }
+            });
+            r.responses.forEach((x, k) => {
+                const kod = (x.error && x.error.code) || '';
+                if (!x.success && /registration-token-not-registered|invalid-registration-token|invalid-argument/.test(kod)) {
+                    db.prepare(`DELETE FROM push_tokenlari WHERE token = ?`).run(parca[k]);
+                }
+            });
+        } catch (e) { console.error('Push gönderilemedi:', e.message); }
+    }
+}
+
+// Kuyruktaki bildirimleri gönderir. 23:00-08:00 arası bekletir, aynı kişiye birden fazla varsa tek bildirimde birleştirir.
+async function pushKuyrugunuBosalt() {
+    if (sessizSaatMi()) return;
+    db.prepare(`DELETE FROM push_kuyrugu WHERE zaman < ?`).run(Date.now() - 12 * 60 * 60 * 1000);
+    const satirlar = db.prepare(`SELECT * FROM push_kuyrugu ORDER BY id ASC LIMIT 500`).all();
+    if (satirlar.length === 0) return;
+
+    db.prepare(`DELETE FROM push_kuyrugu WHERE id IN (${satirlar.map(() => '?').join(',')})`).run(...satirlar.map(s => s.id));
+
+    const gruplar = {};
+    satirlar.forEach(s => { (gruplar[s.kullanici_id] = gruplar[s.kullanici_id] || []).push(s); });
+
+    for (const uid of Object.keys(gruplar)) {
+        const tokenlar = db.prepare(`SELECT token FROM push_tokenlari WHERE kullanici_id = ? AND acik = 1`).all(uid).map(r => r.token);
+        if (tokenlar.length === 0) continue;
+        const m = pushMetniBirlestir(gruplar[uid]);
+        await pushGonder(tokenlar, m.baslik, m.govde, { tur: String(gruplar[uid][0].tur || '') });
+    }
+}
+
+function tahsilatliTesisiVarMi(p) {
+    return (p.varliklar || []).some(v => {
+        if (!v || (v.durum !== 'sahip' && v.durum !== 'ilan-aktif') || !v.isim) return false;
+        const s = String(v.isim).toLocaleLowerCase('tr-TR');
+        return s !== 'konut' && !s.includes('arsa');
+    });
+}
+
+// Admin panelindeki ödeme saatlerinde, tahsil edilecek tesisi olanlara bildirim
+function tahsilatBildirimleriniKuyrugaAl(simdi) {
+    const ayar = ayarOku();
+    const prog = Array.isArray(ayar.odemeProgrami) ? ayar.odemeProgrami : [];
+    simdi = simdi || new Date();
+    const saat = istanbulSaat(simdi), dakika = istanbulDakika(simdi), gun = istanbulGun(simdi);
+    prog.forEach(pr => {
+        if (Number(pr.saat) !== saat || Number(pr.dakika || 0) !== dakika) return;
+        const anahtar = `tahsilat-${gun}-${pr.saat}-${pr.dakika || 0}`;
+        const r = db.prepare(`INSERT OR IGNORE INTO push_isaret (anahtar, zaman) VALUES (?, ?)`).run(anahtar, Date.now());
+        if (r.changes === 0) return;
+        db.prepare(`SELECT DISTINCT kullanici_id FROM push_tokenlari WHERE acik = 1`).all().forEach(u => {
+            const row = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(u.kullanici_id);
+            if (!row) return;
+            let p = {};
+            try { p = JSON.parse(row.portfoy || '{}'); } catch (e) { return; }
+            if (!tahsilatliTesisiVarMi(p)) return;
+            pushKuyrugaEkle(u.kullanici_id, 'tahsilat', 'Tahsilat zamanı 💰', 'Tesislerinizin geliri hazır. Bir saat içinde TAHSİL ET diyerek toplayın!');
+        });
+        db.prepare(`DELETE FROM push_isaret WHERE zaman < ?`).run(Date.now() - 3 * 24 * 60 * 60 * 1000);
+    });
+}
+
+// Kur / faiz değişikliği metni (değişen bir şey yoksa boş döner)
+function piyasaDegisimMetni(eski, yeni) {
+    const f2 = x => Number(x).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const ad = { dolar: 'Ecarcoin', euro: 'Ecarium', altin: 'EcarAu' };
+    const parcalar = [];
+    const ek = (eski && eski.kurlar) || {}, yk = (yeni && yeni.kurlar) || {};
+    ['dolar', 'euro', 'altin'].forEach(k => {
+        const a = ek[k] || {}, b = yk[k] || {};
+        if (b.alis === undefined && b.satis === undefined) return;
+        if (Number(a.alis) !== Number(b.alis) || Number(a.satis) !== Number(b.satis)) {
+            parcalar.push(`${ad[k]} Alış ${f2(b.alis || 0)} / Satış ${f2(b.satis || 0)}`);
+        }
+    });
+    const ef = (eski && eski.faizOranlari) || {}, yf = (yeni && yeni.faizOranlari) || {};
+    if (yf.vadeliGunluk !== undefined && Number(ef.vadeliGunluk) !== Number(yf.vadeliGunluk)) {
+        parcalar.push(`Vadeli hesap günlük faizi %${(Number(yf.vadeliGunluk) * 100).toFixed(1)}`);
+    }
+    if (yf.yatirimKredisiYuzde !== undefined && Number(ef.yatirimKredisiYuzde) !== Number(yf.yatirimKredisiYuzde)) {
+        parcalar.push(`Kredi faizi %${yf.yatirimKredisiYuzde}`);
+    }
+    return parcalar.join(' • ');
+}
+
+let _sonPiyasaPush = 0;
+function piyasaDegisimiBildir(eski, yeni) {
+    try {
+        const metin = piyasaDegisimMetni(eski, yeni);
+        if (!metin) return;
+        if (Date.now() - _sonPiyasaPush < 120000) return;   // art arda kaydedilirse tekrar gönderme
+        _sonPiyasaPush = Date.now();
+        db.prepare(`SELECT DISTINCT kullanici_id FROM push_tokenlari WHERE acik = 1`).all()
+            .forEach(u => pushKuyrugaEkle(u.kullanici_id, 'piyasa', 'Piyasada değişiklik 📈', metin));
+    } catch (e) { console.error('Piyasa bildirimi:', e.message); }
+}
+
+setInterval(() => {
+    try { tahsilatBildirimleriniKuyrugaAl(); } catch (e) { console.error('Tahsilat bildirimi:', e.message); }
+}, 30000);
+setInterval(() => {
+    pushKuyrugunuBosalt().catch(e => console.error('Push kuyruğu:', e.message));
+}, 30000);
+
+app.post('/api/push-kaydet', (req, res) => {
+    if (!req.session || !req.session.kullanici) return res.status(401).json({ basari: false });
+    const token = String((req.body && req.body.token) || '').trim();
+    if (token.length < 20 || token.length > 4096) return res.status(400).json({ basari: false, mesaj: 'Geçersiz token' });
+    try {
+        const uid = req.session.kullanici.id;
+        const tercih = db.prepare(`SELECT acik FROM push_tokenlari WHERE kullanici_id = ? LIMIT 1`).get(uid);
+        const acik = tercih ? tercih.acik : 1;
+        const mevcut = db.prepare(`SELECT id FROM push_tokenlari WHERE token = ?`).get(token);
+        if (mevcut) {
+            db.prepare(`UPDATE push_tokenlari SET kullanici_id = ?, acik = ?, tarih = ? WHERE token = ?`).run(uid, acik, Date.now(), token);
+        } else {
+            db.prepare(`INSERT INTO push_tokenlari (kullanici_id, token, acik, tarih) VALUES (?, ?, ?, ?)`).run(uid, token, acik, Date.now());
+        }
+        res.json({ basari: true });
+    } catch (e) { res.status(500).json({ basari: false, mesaj: e.message }); }
+});
+
+app.get('/api/push-ayar', (req, res) => {
+    if (!req.session || !req.session.kullanici) return res.status(401).json({ basari: false });
+    try {
+        const satirlar = db.prepare(`SELECT acik FROM push_tokenlari WHERE kullanici_id = ?`).all(req.session.kullanici.id);
+        res.json({ basari: true, kayitli: satirlar.length > 0, acik: satirlar.some(r => r.acik === 1) });
+    } catch (e) { res.status(500).json({ basari: false, mesaj: e.message }); }
+});
+
+app.post('/api/push-ayar', (req, res) => {
+    if (!req.session || !req.session.kullanici) return res.status(401).json({ basari: false });
+    try {
+        db.prepare(`UPDATE push_tokenlari SET acik = ? WHERE kullanici_id = ?`).run(req.body && req.body.acik ? 1 : 0, req.session.kullanici.id);
+        res.json({ basari: true });
+    } catch (e) { res.status(500).json({ basari: false, mesaj: e.message }); }
+});
+
+app.post('/api/push-sil', (req, res) => {
+    if (!req.session || !req.session.kullanici) return res.status(401).json({ basari: false });
+    try {
+        const token = String((req.body && req.body.token) || '').trim();
+        if (token) db.prepare(`DELETE FROM push_tokenlari WHERE token = ? AND kullanici_id = ?`).run(token, req.session.kullanici.id);
+        res.json({ basari: true });
+    } catch (e) { res.status(500).json({ basari: false, mesaj: e.message }); }
+});
+
 // --- API Rotaları ---
 
 app.get('/api/ilanlar', (req, res) => {
@@ -975,6 +1192,8 @@ app.post('/api/ilan-satin-al', (req, res) => {
                         saticiPortfoy.para = nk;
                     }
                     db.prepare(`UPDATE kullanicilar SET portfoy = ? WHERE id = ?`).run(JSON.stringify(saticiPortfoy), saticiId);
+                      pushKuyrugaEkle(saticiId, 'ilan', 'İlanınız satıldı 🎉', `Bir oyuncu "${ilanTipi}" ilanınızı ${Math.round(ilanFiyat).toLocaleString('tr-TR')} bedelle satın aldı.`);
+                    bildirimEkle(saticiId, `<b>Piyasa Hareketli</b><br><br>Bir oyuncu "${ilanTipi}" ilanınızı ${Math.round(ilanFiyat).toLocaleString('tr-TR')} bedelle satın aldı!`);
                 }
             }
 
@@ -1095,8 +1314,9 @@ app.post('/api/admin/ayar-guncelle', adminZorunlu, (req, res) => {
 
         const yeniSurelerStr = JSON.stringify(kayitPaketi.sureler || {});
         const surelerDegisti = (eskiSurelerStr !== yeniSurelerStr);
-
+ const  const eskiAyarlarPush = (() => { try { return ayarOku(); } catch (e) { return {}; } })();
         db.prepare(`INSERT OR REPLACE INTO oyun_ayarlari (id, ayarlar) VALUES (1, ?)`).run(JSON.stringify(kayitPaketi));
+        piyasaDegisimiBildir(eskiAyarlarPush, kayitPaketi);
 
         // 🌟 DÜZELTME: Sadece süreler (faizSuresi, taksitSuresi, kiraSuresi, sirketKazancSuresi vb.)
         // gerçekten değiştiyse kullanıcıların zaman sayacını sıfırla. Fiyat, kur, gelir gibi
@@ -1303,6 +1523,8 @@ app.post('/api/hesabi-sil', (req, res) => {
         db.transaction(() => {
             db.prepare(`DELETE FROM ilanlar WHERE kullanici_id = ?`).run(userId);
             db.prepare(`DELETE FROM giris_kayitlari WHERE kullanici_id = ?`).run(userId);
+            db.prepare(`DELETE FROM push_tokenlari WHERE kullanici_id = ?`).run(userId);
+            db.prepare(`DELETE FROM push_kuyrugu WHERE kullanici_id = ?`).run(userId);
             db.prepare(`DELETE FROM kullanicilar WHERE id = ?`).run(userId);
         })();
 
@@ -1518,6 +1740,7 @@ app.get('/api/admin/uyeler', adminZorunlu, (req, res) => {
 
 // 🗑️ ADMIN: Üye sil
 app.post('/api/admin/uye-sil', adminZorunlu, (req, res) => {
+
     const id = Number(req.body.id);
     if (!id) return res.status(400).json({ basari: false, mesaj: 'Geçersiz üye!' });
 
@@ -1533,6 +1756,8 @@ app.post('/api/admin/uye-sil', adminZorunlu, (req, res) => {
         db.transaction(() => {
             db.prepare(`DELETE FROM ilanlar WHERE kullanici_id = ?`).run(id);
             db.prepare(`DELETE FROM giris_kayitlari WHERE kullanici_id = ?`).run(id);
+            db.prepare(`DELETE FROM push_tokenlari WHERE kullanici_id = ?`).run(id);
+            db.prepare(`DELETE FROM push_kuyrugu WHERE kullanici_id = ?`).run(id);
             db.prepare(`DELETE FROM kullanicilar WHERE id = ?`).run(id);
         })();
 
