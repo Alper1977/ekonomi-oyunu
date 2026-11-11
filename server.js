@@ -1015,6 +1015,42 @@ app.post('/api/push-sil', (req, res) => {
     } catch (e) { res.status(500).json({ basari: false, mesaj: e.message }); }
 });
 
+
+// 🔧 PUSH TEST UCU (sadece admin) - bildirim zincirinin neresinde koptuğunu gösterir
+app.get('/api/admin/push-test', adminZorunlu, async (req, res) => {
+    try {
+        const hedef = String(req.query.email || '').trim().toLowerCase();
+        let uid = req.session.kullanici.id;
+        if (hedef) {
+            const u = db.prepare(`SELECT id FROM kullanicilar WHERE LOWER(TRIM(kadi)) = ? OR LOWER(TRIM(email)) = ?`).get(hedef, hedef);
+            if (!u) return res.json({ basari: false, mesaj: 'Bu e-postaya ait kullanıcı bulunamadı.' });
+            uid = u.id;
+        }
+        const tokenlar = db.prepare(`SELECT token, acik FROM push_tokenlari WHERE kullanici_id = ?`).all(uid);
+        const rapor = {
+            hedefKullaniciId: uid,
+            firebaseAnahtariVar: !!process.env.FIREBASE_SERVICE_ACCOUNT,
+            sunucudaToplamCihaz: db.prepare(`SELECT COUNT(*) AS n FROM push_tokenlari`).get().n,
+            bu_kullanicinin_cihazi: tokenlar.length,
+            bildirimi_acik_olan: tokenlar.filter(t => t.acik === 1).length,
+            sunucuSaati: istanbulSaat() + ':' + String(istanbulDakika()).padStart(2, '0'),
+            sessizSaatMi: sessizSaatMi()
+        };
+        const m = fcmAl();
+        rapor.firebaseHazir = !!m;
+        if (m && tokenlar.length > 0) {
+            const r = await m.sendEachForMulticast({
+                tokens: tokenlar.map(t => t.token),
+                notification: { title: 'Ecarix test', body: 'Bildirim sistemi çalışıyor 🎉' },
+                android: { priority: 'high' }
+            });
+            rapor.gonderimSonucu = r.responses.map(x => x.success ? 'GİTTİ' : ((x.error && x.error.code) + ' — ' + (x.error && x.error.message)));
+        }
+        res.json({ basari: true, rapor });
+    } catch (e) {
+        res.status(500).json({ basari: false, mesaj: e.message });
+    }
+});
 // --- API Rotaları ---
 
 app.get('/api/ilanlar', (req, res) => {
