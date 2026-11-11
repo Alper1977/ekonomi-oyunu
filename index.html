@@ -4662,10 +4662,26 @@ function krediDetaylariniGuncelle() {
 function pushEklentisi() {
     try {
         let C = window.Capacitor;
-        if (!C || !C.Plugins || !C.Plugins.PushNotifications) return null;
+        if (!C) return null;
         if (typeof C.isNativePlatform === 'function' && !C.isNativePlatform()) return null;
-        return C.Plugins.PushNotifications;
-    } catch (e) { return null; }
+        if (typeof C.isPluginAvailable === 'function' && !C.isPluginAvailable('PushNotifications')) return null;
+        if (C.Plugins && C.Plugins.PushNotifications) return C.Plugins.PushNotifications;
+        if (typeof C.registerPlugin === 'function') {
+            if (!window._pushProxy) window._pushProxy = C.registerPlugin('PushNotifications');
+            return window._pushProxy;
+        }
+    } catch (e) {}
+    return null;
+}
+
+function pushTeshisMetni() {
+    let C = window.Capacitor, s = [];
+    s.push('Platform: ' + ((C && C.getPlatform) ? C.getPlatform() : 'yok'));
+    s.push('Uygulama içinde (native): ' + ((C && C.isNativePlatform) ? C.isNativePlatform() : 'yok'));
+    s.push('Bildirim eklentisi: ' + ((C && C.isPluginAvailable) ? (C.isPluginAvailable('PushNotifications') ? 'VAR' : 'YOK') : 'bilinmiyor'));
+    s.push('Cihaz kimliği: ' + (window._pushToken ? 'alındı' : 'yok'));
+    if (window._pushSonHata) s.push('Son hata: ' + window._pushSonHata);
+    return s.join('<br>');
 }
 
 async function pushKayitGonder(token) {
@@ -4688,33 +4704,43 @@ async function pushIzinIste() {
     let PN = pushEklentisi();
     if (!PN) return;
     try {
+        pushDinleyicileriKur(PN);
         let izin = await PN.requestPermissions();
         if (izin.receive === 'granted') await PN.register();
         else modalGoster('Bildirim izni verilmedi. İsterseniz telefon ayarlarından Ecarix bildirimlerini açabilirsiniz.');
-    } catch (e) { console.error('Push izin hatası:', e); }
+    } catch (e) {
+        window._pushSonHata = String(e && e.message ? e.message : e);
+        console.error('Push izin hatası:', e);
+    }
+}
+
+function pushDinleyicileriKur(PN) {
+    if (window._pushDinleyici) return;
+    window._pushDinleyici = true;
+    PN.addListener('registration', t => {
+        window._pushToken = t.value;
+        pushKayitGonder(t.value).then(pushAnahtarYenile).catch(e => { window._pushSonHata = 'Sunucuya kayıt: ' + e; });
+    });
+    PN.addListener('registrationError', e => {
+        window._pushSonHata = JSON.stringify(e);
+        console.error('Push kayıt hatası:', window._pushSonHata);
+    });
+    // Uygulama açıkken gelen bildirim: ekranda zaten güncel, sadece uygulama içi bildirimleri kontrol et
+    PN.addListener('pushNotificationReceived', () => {
+        if (typeof bildirimleriKontrolEt === 'function') bildirimleriKontrolEt();
+    });
+    // Bildirime dokununca Mali Tablo açılır
+    PN.addListener('pushNotificationActionPerformed', () => {
+        try { changePage('page-mali'); } catch (e) {}
+    });
 }
 
 // Giriş yapıldıktan sonra çağrılır
 async function pushBaslat() {
     let PN = pushEklentisi();
-    if (!PN) return;
+    if (!PN) { pushAnahtarYenile(); return; }
     try {
-        if (!window._pushDinleyici) {
-            window._pushDinleyici = true;
-            PN.addListener('registration', t => {
-                window._pushToken = t.value;
-                pushKayitGonder(t.value).then(pushAnahtarYenile).catch(() => {});
-            });
-            PN.addListener('registrationError', e => console.error('Push kayıt hatası:', JSON.stringify(e)));
-            // Uygulama açıkken gelen bildirim: ekranda zaten güncel, sadece uygulama içi bildirimleri kontrol et
-            PN.addListener('pushNotificationReceived', () => {
-                if (typeof bildirimleriKontrolEt === 'function') bildirimleriKontrolEt();
-            });
-            // Bildirime dokununca Mali Tablo açılır
-            PN.addListener('pushNotificationActionPerformed', () => {
-                try { changePage('page-mali'); } catch (e) {}
-            });
-        }
+        pushDinleyicileriKur(PN);
         let izin = await PN.checkPermissions();
         if (izin.receive === 'granted') { await PN.register(); return; }
         if (izin.receive === 'denied') return;
@@ -4725,19 +4751,24 @@ async function pushBaslat() {
 
         modalGoster('🔔 <b>Bildirimleri açmak ister misiniz?</b><br><br>İlanınız satılınca, tahsilat saatlerinde, taksit ödenemediğinde, vadeli faiziniz işlediğinde ve kur/faiz değiştiğinde haber verelim.',
             '<button class="btn-green" onclick="pushIzinIste()">EVET, AÇ</button><button onclick="pushSonra()" style="background-color:#6c757d; color:white; margin-left:10px;">SONRA</button>');
-    } catch (e) { console.error('Push başlatma hatası:', e); }
+    } catch (e) {
+        window._pushSonHata = String(e && e.message ? e.message : e);
+        console.error('Push başlatma hatası:', e);
+    }
 }
 
-// Mali Tablo'daki bildirim anahtarı
+// Mali Tablo'daki bildirim anahtarı (telefonda her zaman görünür, durumu gösterir)
 async function pushAnahtarYenile() {
     let btn = document.getElementById('push-anahtar-btn');
     if (!btn) return;
-    if (!pushEklentisi()) { btn.style.display = 'none'; return; }
+    let C = window.Capacitor;
+    if (!C || (typeof C.isNativePlatform === 'function' && !C.isNativePlatform())) { btn.style.display = 'none'; return; }
+    btn.style.display = 'inline-block';
+    if (!pushEklentisi()) { btn.innerText = '🔕 Bildirim eklentisi yok (ayrıntı)'; btn.dataset.durum = 'eklentiyok'; return; }
     try {
         let r = await fetch('/api/push-ayar', { credentials: 'include' });
         if (!r.ok) return;
         let d = await r.json();
-        btn.style.display = 'inline-block';
         if (!d.kayitli) { btn.innerText = '🔔 Bildirimleri Aç'; btn.dataset.durum = 'kayitsiz'; }
         else if (d.acik) { btn.innerText = '🔔 Bildirimler: AÇIK (kapat)'; btn.dataset.durum = 'acik'; }
         else { btn.innerText = '🔕 Bildirimler: KAPALI (aç)'; btn.dataset.durum = 'kapali'; }
@@ -4748,7 +4779,14 @@ async function pushAnahtarDegistir() {
     let btn = document.getElementById('push-anahtar-btn');
     if (!btn) return;
     let durum = btn.dataset.durum;
-    if (durum === 'kayitsiz') { await pushIzinIste(); return; }
+    if (durum === 'eklentiyok') { modalGoster('<b>Bildirim teşhisi</b><br><br>' + pushTeshisMetni()); return; }
+    if (durum === 'kayitsiz') {
+        await pushIzinIste();
+        setTimeout(() => {
+            if (!window._pushToken) modalGoster('<b>Bildirim kaydı tamamlanamadı</b><br><br>' + pushTeshisMetni());
+        }, 8000);
+        return;
+    }
     try {
         await fetch('/api/push-ayar', {
             method: 'POST',
