@@ -506,6 +506,7 @@
  <button id="admin-panel-buton" onclick="adminPaneliniAc()" style="display: none; background: #dc3545; color: white; border: none; padding: 8px 15px; border-radius: 5px; font-weight: bold; cursor: pointer; margin-left: 10px;">🛡️ Admin Paneli</button>
  <div class="header-brand" style="display: flex; justify-content: space-between; align-items: center; padding: 0 10px; margin-bottom: 15px;">
             <span id="sirket-adi-mali" style="font-weight: bold;">Ecarix</span>
+            <button id="zil-btn" onclick="bildirimMerkeziAc()" style="position: relative; margin-left: auto; margin-right: 8px; padding: 4px 10px; background: transparent; color: #ffcc00; border: 1px solid #ffcc00; border-radius: 4px; font-size: 16px; cursor: pointer;">🔔<span id="zil-sayac" style="display:none; position:absolute; top:-8px; right:-8px; min-width:18px; height:18px; padding:0 4px; box-sizing:border-box; border-radius:9px; background:#ff1744; color:#fff; font-size:10px; font-weight:bold; align-items:center; justify-content:center;">0</span></button>
             <button onclick="sistemdenCikisYap()" style="padding: 6px 12px; background: #ff4444; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold;">
                 Çıkış
             </button>
@@ -4797,6 +4798,59 @@ async function pushAnahtarDegistir() {
     } catch (e) {}
     pushAnahtarYenile();
 }
+
+// ---------- 🔔 ZİL: uygulama içi bildirim merkezi ----------
+function bildirimZamani(ms) {
+    let fark = Math.floor((Date.now() - Number(ms)) / 60000);
+    if (fark < 1) return 'şimdi';
+    if (fark < 60) return fark + ' dk önce';
+    let sa = Math.floor(fark / 60);
+    if (sa < 24) return sa + ' sa önce';
+    return Math.floor(sa / 24) + ' gün önce';
+}
+
+async function bildirimSayisiniGuncelle() {
+    try {
+        let r = await fetch('/api/bildirim-merkezi?ozet=1', { credentials: 'include' });
+        if (!r.ok) return;
+        let d = await r.json();
+        let s = document.getElementById('zil-sayac');
+        if (!s) return;
+        let n = Number(d.okunmamis) || 0;
+        s.innerText = n > 99 ? '99+' : String(n);
+        s.style.display = n > 0 ? 'flex' : 'none';
+    } catch (e) {}
+}
+
+async function bildirimMerkeziAc() {
+    try {
+        let r = await fetch('/api/bildirim-merkezi', { credentials: 'include' });
+        if (!r.ok) return;
+        let d = await r.json();
+        let liste = d.bildirimler || [];
+        let govde = liste.length === 0
+            ? '<div style="color:#666; font-size:12px; font-weight:normal; padding:10px 0;">Henüz bildiriminiz yok.</div>'
+            : liste.map(b => `<div style="text-align:left; padding:8px; margin-bottom:6px; border-radius:6px; background:${b.okundu ? '#f1f1f1' : '#fff3cd'}; border:1px solid ${b.okundu ? '#ddd' : '#ffc107'};">
+                <div style="font-size:12px; font-weight:bold; color:#222;">${htmlKacis(b.baslik)}</div>
+                <div style="font-size:11px; font-weight:normal; color:#444; margin-top:2px;">${htmlKacis(b.govde)}</div>
+                <div style="font-size:10px; font-weight:normal; color:#888; margin-top:3px;">${bildirimZamani(b.zaman)}</div>
+            </div>`).join('');
+        modalGoster('<div style="font-size:14px; margin-bottom:8px;">🔔 Bildirimler</div><div style="max-height:55vh; overflow-y:auto;">' + govde + '</div>',
+            '<button onclick="bildirimTemizle()" style="background:#6c757d; color:#fff;">TEMİZLE</button> <button onclick="document.getElementById(\'modal-overlay\').style.display=\'none\'" style="margin-left:8px;">KAPAT</button>');
+        if (d.okunmamis > 0) {
+            fetch('/api/bildirim-oku', { method: 'POST', credentials: 'include' }).then(bildirimSayisiniGuncelle).catch(() => {});
+        }
+    } catch (e) {}
+}
+
+async function bildirimTemizle() {
+    try { await fetch('/api/bildirim-temizle', { method: 'POST', credentials: 'include' }); } catch (e) {}
+    document.getElementById('modal-overlay').style.display = 'none';
+    bildirimSayisiniGuncelle();
+}
+
+setInterval(bildirimSayisiniGuncelle, 15000);
+setTimeout(bildirimSayisiniGuncelle, 3000);
  
 function changePage(p) {
     let hedefSayfa = document.getElementById(p);
