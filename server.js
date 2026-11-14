@@ -8,13 +8,13 @@ const fs = require('fs');
 const crypto = require('crypto');
 function hashNo(s) { s = String(s); let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return h % 10; }
 const rateLimit = require('express-rate-limit'); 
- 
+
 function sifreHashle(sifre) { 
     const salt = crypto.randomBytes(16).toString('hex');
     const hash = crypto.scryptSync(String(sifre), salt, 64).toString('hex');
     return `scrypt$${salt}$${hash}`; 
 }
- 
+
 function sifreDogruMu(sifre, kayitli) {
     if (typeof kayitli !== 'string') return false;
     if (kayitli.startsWith('scrypt$')) {
@@ -47,7 +47,7 @@ function krediFaiziAl(kr, faizOranlari) {
     }
     return f;
 }
- 
+
 // Krediye anapara ödemesi: kalan vade korunur, taksit ve toplam faiz küçülür. Silinen faizi döner.
 function krediyeAnaparaOde(kr, miktar, faizOranlari) {
     const eskiKalan = kr.kalanBorc;
@@ -72,7 +72,7 @@ function krediyeAnaparaOde(kr, miktar, faizOranlari) {
     kr.kalanBorc = yeniTaksit * n;
     return Math.max(0, (eskiKalan - kr.kalanBorc) - miktar);
 }
- 
+
 // Grup kredilerinde (ör. 30 daire) kalan anaparaya göre fazla blokeleri kaldırır. Kaldırılan sayıyı döner.
 function krediGrupBlokeDengele(p, faizOranlari) {
     let kalkan = 0;
@@ -89,12 +89,12 @@ function krediGrupBlokeDengele(p, faizOranlari) {
     });
     return kalkan;
 }
- 
+
 // İCRA: kredinin bağlı olduğu varlıklar, borç karşılanana kadar tek tek satılır
 function icraUygula(portfoy, kr, satisFiyatlari, faizOranlari) {
     const bagliler = () => (portfoy.varliklar || []).filter(v => v && v.krediID && kr.id && String(v.krediID) === String(kr.id));
     if (bagliler().length === 0) { kr.silinecek = false; return; }
- 
+
     const tam = krediErkenKapamaTutari(kr, faizOranlari);
     let toplamSatis = 0;
     while (tam - toplamSatis > 0.5 && bagliler().length > 0) {
@@ -124,41 +124,41 @@ function icraUygula(portfoy, kr, satisFiyatlari, faizOranlari) {
 const app = express(); 
 const server = http.createServer(app);  
 const io = new Server(server);   
- 
+
 app.set('trust proxy', 1);
- 
+
 app.use(express.json());
 app.use(express.static(__dirname));   
- 
+
 console.log("Klasördeki dosyalar:", fs.readdirSync(__dirname));   
- 
+
 app.get('/', (req, res) => {
     res.sendFile(__dirname + '/index.html'); 
 });
 app.get('/gizlilik-politikasi', (req, res) => {
   res.send('<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Ecarix Gizlilik Politikası</title><style>body{font-family:Arial,sans-serif;max-width:700px;margin:20px auto;padding:0 16px;line-height:1.6;color:#222}h1{font-size:22px}h2{font-size:16px;margin-top:20px}</style></head><body><h1>Ecarix Gizlilik Politikası ve KVKK Aydınlatma Metni</h1><h2>1. Veri Sorumlusu</h2><p>Alper Halit Doğan (Ecarix), Ankara. İletişim: alpdo77@hotmail.com</p><h2>2. İşlenen Veriler</h2><p>Şirket adı (ad-soyad), e-posta adresi, şifre (şifrelenmiş olarak saklanır), oyun içi işlem ve portföy verileri, oturum kayıtları, bildirim gönderimi için cihaz bildirim kimliği (Google Firebase Cloud Messaging).</p><h2>3. Amaç</h2><p>Hesap oluşturma, kimlik doğrulama, oyunun sunulması, hesap güvenliği ve taleplerin yanıtlanması.</p><h2>4. Sanal Varlıklar</h2><p>Oyundaki tüm para ve varlıklar sanaldır, gerçek karşılığı yoktur, nakde çevrilemez.</p><h2>5. Aktarım</h2><p>Veriler yasal zorunluluk dışında üçüncü kişilerle paylaşılmaz. Sunucu altyapı hizmeti sağlayıcısı yalnızca hizmetin sunulması için verileri barındırır.</p><h2>6. Saklama ve Silme</h2><p>Veriler hesap açık olduğu sürece saklanır. Hesap silme talebi için: <a href="/hesap-silme">/hesap-silme</a></p><h2>7. Haklarınız (KVKK m.11)</h2><p>Verilerinizin işlenip işlenmediğini öğrenme, düzeltme, silme ve itiraz haklarına sahipsiniz. Başvuru: alpdo77@hotmail.com (en geç 30 gün içinde yanıtlanır).</p><h2>8. Yaş</h2><p>Uygulama 18 yaş ve üzeri kullanıcılar içindir.</p></body></html>');
 });
- 
+
 app.get('/hesap-silme', (req, res) => {
   res.send('<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Ecarix Hesap Silme</title><style>body{font-family:Arial,sans-serif;max-width:700px;margin:20px auto;padding:0 16px;line-height:1.6;color:#222}</style></head><body><h1>Ecarix Hesap ve Veri Silme</h1><p><b>Uygulama içinden:</b> Mali Tablo sayfasının en altındaki "Hesabımı Sil" düğmesini kullanabilirsiniz.</p><p>Hesabınızın ve ilişkili tüm verilerin (şirket adı, e-posta, portföy, ilanlar, giriş kayıtları) silinmesini istiyorsanız, kayıtlı e-posta adresinizden <b>alpdo77@hotmail.com</b> adresine "Hesap Silme Talebi" konulu bir e-posta gönderin.</p><p>Talebiniz en geç 30 gün içinde işleme alınır ve verileriniz kalıcı olarak silinir. Silme sonrası geri alma mümkün değildir.</p></body></html>');
 });
 // Ana oyun veritabanı (better-sqlite3 senkron yapısı)
- 
+
 const veriKlasoru = fs.existsSync('/data') ? '/data' : '.';
 const db = new Database(`${veriKlasoru}/database.db`);
 console.log("SQLite veritabanına başarıyla bağlanıldı."); 
- 
+
 const bots = require('./bots');
 bots.baslat(db);
 function ayarOku() {
   const k = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
   return k ? JSON.parse(k.ayarlar) : {};
 }
- 
+
 function adNormalle(s) {
     return String(s || '').toLocaleUpperCase('tr-TR').replace(/\s+/g, ' ').trim().replace(/\s+A\.?Ş\.?$/, '').trim();
 }
- 
+
 // 'kullanici' | 'bot' | null döner
 function adKullanimda(ad, haricId) {
     const n = adNormalle(ad);
@@ -168,7 +168,7 @@ function adKullanimda(ad, haricId) {
     if (bots.isimler().some(x => adNormalle(x) === n)) return 'bot';
     return null;
 }
- 
+
 setInterval(() => {
   try { bots.dongu(db, ayarOku()); } catch (e) { console.error('Bot döngüsü:', e.message); }
 }, 1000);
@@ -187,7 +187,7 @@ app.use(session({
     saveUninitialized: false,
     cookie: { maxAge: 1000 * 60 * 60 * 24 * 7, sameSite: 'none', secure: true }
 }));
- 
+
 db.prepare(`CREATE TABLE IF NOT EXISTS kullanicilar (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     kadi TEXT UNIQUE,
@@ -198,23 +198,23 @@ db.prepare(`CREATE TABLE IF NOT EXISTS kullanicilar (
     son_guncelleme INTEGER,
     tarih DATETIME DEFAULT CURRENT_TIMESTAMP
 )`).run();
- 
+
 // Sütun eksikse otomatik ekleme güvenliği
 try {
     db.prepare(`ALTER TABLE kullanicilar ADD COLUMN son_guncelleme INTEGER`).run();
 } catch (e) {
     // Sütun zaten varsa hata verir, yoksayabiliriz
 }
- 
+
 try { db.prepare(`ALTER TABLE kullanicilar ADD COLUMN sozlesme_onay_tarihi TEXT`).run(); } catch (e) {}
 try { db.prepare(`ALTER TABLE kullanicilar ADD COLUMN sozlesme_versiyon TEXT`).run(); } catch (e) {}
- 
+
 // --- 🌟 MERKEZİ AYARLAR TABLOSU ---
 db.prepare(`CREATE TABLE IF NOT EXISTS oyun_ayarlari (
     id INTEGER PRIMARY KEY CHECK (id = 1),
     ayarlar TEXT
 )`).run();
- 
+
 // Sadece tablo tamamen boşsa varsayılanları ekle, asla mevcut verinin üzerine yazma
 const ayarSayisi = db.prepare(`SELECT COUNT(*) as sayi FROM oyun_ayarlari`).get();
 if (ayarSayisi.sayi === 0) {
@@ -271,7 +271,8 @@ if (ayarSayisi.sayi === 0) {
         odemeProgrami: [
             { saat: 10, dakika: 0 },
             { saat: 13, dakika: 0 },
-            { saat: 16, dakika: 0 }
+            { saat: 16, dakika: 0 },
+            { saat: 19, dakika: 0 }
         ],
         GLOBAL_BEKLEME_SURESI: 3 * 24 * 60 * 60 * 1000,
         sureler: {
@@ -289,7 +290,7 @@ if (ayarSayisi.sayi === 0) {
     // INSERT OR IGNORE kullanarak mevcut verinin ezilmesini kesin olarak önlüyoruz
     db.prepare(`INSERT OR IGNORE INTO oyun_ayarlari (id, ayarlar) VALUES (1, ?)`).run(JSON.stringify(varsayilanAyarlar));
 }
- 
+
 db.prepare(`CREATE TABLE IF NOT EXISTS ilanlar (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     kullanici_id INTEGER,
@@ -302,7 +303,7 @@ db.prepare(`CREATE TABLE IF NOT EXISTS ilanlar (
 db.prepare(`CREATE INDEX IF NOT EXISTS idx_ilanlar_kullanici ON ilanlar(kullanici_id)`).run();
 // --- 👑 ADMIN YETKİSİ ---
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'alpdo77@hotmail.com';
- 
+
 function adminMi(req) {
     return !!(req.session && req.session.kullanici && req.session.kullanici.kadi &&
         String(req.session.kullanici.kadi).trim().toLowerCase() === ADMIN_EMAIL);
@@ -311,7 +312,7 @@ function adminZorunlu(req, res, next) {
     if (!adminMi(req)) return res.status(403).json({ basari: false, mesaj: 'Yetkiniz yok!' });
     next();
 }
- 
+
 // --- 📊 GİRİŞ / OTURUM KAYITLARI ---
 db.prepare(`CREATE TABLE IF NOT EXISTS giris_kayitlari (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -329,7 +330,7 @@ function aktiviteIsle(req) {
         const simdi = Date.now();
         const kid = req.session.girisKayitId;
         const satir = kid ? db.prepare(`SELECT id, son_aktif, cikis_tarihi FROM giris_kayitlari WHERE id = ?`).get(kid) : null;
- 
+
         if (!satir || satir.cikis_tarihi || (simdi - satir.son_aktif) > 10 * 60 * 1000) {
             const r = db.prepare(`INSERT INTO giris_kayitlari (kullanici_id, giris_tarihi, son_aktif) VALUES (?, ?, ?)`).run(uid, simdi, simdi);
             req.session.girisKayitId = r.lastInsertRowid;
@@ -338,18 +339,18 @@ function aktiviteIsle(req) {
         }
     } catch (e) { /* kayıt hatası oyunu bozmasın */ }
 }
- 
+
 // --- 🌟 ÇEVRİMİÇİ / ÇEVRİMDIŞI AKILLI EKONOMİ MOTORU (TAM KAPSAMLI) ---
 function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
     if (!userRow || !userRow.portfoy) return null;
- 
+
     let portfoy;
     try {
         portfoy = JSON.parse(userRow.portfoy);
     } catch (e) {
         return null;
     }
- 
+
     const simdi = Date.now();
     let sonGuncelleme = (userRow.son_guncelleme && !isNaN(userRow.son_guncelleme)) ? Number(userRow.son_guncelleme) : simdi;
     if (sonGuncelleme > simdi) {
@@ -361,10 +362,10 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
         db.prepare(`UPDATE kullanicilar SET son_guncelleme = ? WHERE id = ?`).run(simdi, userRow.id);
         return portfoy;
     }
- 
+
     const gecenSure = simdi - sonGuncelleme;
     if (gecenSure < 5000) return portfoy; // 5 saniyeden kısa süreleri pas geç
- 
+
     const sureler = ayarlar.sureler || {};
     const kiraPeriyodu = sureler.kiraSuresi || 86400000;    // 24 Saat (veya ayarlanan)
     const faizPeriyodu = sureler.faizSuresi || 86400000;    // Vadeli faiz periyodu
@@ -373,14 +374,14 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
     const kazancTablosu = ayarlar.kazancTablosu || {};
     const faizOranlari = ayarlar.faizOranlari || { vadeliGunluk: 0.02, krediKatsayi: 1.25 };
     const satisFiyatlari = ayarlar.satisFiyatlari || {};
- 
+
     let degisiklikOldu = false;
- 
+
  // --- 1. KONUT KİRA GELİRİ (SADECE KONUT — tesis gelirleri elle tahsil edilir!) ---
     const kiraPeriyotSayisi = Math.floor(gecenSure / kiraPeriyodu);
     if (kiraPeriyotSayisi > 0) {
         let toplamEklenenGelir = 0;
- 
+
         if (ayarlar.konutKiraGeliri > 0 && portfoy.varliklar) {
             portfoy.varliklar.forEach(v => {
                 if (v && v.durum === 'sahip' && v.isim === 'Konut') {
@@ -388,7 +389,7 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
                 }
             });
         }
- 
+
         if (toplamEklenenGelir > 0) {
             let mevcutNakit = portfoy.nakit !== undefined ? Number(portfoy.nakit) : (portfoy.para !== undefined ? Number(portfoy.para) : 0);
             mevcutNakit += toplamEklenenGelir;
@@ -397,7 +398,7 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
             degisiklikOldu = true;
         }
     }
- 
+
     // --- 2. ŞİRKET GÜNLÜK (SABİT) GELİRİ ---
     const sirketKazancPeriyotSayisi = Math.floor(gecenSure / sirketKazancPeriyodu);
     if (sirketKazancPeriyotSayisi > 0 && ayarlar.gunlukGelir > 0) {
@@ -407,7 +408,7 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
         portfoy.para = mevcutNakit;
         degisiklikOldu = true;
     }
- 
+
     // --- 2. VADELİ HESAP / FAİZ GELİRLERİ ---
     const faizPeriyotSayisi = Math.floor(gecenSure / faizPeriyodu);
     let vadeliDeger = portfoy.vadeli !== undefined ? Number(portfoy.vadeli) : (portfoy.vadeliHesap !== undefined ? Number(portfoy.vadeliHesap) : 0);
@@ -420,7 +421,7 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
         for (let i = 0; i < faizPeriyotSayisi; i++) {
             toplamFaizGetirisi += (anapara * gunlukFaizOrani);
         }
- 
+
         if (toplamFaizGetirisi > 0) {
             let yeniVadeli = anapara + toplamFaizGetirisi;
             portfoy.vadeli = yeniVadeli;
@@ -429,19 +430,20 @@ function kullaniciEkonomisiniIslet(userRow, ayarlar, kurlar) {
             degisiklikOldu = true;
         }
     }
- 
+
     // --- 3. KREDİ TAKSİTLERİ VE İCRA KONTROLÜ (Normal periyodik akış) ---
     const taksitPeriyotSayisi = Math.floor(gecenSure / taksitPeriyodu);
+    let odenenTaksitToplam = 0, odenenTaksitSayisi = 0, kapananKrediSayisi = 0;
     if (taksitPeriyotSayisi > 0 && portfoy.krediler && Array.isArray(portfoy.krediler) && portfoy.krediler.length > 0) {
         
         for (let adim = 0; adim < taksitPeriyotSayisi; adim++) {
             portfoy.krediler.forEach(kr => {
                 if (!kr || kr.kalanBorc <= 0) return;
- 
+
                 // --- 🌟 TAKSİT BİLGİSİ DÜZELTİLDİ ---
                 // Frontend'den gelen 'kr.taksit' değeri önceliklidir.
                 let taksitMiktari = kr.taksit !== undefined ? kr.taksit : kr.taksitTutu;
- 
+
 // Eğer icradan kalan borçsa taksit YOKTUR, direkt 0'dır. Yeniden hesaplanmaz!
 if (kr.icradanKalanBorc) {
     taksitMiktari = 0;
@@ -454,13 +456,13 @@ if (kr.icradanKalanBorc) {
                 if (typeof kr.ustUsteOdenmeyen !== 'number') {
                     kr.ustUsteOdenmeyen = 0;
                 }
- 
+
                 let mevcutNakit = portfoy.nakit !== undefined ? Number(portfoy.nakit) : (portfoy.para !== undefined ? Number(portfoy.para) : 0);
- 
+
                 // Nakit yetmiyorsa alternatif hesapları (Dolar, Euro, Altın, Vadeli) sırayla bozdur
                 if (mevcutNakit < taksitMiktari) {
                     let eksikTutar = taksitMiktari - mevcutNakit;
- 
+
                     // 1. Dolar Bozdur
                     if (eksikTutar > 0 && portfoy.dolar > 0) {
                         let dolarSatis = (kurlar && kurlar.dolar) ? kurlar.dolar.satis : 49;
@@ -475,7 +477,7 @@ if (kr.icradanKalanBorc) {
                             portfoy.dolar = 0;
                         }
                     }
- 
+
                     // 2. Euro Bozdur
                     if (eksikTutar > 0 && portfoy.euro > 0) {
                         let euroSatis = (kurlar && kurlar.euro) ? kurlar.euro.satis : 54;
@@ -490,7 +492,7 @@ if (kr.icradanKalanBorc) {
                             portfoy.euro = 0;
                         }
                     }
- 
+
                     // 3. Altın Bozdur
                     if (eksikTutar > 0 && portfoy.altin > 0) {
                         let altinSatis = (kurlar && kurlar.altin) ? kurlar.altin.satis : 6000;
@@ -505,7 +507,7 @@ if (kr.icradanKalanBorc) {
                             portfoy.altin = 0;
                         }
                     }
- 
+
                     // 4. Vadeli Hesaptan Çek
                     let guncelVadeli = portfoy.vadeli !== undefined ? Number(portfoy.vadeli) : (portfoy.vadeliHesap !== undefined ? Number(portfoy.vadeliHesap) : 0);
                     if (eksikTutar > 0 && guncelVadeli > 0) {
@@ -517,11 +519,11 @@ if (kr.icradanKalanBorc) {
                         portfoy.vadeli = guncelVadeli;
                         portfoy.vadeliHesap = guncelVadeli;
                     }
- 
+
                     portfoy.nakit = mevcutNakit;
                     portfoy.para = mevcutNakit;
                 }
- 
+
                 // Nihai Nakit Kontrolü: Taksit ödenebiliyor mu?
                 if (portfoy.nakit >= taksitMiktari) {
                     portfoy.nakit -= taksitMiktari;
@@ -529,7 +531,10 @@ if (kr.icradanKalanBorc) {
                     kr.kalanBorc -= taksitMiktari; 
                     if (kr.kalanBorc < 0) kr.kalanBorc = 0;
                     kr.ustUsteOdenmeyen = 0;
- 
+                    odenenTaksitToplam += taksitMiktari;
+                    odenenTaksitSayisi++;
+                    if (kr.kalanBorc === 0) kapananKrediSayisi++;
+
                     // Borç bittiyse blokesini kaldır
                     if (kr.kalanBorc === 0 && portfoy.varliklar) {
                         let ilgiliVarlik = portfoy.varliklar.find(v => v && v.krediID && kr.id && String(v.krediID) === String(kr.id));
@@ -542,7 +547,7 @@ if (kr.icradanKalanBorc) {
                     // Nakit yetmedi, ödenmedi sayılır
                     kr.ustUsteOdenmeyen++;
                     pushKuyrugaEkle(userRow.id, 'taksit', 'Kredi taksidi ödenemedi ⚠️', `${kr.isim || 'Kredi'} taksidi ödenemedi (${kr.ustUsteOdenmeyen}/3). 3 taksit ödenmezse icra başlar!`);
- 
+
                     // 3 Dönem üst üste ödenmediyse İCRA (Varlığa el koyma)
                     if (kr.ustUsteOdenmeyen >= 3 && portfoy.varliklar) {
                         icraUygula(portfoy, kr, satisFiyatlari, faizOranlari);
@@ -551,11 +556,20 @@ if (kr.icradanKalanBorc) {
                 }
                 degisiklikOldu = true;
             });
- 
+
             portfoy.krediler = portfoy.krediler.filter(kr => kr && (kr.kalanBorc > 0 || !kr.silinecek));
         }
     }
- 
+
+    // Ödenen taksitler için tek bir bildirim (çevrimdışı geçen günler toplanır)
+    if (odenenTaksitSayisi > 0) {
+        const kalanToplam = (portfoy.krediler || []).reduce((t, k) => t + (k.kalanBorc || 0), 0);
+        const f = x => Math.round(x).toLocaleString('tr-TR');
+        pushKuyrugaEkle(userRow.id, 'taksit-odendi', 'Kredi taksidi ödendi ✅',
+            `${odenenTaksitSayisi > 1 ? odenenTaksitSayisi + ' taksit' : 'Taksit'} toplam ${f(odenenTaksitToplam)} ödendi. Kalan toplam borç: ${f(kalanToplam)}` +
+            (kapananKrediSayisi > 0 ? ` 🎉 ${kapananKrediSayisi} kredi tamamen kapandı!` : ''));
+    }
+
     // --- 🌟 4. İCRA SONRASI KALAN BAKİYE BORÇLAR İÇİN ANLIK KAPATMA (DÜZELTİLDİ) ---
     // Artık kafasına göre kredi silmeyecek. SADECE icradanKalanBorc bayrağı TRUE ise çalışacak.
     if (portfoy.krediler && Array.isArray(portfoy.krediler) && portfoy.krediler.length > 0) {
@@ -586,7 +600,7 @@ if (portfoy.krediler && Array.isArray(portfoy.krediler)) {
     portfoy.krediler = [];
     degisiklikOldu = true; // 🌟 Eklendi
 }
- 
+
 // 0.01'den küçük küsuratları da kapsayacak şekilde güvenli sıfırlama
 if (portfoy.kredi < 0.01) {
     portfoy.kredi = 0;
@@ -594,7 +608,7 @@ if (portfoy.kredi < 0.01) {
     portfoy.krediler = [];
     degisiklikOldu = true; // 🌟 BURASI HAYATİ: Veritabanına "borç bitti, güncelle" komutunu gönderir!
 }
- 
+
     // 🌟 KESİN ÇÖZÜM: Toplam borç 0 ise (veya kredi kalmadıysa) sunucu tarafında 
     // ID bağına bakılmaksızın tüm varlıkların blokesini ve kredi bağlantısını temizle!
     if (portfoy.kredi < 0.01 && portfoy.varliklar && Array.isArray(portfoy.varliklar)) {
@@ -607,7 +621,7 @@ if (portfoy.kredi < 0.01) {
         }
     });
 }
- 
+
     // Yeni son güncelleme zamanını hesaplanan periyotlar üzerinden ileri taşı
     const tuketilenPeriyot = Math.max(kiraPeriyotSayisi, sirketKazancPeriyotSayisi, faizPeriyotSayisi, taksitPeriyotSayisi);
     const bazSureMs = Math.min(kiraPeriyodu, sirketKazancPeriyodu, faizPeriyodu, taksitPeriyodu);
@@ -616,7 +630,7 @@ if (portfoy.kredi < 0.01) {
     if (tuketilenPeriyot > 0) {
         yeniSonGuncelleme += (tuketilenPeriyot * bazSureMs);
     }
- 
+
     if (degisiklikOldu || tuketilenPeriyot > 0) {
         db.prepare(`UPDATE kullanicilar SET portfoy = ?, son_guncelleme = ? WHERE id = ?`).run(
             JSON.stringify(portfoy),
@@ -624,7 +638,7 @@ if (portfoy.kredi < 0.01) {
             userRow.id
         );
     }
- 
+
     return portfoy;
 }
 setInterval(() => {
@@ -632,10 +646,10 @@ setInterval(() => {
         const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
         if (!ayarKaydi) return;
         const ayarlar = JSON.parse(ayarKaydi.ayarlar);
- 
+
         // Canlı kurları veritabanından çekiyoruz
        const kurlar = ayarlar.kurlar || { dolar: { satis: 49 }, euro: { satis: 54 }, altin: { satis: 6000 } };
- 
+
         const yediGunOnce = Date.now() - (7 * 24 * 60 * 60 * 1000);
         const kullanicilar = db.prepare(
             `SELECT id, portfoy, son_guncelleme FROM kullanicilar WHERE son_guncelleme > ?`
@@ -653,7 +667,7 @@ setInterval(() => {
                 // Bu kullanıcı patlasa bile diğer kullanıcıların parası, dövizi, kredisi etkilenmez
             }
         });
- 
+
     } catch (err) {
         console.error("Arka plan oyun döngüsü genel hata:", err.message);
     }
@@ -665,28 +679,28 @@ db.prepare(`CREATE TABLE IF NOT EXISTS bildirimler (
     tarih INTEGER
 )`).run();
 db.prepare(`CREATE INDEX IF NOT EXISTS idx_bildirim_kullanici ON bildirimler(kullanici_id)`).run();
- 
+
 function bildirimEkle(kullaniciId, mesaj) {
     db.prepare(`INSERT INTO bildirimler (kullanici_id, mesaj, tarih) VALUES (?, ?, ?)`).run(kullaniciId, mesaj, Date.now());
 }
- 
+
 function ilanSatisiniSaticiyaUygula(p, ilanTipi, hedefVarlikId, satisFiyati, faizOranlari) {
     const liste = Array.isArray(p.varliklar) ? p.varliklar : [];
     let idx = -1;
     if (hedefVarlikId) idx = liste.findIndex(v => v && String(v.id) === String(hedefVarlikId));
     if (idx === -1) idx = liste.findIndex(v => v && v.isim === ilanTipi && v.durum === 'ilan-aktif');
     if (idx === -1) return null;
- 
+
     const varlik = liste[idx];
     let nakit = p.nakit !== undefined ? Number(p.nakit) : Number(p.para || 0);
     let krediler = Array.isArray(p.krediler) ? p.krediler : [];
     let dusulenBorc = 0, silinenFaiz = 0, kalanBorc = 0, grup = false;
- 
+
     const kr = varlik.krediID ? krediler.find(k => k && String(k.id) === String(varlik.krediID)) : null;
     if (kr && (kr.kalanBorc || 0) > 0) {
         const bagliSayi = liste.filter(v => v && v.krediID && String(v.krediID) === String(kr.id)).length;
         const tam = krediErkenKapamaTutari(kr, faizOranlari);
- 
+
         if (bagliSayi > 1 && !kr.icradanKalanBorc) {
             // Grup kredisi (ör. 30 daire): sadece satılan varlığın payı kapanır, kredi diğerleri için sürer
             grup = true;
@@ -714,27 +728,27 @@ function ilanSatisiniSaticiyaUygula(p, ilanTipi, hedefVarlikId, satisFiyati, fai
     } else {
         nakit += satisFiyati;
     }
- 
+
     liste.splice(idx, 1);
     p.varliklar = liste;
     p.nakit = nakit;
     p.para = nakit;
- 
+
     krediler = krediler.filter(k => k && (k.kalanBorc || 0) > 0.01);
     p.krediler = krediler;
     p.kredi = krediler.reduce((t, k) => t + (k.kalanBorc || 0), 0);
     p.taksit = krediler.reduce((t, k) => t + (k.icradanKalanBorc ? 0 : (k.taksit || k.taksitTutu || 0)), 0);
     if (krediler.length === 0 || p.kredi < 0.01) { p.kredi = 0; p.taksit = 0; p.krediler = []; }
- 
+
     const aktif = new Set(p.krediler.map(k => String(k.id)));
     p.varliklar.forEach(v => {
         if (v && v.bloke && (!v.krediID || !aktif.has(String(v.krediID)))) { v.bloke = false; v.krediID = null; }
     });
     krediGrupBlokeDengele(p, faizOranlari);
- 
+
     return { dusulenBorc, silinenFaiz, kalanBorc, grup, netKazanc: Math.max(0, satisFiyati - dusulenBorc) };
 }
- 
+
 function ilanSatisMesaji(ilanTipi, satisFiyati, s) {
     const f = x => Math.round(x).toLocaleString('tr-TR');
     let m = `<b>Piyasa Hareketli</b><br><br>Bir yatırımcı, ilanda bekleyen "${ilanTipi}" varlığınızı ${f(satisFiyati)} ödeyerek satın aldı!`;
@@ -755,24 +769,24 @@ function oyuncuIlanlariniBotlaraSat() {
     if (isNaN(beklemeMs)) beklemeMs = 3 * 24 * 60 * 60 * 1000;
     const fiyatlar = ayar.satisFiyatlari || {};
     const simdi = Date.now();
- 
+
     db.prepare(`SELECT * FROM ilanlar`).all().forEach(ilan => {
         try {
             const ilanZamani = ilan.tarih ? Date.parse(String(ilan.tarih).replace(' ', 'T') + 'Z') : NaN;
             if (isNaN(ilanZamani) || (simdi - ilanZamani) < beklemeMs) return;
- 
+
             let detay = {};
             try { detay = JSON.parse(ilan.detaylar || '{}'); } catch (e) {}
             const satisFiyati = fiyatlar[ilan.ilan_tipi] !== undefined ? Number(fiyatlar[ilan.ilan_tipi]) : Number(ilan.fiyat);
- 
+
             db.transaction(() => {
                 const row = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(ilan.kullanici_id);
                 if (!row) { db.prepare(`DELETE FROM ilanlar WHERE id = ?`).run(ilan.id); return; }
- 
+
                 const p = JSON.parse(row.portfoy || '{}');
                 const sonuc = ilanSatisiniSaticiyaUygula(p, ilan.ilan_tipi, detay.varlikId, satisFiyati, ayar.faizOranlari);
                 if (!sonuc) { db.prepare(`DELETE FROM ilanlar WHERE id = ?`).run(ilan.id); return; }
- 
+
                 db.prepare(`UPDATE kullanicilar SET portfoy = ? WHERE id = ?`).run(JSON.stringify(p), ilan.kullanici_id);
                 db.prepare(`DELETE FROM ilanlar WHERE id = ?`).run(ilan.id);
                 bildirimEkle(ilan.kullanici_id, ilanSatisMesaji(ilan.ilan_tipi, satisFiyati, sonuc));
@@ -784,11 +798,11 @@ function oyuncuIlanlariniBotlaraSat() {
         }
     });
 }
- 
+
 setInterval(() => {
     try { oyuncuIlanlariniBotlaraSat(); } catch (e) { console.error('Bot satış döngüsü:', e.message); }
 }, 15000);
- 
+
 app.get('/api/bildirimler', (req, res) => {
     if (!req.session || !req.session.kullanici) return res.status(401).json({ basari: false });
     try {
@@ -802,7 +816,7 @@ app.get('/api/bildirimler', (req, res) => {
         res.status(500).json({ basari: false, mesaj: e.message });
     }
 });
- 
+
 // --- 🔔 BİLDİRİMLER: uygulama içi geçmiş (zil ikonu) + Firebase push ---
 db.prepare(`CREATE TABLE IF NOT EXISTS push_tokenlari (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -831,11 +845,11 @@ db.prepare(`CREATE TABLE IF NOT EXISTS bildirim_gecmisi (
     okundu INTEGER DEFAULT 0
 )`).run();
 db.prepare(`CREATE INDEX IF NOT EXISTS idx_bgecmis_kullanici ON bildirim_gecmisi(kullanici_id)`).run();
- 
+
 let _fcm = null;
 let _sonKuyrukCalisma = 0;
 let _sonGecmisTemizlik = 0;
- 
+
 function fcmAl() {
     if (_fcm !== null) return _fcm;
     try {
@@ -851,12 +865,12 @@ function fcmAl() {
     }
     return _fcm;
 }
- 
+
 function istanbulSaat(d) { return Number(new Intl.DateTimeFormat('en-GB', { hour: 'numeric', hourCycle: 'h23', timeZone: 'Europe/Istanbul' }).format(d || new Date())); }
 function istanbulDakika(d) { return Number(new Intl.DateTimeFormat('en-GB', { minute: 'numeric', timeZone: 'Europe/Istanbul' }).format(d || new Date())); }
 function istanbulGun(d) { return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Istanbul' }).format(d || new Date()); }
 function sessizSaatMi(saat) { const h = (saat === undefined) ? istanbulSaat() : saat; return h >= 23 || h < 8; }
- 
+
 // Bildirimi hem uygulama içi geçmişe (zil) hem de push kuyruğuna ekler
 function pushKuyrugaEkle(kullaniciId, tur, baslik, govde) {
     try {
@@ -865,14 +879,14 @@ function pushKuyrugaEkle(kullaniciId, tur, baslik, govde) {
         db.prepare(`INSERT INTO push_kuyrugu (kullanici_id, tur, baslik, govde, zaman) VALUES (?, ?, ?, ?, ?)`).run(kullaniciId, tur, baslik, govde, simdi);
     } catch (e) { console.error('[push] Bildirim kaydedilemedi:', e.message); }
 }
- 
+
 function pushMetniBirlestir(liste) {
     if (liste.length === 1) return { baslik: liste[0].baslik, govde: liste[0].govde };
     let govde = liste.slice(0, 3).map(x => x.govde).join(' • ');
     if (liste.length > 3) govde += ' …';
     return { baslik: `Ecarix • ${liste.length} yeni bildirim`, govde };
 }
- 
+
 async function pushGonder(tokenlar, baslik, govde, veri) {
     const m = fcmAl();
     if (!m) { console.log('[push] Firebase hazır değil, bildirim telefona gönderilemedi.'); return; }
@@ -898,7 +912,7 @@ async function pushGonder(tokenlar, baslik, govde, veri) {
         } catch (e) { console.error('[push] gönderim istisnası:', e.message); }
     }
 }
- 
+
 // Kuyruktaki bildirimleri telefonlara gönderir. 23:00-08:00 arası bekletir, aynı kişiye birden fazla varsa tek bildirimde birleştirir.
 async function pushKuyrugunuBosalt() {
     _sonKuyrukCalisma = Date.now();
@@ -910,12 +924,12 @@ async function pushKuyrugunuBosalt() {
     db.prepare(`DELETE FROM push_kuyrugu WHERE zaman < ?`).run(Date.now() - 12 * 60 * 60 * 1000);
     const satirlar = db.prepare(`SELECT * FROM push_kuyrugu ORDER BY id ASC LIMIT 500`).all();
     if (satirlar.length === 0) return;
- 
+
     db.prepare(`DELETE FROM push_kuyrugu WHERE id IN (${satirlar.map(() => '?').join(',')})`).run(...satirlar.map(s => s.id));
- 
+
     const gruplar = {};
     satirlar.forEach(s => { (gruplar[s.kullanici_id] = gruplar[s.kullanici_id] || []).push(s); });
- 
+
     let gonderilen = 0, cihazsiz = 0;
     for (const uid of Object.keys(gruplar)) {
         const tokenlar = db.prepare(`SELECT token FROM push_tokenlari WHERE kullanici_id = ? AND acik = 1`).all(uid).map(r => r.token);
@@ -926,7 +940,7 @@ async function pushKuyrugunuBosalt() {
     }
     console.log(`[push] kuyruk: ${satirlar.length} bildirim, ${gonderilen} kullanıcıya gönderildi, ${cihazsiz} kullanıcının açık cihazı yok (sadece zilde görünür)`);
 }
- 
+
 function tahsilatliTesisiVarMi(p) {
     return (p.varliklar || []).some(v => {
         if (!v || (v.durum !== 'sahip' && v.durum !== 'ilan-aktif') || !v.isim) return false;
@@ -934,7 +948,7 @@ function tahsilatliTesisiVarMi(p) {
         return s !== 'konut' && !s.includes('arsa');
     });
 }
- 
+
 // Admin panelindeki ödeme saatlerinde, tahsil edilecek tesisi olanlara bildirim
 function tahsilatBildirimleriniKuyrugaAl(simdi) {
     const ayar = ayarOku();
@@ -959,7 +973,7 @@ function tahsilatBildirimleriniKuyrugaAl(simdi) {
         db.prepare(`DELETE FROM push_isaret WHERE zaman < ?`).run(Date.now() - 3 * 24 * 60 * 60 * 1000);
     });
 }
- 
+
 // Kur / faiz değişikliği metni (değişen bir şey yoksa boş döner)
 function piyasaDegisimMetni(eski, yeni) {
     const f2 = x => Number(x).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -982,20 +996,18 @@ function piyasaDegisimMetni(eski, yeni) {
     }
     return parcalar.join(' • ');
 }
- 
+
 let _sonPiyasaPush = 0;
 function piyasaDegisimiBildir(eski, yeni) {
     try {
         const metin = piyasaDegisimMetni(eski, yeni);
         if (!metin) { console.log('[push] ayarlar kaydedildi ama kur/faiz değişikliği yok, bildirim yok'); return; }
-        if (Date.now() - _sonPiyasaPush < 120000) { console.log('[push] piyasa bildirimi 2 dk kuralı nedeniyle atlandı'); return; }
-        _sonPiyasaPush = Date.now();
         const uyeler = db.prepare(`SELECT id FROM kullanicilar WHERE son_guncelleme > ?`).all(Date.now() - 14 * 24 * 60 * 60 * 1000);
         console.log('[push] piyasa değişimi: "' + metin + '" -> ' + uyeler.length + ' kullanıcı kuyruğa alındı');
         uyeler.forEach(u => pushKuyrugaEkle(u.id, 'piyasa', 'Piyasada değişiklik 📈', metin));
     } catch (e) { console.error('[push] Piyasa bildirimi:', e.message); }
 }
- 
+
 setInterval(() => {
     try { tahsilatBildirimleriniKuyrugaAl(); } catch (e) { console.error('[push] Tahsilat bildirimi:', e.message); }
 }, 30000);
@@ -1003,7 +1015,7 @@ setInterval(() => {
     pushKuyrugunuBosalt().catch(e => console.error('[push] Push kuyruğu:', e.message));
 }, 30000);
 console.log('[push] bildirim sistemi başlatıldı (zil + push döngüleri aktif)');
- 
+
 // --- 🔔 Zil: uygulama içi bildirim geçmişi ---
 app.get('/api/bildirim-merkezi', (req, res) => {
     if (!req.session || !req.session.kullanici) return res.status(401).json({ basari: false });
@@ -1015,7 +1027,7 @@ app.get('/api/bildirim-merkezi', (req, res) => {
         res.json({ basari: true, okunmamis, bildirimler: liste });
     } catch (e) { res.status(500).json({ basari: false, mesaj: e.message }); }
 });
- 
+
 app.post('/api/bildirim-oku', (req, res) => {
     if (!req.session || !req.session.kullanici) return res.status(401).json({ basari: false });
     try {
@@ -1023,7 +1035,7 @@ app.post('/api/bildirim-oku', (req, res) => {
         res.json({ basari: true });
     } catch (e) { res.status(500).json({ basari: false, mesaj: e.message }); }
 });
- 
+
 app.post('/api/bildirim-temizle', (req, res) => {
     if (!req.session || !req.session.kullanici) return res.status(401).json({ basari: false });
     try {
@@ -1031,7 +1043,7 @@ app.post('/api/bildirim-temizle', (req, res) => {
         res.json({ basari: true });
     } catch (e) { res.status(500).json({ basari: false, mesaj: e.message }); }
 });
- 
+
 app.post('/api/push-kaydet', (req, res) => {
     if (!req.session || !req.session.kullanici) return res.status(401).json({ basari: false });
     const token = String((req.body && req.body.token) || '').trim();
@@ -1050,7 +1062,7 @@ app.post('/api/push-kaydet', (req, res) => {
         res.json({ basari: true });
     } catch (e) { res.status(500).json({ basari: false, mesaj: e.message }); }
 });
- 
+
 app.get('/api/push-ayar', (req, res) => {
     if (!req.session || !req.session.kullanici) return res.status(401).json({ basari: false });
     try {
@@ -1058,7 +1070,7 @@ app.get('/api/push-ayar', (req, res) => {
         res.json({ basari: true, kayitli: satirlar.length > 0, acik: satirlar.some(r => r.acik === 1) });
     } catch (e) { res.status(500).json({ basari: false, mesaj: e.message }); }
 });
- 
+
 app.post('/api/push-ayar', (req, res) => {
     if (!req.session || !req.session.kullanici) return res.status(401).json({ basari: false });
     try {
@@ -1066,7 +1078,7 @@ app.post('/api/push-ayar', (req, res) => {
         res.json({ basari: true });
     } catch (e) { res.status(500).json({ basari: false, mesaj: e.message }); }
 });
- 
+
 app.post('/api/push-sil', (req, res) => {
     if (!req.session || !req.session.kullanici) return res.status(401).json({ basari: false });
     try {
@@ -1075,7 +1087,7 @@ app.post('/api/push-sil', (req, res) => {
         res.json({ basari: true });
     } catch (e) { res.status(500).json({ basari: false, mesaj: e.message }); }
 });
- 
+
 // 🔧 PUSH TEST UCU (sadece admin)
 // ?email=...   -> hedef üye (boşsa kendi hesabın)
 // ?kuyruk=1    -> bildirimi gerçek kuyruğa ekler (tahsilat/kur gibi aynı yol), 30 sn içinde gelmeli
@@ -1103,7 +1115,7 @@ app.get('/api/admin/push-test', adminZorunlu, async (req, res) => {
         };
         const m = fcmAl();
         rapor.firebaseHazir = !!m;
- 
+
         if (req.query.kuyruk === '1') {
             pushKuyrugaEkle(uid, 'test', 'Ecarix kuyruk testi 🔔', 'Bu bildirim gerçek bildirim kuyruğundan geldi.');
             rapor.kuyrugaEklendi = 'EVET - 30 saniye içinde gelmeli' + (rapor.sessizSaatMi ? ' (şu an sessiz saat, sabaha bekler!)' : '');
@@ -1121,36 +1133,36 @@ app.get('/api/admin/push-test', adminZorunlu, async (req, res) => {
     }
 });
 // --- API Rotaları ---
- 
+
 app.get('/api/ilanlar', (req, res) => {
     try {
         const ilanlar = db.prepare(`SELECT * FROM ilanlar`).all();
         const aktifKullaniciId = req.session && req.session.kullanici ? req.session.kullanici.id : null;
- 
+
         const duzenlenmisIlanlar = ilanlar.map(ilan => ({
             ...ilan,
             detaylar: JSON.parse(ilan.detaylar || '{}'),
             benim_mi: aktifKullaniciId && ilan.kullanici_id === aktifKullaniciId 
         }));
- 
+
         res.json({ basari: true, ilanlar: duzenlenmisIlanlar });
     } catch (err) {
         res.status(500).json({ basari: false, mesaj: err.message });
     }
 });
- 
+
 app.post('/api/ilan-ekle', (req, res) => {
     if (!req.session || !req.session.kullanici) {
         return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı!" });
     }
- 
+
     const { ilan_tipi, fiyat, detaylar } = req.body;
     const sessionKullanici = req.session.kullanici;
     const userId = typeof sessionKullanici === 'object' ? sessionKullanici.id : sessionKullanici;
     const varlikId = detaylar && detaylar.varlikId ? detaylar.varlikId : null;
- 
+
     let userAdSoyad = (typeof sessionKullanici === 'object' && sessionKullanici.adsoyad) ? sessionKullanici.adsoyad : "Satıcı";
- 
+
     try {
         const transaction = db.transaction(() => {
             if (varlikId) {
@@ -1160,7 +1172,7 @@ app.post('/api/ilan-ekle', (req, res) => {
 }
             const stmt = db.prepare(`INSERT INTO ilanlar (kullanici_id, satici_adsoyad, ilan_tipi, fiyat, detaylar) VALUES (?, ?, ?, ?, ?)`);
             const info = stmt.run(userId, userAdSoyad, ilan_tipi, fiyat, JSON.stringify(detaylar || {}));
- 
+
             if (varlikId) {
                 const userRow = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(userId);
                 if (userRow && userRow.portfoy) {
@@ -1180,23 +1192,23 @@ app.post('/api/ilan-ekle', (req, res) => {
             }
             return info.lastInsertRowid;
         });
- 
+
         const yeniIlanId = transaction();
         res.json({ basari: true, id: yeniIlanId, mesaj: "İlan başarıyla yayınlandı." });
     } catch (err) {
         res.status(500).json({ basari: false, mesaj: err.message });
     }
 });
- 
+
 app.post('/api/ilan-satin-al', (req, res) => {
     if (!req.session || !req.session.kullanici) {
         return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı!" });
     }
- 
+
     const aliciId = req.session.kullanici.id;
     const { ilanId, odenenNakit, ilanTipiBedel, ilanIsmi } = req.body;
     let guncelAliciPortfoy = null;
- 
+
     try {
         const transaction = db.transaction(() => {
             let ilan = null;
@@ -1251,26 +1263,26 @@ app.post('/api/ilan-satin-al', (req, res) => {
     }
 }
 }
- 
+
             // ALICI İŞLEMLERİ
             const aliciRow = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(aliciId);
             if (!aliciRow) throw new Error("Alıcı bulunamadı.");
             
             let aliciPortfoy = JSON.parse(aliciRow.portfoy || '{}');
             let aliciNakit = aliciPortfoy.nakit !== undefined ? aliciPortfoy.nakit : (aliciPortfoy.para || 0);
- 
+
             const tahsilEdilecekTutar = (odenenNakit !== undefined && odenenNakit !== null) ? Number(odenenNakit) : ilanFiyat;
- 
+
             if (aliciNakit < tahsilEdilecekTutar) {
                 throw new Error("Yeterli nakit paranız (peşinatınız) yok!");
             }
- 
+
             aliciNakit -= tahsilEdilecekTutar;
             aliciPortfoy.nakit = aliciNakit;
             if (!aliciPortfoy.varliklar) aliciPortfoy.varliklar = [];
- 
+
             const yeniBlokeDurumu = (odenenNakit !== undefined && odenenNakit !== null && Number(odenenNakit) < ilanFiyat);
- 
+
             aliciPortfoy.varliklar.push({
                 id: Date.now() + Math.random(),
                 isim: ilanTipi,
@@ -1279,10 +1291,10 @@ app.post('/api/ilan-satin-al', (req, res) => {
                 krediID: null,
                 atananKonum: detaylarObj.atananKonum || null, resimNo: resimNoSonuc
             });
- 
+
             db.prepare(`UPDATE kullanicilar SET portfoy = ? WHERE id = ?`).run(JSON.stringify(aliciPortfoy), aliciId);
             guncelAliciPortfoy = aliciPortfoy;
- 
+
 // SATICI İŞLEMLERİ (Sadece gerçek kullanıcılar için)
             if (saticiId) {
                 const saticiRow = db.prepare(`SELECT portfoy FROM kullanicilar WHERE id = ?`).get(saticiId);
@@ -1300,15 +1312,15 @@ app.post('/api/ilan-satin-al', (req, res) => {
                     bildirimEkle(saticiId, `<b>Piyasa Hareketli</b><br><br>Bir oyuncu "${ilanTipi}" ilanınızı ${Math.round(ilanFiyat).toLocaleString('tr-TR')} bedelle satın aldı!`);
                 }
             }
- 
- 
+
+
             if (ilan) {
                 db.prepare(`DELETE FROM ilanlar WHERE id = ?`).run(ilanId);
             }
             if (botIlan) bots.al(db, ilanId, ilanFiyat);
             return true;
         });
- 
+
         transaction();
         res.json({ basari: true, mesaj: "Satın alma gerçekleşti, mülk envantere aktarıldı.", yeniPortfoy: guncelAliciPortfoy });
     } catch (err) {
@@ -1316,15 +1328,15 @@ app.post('/api/ilan-satin-al', (req, res) => {
         res.status(400).json({ basari: false, mesaj: err.message });
     }
 });
- 
+
 app.post('/api/ilan-sil', (req, res) => {
     if (!req.session || !req.session.kullanici) {
         return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı!" });
     }
- 
+
     const userId = req.session.kullanici.id;
     const { id, sunucuIlanId, ilan_tipi } = req.body;
- 
+
     try {
         const transaction = db.transaction(() => {
             // 1. Kullanıcının portföyünden mülkü bulup durumunu 'sahip' yapalım 
@@ -1333,7 +1345,7 @@ app.post('/api/ilan-sil', (req, res) => {
             let silinecekIlanIds = [];
             if (id) silinecekIlanIds.push(id);
             if (sunucuIlanId) silinecekIlanIds.push(sunucuIlanId);
- 
+
             if (userRow && userRow.portfoy) {
                 let portfoyObj = typeof userRow.portfoy === 'string' ? JSON.parse(userRow.portfoy) : userRow.portfoy;
                 
@@ -1353,25 +1365,25 @@ app.post('/api/ilan-sil', (req, res) => {
                             if (v._islemde) delete v._islemde;
                         }
                     });
- 
+
                     db.prepare(`UPDATE kullanicilar SET portfoy = ? WHERE id = ?`)
                     .run(JSON.stringify(portfoyObj), userId);
                     req.session.kullanici.portfoy = portfoyObj;
                 }
             }
- 
+
             // 2. Toplanan tüm olası ilan ID'lerine göre ilanlar tablosunu tertemiz sil
             if (silinecekIlanIds.length > 0) {
                 const placeholders = silinecekIlanIds.map(() => '?').join(',');
                 db.prepare(`DELETE FROM ilanlar WHERE kullanici_id = ? AND id IN (${placeholders})`).run(userId, ...silinecekIlanIds);
             }
- 
+
             // Ek güvenlik: Eğer ilan_tipi gönderildiyse isme göre de kalıntı bırakma
             if (ilan_tipi) {
                 db.prepare(`DELETE FROM ilanlar WHERE kullanici_id = ? AND (ilan_tipi = ? OR baslik LIKE ?)`).run(userId, ilan_tipi, `%${ilan_tipi}%`);
             }
         });
- 
+
         transaction();
         res.json({ basari: true, mesaj: "İlan başarıyla kaldırıldı." });
     } catch (err) {
@@ -1379,7 +1391,7 @@ app.post('/api/ilan-sil', (req, res) => {
         res.status(500).json({ basari: false, mesaj: err.message });
     }
 });
- 
+
 app.get('/api/oyun-ayarlari', (req, res) => {
     try {
         const kayit = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
@@ -1393,18 +1405,18 @@ app.get('/api/oyun-ayarlari', (req, res) => {
         res.status(500).json({ basari: false, mesaj: err.message });
     }
 });
- 
+
 app.post('/api/admin/ayar-guncelle', adminZorunlu, (req, res) => {
     const { ayarlar, sureler } = req.body;
     if (!ayarlar) {
         return res.status(400).json({ basari: false, mesaj: "Ayar verisi boş olamaz!" });
     }
- 
+
     const kayitPaketi = {
         ...ayarlar,
         sureler: sureler || {}
     };
- 
+
     try {
         // 🌟 ÖNCE eski ayarları oku, sadece "sureler" kısmı gerçekten değişti mi diye kontrol edelim
         let eskiSurelerStr = '{}';
@@ -1415,13 +1427,13 @@ app.post('/api/admin/ayar-guncelle', adminZorunlu, (req, res) => {
                 eskiSurelerStr = JSON.stringify(eskiAyarlar.sureler || {});
             }
         } catch (e) { /* okunamazsa güvenli tarafta kal, aşağıda sıfırlama yapılır */ }
- 
+
         const yeniSurelerStr = JSON.stringify(kayitPaketi.sureler || {});
         const surelerDegisti = (eskiSurelerStr !== yeniSurelerStr);
         const eskiAyarlarPush = (() => { try { return ayarOku(); } catch (e) { return {}; } })();
         db.prepare(`INSERT OR REPLACE INTO oyun_ayarlari (id, ayarlar) VALUES (1, ?)`).run(JSON.stringify(kayitPaketi));
         piyasaDegisimiBildir(eskiAyarlarPush, kayitPaketi);
- 
+
         // 🌟 DÜZELTME: Sadece süreler (faizSuresi, taksitSuresi, kiraSuresi, sirketKazancSuresi vb.)
         // gerçekten değiştiyse kullanıcıların zaman sayacını sıfırla. Fiyat, kur, gelir gibi
         // sürelerle ilgisi olmayan bir değişiklikte kullanıcıların birikmiş ilerlemesi kaybolmasın.
@@ -1429,18 +1441,18 @@ app.post('/api/admin/ayar-guncelle', adminZorunlu, (req, res) => {
             db.prepare(`UPDATE kullanicilar SET son_guncelleme = ?`).run(Date.now());
             console.log('[SÜRE DEĞİŞTİ] Süre ayarları değişti, tüm kullanıcıların zaman sayacı sıfırlandı.');
         }
- 
+
         io.emit('ayarlarDegisti', {
             ayarlar: kayitPaketi,
             sureler: kayitPaketi.sureler
         });
- 
+
         res.json({ basari: true, mesaj: "Ayarlar başarıyla güncellendi." });
     } catch (err) {
         res.status(500).json({ basari: false, mesaj: err.message });
     }
 });
- 
+
 app.get('/api/email-kontrol', (req, res) => {
     const email = (req.query.email || '').trim().toLowerCase();
     if (!email) return res.json({ basari: false, mesaj: 'E-posta gerekli' });
@@ -1451,7 +1463,7 @@ app.get('/api/email-kontrol', (req, res) => {
         res.status(500).json({ basari: false, mesaj: err.message });
     }
 });
- 
+
 app.get('/api/ad-kontrol', (req, res) => {
     const ad = String(req.query.ad || '').trim();
     if (!ad) return res.json({ basari: false, mesaj: 'Ad gerekli' });
@@ -1459,10 +1471,10 @@ app.get('/api/ad-kontrol', (req, res) => {
     const sebep = adKullanimda(ad, haric);
     res.json({ basari: true, kullanimda: !!sebep, sebep });
 });
- 
+
 app.post('/api/kayit', (req, res) => {
     const { kadi, email, sifre, adsoyad, portfoy, yasOnay, sozlesmeOnay, sozlesmeVersiyon } = req.body; 
- 
+
     if (!yasOnay || !sozlesmeOnay) {
     return res.status(400).json({ basari: false, mesaj: 'Sözleşme ve yaş onayı zorunludur!' });
     }
@@ -1470,13 +1482,13 @@ app.post('/api/kayit', (req, res) => {
     if (!email) {
         return res.status(400).json({ basari: false, mesaj: 'E-posta adresi boş olamaz!' });
     }
- 
+
     if (!adsoyad || !adsoyad.trim()) {
         return res.status(400).json({ basari: false, mesaj: 'Ad Soyad (Şirket ismi) boş olamaz!' });
     }
- 
+
     const temizAdSoyad = adsoyad.trim().replace(/\s*a\.?\s*ş\.?\s*$/i, '').trim();
- 
+
     try {
         const cakisma = adKullanimda(temizAdSoyad, null);
          if (cakisma) {
@@ -1484,14 +1496,14 @@ app.post('/api/kayit', (req, res) => {
          ? 'Bu isim sistemdeki bir şirket tarafından kullanılıyor, lütfen başka bir isim seçin.'
          : 'Bu ad soyad (şirket ismi) daha önce alınmış! Lütfen başka bir tane seçin.' });
      }
- 
+
         const BASLANGIC_NAKIT = 0;
         const varsayilanPortfoy = {
             nakit: BASLANGIC_NAKIT,
             para: BASLANGIC_NAKIT,
             hisseler: []
         };
- 
+
         const simdi = Date.now();
         const stmt = db.prepare(`INSERT INTO kullanicilar (kadi, email, sifre, adsoyad, portfoy, son_guncelleme, sozlesme_onay_tarihi, sozlesme_versiyon) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`);
         const info = stmt.run(kadi, email, sifreHashle(sifre), temizAdSoyad, JSON.stringify(varsayilanPortfoy), simdi, new Date().toISOString(), String(sozlesmeVersiyon || ''));
@@ -1512,14 +1524,14 @@ app.post('/api/kayit', (req, res) => {
         return res.status(400).json({ basari: false, mesaj: 'Bu e-posta adresi zaten alınmış veya hata oluştu!' });
     }
 });
- 
+
 app.post('/api/sifre-sifirla', (req, res) => {
     const { email, yeniSifre } = req.body;
- 
+
     if (!email || !yeniSifre) {
         return res.json({ basarili: false, mesaj: "E-posta veya yeni şifre boş olamaz!" });
     }
- 
+
     try {
        const info = db.prepare(`UPDATE kullanicilar SET sifre = ? WHERE email = ?`).run(sifreHashle(yeniSifre), email);
         if (info.changes === 0) {
@@ -1531,21 +1543,21 @@ app.post('/api/sifre-sifirla', (req, res) => {
         return res.json({ basarili: false, mesaj: "Veritabanı hatası!" });
     }
 });
- 
+
 app.post('/api/profil-guncelle', (req, res) => {
     if (!req.session || !req.session.kullanici) {
         return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı, lütfen tekrar giriş yapın." });
     }
- 
+
     const userId = req.session.kullanici.id;
     const { yeniAdSoyad } = req.body;
- 
+
     if (!yeniAdSoyad || !yeniAdSoyad.trim()) {
         return res.json({ basari: false, mesaj: "Yeni ad soyad boş olamaz!" });
     }
- 
+
     const temizAd = yeniAdSoyad.trim();
- 
+
     try {
     const cakisma = adKullanimda(temizAd, userId);
     if (cakisma) {
@@ -1553,7 +1565,7 @@ app.post('/api/profil-guncelle', (req, res) => {
         ? "Bu isim sistemdeki bir şirket tarafından kullanılıyor!"
         : "Bu ad soyad başka bir kullanıcı tarafından kullanılıyor!" });
        }
- 
+
         db.prepare(`UPDATE kullanicilar SET adsoyad = ? WHERE id = ?`).run(temizAd, userId);
         req.session.kullanici.adsoyad = temizAd;
         res.json({ basari: true, mesaj: "Profil başarıyla güncellendi." });
@@ -1562,7 +1574,7 @@ app.post('/api/profil-guncelle', (req, res) => {
         return res.status(500).json({ basari: false, mesaj: "Veritabanı güncellenemedi!" });
     }
 });
- 
+
 app.get('/api/portfoy-getir', (req, res) => {
     if (!req.session || !req.session.kullanici) {
         return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı!" });
@@ -1575,14 +1587,14 @@ aktiviteIsle(req);
         if (!user) {
             return res.status(404).json({ basari: false, mesaj: "Kullanıcı bulunamadı!" });
         }
- 
+
         const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
         const ayarlar = ayarKaydi ? JSON.parse(ayarKaydi.ayarlar) : {};
- 
+
         // 🌟 Çevrimdışı geçen süredeki gelirleri hesaba kat!
         const guncelPortfoy = kullaniciEkonomisiniIslet(user, ayarlar) || JSON.parse(user.portfoy || '{}');
         const guncelSatirZaman = db.prepare(`SELECT son_guncelleme FROM kullanicilar WHERE id = ?`).get(userId);
- 
+
            res.json({
             basari: true,
             sonGuncelleme: guncelSatirZaman ? guncelSatirZaman.son_guncelleme : Date.now(),
@@ -1611,11 +1623,11 @@ app.post('/api/hesabi-sil', (req, res) => {
     const userId = req.session.kullanici.id;
     const sifre = String((req.body && req.body.sifre) || '');
     if (!sifre) return res.json({ basari: false, mesaj: 'Şifrenizi girmelisiniz.' });
- 
+
     try {
         const row = db.prepare(`SELECT id, kadi, email, sifre FROM kullanicilar WHERE id = ?`).get(userId);
         if (!row) return res.status(404).json({ basari: false, mesaj: 'Kullanıcı bulunamadı!' });
- 
+
         const hedefMail = String(row.kadi || row.email || '').trim().toLowerCase();
         if (hedefMail === String(ADMIN_EMAIL).trim().toLowerCase()) {
             return res.json({ basari: false, mesaj: 'Yönetici hesabı silinemez.' });
@@ -1623,7 +1635,7 @@ app.post('/api/hesabi-sil', (req, res) => {
         if (!sifreDogruMu(sifre, row.sifre)) {
             return res.json({ basari: false, mesaj: 'Şifre yanlış!' });
         }
- 
+
         db.transaction(() => {
             db.prepare(`DELETE FROM ilanlar WHERE kullanici_id = ?`).run(userId);
             db.prepare(`DELETE FROM giris_kayitlari WHERE kullanici_id = ?`).run(userId);
@@ -1633,7 +1645,7 @@ app.post('/api/hesabi-sil', (req, res) => {
             db.prepare(`DELETE FROM bildirimler WHERE kullanici_id = ?`).run(userId);
             db.prepare(`DELETE FROM kullanicilar WHERE id = ?`).run(userId);
         })();
- 
+
         req.session.destroy(() => {
             res.clearCookie('connect.sid', { path: '/' });
             res.json({ basari: true, mesaj: 'Hesabınız silindi.' });
@@ -1677,11 +1689,11 @@ app.post('/api/giris', girisLimiti, (req, res) => {
         if (row) {
             req.session.regenerate((err) => {
                 if (err) return res.status(500).json({ basari: false, mesaj: err.message });
- 
+
                 const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
                 const ayarlar = ayarKaydi ? JSON.parse(ayarKaydi.ayarlar) : {};
                 const portfoyObj = kullaniciEkonomisiniIslet(row, ayarlar) || JSON.parse(row.portfoy || '{}');
- 
+
                 req.session.userId = row.id;
                 req.session.kullanici = { 
                     id: row.id, 
@@ -1709,12 +1721,12 @@ app.post('/api/giris', girisLimiti, (req, res) => {
         return res.status(500).json({ basari: false, mesaj: err.message });
     }
 });
- 
+
 app.get('/api/aktif-kullanici', (req, res) => {
     if (!req.session || !req.session.kullanici) {
         return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı" });
     }
- 
+
     try {
         const userId = req.session.kullanici.id;
         const dbUser = db.prepare(`SELECT * FROM kullanicilar WHERE id = ?`).get(userId);
@@ -1722,13 +1734,13 @@ app.get('/api/aktif-kullanici', (req, res) => {
         if (!dbUser) {
             return res.status(404).json({ basari: false, mesaj: "Kullanıcı bulunamadı" });
         }
- 
+
         const ayarKaydi = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
         const ayarlar = ayarKaydi ? JSON.parse(ayarKaydi.ayarlar) : {};
- 
+
         const portfoyObj = kullaniciEkonomisiniIslet(dbUser, ayarlar) || JSON.parse(dbUser.portfoy || '{}');
         req.session.kullanici.portfoy = portfoyObj;
- 
+
        const adminMi = String(dbUser.kadi || '').trim().toLowerCase() === ADMIN_EMAIL;
         res.json({
             id: dbUser.id,
@@ -1740,15 +1752,15 @@ app.get('/api/aktif-kullanici', (req, res) => {
         res.status(500).json({ basari: false, mesaj: err.message });
     }
 });
- 
+
 app.post('/api/portfoy-guncelle', (req, res) => {
     if (!req.session || !req.session.kullanici) {
         return res.status(401).json({ basari: false, mesaj: "Oturum bulunamadı!" }); 
     }
- 
+
     const userId = req.session.kullanici.id;
     let yeniPortfoy = req.body.portfoy || {};
- 
+
   // 🌟 YENİ: Önce sunucu ekonomisini (kira/faiz/taksit/icra) güncel zamana getir.
     // Eğer bu sırada dönemsel bir gelir/kesinti uygulandıysa, client'ın elindeki
     // (eski) nakit/kredi/taksit/vadeli değerleri artık bayattır — bunları kabul
@@ -1759,11 +1771,11 @@ app.post('/api/portfoy-guncelle', (req, res) => {
             const ayarKaydi2 = db.prepare(`SELECT ayarlar FROM oyun_ayarlari WHERE id = 1`).get();
             const ayarlar2 = ayarKaydi2 ? JSON.parse(ayarKaydi2.ayarlar) : {};
             const guncellenmisPortfoy = kullaniciEkonomisiniIslet(tamMevcutRow, ayarlar2) || JSON.parse(tamMevcutRow.portfoy || '{}');
- 
+
             const guncelSatir = db.prepare(`SELECT son_guncelleme FROM kullanicilar WHERE id = ?`).get(userId);
             const sunucununGuncelZamani = guncelSatir ? Number(guncelSatir.son_guncelleme) : 0;
             const istemcininBildigiZaman = Number(req.body.sonGuncelleme) || 0;
- 
+
             // 🌟 YENİ KONTROL: Artık sadece "bu istek sırasında bir şey değişti mi" değil,
             // "client'ın son bildiği zaman, sunucunun şu anki gerçeğiyle uyuşuyor mu" kontrol ediyoruz.
             // Bu, arka plan motorunun client'tan bağımsız yaptığı güncellemeleri de yakalar.
@@ -1796,7 +1808,7 @@ app.post('/api/portfoy-guncelle', (req, res) => {
             return toplam + (kr.taksitTutu || kr.taksit || 0);
         }, 0);
     }
- 
+
     // Eğer toplam kredi borcu sıfıra yakınsa, tüm kredi alanlarını kökten sıfırla
     if (!yeniPortfoy.krediler || yeniPortfoy.krediler.length === 0 || yeniPortfoy.kredi < 0.01) {
         yeniPortfoy.kredi = 0;
@@ -1815,7 +1827,7 @@ if (mevcutRow && mevcutRow.portfoy) {
     if (bayat) return res.json({ basari: true, senkron: true, portfoy: mevcut }); // satılmış, bayat state'i reddet
 }
     const portfoyStr = JSON.stringify(yeniPortfoy);
- 
+
     try {
         db.prepare(`UPDATE kullanicilar SET portfoy = ? WHERE id = ?`).run(portfoyStr, userId);
         req.session.kullanici.portfoy = yeniPortfoy;
@@ -1843,22 +1855,22 @@ app.get('/api/admin/uyeler', adminZorunlu, (req, res) => {
         res.status(500).json({ basari: false, mesaj: err.message });
     }
 });
- 
+
 // 🗑️ ADMIN: Üye sil
 app.post('/api/admin/uye-sil', adminZorunlu, (req, res) => {
- 
+
     const id = Number(req.body.id);
     if (!id) return res.status(400).json({ basari: false, mesaj: 'Geçersiz üye!' });
- 
+
     try {
         const hedef = db.prepare(`SELECT id, email, kadi FROM kullanicilar WHERE id = ?`).get(id);
         if (!hedef) return res.status(404).json({ basari: false, mesaj: 'Üye bulunamadı!' });
- 
+
         const hedefMail = String(hedef.kadi || hedef.email || '').trim().toLowerCase();
         if (hedef.id === req.session.kullanici.id || hedefMail === ADMIN_EMAIL) {
             return res.status(400).json({ basari: false, mesaj: 'Admin hesabı silinemez!' });
         }
- 
+
         db.transaction(() => {
             db.prepare(`DELETE FROM ilanlar WHERE kullanici_id = ?`).run(id);
             db.prepare(`DELETE FROM giris_kayitlari WHERE kullanici_id = ?`).run(id);
@@ -1868,7 +1880,7 @@ app.post('/api/admin/uye-sil', adminZorunlu, (req, res) => {
             db.prepare(`DELETE FROM bildirimler WHERE kullanici_id = ?`).run(id);
             db.prepare(`DELETE FROM kullanicilar WHERE id = ?`).run(id);
         })();
- 
+
         res.json({ basari: true, mesaj: 'Üye silindi.' });
     } catch (err) {
         res.status(500).json({ basari: false, mesaj: err.message });
@@ -1877,7 +1889,7 @@ app.post('/api/admin/uye-sil', adminZorunlu, (req, res) => {
 app.get('/api/kullanicilar-liste', (req, res) => {
     try {
         const rows = db.prepare(`SELECT adsoyad, portfoy FROM kullanicilar`).all();
- 
+
         let uyeler = rows.map(row => {
             let portfoyData = {};
             try {
@@ -1889,28 +1901,28 @@ app.get('/api/kullanicilar-liste', (req, res) => {
             } catch (e) {
                 portfoyData = {};
             }
- 
+
             return {
                 adsoyad: row.adsoyad ? row.adsoyad.trim() : 'İsimsiz Şirket',
                 portfoy: portfoyData
             };
         });
- 
+
         res.json({ basari: true, uyeler: uyeler });
     } catch (err) {
         return res.status(500).json({ basari: false, mesaj: err.message });
     }
 });
- 
+
 io.on('connection', (socket) => {
     console.log('Bir kullanıcı socket üzerinden bağlandı:', socket.id);
     socket.on('disconnect', () => {
         console.log('Bir kullanıcı socket bağlantısını kesti:', socket.id);
     });
 });
- 
+
 const PORT = process.env.PORT || 3000;
- 
+
 server.listen(PORT, '0.0.0.0', () => {
     console.log(`Sunucumuz ${PORT} portunda ve çevrimdışı motor aktif şekilde çalışıyor.`);
 }).on('error', (err) => {
