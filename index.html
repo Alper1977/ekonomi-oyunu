@@ -4676,6 +4676,7 @@ function pushEklentisi() {
     try {
         let C = window.Capacitor;
         if (!C) return null;
+        if (typeof C.getPlatform === 'function' && C.getPlatform() === 'ios') return null;
         if (typeof C.isNativePlatform === 'function' && !C.isNativePlatform()) return null;
         if (typeof C.isPluginAvailable === 'function' && !C.isPluginAvailable('PushNotifications')) return null;
         if (C.Plugins && C.Plugins.PushNotifications) return C.Plugins.PushNotifications;
@@ -4775,7 +4776,7 @@ async function pushAnahtarYenile() {
     let btn = document.getElementById('push-anahtar-btn');
     if (!btn) return;
     let C = window.Capacitor;
-    if (!C || (typeof C.isNativePlatform === 'function' && !C.isNativePlatform())) { btn.style.display = 'none'; return; }
+    if (!C || (typeof C.isNativePlatform === 'function' && !C.isNativePlatform()) || (typeof C.getPlatform === 'function' && C.getPlatform() === 'ios')) { btn.style.display = 'none'; return; }
     btn.style.display = 'inline-block';
     if (!pushEklentisi()) { btn.innerText = '🔕 Bildirim eklentisi yok (ayrıntı)'; btn.dataset.durum = 'eklentiyok'; return; }
     try {
