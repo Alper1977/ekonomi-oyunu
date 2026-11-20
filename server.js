@@ -155,6 +155,9 @@ function ayarOku() {
   return k ? JSON.parse(k.ayarlar) : {};
 }
 
+app.get('/destek', (req, res) => {  
+    res.send('<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Ecarix Destek</title><style>body{font-family:Arial,sans-serif;max-width:700px;margin:20px auto;padding:0 16px;line-height:1.6;color:#222}</style></head><body><h1>Ecarix Destek</h1><p>Sorun, öneri ve hesap talepleriniz için: <b>alpdo77@hotmail.com</b></p><p>Hesabınızı silmek için uygulamada sağ üstteki kişi simgesi → "Hesabı Sil" yolunu kullanabilirsiniz. Gizlilik politikası: <a href="/gizlilik-politikasi">/gizlilik-politikasi</a></p></body></html>');});
+
 function adNormalle(s) {
     return String(s || '').toLocaleUpperCase('tr-TR').replace(/\s+/g, ' ').trim().replace(/\s+A\.?Ş\.?$/, '').trim();
 }
