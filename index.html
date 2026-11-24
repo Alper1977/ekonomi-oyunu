@@ -3,7 +3,7 @@
 <head>
 
  
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=overlays-content">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=overlays-content, viewport-fit=cover">
     <meta charset="UTF-8">
     <title>Ecarix</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>    
@@ -235,7 +235,12 @@
     20% { opacity: 1; transform: translate(-50%, 0) scale(1.1); }
     100% { opacity: 0; transform: translate(-50%, -90px) scale(1); }
 }
-  .content { overflow-x: hidden !important; touch-action: pan-y; overscroll-behavior-x: none; }   
+  .content { overflow-x: hidden !important; touch-action: pan-y; overscroll-behavior-x: none; }  
+
+/* iPhone çentik ve alt çizgi için güvenli alan (sadece iOS) */
+body.ios-app .page { padding-top: calc(20px + env(safe-area-inset-top)) !important; }
+body.ios-app .nav-bar { height: calc(60px + env(safe-area-inset-bottom)); padding-bottom: env(safe-area-inset-bottom); box-sizing: border-box; }
+body.ios-app #profil-menu { top: calc(62px + env(safe-area-inset-top)) !important; }     
     </style>
 </head>
 <body>
@@ -875,6 +880,7 @@
 <script>
 if (window.Capacitor) {
     document.body.classList.add('capacitor-app');
+    try { if (window.Capacitor.getPlatform && window.Capacitor.getPlatform() === 'ios') document.body.classList.add('ios-app'); } catch (e) {}
 }
 
 let splashBaslangicZamani = Date.now();
