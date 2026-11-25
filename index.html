@@ -3,7 +3,7 @@
 <head>
 
  
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=overlays-content, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, interactive-widget=overlays-content, viewport-fit=cover">
     <meta charset="UTF-8">
     <title>Ecarix</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>    
@@ -240,7 +240,11 @@
 /* iPhone çentik ve alt çizgi için güvenli alan (sadece iOS) */
 body.ios-app .page { padding-top: calc(20px + env(safe-area-inset-top)) !important; }
 body.ios-app .nav-bar { height: calc(60px + env(safe-area-inset-bottom)); padding-bottom: env(safe-area-inset-bottom); box-sizing: border-box; }
-body.ios-app #profil-menu { top: calc(62px + env(safe-area-inset-top)) !important; }     
+body.ios-app #profil-menu { top: calc(62px + env(safe-area-inset-top)) !important; } 
+/* iPhone: 16px'ten küçük yazı, kutuya dokununca sayfayı otomatik büyütür */
+body.ios-app input, body.ios-app select, body.ios-app textarea { font-size: 16px !important; }
+body.ios-app .kredi-group input, body.ios-app .kredi-group select { height: 32px !important; }
+body.ios-app .content { touch-action: manipulation !important; }
     </style>
 </head>
 <body>
@@ -880,7 +884,10 @@ body.ios-app #profil-menu { top: calc(62px + env(safe-area-inset-top)) !importan
 <script>
 if (window.Capacitor) {
     document.body.classList.add('capacitor-app');
-    try { if (window.Capacitor.getPlatform && window.Capacitor.getPlatform() === 'ios') document.body.classList.add('ios-app'); } catch (e) {}
+    try { if (window.Capacitor.getPlatform && window.Capacitor.getPlatform() === 'ios') {
+        document.body.classList.add('ios-app');
+        document.addEventListener('focusout', function () { setTimeout(function () { window.scrollTo(0, 0); }, 60); });
+    } } catch (e) {}
 }
 
 let splashBaslangicZamani = Date.now();
