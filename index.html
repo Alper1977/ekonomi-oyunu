@@ -245,6 +245,22 @@ body.ios-app #profil-menu { top: calc(62px + env(safe-area-inset-top)) !importan
 body.ios-app input, body.ios-app select, body.ios-app textarea { font-size: 16px !important; }
 body.ios-app .kredi-group input, body.ios-app .kredi-group select { height: 32px !important; }
 body.ios-app .content { touch-action: manipulation !important; }
+     /* ✨ Altın düğmeler (sadece varsayılan sarı olanlar; yeşil, kırmızı, mavi düğmelere dokunmaz) */
+button:not([style*="background"]):not(.btn-green):not(.btn-red):not(.nav-btn-kirmizi),
+.nav-btn:not(.nav-btn-kirmizi) {
+    background-color: #e0a800;
+    background-image: linear-gradient(165deg, #fff3b8 0%, #ffd84a 24%, #f4b800 58%, #c78d00 100%);
+    color: #3a2700;
+    border: 1px solid #9a6b00;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.55);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.8), inset 0 -2px 4px rgba(120, 80, 0, 0.35);
+}
+button:not([style*="background"]):not(.btn-green):not(.btn-red):not(.nav-btn-kirmizi):active,
+.nav-btn:not(.nav-btn-kirmizi):active {
+    filter: brightness(0.93);
+    transform: translateY(1px);
+}
+button:disabled { opacity: 0.65; }
     </style>
 </head>
 <body>
@@ -3243,6 +3259,7 @@ if (tList) {
     if (typeof ilanlariGuncelle === 'function') ilanlariGuncelle();
     if (typeof zenginlerListesiniGuncelle === 'function') await zenginlerListesiniGuncelle();
         servetKartiniGuncelle();
+        yonOklariniGuncelle();
     if (sirketGrafigiObjesi && typeof hesaplaServet === 'function') {
         maliGrafikGuncelle(hesaplaServet(state));
     }
@@ -4902,7 +4919,41 @@ function tahsilatTutari(bedel) {
     let n = (typeof odemeProgrami !== 'undefined' && Array.isArray(odemeProgrami) && odemeProgrami.length > 0) ? odemeProgrami.length : 3;
     return Math.round(Number(bedel || 0) * 3 / n);
 }
- 
+// ---------- ▲▼ KUR VE FAİZ YÖN OKLARI (son değişime göre) ----------
+function yonOkuHtml(yon) {
+    if (yon > 0) return '<span class="yon-ok" style="color:#00e676; font-weight:bold; margin-left:4px;">▲</span>';
+    if (yon < 0) return '<span class="yon-ok" style="color:#ff5252; font-weight:bold; margin-left:4px;">▼</span>';
+    return '';
+}
+
+// icinde=true: ok elementin içine eklenir. false: elementin hemen yanına (kardeş olarak)
+function yonOkunuIsle(id, yon, icinde) {
+    let el = document.getElementById(id);
+    if (!el) return;
+    if (icinde) {
+        el.querySelectorAll('.yon-ok').forEach(x => x.remove());
+        el.insertAdjacentHTML('beforeend', yonOkuHtml(yon));
+    } else {
+        let sonraki = el.nextElementSibling;
+        if (sonraki && sonraki.classList && sonraki.classList.contains('yon-ok')) sonraki.remove();
+        el.insertAdjacentHTML('afterend', yonOkuHtml(yon));
+    }
+}
+
+function yonOklariniGuncelle() {
+    try {
+        let y = (window.oyunAyar && window.oyunAyar.yonler) || {};
+        yonOkunuIsle('kur-dolar-alis', y.dolarAlis, false);
+        yonOkunuIsle('kur-dolar-satis', y.dolarSatis, false);
+        yonOkunuIsle('kur-euro-alis', y.euroAlis, false);
+        yonOkunuIsle('kur-euro-satis', y.euroSatis, false);
+        yonOkunuIsle('kur-altin-alis', y.altinAlis, false);
+        yonOkunuIsle('kur-altin-satis', y.altinSatis, false);
+        yonOkunuIsle('gosterge-vadeli-bilgi', y.vadeliFaiz, true);
+        yonOkunuIsle('yazi-yatirim-faiz', y.krediFaiz, false);
+        yonOkunuIsle('yazi-ilan-faiz', y.krediFaiz, false);
+    } catch (e) { /* ok gösterimi hiçbir zaman oyunu bozmasın */ }
+} 
 function changePage(p) {
     let hedefSayfa = document.getElementById(p);
     if (!hedefSayfa) {
